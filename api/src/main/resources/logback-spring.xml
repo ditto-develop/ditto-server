@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="ditto-server"/>
+    <springProfile name="local">
+        <include resource="logback/logback-local.xml"/>
+    </springProfile>
+    <springProfile name="prod">
+        <include resource="logback/logback-prod.xml"/>
+    </springProfile>
+</configuration>
