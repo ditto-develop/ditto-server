@@ -1,5 +1,5 @@
 plugins {
-    id("spring-convention")
+    id("restdocs-convention")
 }
 
 dependencies {

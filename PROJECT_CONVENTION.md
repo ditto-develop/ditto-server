@@ -18,6 +18,7 @@
 - `buildSrc` 기반 convention plugin 패턴 사용
   - `kotlin-convention` : 순수 Kotlin 모듈용
   - `spring-convention` : Spring Boot 모듈용 (`kotlin-convention` 상속)
+  - `restdocs-convention` : REST Docs + OpenAPI 문서화 (`spring-convention` 상속)
   - `sonar-convention` : SonarCloud 정적분석
   - `DependencyVersions.kt` : 의존성 버전 중앙 관리
 
@@ -149,7 +150,93 @@ class UserServiceTest(
 
 ---
 
-## 6. Git 전략
+## 6. API 문서화 (REST Docs + Swagger UI)
+
+### 구조
+- **restdocs-api-spec**을 사용하여 REST Docs 테스트 → OpenAPI 스펙 생성 → Swagger UI 렌더링
+- 테스트가 통과해야만 API가 문서에 노출됨 (테스트 기반 문서 정확성 보장)
+- Gradle convention: `restdocs-convention` (api 모듈에 적용)
+
+### 문서 생성 흐름
+```
+./gradlew test
+  → REST Docs 테스트 실행 → 스니펫 생성
+  → openapi3 태스크 자동 실행 (finalizedBy)
+  → src/main/resources/static/docs/openapi.yaml 생성
+  → 서버 실행 시 /docs 접속 → Swagger UI 렌더링
+```
+
+### 문서화 테스트 베이스 클래스: `RestDocsTest`
+- 컨트롤러 문서화 테스트는 반드시 **`RestDocsTest`를 상속**해서 작성
+- 위치: `api/src/test/kotlin/com/ditto/api/support/RestDocsTest.kt`
+- 제공하는 것들:
+  - `mockMvc`: `@AutoConfigureMockMvc` + `@AutoConfigureRestDocs` 자동 설정
+  - `objectMapper`: `ObjectMapperFactory.create()`로 생성 (프로젝트 공통 직렬화 설정 사용)
+- JUnit5 기반 (REST Docs + MockMvc 호환을 위해 Kotest가 아닌 JUnit5 사용)
+
+> **문서화 테스트와 통합 테스트는 베이스 클래스가 다름:**
+> - 비즈니스 로직 통합 테스트 → `IntegrationTest` (Kotest FreeSpec)
+> - 컨트롤러 문서화 테스트 → `RestDocsTest` (JUnit5)
+
+### 문서화 테스트 작성법
+```kotlin
+class SomeControllerTest : RestDocsTest() {
+
+    @Test
+    fun `API 설명`() {
+        val request = SomeRequest("value")
+
+        mockMvc.perform(
+            post("/api/some")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+        )
+            .andExpect(status().isOk)
+            .andDo(
+                document(
+                    "some-api",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("카테고리")
+                            .summary("API 요약")
+                            .description("상세 설명")
+                            .requestFields(
+                                fieldWithPath("field").description("필드 설명"),
+                            )
+                            .responseFields(
+                                fieldWithPath("code").description("응답 코드"),
+                                fieldWithPath("message").description("응답 메시지"),
+                                fieldWithPath("data").description("응답 데이터"),
+                            )
+                            .build()
+                    )
+                )
+            )
+    }
+}
+```
+
+### 필수 import
+```kotlin
+import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
+import com.epages.restdocs.apispec.ResourceDocumentation.resource
+import com.epages.restdocs.apispec.ResourceSnippetParameters
+import org.springframework.restdocs.operation.preprocess.Preprocessors.*
+import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
+```
+
+### 문서화 규칙
+- 새 API 작성 시, 반드시 문서화 테스트도 함께 작성
+- `tag`는 도메인 단위로 그룹핑 (예: `"User"`, `"Auth"`, `"System"`)
+- `summary`는 한 줄로 API 역할 설명
+- request/response 필드는 빠짐없이 문서화
+- 접속 경로: `https://api.ditto.pics/docs`
+
+---
+
+## 7. Git 전략
 
 ### 브랜치
 - **`main`이 근본 브랜치** (항상 배포 가능한 상태 유지)
@@ -181,7 +268,7 @@ class UserServiceTest(
 
 ---
 
-## 7. 기타 규칙
+## 8. 기타 규칙
 - 정적분석: SonarCloud 연동 (`sonar-convention`)
 - 인프라 설정 import: `api` 모듈에서 `@Import`로 명시적으로 가져오기
 - profile별 설정 파일: `application-{profile}.yml`

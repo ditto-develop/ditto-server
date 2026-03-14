@@ -13,4 +13,5 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-gradle-plugin:3.5.11")
     implementation("io.spring.gradle:dependency-management-plugin:1.1.7")
     implementation("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:6.0.1.5171")
+    implementation("com.epages:restdocs-api-spec-gradle-plugin:0.19.4")
 }

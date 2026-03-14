@@ -16,6 +16,7 @@ object DependencyVersions {
     const val JJWT = "0.12.6"
     const val JACKSON = "2.18.2"
     const val COROUTINES = "1.9.0"
+    const val RESTDOCS_API_SPEC = "0.19.4"
 }
 
 object Dependencies {
@@ -48,4 +49,6 @@ object Dependencies {
     const val JJWT_JACKSON = "io.jsonwebtoken:jjwt-jackson:${DependencyVersions.JJWT}"
     const val COROUTINES_CORE = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${DependencyVersions.COROUTINES}"
     const val COROUTINES_REACTOR = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:${DependencyVersions.COROUTINES}"
+    const val SPRING_RESTDOCS_MOCKMVC = "org.springframework.restdocs:spring-restdocs-mockmvc"
+    const val RESTDOCS_API_SPEC_MOCKMVC = "com.epages:restdocs-api-spec-mockmvc:${DependencyVersions.RESTDOCS_API_SPEC}"
 }
