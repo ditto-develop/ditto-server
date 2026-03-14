@@ -34,8 +34,10 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
       - run: chmod +x gradlew
-      - run: ./gradlew build --no-daemon
-      - run: ./gradlew sonarqube --no-daemon
+      - name: Build & Test & Coverage Check
+        run: ./gradlew build check --no-daemon
+      - name: SonarCloud Analysis
+        run: ./gradlew sonarqube --no-daemon
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - uses: dorny/test-reporter@v1

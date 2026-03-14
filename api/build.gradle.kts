@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":infrastructure"))
     implementation(Dependencies.SPRING_BOOT_STARTER_WEB)
     implementation(Dependencies.SPRING_BOOT_STARTER_VALIDATION)
+    implementation(Dependencies.SPRING_BOOT_STARTER_SECURITY)
     implementation(Dependencies.SPRING_BOOT_STARTER_AOP)
     implementation(Dependencies.SPRING_BOOT_STARTER_ACTUATOR)
     runtimeOnly(Dependencies.MICROMETER_PROMETHEUS)

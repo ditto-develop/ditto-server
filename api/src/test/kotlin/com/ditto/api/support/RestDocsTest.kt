@@ -6,15 +6,26 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
+@ActiveProfiles("test")
 abstract class RestDocsTest {
 
     @Autowired
     lateinit var mockMvc: MockMvc
 
     protected val objectMapper: ObjectMapper = ObjectMapperFactory.create()
+
+    protected fun MockHttpServletRequestBuilder.withApiKey(): MockHttpServletRequestBuilder {
+        return this.header("X-API-Key", TEST_API_KEY)
+    }
+
+    companion object {
+        const val TEST_API_KEY = "test-api-key"
+    }
 }

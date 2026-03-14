@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 600000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_batch_fetch_size: 100
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  server:
+    port: 8080
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  config: classpath:logback/logback-prod.xml
+
+ditto:
+  security:
+    api-key: ${API_KEY}
