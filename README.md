@@ -22,11 +22,16 @@ ditto-server/
 ├── api/                         # Spring Boot 실행 모듈
 │   └── src/main/kotlin/com/ditto/api/
 │       ├── DittoApplication.kt
+│       ├── HealthCheckController.kt
 │       └── config/
+│           ├── ApiKeyAuthFilter.kt
+│           ├── ApiKeyProperties.kt
 │           ├── GlobalExceptionHandler.kt
 │           ├── JacksonConfig.kt
 │           ├── LoggingAspect.kt
-│           └── RequestIdFilter.kt
+│           ├── OpenApiConfig.kt
+│           ├── RequestIdFilter.kt
+│           └── SecurityConfig.kt
 ├── common/                      # 순수 Kotlin 공통 유틸
 │   └── src/main/kotlin/com/ditto/common/
 │       ├── exception/           # WarnException, ErrorException, ErrorCode
@@ -40,6 +45,7 @@ ditto-server/
 │       ├── DependencyVersions.kt
 │       ├── kotlin-convention.gradle.kts
 │       ├── spring-convention.gradle.kts
+│       ├── restdocs-convention.gradle.kts
 │       └── sonar-convention.gradle.kts
 ├── .aws/
 │   ├── task-definition.json     # ECS Task Definition
@@ -65,7 +71,7 @@ ditto-server/
                    ▼                              ▼
           ┌────────────────┐            ┌────────────────┐
           │  CloudFront    │            │  CloudFront    │
-          │  ditto.com     │            │  api.ditto.com │
+          │  ditto.pics    │            │api.ditto.pics  │
           └───────┬────────┘            └───────┬────────┘
                   │                             │
                   ▼                             ▼
@@ -95,16 +101,16 @@ ditto-server/
                                  │  - 3306: 내부만           │
                                  └──────────────────────────┘
 
-          monitor.ditto.com → Route 53 CNAME → Grafana Cloud URL
+          monitor.ditto.pics → CNAME → Grafana Cloud URL
 ```
 
 ### 도메인
 
 | 도메인 | 용도 | 연결 대상 |
 |---|---|---|
-| `ditto.com` | 프론트엔드 | CloudFront → S3 |
-| `api.ditto.com` | 백엔드 API | CloudFront → Fargate Public IP |
-| `monitor.ditto.com` | Grafana 대시보드 | Route 53 CNAME → Grafana Cloud |
+| `ditto.pics` | 프론트엔드 | CloudFront → S3 |
+| `api.ditto.pics` | 백엔드 API | CloudFront → Fargate Public IP |
+| `monitor.ditto.pics` | Grafana 대시보드 | CNAME → Grafana Cloud |
 
 ### ECS Task 구성
 
@@ -123,6 +129,46 @@ ditto-server/
 
 ---
 
+## 보안
+
+### API Key 인증
+
+Spring Security + API Key 헤더 방식으로 경로별 접근 제어를 적용한다.
+
+| 경로 | 인증 | 설명 |
+|---|---|---|
+| `/health` | 불필요 | CloudFront 헬스체크용 |
+| `/actuator/**` | 불필요 (네트워크 보호) | Alloy sidecar가 localhost로 접근 |
+| `/docs/**`, `/swagger-ui/**` | 불필요 | API 문서 (Swagger UI) |
+| `/api/**` | `X-API-Key` 헤더 필수 | 비즈니스 API |
+| 그 외 모든 경로 | 차단 (403) | 허용되지 않은 경로 |
+
+- API Key는 AWS Secrets Manager(`ditto/api-key`)에 저장하고, ECS Task Definition에서 환경변수 `API_KEY`로 주입
+- 로컬 개발 시 기본값: `local-dev-key` (`application.yml`의 `${API_KEY:local-dev-key}`)
+- 프론트엔드는 모든 API 요청에 `X-API-Key` 헤더를 포함해야 함
+
+### 네트워크 레벨 보호
+
+| 레이어 | 보호 대상 | 방법 |
+|---|---|---|
+| Security Group | 8080 포트 | CloudFront Managed Prefix List만 inbound 허용 |
+| CloudFront Behavior | `/actuator/*` | 백엔드 CloudFront에서 해당 경로 Behavior를 생성하지 않음 → 외부 접근 불가 |
+| Spring Security | `/actuator/**` | 허용하되 네트워크 보호에 의존 (Alloy가 localhost로 접근) |
+
+### CloudFront 백엔드 Behavior 설정
+
+백엔드 CloudFront(`api.ditto.pics`)에서 `/actuator/*` 경로가 외부에 노출되지 않도록, Behavior를 다음과 같이 구성한다:
+
+| 순서 | Path Pattern | Origin | Cache Policy | 비고 |
+|---|---|---|---|---|
+| 0 (Default) | `*` | Fargate | CachingDisabled | API 요청 전달 |
+
+> `/actuator/*` Behavior를 별도로 만들지 않는다.
+> Default Behavior(`*`)가 모든 요청을 Fargate로 전달하지만, Security Group이 CloudFront만 허용하므로 외부에서 직접 접근은 불가능하다.
+> 추가 보호가 필요하면 CloudFront Functions로 `/actuator/*` 요청을 403으로 응답하도록 설정할 수 있다.
+
+---
+
 ## 모니터링
 
 ```
@@ -135,11 +181,12 @@ Grafana Alloy (sidecar, 환경변수로 시크릿 참조)
 Grafana Cloud (무료티어: 10K series, 14일 보존, 3유저)
     │
     ▼
-monitor.ditto.com
+monitor.ditto.pics
 ```
 
 - Prometheus 대신 **Grafana Alloy** 사용 (환경변수 참조 지원 → 퍼블릭 레포에 시크릿 없이 커밋 가능)
 - 설정: `.aws/alloy/config.alloy`
+- Alloy → Spring Boot Actuator는 같은 Task 내 **localhost** 통신 (인증 불필요)
 
 ---
 
@@ -167,8 +214,7 @@ main push → API Docker Build → Alloy Docker Build → ECR Push
 | S3 | ~$0.1 | 정적 파일 |
 | ECR | ~$1 | 이미지 2개 |
 | CloudWatch Logs | ~$1~2 | 로그 양 따라 |
-| Route 53 | ~$1.50 | 호스팅 존 |
-| Secrets Manager | ~$2 | 시크릿 5개 |
+| Secrets Manager | ~$2.40 | 시크릿 6개 |
 | Grafana Cloud | **$0** | 무료티어 |
 | **합계** | **~$22~30** | |
 
@@ -242,6 +288,7 @@ DB: ECS 컨테이너              →  DB: ECS 컨테이너        →  DB: RDS
 ### AWS - Secrets Manager
 - [ ] `ditto/db-password` — MySQL 유저 비밀번호
 - [ ] `ditto/db-root-password` — MySQL root 비밀번호
+- [ ] `ditto/api-key` — API 인증 키 (프론트엔드 → 백엔드 요청 시 `X-API-Key` 헤더에 사용)
 - [ ] `ditto/grafana-cloud-remote-write-url` — Grafana Cloud URL
 - [ ] `ditto/grafana-cloud-username` — Grafana Cloud 숫자 ID
 - [ ] `ditto/grafana-cloud-api-key` — Grafana Cloud API Key
@@ -261,18 +308,18 @@ DB: ECS 컨테이너              →  DB: ECS 컨테이너        →  DB: RDS
   - Origin: Fargate Public IP, HTTP Only, port 8080
   - Cache Policy: `CachingDisabled`
   - Origin Request Policy: `AllViewer`
-  - Alternate domain: `api.ditto.com`
+  - Alternate domain: `api.ditto.pics`
   - SSL: ACM 인증서 연결
+- [ ] `/actuator/*` 경로는 Behavior를 만들지 않음 (외부 노출 방지)
 
 ### AWS - ACM (SSL 인증서)
-- [ ] `*.ditto.com` 와일드카드 인증서 요청 (**리전: us-east-1** 필수)
-- [ ] DNS 검증 (Route 53 자동 검증)
+- [ ] `*.ditto.pics` 와일드카드 인증서 요청 (**리전: us-east-1** 필수)
+- [ ] DNS 검증
 
-### AWS - Route 53
-- [ ] `ditto.com` 호스팅 존 생성
-- [ ] `ditto.com` → A (Alias) → CloudFront (프론트)
-- [ ] `api.ditto.com` → A (Alias) → CloudFront (백엔드)
-- [ ] `monitor.ditto.com` → CNAME → `<your-stack>.grafana.net`
+### DNS (호스팅케이알)
+- [ ] `ditto.pics` → CNAME → CloudFront (프론트)
+- [ ] `api.ditto.pics` → CNAME → CloudFront (백엔드)
+- [ ] `monitor.ditto.pics` → CNAME → `<your-stack>.grafana.net`
 
 ---
 
@@ -294,6 +341,6 @@ DB: ECS 컨테이너              →  DB: ECS 컨테이너        →  DB: RDS
 5. ECS Task Definition 등록 + Service 생성
 6. Task RUNNING 후 Public IP 확인
 7. CloudFront 백엔드 Distribution Origin을 해당 IP로 설정
-8. Route 53 레코드 연결
-9. `monitor.ditto.com` 접속 → Grafana Cloud 대시보드 확인
+8. DNS 레코드 연결 (호스팅케이알)
+9. `monitor.ditto.pics` 접속 → Grafana Cloud 대시보드 확인
 10. 이후 main push 시 CD 파이프라인이 자동으로 전부 처리

@@ -16,7 +16,7 @@
 
 - 빌드 시스템: Gradle Kotlin DSL, **멀티모듈**
 - `buildSrc` 기반 convention plugin 패턴 사용
-  - `kotlin-convention` : 순수 Kotlin 모듈용
+  - `kotlin-convention` : 순수 Kotlin 모듈용 (Jacoco 커버리지 포함)
   - `spring-convention` : Spring Boot 모듈용 (`kotlin-convention` 상속)
   - `restdocs-convention` : REST Docs + OpenAPI 문서화 (`spring-convention` 상속)
   - `sonar-convention` : SonarCloud 정적분석
@@ -86,16 +86,35 @@ domain → common
 - `WarnException` — 클라이언트 잘못 (400, 404 등), WARN 레벨 로깅, stacktrace 없음
 - `ErrorException` — 서버 잘못 (500 등), ERROR 레벨 로깅, stacktrace 포함
 - `ErrorCode` enum에 상태코드 + 코드 + 메시지 정의
-- `GlobalExceptionHandler`가 자동 처리
+- `GlobalExceptionHandler`가 자동 처리 (`@ResponseStatus(HttpStatus.OK)` — HTTP 상태는 항상 200, 에러 정보는 body로 전달)
 
 ### API 응답
 - 모든 API는 `ApiResponse<T>`로 래핑
-- 성공: `ApiResponse.ok(data)`, 에러: `ApiResponse.error(errorCode, message)`
+- **HTTP 상태는 항상 200**, 성공/실패는 `success` 필드로 구분
+- 성공: `ApiResponse.ok(data)` → `{ "success": true, "data": {...} }`
+- 에러: `ApiResponse.error(errorCode, message)` → `{ "success": false, "error": { "statusCode": 400, "code": "0001", "message": "..." } }`
+
+```json
+// 성공 응답
+{ "success": true, "data": { "id": 1, "name": "홍길동" }, "error": null }
+
+// 에러 응답
+{ "success": false, "data": null, "error": { "statusCode": 400, "code": "0001", "message": "잘못된 요청값입니다." } }
+```
 
 ### 직렬화
 - `ObjectMapperFactory.create()`로 공통 ObjectMapper 생성
 - `JacksonConfig`에서 Spring Bean으로 등록
 - 날짜 포맷: `LocalDate` → `yyyy-MM-dd`, `LocalDateTime` → `yyyy-MM-dd HH:mm:ss`
+
+### 보안
+- Spring Security + API Key 방식
+- `/api/**` 요청에만 `X-API-Key` 헤더 필수
+- `/health`: 인증 없이 허용 (CloudFront 헬스체크)
+- `/actuator/**`: 인증 없이 허용 (네트워크 레벨 보호)
+- `/docs/**`, `/swagger-ui/**`: 인증 없이 허용 (API 문서)
+- 그 외 경로: 전부 차단 (403)
+- API Key는 환경변수 `API_KEY`로 주입 (로컬: `local-dev-key`, 프로덕션: Secrets Manager)
 
 ### 로깅
 - `@Loggable`: 클래스/메서드에 붙이면 AOP 자동 로깅 (메서드명, 파라미터, 반환값, 실행시간, 예외)
@@ -104,13 +123,48 @@ domain → common
   - `local`: 컬러 콘솔, requestId 포함, Hibernate SQL DEBUG
   - `prod`: JSON 구조화 로그 (CloudWatch 파싱 최적화)
 
+### 프로필 (application.yml)
+- `application.yml`: 공통 설정 (로컬 기본)
+- `application-prod.yml`: 프로덕션 설정 (DB, 로깅, 보안 등)
+- `application-test.yml`: 테스트 설정 (H2, 테스트용 API Key)
+- ECS에서 `SPRING_PROFILES_ACTIVE=prod`로 활성화
+
 ---
 
 ## 5. 테스트 코드 컨벤션
 
 ### 테스트 프레임워크
-- **Kotest** 사용, 스타일은 **FreeSpec**
+- **Kotest** (통합 테스트): FreeSpec 스타일, 한글 테스트명 사용
+- **JUnit5** (컨트롤러 문서화 테스트): `@DisplayName`에 한글, 메서드명은 영어
 - MockK 사용 (모킹 필요 시)
+
+### 테스트 네이밍 규칙
+
+**Kotest (FreeSpec)** — 한글 문자열로 테스트명 작성:
+```kotlin
+"유저 생성" - {
+    "정상적인 요청이면 유저가 생성된다" {
+        // ...
+    }
+}
+```
+
+**JUnit5** — 메서드명은 영어, 한글 설명은 `@DisplayName`에 작성:
+```kotlin
+@Test
+@DisplayName("정상적인 요청이면 유저가 생성된다")
+fun createUser() {
+    // ...
+}
+```
+
+> **JUnit5 테스트에서 백틱 한글 메서드명을 사용하지 말 것.** 반드시 `@DisplayName`을 사용한다.
+
+### 테스트 커버리지
+- **Jacoco** 사용, `kotlin-convention`에서 자동 설정
+- **최소 커버리지: 50%** — `check` 태스크에서 검증, 미달 시 빌드 실패
+- CI에서 `./gradlew build check`로 커버리지 검증 포함
+- 커버리지 제외 대상 (sonar-convention): `config/**`, `*Application*`, `*Config*`, `*Request*`, `*Response*`, `*Dto*`
 
 ### 통합 테스트 베이스 클래스: `IntegrationTest`
 - 통합 테스트는 반드시 **`IntegrationTest`를 상속**해서 작성
@@ -156,6 +210,8 @@ class UserServiceTest(
 - **restdocs-api-spec**을 사용하여 REST Docs 테스트 → OpenAPI 스펙 생성 → Swagger UI 렌더링
 - 테스트가 통과해야만 API가 문서에 노출됨 (테스트 기반 문서 정확성 보장)
 - Gradle convention: `restdocs-convention` (api 모듈에 적용)
+- Swagger UI 접속 시 인증 불필요 (`/docs` 경로 공개)
+- Swagger UI에서 API 테스트 시 **Authorize** 버튼으로 API Key 입력 필요
 
 ### 문서 생성 흐름
 ```
@@ -172,6 +228,8 @@ class UserServiceTest(
 - 제공하는 것들:
   - `mockMvc`: `@AutoConfigureMockMvc` + `@AutoConfigureRestDocs` 자동 설정
   - `objectMapper`: `ObjectMapperFactory.create()`로 생성 (프로젝트 공통 직렬화 설정 사용)
+  - `withApiKey()`: MockMvc 요청에 `X-API-Key` 헤더를 자동 추가하는 확장 함수
+  - `@ActiveProfiles("test")`: 테스트 전용 설정 자동 적용
 - JUnit5 기반 (REST Docs + MockMvc 호환을 위해 Kotest가 아닌 JUnit5 사용)
 
 > **문서화 테스트와 통합 테스트는 베이스 클래스가 다름:**
@@ -179,19 +237,25 @@ class UserServiceTest(
 > - 컨트롤러 문서화 테스트 → `RestDocsTest` (JUnit5)
 
 ### 문서화 테스트 작성법
+
+모든 API 응답은 HTTP 200이며, `success` 필드로 성공/실패를 구분한다.
+
 ```kotlin
 class SomeControllerTest : RestDocsTest() {
 
     @Test
-    fun `API 설명`() {
+    @DisplayName("어떤 API 설명")
+    fun someApi() {
         val request = SomeRequest("value")
 
         mockMvc.perform(
             post("/api/some")
+                .withApiKey()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
             .andDo(
                 document(
                     "some-api",
@@ -206,9 +270,10 @@ class SomeControllerTest : RestDocsTest() {
                                 fieldWithPath("field").description("필드 설명"),
                             )
                             .responseFields(
-                                fieldWithPath("code").description("응답 코드"),
-                                fieldWithPath("message").description("응답 메시지"),
-                                fieldWithPath("data").description("응답 데이터"),
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.id").description("ID"),
+                                fieldWithPath("data.name").description("이름"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build()
                     )
@@ -232,6 +297,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 - `tag`는 도메인 단위로 그룹핑 (예: `"User"`, `"Auth"`, `"System"`)
 - `summary`는 한 줄로 API 역할 설명
 - request/response 필드는 빠짐없이 문서화
+- `/api/**` 경로 테스트 시 반드시 `.withApiKey()` 호출
 - 접속 경로: `https://api.ditto.pics/docs`
 
 ---
@@ -262,7 +328,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 - `main`으로의 직접 push 금지
 - MR 생성 시 관련 이슈 번호 연결
 - **최소 1명의 Approve** 필수
-- CI(빌드 & 테스트) 통과 필수
+- CI(빌드 & 테스트 & 커버리지 50%) 통과 필수
 - **머지 방식: Squash and merge** (피처 브랜치의 커밋들을 하나로 합쳐서 main에 머지)
 - 스쿼시 머지 커밋 메시지는 커밋 메시지 컨벤션을 따름
 
@@ -271,4 +337,4 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 ## 8. 기타 규칙
 - 정적분석: SonarCloud 연동 (`sonar-convention`)
 - 인프라 설정 import: `api` 모듈에서 `@Import`로 명시적으로 가져오기
-- profile별 설정 파일: `application-{profile}.yml`
+- profile별 설정 파일: `application.yml` (공통), `application-prod.yml` (프로덕션), `application-test.yml` (테스트)

@@ -1,4 +1,4 @@
-package com.ditto.api.config
+package com.ditto.api.config.logging
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aspectj.lang.ProceedingJoinPoint
@@ -7,8 +7,6 @@ import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.reflect.MethodSignature
 import org.springframework.stereotype.Component
 import org.springframework.util.StopWatch
-
-private val logger = KotlinLogging.logger {}
 
 @Aspect
 @Component
@@ -30,7 +28,13 @@ class LoggingAspect {
         return try {
             val result = joinPoint.proceed()
             stopWatch.stop()
-            logger.info { "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | return: ${formatReturnValue(result)}" }
+            logger.info {
+                "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | return: ${
+                    formatReturnValue(
+                        result,
+                    )
+                }"
+            }
             result
         } catch (e: Exception) {
             stopWatch.stop()
@@ -53,5 +57,9 @@ class LoggingAspect {
     private fun truncate(value: Any?, maxLength: Int = 200): String {
         val str = value.toString()
         return if (str.length > maxLength) str.substring(0, maxLength) + "..." else str
+    }
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
     }
 }

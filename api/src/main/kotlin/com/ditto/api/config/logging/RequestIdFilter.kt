@@ -1,4 +1,4 @@
-package com.ditto.api.config
+package com.ditto.api.config.logging
 
 import jakarta.servlet.Filter
 import jakarta.servlet.FilterChain

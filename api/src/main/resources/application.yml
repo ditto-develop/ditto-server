@@ -25,3 +25,7 @@ springdoc:
     url: /docs/openapi.yaml
   api-docs:
     enabled: false
+
+ditto:
+  security:
+    api-key: ${API_KEY:local-dev-key}
