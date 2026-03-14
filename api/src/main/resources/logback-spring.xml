@@ -2,7 +2,7 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="ditto-server"/>
-    <springProfile name="local">
+    <springProfile name="local,test">
         <include resource="logback/logback-local.xml"/>
     </springProfile>
     <springProfile name="prod">

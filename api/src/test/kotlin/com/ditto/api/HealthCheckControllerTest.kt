@@ -17,7 +17,7 @@ class HealthCheckControllerTest : RestDocsTest() {
 
     @Test
     @DisplayName("헬스체크 API")
-    fun test1() {
+    fun healthCheck() {
         mockMvc.perform(get("/health"))
             .andExpect(status().isOk)
             .andExpect(content().string("OK"))
@@ -31,9 +31,9 @@ class HealthCheckControllerTest : RestDocsTest() {
                             .tag("System")
                             .summary("헬스 체크")
                             .description("서버 상태를 확인합니다.")
-                            .build(),
-                    ),
-                ),
+                            .build()
+                    )
+                )
             )
     }
 }
