@@ -10,3 +10,5 @@ Thumbs.db
 *.log
 .env
 .env.local
+.git/
+.kotlin/
