@@ -65,7 +65,7 @@ jobs:
 
       - name: Wait for service stability
         run: |
-          aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE --region AWS_ECS_REGION
+          aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE --region $AWS_ECS_REGION
 
       - name: Get new task public IP
         id: get-ip
