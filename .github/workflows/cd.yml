@@ -59,13 +59,13 @@ jobs:
             -t $ECR_REGISTRY/$ECR_ALLOY_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_ALLOY_REPOSITORY:latest .aws/alloy
 
-      - name: Force new deployment
-        run: |
-          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --region $AWS_ECS_REGION
-
-      - name: Wait for service stability
-        run: |
-          aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE --region $AWS_ECS_REGION
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: task-definition.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
       - name: Get new task public IP
         id: get-ip
@@ -83,7 +83,7 @@ jobs:
 
           aws cloudfront get-distribution-config --id "$CLOUDFRONT_DISTRIBUTION_ID" > config.json
           ETAG=$(jq -r '.ETag' config.json)
-          jq --arg ip "$NEW_IP" '.DistributionConfig | .Origins.Items[0].DomainName = $ip' config.json > updated_config.json
+          jq --arg ip "$NEW_IP" '.DistributionConfig | .Origins.Items[0].DomainName = ($ip + ".sslip.io")' config.json > updated_config.json
 
           aws cloudfront update-distribution \
             --id "$CLOUDFRONT_DISTRIBUTION_ID" \
