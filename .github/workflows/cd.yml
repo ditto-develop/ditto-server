@@ -38,7 +38,7 @@ jobs:
 
       - name: Build and push API image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}/u1b1p7p4
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
