@@ -80,12 +80,12 @@ jobs:
           CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           NEW_IP=${{ steps.get-ip.outputs.public_ip }}
-          CONFIG=$(aws cloudfront get-distribution-config --id $CLOUDFRONT_DISTRIBUTION_ID)
-          ETAG=$(echo $CONFIG | jq -r '.ETag')
 
-          UPDATED_CONFIG=$(echo $CONFIG | jq --arg ip "$NEW_IP" '.DistributionConfig | .Origins.Items[0].DomainName = $ip')
+          aws cloudfront get-distribution-config --id "$CLOUDFRONT_DISTRIBUTION_ID" > config.json
+          ETAG=$(jq -r '.ETag' config.json)
+          jq --arg ip "$NEW_IP" '.DistributionConfig | .Origins.Items[0].DomainName = $ip' config.json > updated_config.json
 
           aws cloudfront update-distribution \
-            --id $CLOUDFRONT_DISTRIBUTION_ID \
-            --if-match $ETAG \
-            --distribution-config "$UPDATED_CONFIG"
+            --id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --if-match "$ETAG" \
+            --distribution-config "file://updated_config.json"
