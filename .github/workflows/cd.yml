@@ -48,7 +48,7 @@ jobs:
 
       - name: Build and push Alloy image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}/u1b1p7p4
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # .aws/alloy 경로를 사용한 빌드
