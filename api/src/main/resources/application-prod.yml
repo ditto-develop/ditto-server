@@ -29,9 +29,6 @@ management:
     health:
       show-details: when-authorized
 
-logging:
-  config: classpath:logback/logback-prod.xml
-
 ditto:
   security:
     api-key: ${API_KEY}
