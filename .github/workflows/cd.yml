@@ -32,9 +32,6 @@ jobs:
           # Public ECR 인증 토큰은 us-east-1에서만 발행 가능합니다.
           aws-region: us-east-1
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
