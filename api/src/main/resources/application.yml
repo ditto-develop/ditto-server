@@ -23,8 +23,6 @@ springdoc:
   swagger-ui:
     path: /docs
     url: /docs/openapi.yaml
-  api-docs:
-    enabled: false
 
 ditto:
   security:
