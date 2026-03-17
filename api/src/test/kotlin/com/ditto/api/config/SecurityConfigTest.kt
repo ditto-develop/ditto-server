@@ -84,6 +84,9 @@ class SecurityConfigTest : RestDocsTest() {
         @DisplayName("API Key 없이 Swagger UI에 접근할 수 있다")
         fun accessDocsWithoutKey() {
             mockMvc.perform(get("/docs"))
+                .andExpect(status().is3xxRedirection)
+
+            mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk)
         }
     }
