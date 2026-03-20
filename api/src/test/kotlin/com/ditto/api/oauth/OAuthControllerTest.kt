@@ -29,6 +29,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @Import(OAuthControllerTest.FakeOAuthConfig::class)
 class OAuthControllerTest : RestDocsTest() {
 
+    companion object {
+        private val PROVIDER_DESCRIPTION =
+            "소셜 로그인 제공자 (${SocialProvider.entries.joinToString(", ") { it.name.lowercase() }})"
+    }
+
     @TestConfiguration
     class FakeOAuthConfig {
         @Bean
@@ -72,7 +77,7 @@ class OAuthControllerTest : RestDocsTest() {
                             .summary("소셜 로그인")
                             .description("소셜 로그인 제공자의 인가 페이지로 리다이렉트합니다.")
                             .pathParameters(
-                                parameterWithName("provider").description("소셜 로그인 제공자 (${SocialProvider.entries.joinToString(", ") { it.name.lowercase() }})"),
+                                parameterWithName("provider").description(PROVIDER_DESCRIPTION),
                             )
                             .build()
                     )
@@ -101,7 +106,7 @@ class OAuthControllerTest : RestDocsTest() {
                             .summary("소셜 로그인 콜백")
                             .description("소셜 로그인 제공자로부터 받은 인가 코드로 JWT를 발급합니다.")
                             .pathParameters(
-                                parameterWithName("provider").description("소셜 로그인 제공자 (${SocialProvider.entries.joinToString(", ") { it.name.lowercase() }})"),
+                                parameterWithName("provider").description(PROVIDER_DESCRIPTION),
                             )
                             .queryParameters(
                                 parameterWithName("code").description("소셜 로그인 제공자로부터 받은 인가 코드"),
