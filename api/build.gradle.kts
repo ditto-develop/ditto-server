@@ -17,6 +17,7 @@ dependencies {
     implementation(Dependencies.JJWT_API)
 
     runtimeOnly(Dependencies.MICROMETER_PROMETHEUS)
+    runtimeOnly(Dependencies.MYSQL_CONNECTOR)
     runtimeOnly(Dependencies.JJWT_IMPL)
     runtimeOnly(Dependencies.JJWT_JACKSON)
 
