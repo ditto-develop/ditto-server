@@ -20,8 +20,8 @@ dependencies {
     runtimeOnly(Dependencies.MYSQL_CONNECTOR)
     runtimeOnly(Dependencies.JJWT_IMPL)
     runtimeOnly(Dependencies.JJWT_JACKSON)
+    runtimeOnly(Dependencies.H2)
 
     testImplementation(testFixtures(project(":domain")))
     testImplementation(Dependencies.KOTEST_SPRING)
-    testRuntimeOnly(Dependencies.H2)
 }
