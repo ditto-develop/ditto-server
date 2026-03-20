@@ -63,7 +63,7 @@ class OAuthControllerTest : RestDocsTest() {
     @Test
     @DisplayName("소셜 로그인 페이지로 리다이렉트한다")
     fun login() {
-        mockMvc.perform(get("/oauth/{provider}/login", "kakao"))
+        mockMvc.perform(get("/users/social-login/{provider}", "kakao"))
             .andExpect(status().isFound)
             .andExpect(header().exists("Location"))
             .andDo(
@@ -89,7 +89,7 @@ class OAuthControllerTest : RestDocsTest() {
     @DisplayName("인가 코드로 로그인하고 JWT를 반환한다")
     fun callback() {
         mockMvc.perform(
-            get("/oauth/{provider}/callback", "kakao")
+            get("/users/social-login/{provider}/callback", "kakao")
                 .param("code", "test-auth-code"),
         )
             .andExpect(status().isOk)

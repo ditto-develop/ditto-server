@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
 @RestController
-@RequestMapping("/oauth")
+@RequestMapping("/users/social-login")
 class OAuthController(
     private val oAuthService: OAuthService,
 ) {
 
-    @GetMapping("/{provider}/login")
+    @GetMapping("/{provider}")
     fun login(@PathVariable provider: String): ResponseEntity<Void> {
         val socialProvider = SocialProvider.from(provider)
         val authorizationUrl = oAuthService.getAuthorizationUrl(socialProvider)
