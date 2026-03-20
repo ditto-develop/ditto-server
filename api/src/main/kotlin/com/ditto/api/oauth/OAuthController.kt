@@ -18,7 +18,7 @@ class OAuthController(
 ) {
 
     @GetMapping("/{provider}")
-    fun login(@PathVariable provider: String): ResponseEntity<Void> {
+    fun login(@PathVariable provider: String): ResponseEntity<Unit> {
         val socialProvider = SocialProvider.from(provider)
         val authorizationUrl = oAuthService.getAuthorizationUrl(socialProvider)
         return ResponseEntity.status(HttpStatus.FOUND)
