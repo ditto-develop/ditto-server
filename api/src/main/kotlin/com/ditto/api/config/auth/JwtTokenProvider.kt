@@ -14,37 +14,28 @@ class JwtTokenProvider(
         Keys.hmacShaKeyFor(jwtProperties.secret.toByteArray())
     }
 
+    private val parser by lazy {
+        Jwts.parser().verifyWith(key).build()
+    }
+
     fun generateToken(memberId: Long): String {
         val now = Date()
-        val expiration = Date(now.time + jwtProperties.expirationMs)
-
         return Jwts.builder()
             .subject(memberId.toString())
             .issuedAt(now)
-            .expiration(expiration)
+            .expiration(Date(now.time + jwtProperties.expirationMs))
             .signWith(key)
             .compact()
     }
 
-    fun getMemberId(token: String): Long {
-        return Jwts.parser()
-            .verifyWith(key)
-            .build()
-            .parseSignedClaims(token)
-            .payload
-            .subject
-            .toLong()
-    }
+    fun getMemberId(token: String): Long =
+        parser.parseSignedClaims(token).payload.subject.toLong()
 
-    fun isValid(token: String): Boolean {
-        return try {
-            Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
+    fun isValid(token: String): Boolean =
+        try {
+            parser.parseSignedClaims(token)
             true
         } catch (e: Exception) {
             false
         }
-    }
 }

@@ -1,5 +1,6 @@
 package com.ditto.api.oauth
 
+import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.Member
@@ -7,7 +8,6 @@ import com.ditto.domain.member.MemberRepository
 import com.ditto.domain.socialaccount.SocialAccount
 import com.ditto.domain.socialaccount.SocialAccountRepository
 import com.ditto.domain.socialaccount.SocialProvider
-import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import io.kotest.assertions.throwables.shouldThrow
@@ -39,20 +39,20 @@ class OAuthServiceTest : FreeSpec({
         every { oAuthClient.getProvider() } returns SocialProvider.KAKAO
     }
 
+    fun stubOAuthClientReturns(userInfo: OAuthUserInfo) {
+        every { oAuthClient.getAccessToken(any()) } returns "kakao-access-token"
+        every { oAuthClient.getUserInfo("kakao-access-token") } returns userInfo
+    }
+
     "인가 URL 조회" - {
         "카카오 인가 URL을 반환한다" {
             val expectedUrl = "https://kauth.kakao.com/oauth/authorize?client_id=test"
             every { oAuthClient.getAuthorizationUrl() } returns expectedUrl
 
-            val result = oAuthService.getAuthorizationUrl(SocialProvider.KAKAO)
-
-            result shouldBe expectedUrl
+            oAuthService.getAuthorizationUrl(SocialProvider.KAKAO) shouldBe expectedUrl
         }
 
         "지원하지 않는 제공자면 예외가 발생한다" {
-            val unsupportedClient = mockk<OAuthClient>()
-            every { unsupportedClient.getProvider() } returns SocialProvider.KAKAO
-
             val serviceWithNoClients = OAuthService(
                 oAuthClients = emptyList(),
                 memberRepository = memberRepository,
@@ -68,22 +68,18 @@ class OAuthServiceTest : FreeSpec({
     }
 
     "소셜 로그인" - {
-        "신규 사용자면 회원가입 후 JWT를 발급한다" {
-            val code = "auth-code"
-            val kakaoAccessToken = "kakao-access-token"
-            val userInfo = OAuthUserInfo(id = "12345", nickname = "테스트유저")
-            val savedMember = Member(nickname = "테스트유저", id = 1L)
+        val userInfo = OAuthUserInfo(id = "12345", nickname = "테스트유저")
 
-            every { oAuthClient.getAccessToken(code) } returns kakaoAccessToken
-            every { oAuthClient.getUserInfo(kakaoAccessToken) } returns userInfo
+        "신규 사용자면 회원가입 후 JWT를 발급한다" {
+            stubOAuthClientReturns(userInfo)
             every {
                 socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.KAKAO, "12345")
             } returns null
-            every { memberRepository.save(any()) } returns savedMember
+            every { memberRepository.save(any()) } returns Member(nickname = "테스트유저", id = 1L)
             every { socialAccountRepository.save(any()) } returns mockk()
             every { jwtTokenProvider.generateToken(1L) } returns "jwt-token"
 
-            val result = oAuthService.login(SocialProvider.KAKAO, code)
+            val result = oAuthService.login(SocialProvider.KAKAO, "auth-code")
 
             result.accessToken shouldBe "jwt-token"
             verify { memberRepository.save(any()) }
@@ -91,23 +87,13 @@ class OAuthServiceTest : FreeSpec({
         }
 
         "기존 사용자면 기존 회원으로 JWT를 발급한다" {
-            val code = "auth-code"
-            val kakaoAccessToken = "kakao-access-token"
-            val userInfo = OAuthUserInfo(id = "12345", nickname = "테스트유저")
-            val existingSocialAccount = SocialAccount.create(
-                memberId = 1L,
-                provider = SocialProvider.KAKAO,
-                providerUserId = "12345",
-            )
-
-            every { oAuthClient.getAccessToken(code) } returns kakaoAccessToken
-            every { oAuthClient.getUserInfo(kakaoAccessToken) } returns userInfo
+            stubOAuthClientReturns(userInfo)
             every {
                 socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.KAKAO, "12345")
-            } returns existingSocialAccount
+            } returns SocialAccount.create(memberId = 1L, provider = SocialProvider.KAKAO, providerUserId = "12345")
             every { jwtTokenProvider.generateToken(1L) } returns "jwt-token"
 
-            val result = oAuthService.login(SocialProvider.KAKAO, code)
+            val result = oAuthService.login(SocialProvider.KAKAO, "auth-code")
 
             result.accessToken shouldBe "jwt-token"
             verify(exactly = 0) { memberRepository.save(any()) }

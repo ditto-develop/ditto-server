@@ -21,9 +21,8 @@ class OAuthService(
 ) {
     private val clientMap = oAuthClients.associateBy { it.getProvider() }
 
-    fun getAuthorizationUrl(provider: SocialProvider): String {
-        return getClient(provider).getAuthorizationUrl()
-    }
+    fun getAuthorizationUrl(provider: SocialProvider): String =
+        getClient(provider).getAuthorizationUrl()
 
     @Transactional
     fun login(provider: SocialProvider, code: String): OAuthLoginResponse {
@@ -31,28 +30,28 @@ class OAuthService(
         val accessToken = client.getAccessToken(code)
         val userInfo = client.getUserInfo(accessToken)
 
-        val socialAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, userInfo.id)
-
-        val memberId = if (socialAccount != null) {
-            socialAccount.memberId
-        } else {
-            val newMember = memberRepository.save(Member(nickname = userInfo.nickname))
-            socialAccountRepository.save(
-                SocialAccount.create(
-                    memberId = newMember.id,
-                    provider = provider,
-                    providerUserId = userInfo.id,
-                ),
-            )
-            newMember.id
-        }
-
+        val memberId = findOrCreateMember(provider, userInfo.id, userInfo.nickname)
         val token = jwtTokenProvider.generateToken(memberId)
         return OAuthLoginResponse(accessToken = token)
     }
 
-    private fun getClient(provider: SocialProvider): OAuthClient {
-        return clientMap[provider]
-            ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
+    private fun findOrCreateMember(provider: SocialProvider, providerUserId: String, nickname: String): Long {
+        val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+        if (existingAccount != null) {
+            return existingAccount.memberId
+        }
+
+        val newMember = memberRepository.save(Member(nickname = nickname))
+        socialAccountRepository.save(
+            SocialAccount.create(
+                memberId = newMember.id,
+                provider = provider,
+                providerUserId = providerUserId,
+            ),
+        )
+        return newMember.id
     }
+
+    private fun getClient(provider: SocialProvider): OAuthClient =
+        clientMap[provider] ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
 }
