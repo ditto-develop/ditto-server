@@ -27,3 +27,11 @@ springdoc:
 ditto:
   security:
     api-key: ${API_KEY:local-dev-key}
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:cc9e4ec3c2e57ce0baacbfb5249d5178}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/oauth/kakao/callback}
+  jwt:
+    secret: ${JWT_SECRET:local-dev-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
