@@ -9,7 +9,7 @@ dependencies {
 }
 
 openapi3 {
-    setServer("https://api.ditto.pics")
+    setServer("")
     title = "Ditto API"
     description = """
         Ditto 서비스 API 문서입니다.
