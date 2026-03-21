@@ -24,6 +24,9 @@ class OAuthService(
     fun getAuthorizationUrl(provider: SocialProvider): String =
         getClient(provider).getAuthorizationUrl()
 
+    private fun getClient(provider: SocialProvider): OAuthClient =
+        clientMap[provider] ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
+
     @Transactional
     fun login(provider: SocialProvider, code: String): OAuthLoginResponse {
         val client = getClient(provider)
@@ -51,7 +54,4 @@ class OAuthService(
         )
         return newMember.id
     }
-
-    private fun getClient(provider: SocialProvider): OAuthClient =
-        clientMap[provider] ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
 }
