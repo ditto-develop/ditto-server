@@ -1,35 +1,31 @@
 package com.ditto.api.oauth
 
 import com.ditto.api.config.auth.JwtTokenProvider
-import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.Member
 import com.ditto.domain.member.MemberRepository
 import com.ditto.domain.socialaccount.SocialAccount
 import com.ditto.domain.socialaccount.SocialAccountRepository
 import com.ditto.domain.socialaccount.SocialProvider
-import com.ditto.infrastructure.oauth.OAuthClient
+import com.ditto.infrastructure.oauth.OAuthClientFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class OAuthService(
-    oAuthClients: List<OAuthClient>,
+    private val oAuthClientFactory: OAuthClientFactory,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     private val jwtTokenProvider: JwtTokenProvider,
 ) {
-    private val clientMap = oAuthClients.associateBy { it.getProvider() }
-
     fun getAuthorizationUrl(provider: SocialProvider): String =
-        getClient(provider).getAuthorizationUrl()
+        oAuthClientFactory.getClient(provider).getAuthorizationUrl()
 
     private fun getClient(provider: SocialProvider): OAuthClient =
         clientMap[provider] ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
 
     @Transactional
     fun login(provider: SocialProvider, code: String): OAuthLoginResponse {
-        val client = getClient(provider)
+        val client = oAuthClientFactory.getClient(provider)
         val accessToken = client.getAccessToken(code)
         val userInfo = client.getUserInfo(accessToken)
 

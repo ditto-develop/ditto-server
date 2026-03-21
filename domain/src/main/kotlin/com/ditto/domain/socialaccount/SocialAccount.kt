@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 
@@ -17,6 +18,9 @@ import jakarta.persistence.UniqueConstraint
     uniqueConstraints = [
         UniqueConstraint(columnNames = ["provider", "provider_user_id"]),
     ],
+    indexes = [
+        @Index(name = "social_account_index_1", columnList = "memberId"),
+    ]
 )
 class SocialAccount private constructor(
     @Column(name = "member_id", nullable = false)

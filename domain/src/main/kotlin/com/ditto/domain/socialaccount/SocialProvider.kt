@@ -1,7 +1,7 @@
 package com.ditto.domain.socialaccount
 
 import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
+import com.ditto.common.exception.ErrorException
 
 enum class SocialProvider {
     KAKAO,
@@ -10,7 +10,7 @@ enum class SocialProvider {
     companion object {
         fun from(value: String): SocialProvider {
             return entries.find { it.name.equals(value, ignoreCase = true) }
-                ?: throw WarnException(ErrorCode.UNSUPPORTED_PROVIDER)
+                ?: throw ErrorException(ErrorCode.UNSUPPORTED_PROVIDER)
         }
     }
 }
