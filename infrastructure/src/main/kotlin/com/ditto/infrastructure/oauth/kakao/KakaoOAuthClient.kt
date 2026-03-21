@@ -7,16 +7,15 @@ import com.ditto.domain.socialaccount.SocialProvider
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.springframework.stereotype.Component
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
-@Component
 class KakaoOAuthClient(
     private val properties: KakaoOAuthProperties,
+    private val client: KakaoApiClient,
 ) : OAuthClient {
 
     companion object {
@@ -53,6 +52,8 @@ class KakaoOAuthClient(
             .header("Authorization", "Bearer $accessToken")
             .GET()
             .build()
+
+        client.requestAuth()
 
         val body = send(request, ErrorCode.OAUTH_USER_INFO_FAILED)
         val response = parse(body, KakaoUserResponse::class.java, ErrorCode.OAUTH_USER_INFO_FAILED)

@@ -3,6 +3,7 @@ spring:
     name: ditto-server
   profiles:
     active: local
+    include: oauth
 
 server:
   port: 8080
