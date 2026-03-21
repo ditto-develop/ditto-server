@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
 @RestController
-@RequestMapping("/users/social-login")
+@RequestMapping("/api/v1/users/social-login")
 class OAuthController(
     private val oAuthService: OAuthService,
 ) {
