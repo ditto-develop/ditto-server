@@ -1,5 +1,7 @@
 package com.ditto.domain.socialaccount
 
+import com.ditto.domain.socialaccount.entity.SocialAccount
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.withId
 
 object SocialAccountFixture {

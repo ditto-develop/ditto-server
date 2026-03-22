@@ -8,4 +8,5 @@ tasks.jar { enabled = true }
 dependencies {
     implementation(project(":common"))
     implementation(project(":domain"))
+    implementation("org.springframework:spring-web")
 }

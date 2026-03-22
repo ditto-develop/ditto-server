@@ -1,5 +1,6 @@
 package com.ditto.domain.member
 
+import com.ditto.domain.member.entity.Member
 import com.ditto.domain.withId
 
 object MemberFixture {

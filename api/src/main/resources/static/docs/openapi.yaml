@@ -18,34 +18,24 @@ servers:
 - url: ""
 tags: []
 paths:
-  /health:
+  /api/v1/users/social-login/{provider}:
     get:
       tags:
-      - System
-      summary: 헬스 체크
-      description: 서버 상태를 확인합니다.
-      operationId: health-check
-      responses:
-        "200":
-          description: "200"
-          content:
-            text/plain;charset=UTF-8:
-              schema:
-                $ref: "#/components/schemas/health486549215"
-              examples:
-                health-check:
-                  value: OK
-  /oauth/kakao/login:
-    get:
-      tags:
-      - Auth
-      summary: 카카오 소셜 로그인
-      description: 카카오 인가 페이지로 302 리다이렉트합니다. 사용자 동의 후 콜백 URL로 인가코드가 전달됩니다.
-      operationId: oauth-kakao-login
+      - OAuth
+      summary: 소셜 로그인
+      description: 소셜 로그인 제공자의 인가 페이지로 리다이렉트합니다.
+      operationId: oauth-login
+      parameters:
+      - name: provider
+        in: path
+        description: 소셜 로그인 제공자 (kakao)
+        required: true
+        schema:
+          type: string
       responses:
         "302":
           description: "302"
-  /oauth/{provider}/callback:
+  /api/v1/users/social-login/{provider}/callback:
     get:
       tags:
       - OAuth
@@ -71,34 +61,34 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/oauth-provider-callback1901578569"
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1901578569"
               examples:
                 oauth-callback:
                   value: |-
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0MDEyNjkzLCJleHAiOjE3NzQwMTYyOTN9.rQadQ2FvmZS3XPRoIT84HdLljKSheNVJcPwON3NjPlK9DMyWoMULxCk7XTXLpYXKMzzbQtxCZ9JJ2PqI67WRzg"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0MTU0NDgyLCJleHAiOjE3NzQxNTgwODJ9.FY8AjF8LV_Jw7FJuREKvmYEUnW338FmnBcJXWYm8fOBGZTuZmMzb06ymOUp_QpURtFdzvDVTlAuBYnAicLSpkw"
                       },
                       "error" : null
                     }
-  /oauth/{provider}/login:
+  /health:
     get:
       tags:
-      - OAuth
-      summary: 소셜 로그인
-      description: 소셜 로그인 제공자의 인가 페이지로 리다이렉트합니다.
-      operationId: oauth-login
-      parameters:
-      - name: provider
-        in: path
-        description: 소셜 로그인 제공자 (kakao)
-        required: true
-        schema:
-          type: string
+      - System
+      summary: 헬스 체크
+      description: 서버 상태를 확인합니다.
+      operationId: health-check
       responses:
-        "302":
-          description: "302"
+        "200":
+          description: "200"
+          content:
+            text/plain;charset=UTF-8:
+              schema:
+                $ref: "#/components/schemas/health486549215"
+              examples:
+                health-check:
+                  value: OK
 components:
   securitySchemes:
     ApiKey:
@@ -107,7 +97,7 @@ components:
       name: X-API-Key
       description: API 인증 키. 백엔드 담당자에게 발급받으세요.
   schemas:
-    oauth-provider-callback1901578569:
+    api-v1-users-social-login-provider-callback1901578569:
       required:
       - error
       - success

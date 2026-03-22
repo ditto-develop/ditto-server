@@ -1,45 +1,24 @@
 package com.ditto.infrastructure.oauth.kakao
 
-import com.ditto.domain.socialaccount.SocialProvider
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 
-class KakaoOAuthFakeClient : OAuthClient {
+class KakaoOAuthFakeClient(
+    private val properties: KakaoOAuthProperties,
+) : OAuthClient {
 
-    private val clientIdStub = ArrayDeque<String>()
-
-    fun stubClientId(clientId: String) {
-        clientIdStub.add(clientId)
-    }
-
-    override fun getProvider(): SocialProvider {
-        TODO("Not yet implemented")
-    }
-
-    override fun getAuthorizationUri(): String {
-        TODO("Not yet implemented")
-    }
-
-    override fun getClientId(): String {
-        if (clientIdStub.isEmpty()) {
-            return "clientId"
-        }
-
-        return clientIdStub.first()
-    }
-
-    override fun getRedirectUri(): String {
-        TODO("Not yet implemented")
+    override fun getAuthorizationUrl(): String {
+        return "fake-authorization-url?client_id=${properties.clientId}"
     }
 
     override fun getAccessToken(code: String): String {
-        TODO("Not yet implemented")
+        return "fake-access-token"
     }
 
     override fun getUserInfo(accessToken: String): OAuthUserInfo {
-        TODO("Not yet implemented")
         return OAuthUserInfo(
-
+            id = "12345",
+            nickname = "테스트유저",
         )
     }
 }

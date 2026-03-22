@@ -1,7 +1,7 @@
 package com.ditto.api.oauth
 
 import com.ditto.common.response.ApiResponse
-import com.ditto.domain.socialaccount.SocialProvider
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping

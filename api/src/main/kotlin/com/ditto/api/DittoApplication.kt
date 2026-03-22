@@ -1,7 +1,7 @@
 package com.ditto.api
 
 import com.ditto.domain.config.JpaConfig
-import com.ditto.infrastructure.oauth.OAuthConfig
+import com.ditto.infrastructure.oauth.config.OAuthConfig
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
