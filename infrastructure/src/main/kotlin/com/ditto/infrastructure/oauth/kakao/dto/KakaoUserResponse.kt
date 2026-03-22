@@ -1,4 +1,4 @@
-package com.ditto.infrastructure.oauth.kakao
+package com.ditto.infrastructure.oauth.kakao.dto
 
 data class KakaoUserResponse(
     val id: Long,

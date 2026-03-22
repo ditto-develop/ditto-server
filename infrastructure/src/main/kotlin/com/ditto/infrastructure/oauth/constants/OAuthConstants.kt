@@ -1,4 +1,4 @@
-package com.ditto.infrastructure.oauth
+package com.ditto.infrastructure.oauth.constants
 
 object OAuthConstants {
     const val GRANT_TYPE_AUTHORIZATION_CODE = "authorization_code"

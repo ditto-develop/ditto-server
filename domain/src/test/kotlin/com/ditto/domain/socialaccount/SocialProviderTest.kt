@@ -1,7 +1,7 @@
 package com.ditto.domain.socialaccount
 
 import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
+import com.ditto.common.exception.ErrorException
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -24,7 +24,7 @@ class SocialProviderTest : FreeSpec(
             }
 
             "지원하지 않는 제공자면 예외가 발생한다" {
-                val exception = shouldThrow<WarnException> {
+                val exception = shouldThrow<ErrorException> {
                     SocialProvider.from("unknown")
                 }
                 exception.errorCode shouldBe ErrorCode.UNSUPPORTED_PROVIDER

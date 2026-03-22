@@ -1,5 +1,7 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.infrastructure.oauth.kakao.dto.KakaoTokenResponse
+import com.ditto.infrastructure.oauth.kakao.dto.KakaoUserResponse
 import org.springframework.http.MediaType
 import org.springframework.util.MultiValueMap
 import org.springframework.web.bind.annotation.RequestBody

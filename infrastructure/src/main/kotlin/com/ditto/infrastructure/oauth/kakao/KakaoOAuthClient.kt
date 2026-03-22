@@ -1,8 +1,8 @@
 package com.ditto.infrastructure.oauth.kakao
 
 import com.ditto.infrastructure.oauth.OAuthClient
-import com.ditto.infrastructure.oauth.OAuthConstants
 import com.ditto.infrastructure.oauth.OAuthUserInfo
+import com.ditto.infrastructure.oauth.constants.OAuthConstants
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
 

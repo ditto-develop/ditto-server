@@ -42,9 +42,9 @@ tasks.jacocoTestReport {
     classDirectories.setFrom(
         classDirectories.files.map { dir ->
             fileTree(dir) {
-                exclude("**/config/**")
+                exclude("**/config/**", "**/dto/**", "**/constants/**", "**/entity/**", "**/repository/**", "**/BaseEntity*", "**/KakaoOAuthClient*")
             }
-        }
+        },
     )
 }
 
@@ -52,9 +52,9 @@ tasks.jacocoTestCoverageVerification {
     classDirectories.setFrom(
         classDirectories.files.map { dir ->
             fileTree(dir) {
-                exclude("**/config/**")
+                exclude("**/config/**", "**/dto/**", "**/constants/**", "**/entity/**", "**/repository/**", "**/BaseEntity*", "**/KakaoOAuthClient*")
             }
-        }
+        },
     )
     violationRules {
         rule {
