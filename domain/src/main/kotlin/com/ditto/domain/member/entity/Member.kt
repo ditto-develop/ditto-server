@@ -1,4 +1,4 @@
-package com.ditto.domain.member
+package com.ditto.domain.member.entity
 
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column

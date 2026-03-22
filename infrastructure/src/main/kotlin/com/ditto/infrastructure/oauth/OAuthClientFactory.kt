@@ -2,7 +2,7 @@ package com.ditto.infrastructure.oauth
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
-import com.ditto.domain.socialaccount.SocialProvider
+import com.ditto.domain.socialaccount.entity.SocialProvider
 
 class OAuthClientFactory(
     private val clientMap: Map<SocialProvider, OAuthClient>,

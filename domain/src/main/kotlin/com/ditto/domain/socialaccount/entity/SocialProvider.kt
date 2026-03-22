@@ -1,4 +1,4 @@
-package com.ditto.domain.socialaccount
+package com.ditto.domain.socialaccount.entity
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException

@@ -1,9 +1,7 @@
 package com.ditto.infrastructure.oauth.kakao
 
-import com.ditto.domain.socialaccount.SocialProvider
-import com.ditto.infrastructure.oauth.OAuthClient
+import com.ditto.infrastructure.oauth.OAuthConstants
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 
@@ -16,20 +14,14 @@ class KakaoOAuthClientTest : FreeSpec({
     )
     val client = KakaoOAuthClient(properties)
 
-    "getProvider" - {
-        "KAKAO를 반환한다" {
-            client.getProvider() shouldBe SocialProvider.KAKAO
-        }
-    }
-
     "getAuthorizationUrl" - {
         "카카오 인가 URL을 생성한다" {
             val url = client.getAuthorizationUrl()
 
             url shouldContain "https://kauth.kakao.com/oauth/authorize?"
-            url shouldContain "${OAuthClient.PARAM_CLIENT_ID}=test-client-id"
-            url shouldContain "${OAuthClient.PARAM_REDIRECT_URI}=http://localhost:8080/users/social-login/kakao/callback"
-            url shouldContain "${OAuthClient.PARAM_RESPONSE_TYPE}=${OAuthClient.RESPONSE_TYPE_CODE}"
+            url shouldContain "${OAuthConstants.PARAM_CLIENT_ID}=test-client-id"
+            url shouldContain "${OAuthConstants.PARAM_REDIRECT_URI}=http://localhost:8080/users/social-login/kakao/callback"
+            url shouldContain "${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
         }
     }
 
@@ -44,7 +36,7 @@ class KakaoOAuthClientTest : FreeSpec({
             )
 
             val url = clientWithoutSecret.getAuthorizationUrl()
-            url shouldNotContain OAuthClient.PARAM_CLIENT_SECRET
+            url shouldNotContain OAuthConstants.PARAM_CLIENT_SECRET
         }
 
         "client_secret이 있으면 인가 URL에는 포함되지 않는다" {

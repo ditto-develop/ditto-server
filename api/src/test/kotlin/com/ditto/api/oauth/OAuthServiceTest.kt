@@ -3,12 +3,11 @@ package com.ditto.api.oauth
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
-import com.ditto.domain.member.MemberRepository
-import com.ditto.domain.socialaccount.SocialAccountRepository
-import com.ditto.domain.socialaccount.SocialProvider
+import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.infrastructure.oauth.OAuthClientFactory
-import com.ditto.infrastructure.oauth.kakao.KakaoOAuthFakeClient
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -16,7 +15,6 @@ import javax.sql.DataSource
 
 class OAuthServiceTest(
     private val oAuthService: OAuthService,
-    private val oAuthClientFactory: OAuthClientFactory,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     private val jwtTokenProvider: JwtTokenProvider,
@@ -35,22 +33,17 @@ class OAuthServiceTest(
 
             "지원하지 않는 제공자면 예외가 발생한다" {
                 val serviceWithNoClients = OAuthService(
-                    oAuthClients = emptyList(),
+                    oAuthClientFactory = OAuthClientFactory(emptyMap()),
                     memberRepository = memberRepository,
                     socialAccountRepository = socialAccountRepository,
                     jwtTokenProvider = jwtTokenProvider,
                 )
 
-                val exception = shouldThrow<WarnException> {
+                val exception = shouldThrow<ErrorException> {
                     serviceWithNoClients.getAuthorizationUrl(SocialProvider.KAKAO)
                 }
                 exception.errorCode shouldBe ErrorCode.UNSUPPORTED_PROVIDER
             }
-        }
-
-        "스터빙해야할 때" {
-            val client = oAuthClientFactory.getClient(SocialProvider.KAKAO) as KakaoOAuthFakeClient
-            client.stubClientId("test-client-id")
         }
 
         "소셜 로그인" - {

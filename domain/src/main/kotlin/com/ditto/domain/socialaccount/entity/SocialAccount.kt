@@ -1,4 +1,4 @@
-package com.ditto.domain.socialaccount
+package com.ditto.domain.socialaccount.entity
 
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column
@@ -19,8 +19,8 @@ import jakarta.persistence.UniqueConstraint
         UniqueConstraint(columnNames = ["provider", "provider_user_id"]),
     ],
     indexes = [
-        @Index(name = "social_account_index_1", columnList = "memberId"),
-    ]
+        Index(name = "social_account_index_1", columnList = "member_id"),
+    ],
 )
 class SocialAccount private constructor(
     @Column(name = "member_id", nullable = false)
