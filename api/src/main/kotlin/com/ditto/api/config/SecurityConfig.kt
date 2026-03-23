@@ -39,7 +39,7 @@ class SecurityConfig(
     @Order(2)
     fun healthSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
-            .securityMatcher("/health", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**")
+            .securityMatcher("/health", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/v1/users/social-login/**")
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { it.anyRequest().permitAll() }

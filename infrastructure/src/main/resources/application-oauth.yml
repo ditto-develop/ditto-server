@@ -1,0 +1,30 @@
+spring:
+  config:
+    activate:
+      on-profile: local,test
+
+ditto:
+  oauth:
+    kakao:
+      client-id: test-client-id
+      client-secret: ""
+      redirect-uri: http://localhost:8080/api/v1/users/social-login/kakao/callback
+
+---
+spring:
+  config:
+    activate:
+      on-profile: develop
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+ditto:
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      redirect-uri: ${KAKAO_REDIRECT_URI}

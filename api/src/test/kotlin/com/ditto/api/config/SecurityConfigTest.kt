@@ -92,6 +92,18 @@ class SecurityConfigTest : RestDocsTest() {
     }
 
     @Nested
+    @DisplayName("OAuth 엔드포인트")
+    inner class OAuthEndpoints {
+
+        @Test
+        @DisplayName("API Key 없이 로그인 URL에 접근할 수 있다")
+        fun accessLoginWithoutApiKey() {
+            mockMvc.perform(get("/api/v1/users/social-login/kakao"))
+                .andExpect(status().is3xxRedirection)
+        }
+    }
+
+    @Nested
     @DisplayName("허용되지 않은 경로")
     inner class UnknownPaths {
 

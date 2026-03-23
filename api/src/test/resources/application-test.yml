@@ -12,3 +12,6 @@ spring:
 ditto:
   security:
     api-key: test-api-key
+  jwt:
+    secret: test-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha-testing
+    expiration-ms: 3600000

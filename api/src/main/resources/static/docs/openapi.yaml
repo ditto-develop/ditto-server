@@ -15,9 +15,63 @@ info:
     Swagger UI에서 테스트하려면 우측 상단의 **Authorize** 버튼을 클릭하고 API Key를 입력하세요.
   version: v1
 servers:
-- url: https://api.ditto.pics
+- url: ""
 tags: []
 paths:
+  /api/v1/users/social-login/{provider}:
+    get:
+      tags:
+      - OAuth
+      summary: 소셜 로그인
+      description: 소셜 로그인 제공자의 인가 페이지로 리다이렉트합니다.
+      operationId: oauth-login
+      parameters:
+      - name: provider
+        in: path
+        description: 소셜 로그인 제공자 (kakao)
+        required: true
+        schema:
+          type: string
+      responses:
+        "302":
+          description: "302"
+  /api/v1/users/social-login/{provider}/callback:
+    get:
+      tags:
+      - OAuth
+      summary: 소셜 로그인 콜백
+      description: 소셜 로그인 제공자로부터 받은 인가 코드로 JWT를 발급합니다.
+      operationId: oauth-callback
+      parameters:
+      - name: provider
+        in: path
+        description: 소셜 로그인 제공자 (kakao)
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        description: 소셜 로그인 제공자로부터 받은 인가 코드
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1901578569"
+              examples:
+                oauth-callback:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0MTU0NDgyLCJleHAiOjE3NzQxNTgwODJ9.FY8AjF8LV_Jw7FJuREKvmYEUnW338FmnBcJXWYm8fOBGZTuZmMzb06ymOUp_QpURtFdzvDVTlAuBYnAicLSpkw"
+                      },
+                      "error" : null
+                    }
   /health:
     get:
       tags:
@@ -43,6 +97,23 @@ components:
       name: X-API-Key
       description: API 인증 키. 백엔드 담당자에게 발급받으세요.
   schemas:
+    api-v1-users-social-login-provider-callback1901578569:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: JWT 액세스 토큰
+        success:
+          type: boolean
+          description: 성공 여부
     health486549215:
       type: object
 
