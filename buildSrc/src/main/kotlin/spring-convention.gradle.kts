@@ -5,6 +5,10 @@ plugins {
     id("io.spring.dependency-management")
 }
 
+tasks.named<Jar>("jar") {
+    enabled = false
+}
+
 dependencies {
     implementation(Dependencies.SPRING_BOOT_STARTER)
     implementation(Dependencies.JACKSON_MODULE_KOTLIN)
