@@ -56,6 +56,14 @@ class OAuthServiceTest(
                 socialAccountRepository.count() shouldBe 1
             }
 
+            "발급된 JWT의 memberId가 생성된 회원의 id와 일치한다" {
+                val result = oAuthService.login(SocialProvider.KAKAO, "auth-code")
+
+                val memberId = jwtTokenProvider.getMemberId(result.accessToken)
+                val member = memberRepository.findAll().first()
+                memberId shouldBe member.id
+            }
+
             "기존 사용자면 기존 회원으로 JWT를 발급한다" {
                 oAuthService.login(SocialProvider.KAKAO, "auth-code")
                 val memberCountBefore = memberRepository.count()
@@ -65,6 +73,15 @@ class OAuthServiceTest(
                 result.accessToken shouldNotBe null
                 jwtTokenProvider.isValid(result.accessToken) shouldBe true
                 memberRepository.count() shouldBe memberCountBefore
+            }
+
+            "기존 사용자 재로그인 시 socialAccount가 추가 생성되지 않는다" {
+                oAuthService.login(SocialProvider.KAKAO, "auth-code")
+                val socialAccountCountBefore = socialAccountRepository.count()
+
+                oAuthService.login(SocialProvider.KAKAO, "auth-code")
+
+                socialAccountRepository.count() shouldBe socialAccountCountBefore
             }
         }
     },

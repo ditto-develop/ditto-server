@@ -85,4 +85,13 @@ class OAuthControllerTest : RestDocsTest() {
                 )
             )
     }
+
+    @Test
+    @DisplayName("지원하지 않는 provider로 로그인 요청 시 에러를 반환한다")
+    fun loginWithUnsupportedProvider() {
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "google"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("1001"))
+    }
 }
