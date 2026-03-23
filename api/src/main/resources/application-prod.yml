@@ -5,6 +5,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
+      auto-commit: false
       maximum-pool-size: 5
       minimum-idle: 2
       idle-timeout: 300000

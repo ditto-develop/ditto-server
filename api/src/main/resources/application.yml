@@ -4,8 +4,6 @@ spring:
   profiles:
     active: local
     include: oauth
-  jackson:
-    property-naming-strategy: SNAKE_CASE
 
 server:
   port: 8080
