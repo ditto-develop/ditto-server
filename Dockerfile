@@ -3,7 +3,8 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 COPY . .
 RUN chmod +x gradlew
-RUN ./gradlew :api:build --no-daemon --parallel
+RUN ./gradlew :api:test --no-daemon --parallel
+RUN ./gradlew :api:bootJar --no-daemon --parallel
 
 FROM eclipse-temurin:21-jre-alpine
 
