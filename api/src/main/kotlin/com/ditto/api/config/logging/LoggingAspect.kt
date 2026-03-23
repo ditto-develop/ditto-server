@@ -11,11 +11,21 @@ import org.springframework.util.StopWatch
 @Aspect
 @Component
 class LoggingAspect {
-    @Around("@within(com.ditto.common.logging.Loggable)")
-    fun logClassLevel(joinPoint: ProceedingJoinPoint): Any? = log(joinPoint)
 
     @Around("@annotation(com.ditto.common.logging.Loggable)")
-    fun logMethodLevel(joinPoint: ProceedingJoinPoint): Any? = log(joinPoint)
+    fun logEntryPoint(joinPoint: ProceedingJoinPoint): Any? {
+        loggingActive.set(true)
+        return try {
+            log(joinPoint)
+        } finally {
+            loggingActive.remove()
+        }
+    }
+
+    @Around("execution(* com.ditto..*(..)) && !@annotation(com.ditto.common.logging.Loggable)")
+    fun logInternalCalls(joinPoint: ProceedingJoinPoint): Any? {
+        return if (loggingActive.get()) log(joinPoint) else joinPoint.proceed()
+    }
 
     private fun log(joinPoint: ProceedingJoinPoint): Any? {
         val signature = joinPoint.signature as MethodSignature
@@ -28,13 +38,7 @@ class LoggingAspect {
         return try {
             val result = joinPoint.proceed()
             stopWatch.stop()
-            logger.info {
-                "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | return: ${
-                    formatReturnValue(
-                        result,
-                    )
-                }"
-            }
+            logger.info { "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | return: ${formatReturnValue(result)}" }
             result
         } catch (e: Exception) {
             stopWatch.stop()
@@ -61,5 +65,6 @@ class LoggingAspect {
 
     companion object {
         private val logger = KotlinLogging.logger {}
+        private val loggingActive = ThreadLocal.withInitial { false }
     }
 }
