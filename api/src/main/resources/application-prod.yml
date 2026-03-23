@@ -1,35 +1,25 @@
-spring:
-  datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      auto-commit: false
-      maximum-pool-size: 5
-      minimum-idle: 2
-      idle-timeout: 300000
-      max-lifetime: 600000
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: false
-        default_batch_fetch_size: 100
-
-server:
-  port: 8080
-  shutdown: graceful
-
 management:
   server:
     port: 8080
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
   endpoint:
     health:
       show-details: when-authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  swagger-ui:
+    path: /docs
+    url: /docs/openapi.yaml
 
 ditto:
   security:
     api-key: ${API_KEY}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
