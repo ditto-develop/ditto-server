@@ -14,59 +14,63 @@ class BaseEntityTest(
     private val entityManager: EntityManager,
     private val transactionTemplate: TransactionTemplate,
     dataSource: DataSource,
-) : IntegrationTest(dataSource, {
+) : IntegrationTest(
+    dataSource,
+    {
 
-    "BaseEntity Auditing" - {
-        "createdAt은 엔티티 저장 시 자동 설정된다" {
-            val member = memberRepository.save(Member(nickname = "테스트"))
-
-            member.createdAt shouldNotBe null
-        }
-
-        "updatedAt은 엔티티 수정 시 자동 갱신된다" {
-            val memberId = transactionTemplate.execute {
+        "BaseEntity Auditing" - {
+            "createdAt와 updatedAt는 엔티티 저장 시 자동 설정된다" {
                 val member = memberRepository.save(Member(nickname = "테스트"))
-                entityManager.flush()
-                entityManager.clear()
-                member.id
-            }!!
 
-            val saved = memberRepository.findById(memberId).get()
-            val originalUpdatedAt = saved.updatedAt
-
-            Thread.sleep(50)
-
-            transactionTemplate.execute {
-                val member = memberRepository.findById(memberId).get()
-                member.nickname = "수정됨"
-                entityManager.flush()
+                member.createdAt shouldNotBe null
+                member.updatedAt shouldNotBe null
             }
 
-            val updated = memberRepository.findById(memberId).get()
-            updated.updatedAt shouldNotBe originalUpdatedAt
-        }
+            "updatedAt은 엔티티 수정 시 자동 갱신된다" {
+                val memberId = transactionTemplate.execute {
+                    val member = memberRepository.save(Member(nickname = "테스트"))
+                    entityManager.flush()
+                    entityManager.clear()
+                    member.id
+                }!!
 
-        "createdAt은 엔티티 수정 시 변경되지 않는다" {
-            val memberId = transactionTemplate.execute {
-                val member = memberRepository.save(Member(nickname = "테스트"))
-                entityManager.flush()
-                entityManager.clear()
-                member.id
-            }!!
+                val saved = memberRepository.findById(memberId).get()
+                val originalUpdatedAt = saved.updatedAt
 
-            val saved = memberRepository.findById(memberId).get()
-            val originalCreatedAt = saved.createdAt
+                Thread.sleep(50)
 
-            Thread.sleep(50)
+                transactionTemplate.execute {
+                    val member = memberRepository.findById(memberId).get()
+                    member.nickname = "수정됨"
+                    entityManager.flush()
+                }
 
-            transactionTemplate.execute {
-                val member = memberRepository.findById(memberId).get()
-                member.nickname = "수정됨"
-                entityManager.flush()
+                val updated = memberRepository.findById(memberId).get()
+                updated.updatedAt shouldNotBe originalUpdatedAt
             }
 
-            val updated = memberRepository.findById(memberId).get()
-            updated.createdAt shouldBe originalCreatedAt
+            "createdAt은 엔티티 수정 시 변경되지 않는다" {
+                val memberId = transactionTemplate.execute {
+                    val member = memberRepository.save(Member(nickname = "테스트"))
+                    entityManager.flush()
+                    entityManager.clear()
+                    member.id
+                }!!
+
+                val saved = memberRepository.findById(memberId).get()
+                val originalCreatedAt = saved.createdAt
+
+                Thread.sleep(50)
+
+                transactionTemplate.execute {
+                    val member = memberRepository.findById(memberId).get()
+                    member.nickname = "수정됨"
+                    entityManager.flush()
+                }
+
+                val updated = memberRepository.findById(memberId).get()
+                updated.createdAt shouldBe originalCreatedAt
+            }
         }
-    }
-})
+    },
+)

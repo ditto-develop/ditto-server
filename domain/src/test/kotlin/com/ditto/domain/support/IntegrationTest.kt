@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import javax.sql.DataSource
 
-@SpringBootTest(classes = [TestConfig::class])
+@SpringBootTest(classes = [ApplicationConfig::class])
 @ActiveProfiles("test")
 abstract class IntegrationTest(
     private val dataSource: DataSource,
