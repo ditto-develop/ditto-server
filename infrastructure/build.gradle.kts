@@ -9,4 +9,6 @@ dependencies {
     implementation(project(":common"))
     implementation(project(":domain"))
     implementation("org.springframework:spring-web")
+
+    testImplementation(Dependencies.KOTEST_SPRING)
 }
