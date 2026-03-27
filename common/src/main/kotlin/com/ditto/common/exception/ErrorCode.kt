@@ -10,5 +10,7 @@ enum class ErrorCode(
     UNSUPPORTED_PROVIDER(400, "1001", "지원하지 않는 소셜 로그인 제공자입니다."),
     OAUTH_TOKEN_FAILED(500, "1002", "소셜 로그인 토큰 발급에 실패했습니다."),
     OAUTH_USER_INFO_FAILED(500, "1003", "소셜 로그인 사용자 정보 조회에 실패했습니다."),
+    REFRESH_TOKEN_NOT_FOUND(401, "2001", "리프레시 토큰이 존재하지 않습니다."),
+    REFRESH_TOKEN_EXPIRED(401, "2002", "리프레시 토큰이 만료되었습니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
