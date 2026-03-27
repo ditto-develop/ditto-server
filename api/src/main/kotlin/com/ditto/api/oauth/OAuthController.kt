@@ -14,13 +14,12 @@ import java.net.URI
 @RestController
 @RequestMapping("api/v1/users/social-login")
 class OAuthController(
-    private val oAuthService: OAuthService,
+    private val oAuthFacade: OAuthFacade,
 ) {
 
     @GetMapping("/{provider}")
-    fun login(@PathVariable provider: String): ResponseEntity<Void> {
-        val socialProvider = SocialProvider.from(provider)
-        val authorizationUrl = oAuthService.getAuthorizationUrl(socialProvider)
+    fun login(@PathVariable provider: SocialProvider): ResponseEntity<Void> {
+        val authorizationUrl = oAuthFacade.getAuthorizationUrl(provider)
         return ResponseEntity.status(HttpStatus.FOUND)
             .location(URI.create(authorizationUrl))
             .build()
@@ -28,11 +27,10 @@ class OAuthController(
 
     @GetMapping("/{provider}/callback")
     fun callback(
-        @PathVariable provider: String,
+        @PathVariable provider: SocialProvider,
         @RequestParam code: String,
     ): ApiResponse<OAuthLoginResponse> {
-        val socialProvider = SocialProvider.from(provider)
-        val result = oAuthService.login(socialProvider, code)
+        val result = oAuthFacade.login(provider, code)
         return ApiResponse.ok(result)
     }
 }

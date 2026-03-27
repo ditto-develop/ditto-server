@@ -98,7 +98,7 @@ class SecurityConfigTest : RestDocsTest() {
         @Test
         @DisplayName("API Key 없이 로그인 URL에 접근할 수 있다")
         fun accessLoginWithoutApiKey() {
-            mockMvc.perform(get("/api/v1/users/social-login/kakao"))
+            mockMvc.perform(get("/api/v1/users/social-login/KAKAO"))
                 .andExpect(status().is3xxRedirection)
         }
     }

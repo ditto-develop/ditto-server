@@ -28,7 +28,7 @@ paths:
       parameters:
       - name: provider
         in: path
-        description: 소셜 로그인 제공자 (kakao)
+        description: 소셜 로그인 제공자 (KAKAO)
         required: true
         schema:
           type: string
@@ -45,7 +45,7 @@ paths:
       parameters:
       - name: provider
         in: path
-        description: 소셜 로그인 제공자 (kakao)
+        description: 소셜 로그인 제공자 (KAKAO)
         required: true
         schema:
           type: string
@@ -68,7 +68,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0MTU0NDgyLCJleHAiOjE3NzQxNTgwODJ9.FY8AjF8LV_Jw7FJuREKvmYEUnW338FmnBcJXWYm8fOBGZTuZmMzb06ymOUp_QpURtFdzvDVTlAuBYnAicLSpkw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0NjA1NTU4LCJleHAiOjE3NzQ2MDkxNTh9.LAIu9oHr7wCjctHUDsc-x9qe77EpXFHvHPpoEMS7KZb04uyIQcnpAcg5U_sAGFeCIhh86vXG8CBq-5xnJXlCIg"
                       },
                       "error" : null
                     }
