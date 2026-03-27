@@ -15,6 +15,7 @@ import javax.sql.DataSource
 
 class OAuthServiceTest(
     private val oAuthService: OAuthService,
+    private val memberSocialAccountService: MemberSocialAccountService,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     private val jwtTokenProvider: JwtTokenProvider,
@@ -34,8 +35,7 @@ class OAuthServiceTest(
             "지원하지 않는 제공자면 예외가 발생한다" {
                 val serviceWithNoClients = OAuthService(
                     oAuthClientFactory = OAuthClientFactory(emptyMap()),
-                    memberRepository = memberRepository,
-                    socialAccountRepository = socialAccountRepository,
+                    memberSocialAccountService = memberSocialAccountService,
                     jwtTokenProvider = jwtTokenProvider,
                 )
 
