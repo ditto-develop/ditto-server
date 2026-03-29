@@ -1,6 +1,5 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
-import com.ditto.api.auth.AuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode

@@ -102,7 +102,7 @@ class SecurityConfigTest : RestDocsTest() {
         fun accessRefreshWithApiKey() {
             val request = """{"refreshToken": "non-existent-token"}"""
             mockMvc.perform(
-                post("/api/v1/auth/refresh")
+                post("/api/v1/users/auth/refresh")
                     .withApiKey()
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request),
@@ -116,7 +116,7 @@ class SecurityConfigTest : RestDocsTest() {
         fun accessRefreshWithoutApiKey() {
             val request = """{"refreshToken": "non-existent-token"}"""
             mockMvc.perform(
-                post("/api/v1/auth/refresh")
+                post("/api/v1/users/auth/refresh")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(request),
             )

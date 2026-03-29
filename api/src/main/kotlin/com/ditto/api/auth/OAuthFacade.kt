@@ -1,6 +1,5 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
-import com.ditto.api.auth.AuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.springframework.stereotype.Component

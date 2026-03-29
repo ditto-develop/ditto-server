@@ -34,7 +34,7 @@ class AuthControllerTest : RestDocsTest() {
         val request = TokenRefreshRequest(refreshToken = refreshToken.token)
 
         mockMvc.perform(
-            post("/api/v1/auth/refresh")
+            post("/api/v1/users/auth/refresh")
                 .withApiKey()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
@@ -74,7 +74,7 @@ class AuthControllerTest : RestDocsTest() {
         val request = TokenRefreshRequest(refreshToken = "invalid-token")
 
         mockMvc.perform(
-            post("/api/v1/auth/refresh")
+            post("/api/v1/users/auth/refresh")
                 .withApiKey()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
