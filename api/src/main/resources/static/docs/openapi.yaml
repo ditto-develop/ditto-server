@@ -68,27 +68,10 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0NjA1NTU4LCJleHAiOjE3NzQ2MDkxNTh9.LAIu9oHr7wCjctHUDsc-x9qe77EpXFHvHPpoEMS7KZb04uyIQcnpAcg5U_sAGFeCIhh86vXG8CBq-5xnJXlCIg"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0NzcyNDk3LCJleHAiOjE3NzQ3NzYwOTd9.49UsW74XFsYUYsWVFf-BGDd0oIrHTIjOYHcP7svVrUPEYRixMf5egUKrP79XJqmBeffvFOmbva8bx9hju8lOdA"
                       },
                       "error" : null
                     }
-  /health:
-    get:
-      tags:
-      - System
-      summary: 헬스 체크
-      description: 서버 상태를 확인합니다.
-      operationId: health-check
-      responses:
-        "200":
-          description: "200"
-          content:
-            text/plain;charset=UTF-8:
-              schema:
-                $ref: "#/components/schemas/health486549215"
-              examples:
-                health-check:
-                  value: OK
 components:
   securitySchemes:
     ApiKey:
@@ -114,8 +97,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    health486549215:
-      type: object
 
 security:
 - ApiKey: []

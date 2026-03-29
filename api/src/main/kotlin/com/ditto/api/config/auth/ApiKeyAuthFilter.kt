@@ -3,6 +3,7 @@ package com.ditto.api.config.auth
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.response.ApiResponse
 import com.ditto.common.serialization.ObjectMapperFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -23,6 +24,7 @@ class ApiKeyAuthFilter(
         val apiKey = request.getHeader(API_KEY_HEADER)
 
         if (apiKey == null || apiKey != apiKeyProperties.apiKey) {
+            log.warn { "잘못된 api key=$apiKey" }
             response.status = HttpServletResponse.SC_UNAUTHORIZED
             response.contentType = "application/json"
             val unauthorizedResponse = objectMapper.writeValueAsString(ApiResponse.error(ErrorCode.UNAUTHORIZED_ERROR))
@@ -43,5 +45,6 @@ class ApiKeyAuthFilter(
     companion object {
         private const val API_KEY_HEADER = "X-API-Key"
         private val objectMapper = ObjectMapperFactory.create()
+        private val log = KotlinLogging.logger {}
     }
 }
