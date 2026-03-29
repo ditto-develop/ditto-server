@@ -18,4 +18,8 @@ dependencies {
     implementation(project(":common"))
 
     api(Dependencies.SPRING_BOOT_STARTER_DATA_JPA)
+
+    testImplementation(Dependencies.SPRING_BOOT_STARTER_TEST)
+    testImplementation(Dependencies.KOTEST_SPRING)
+    testRuntimeOnly(Dependencies.H2)
 }

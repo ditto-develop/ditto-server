@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 
 @ResponseStatus(HttpStatus.OK)
@@ -33,6 +34,12 @@ class GlobalExceptionHandler {
     fun handleValidationException(e: MethodArgumentNotValidException): ApiResponse<Unit> {
         logger.warn(e) { "[VALIDATION] 잘못된 파라미터 요청." }
         return ApiResponse.error(ErrorCode.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(e: MethodArgumentTypeMismatchException): ApiResponse<Unit> {
+        logger.warn { "[TYPE_MISMATCH] ${e.name}: ${e.value}" }
+        return ApiResponse.error(ErrorCode.UNSUPPORTED_PROVIDER)
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)

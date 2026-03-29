@@ -21,13 +21,13 @@ class OAuthControllerTest : RestDocsTest() {
 
     companion object {
         private val PROVIDER_DESCRIPTION =
-            "소셜 로그인 제공자 (${SocialProvider.entries.joinToString(", ") { it.name.lowercase() }})"
+            "소셜 로그인 제공자 (${SocialProvider.entries.joinToString(", ") { it.name }})"
     }
 
     @Test
     @DisplayName("소셜 로그인 페이지로 리다이렉트한다")
     fun login() {
-        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "kakao"))
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "KAKAO"))
             .andExpect(status().isFound)
             .andExpect(header().exists("Location"))
             .andDo(
@@ -53,7 +53,7 @@ class OAuthControllerTest : RestDocsTest() {
     @DisplayName("인가 코드로 로그인하고 JWT를 반환한다")
     fun callback() {
         mockMvc.perform(
-            get("/api/v1/users/social-login/{provider}/callback", "kakao")
+            get("/api/v1/users/social-login/{provider}/callback", "KAKAO")
                 .param("code", "test-auth-code"),
         )
             .andExpect(status().isOk)
@@ -84,5 +84,14 @@ class OAuthControllerTest : RestDocsTest() {
                     )
                 )
             )
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 provider로 로그인 요청 시 에러를 반환한다")
+    fun loginWithUnsupportedProvider() {
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "google"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("1001"))
     }
 }

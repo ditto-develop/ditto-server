@@ -9,4 +9,4 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 @EnableJpaAuditing
 @EntityScan("com.ditto.domain")
 @EnableJpaRepositories("com.ditto.domain")
-open class JpaConfig
+open class DomainConfig
