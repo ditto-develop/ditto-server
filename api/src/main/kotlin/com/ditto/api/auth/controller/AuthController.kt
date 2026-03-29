@@ -1,19 +1,20 @@
-package com.ditto.api.auth
+package com.ditto.api.auth.controller
 
+import com.ditto.api.auth.dto.TokenRefreshRequest
+import com.ditto.api.auth.dto.TokenRefreshResponse
+import com.ditto.api.auth.service.AuthService
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("api/v1/users/auth")
 class AuthController(
     private val authService: AuthService,
 ) {
 
-    @PostMapping("/refresh")
+    @PostMapping("/api/v1/users/auth/refresh")
     fun refresh(@Valid @RequestBody request: TokenRefreshRequest): ApiResponse<TokenRefreshResponse> {
         val result = authService.refresh(request)
         return ApiResponse.ok(result)

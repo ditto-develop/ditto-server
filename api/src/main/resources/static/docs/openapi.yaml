@@ -18,6 +18,42 @@ servers:
 - url: ""
 tags: []
 paths:
+  /api/v1/users/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: 토큰 갱신
+      description: 리프레시 토큰으로 새로운 액세스 토큰과 리프레시 토큰을 발급합니다.
+      operationId: token-refresh
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-auth-refresh1056639717"
+            examples:
+              token-refresh:
+                value: |-
+                  {
+                    "refreshToken" : "9677bd91-e212-44cf-a5b3-adfc505c519e"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-auth-refresh-42454406"
+              examples:
+                token-refresh:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMTksImV4cCI6MTc3NDgwNDkxOX0.qyUu3zazSMN68jwVqHAIAoWKUzIQvLH18GzZYkws2uviERldTQ-y_9uxnxXm3ET6Eg4hiZxvz_CnFbgu7WsEnA",
+                        "refreshToken" : "dcd0a36c-e7f8-4e05-bada-4015eb04c860"
+                      },
+                      "error" : null
+                    }
   /api/v1/users/social-login/{provider}:
     get:
       tags:
@@ -61,14 +97,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1901578569"
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback957263722"
               examples:
                 oauth-callback:
                   value: |-
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc0NzcyNDk3LCJleHAiOjE3NzQ3NzYwOTd9.49UsW74XFsYUYsWVFf-BGDd0oIrHTIjOYHcP7svVrUPEYRixMf5egUKrP79XJqmBeffvFOmbva8bx9hju8lOdA"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMjAsImV4cCI6MTc3NDgwNDkyMH0.kqnh-Cde7IvgLPBqNMwnNINyD6JmXf5GRD0dcQKTNFyYwCjE6FdRqT_i8i04W67dDfexgPZvl6hk2U521gsCKA",
+                        "refreshToken" : "0282aea0-e052-43f2-b5d7-0ece67b91425"
                       },
                       "error" : null
                     }
@@ -80,7 +117,7 @@ components:
       name: X-API-Key
       description: API 인증 키. 백엔드 담당자에게 발급받으세요.
   schemas:
-    api-v1-users-social-login-provider-callback1901578569:
+    api-v1-users-auth-refresh-42454406:
       required:
       - error
       - success
@@ -89,14 +126,47 @@ components:
         data:
           required:
           - accessToken
+          - refreshToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
+            refreshToken:
+              type: string
+              description: 새 리프레시 토큰
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-social-login-provider-callback957263722:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          - refreshToken
           type: object
           properties:
             accessToken:
               type: string
               description: JWT 액세스 토큰
+            refreshToken:
+              type: string
+              description: 리프레시 토큰
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-auth-refresh1056639717:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
 
 security:
 - ApiKey: []

@@ -1,5 +1,6 @@
 package com.ditto.api.config.auth
 
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
@@ -16,24 +17,30 @@ class JwtTokenProviderTest : FreeSpec(
 
         "토큰 생성" - {
             "유효한 JWT 문자열을 반환한다" {
-                val token = jwtTokenProvider.generateAccessToken(1L)
+                val token = jwtTokenProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
 
                 token.shouldNotBeBlank()
             }
 
             "생성된 토큰은 유효하다" {
-                val token = jwtTokenProvider.generateAccessToken(1L)
+                val token = jwtTokenProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
 
                 jwtTokenProvider.isValid(token) shouldBe true
             }
         }
 
-        "토큰에서 memberId 추출" - {
-            "올바른 memberId를 추출한다" {
-                val memberId = 42L
-                val token = jwtTokenProvider.generateAccessToken(memberId)
+        "토큰에서 claim 추출" - {
+            "올바른 providerUserId를 추출한다" {
+                val providerUserId = "kakao-456"
+                val token = jwtTokenProvider.generateAccessToken(providerUserId, SocialProvider.KAKAO)
 
-                jwtTokenProvider.getMemberId(token) shouldBe memberId
+                jwtTokenProvider.getProviderUserId(token) shouldBe providerUserId
+            }
+
+            "올바른 provider를 추출한다" {
+                val token = jwtTokenProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
+
+                jwtTokenProvider.getProvider(token) shouldBe SocialProvider.KAKAO
             }
         }
 
@@ -42,7 +49,7 @@ class JwtTokenProviderTest : FreeSpec(
                 val expiredProvider = JwtTokenProvider(
                     JwtProperties(secret = jwtProperties.secret, expirationMs = 0L, refreshExpirationMs = 1209600000L),
                 )
-                val token = expiredProvider.generateAccessToken(1L)
+                val token = expiredProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
 
                 Thread.sleep(10)
                 jwtTokenProvider.isValid(token) shouldBe false
@@ -60,7 +67,7 @@ class JwtTokenProviderTest : FreeSpec(
                         refreshExpirationMs = 1209600000L,
                     ),
                 )
-                val token = otherProvider.generateAccessToken(1L)
+                val token = otherProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
 
                 jwtTokenProvider.isValid(token) shouldBe false
             }

@@ -1,18 +1,22 @@
-package com.ditto.api.auth
+package com.ditto.api.auth.service
 
+import com.ditto.api.auth.dto.TokenRefreshRequest
+import com.ditto.api.auth.dto.TokenRefreshResponse
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
 
 @Service
 class AuthService(
     private val jwtTokenProvider: JwtTokenProvider,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val socialAccountRepository: SocialAccountRepository,
 ) {
 
     @Transactional
@@ -30,15 +34,20 @@ class AuthService(
     @Transactional
     fun refresh(request: TokenRefreshRequest): TokenRefreshResponse {
         val refreshToken = refreshTokenRepository.findByToken(request.refreshToken)
-            ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
-
+            ?: throw ErrorException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
         if (refreshToken.isExpired()) {
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         }
 
         refreshTokenRepository.delete(refreshToken)
 
-        val newAccessToken = jwtTokenProvider.generateAccessToken(refreshToken.memberId)
+        val socialAccount = socialAccountRepository.findByMemberId(refreshToken.memberId)
+            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR)
+
+        val newAccessToken = jwtTokenProvider.generateAccessToken(
+            providerUserId = socialAccount.providerUserId,
+            provider = socialAccount.provider,
+        )
         val newRefreshToken = createRefreshToken(refreshToken.memberId)
 
         return TokenRefreshResponse(

@@ -1,5 +1,7 @@
-package com.ditto.api.auth
+package com.ditto.api.auth.controller
 
+import com.ditto.api.auth.dto.OAuthLoginResponse
+import com.ditto.api.auth.facade.OAuthFacade
 import com.ditto.common.response.ApiResponse
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.springframework.http.HttpStatus
