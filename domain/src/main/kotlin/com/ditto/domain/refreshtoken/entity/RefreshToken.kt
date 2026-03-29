@@ -9,6 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.hibernate.annotations.Comment
 import java.time.LocalDateTime
 
 @Entity
@@ -22,18 +23,22 @@ import java.time.LocalDateTime
     ],
 )
 class RefreshToken private constructor(
-    @Column(name = "member_id", nullable = false)
-    val memberId: Long,
-
-    @Column(nullable = false)
-    val token: String,
-
-    @Column(name = "expires_at", nullable = false)
-    val expiresAt: LocalDateTime,
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
+
+    @Comment("회원 ID")
+    @Column(name = "member_id", nullable = false)
+    val memberId: Long,
+
+    @Comment("리프레시 토큰 (UUID)")
+    @Column(nullable = false, length = 36)
+    val token: String,
+
+    @Comment("만료 일시")
+    @Column(name = "expires_at", nullable = false)
+    val expiresAt: LocalDateTime,
 ) : BaseEntity() {
 
     fun isExpired(now: LocalDateTime = LocalDateTime.now()): Boolean = expiresAt < now
