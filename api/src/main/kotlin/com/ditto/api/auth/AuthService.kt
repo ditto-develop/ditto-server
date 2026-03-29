@@ -33,7 +33,6 @@ class AuthService(
             ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
 
         if (refreshToken.expiresAt.isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(refreshToken)
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         }
 

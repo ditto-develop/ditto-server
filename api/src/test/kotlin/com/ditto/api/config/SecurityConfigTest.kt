@@ -5,7 +5,9 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -91,6 +93,37 @@ class SecurityConfigTest : RestDocsTest() {
         }
     }
     
+    @Nested
+    @DisplayName("Auth 엔드포인트")
+    inner class AuthEndpoints {
+
+        @Test
+        @DisplayName("API Key가 있으면 토큰 갱신 API에 접근할 수 있다")
+        fun accessRefreshWithApiKey() {
+            val request = """{"refreshToken": "non-existent-token"}"""
+            mockMvc.perform(
+                post("/api/v1/auth/refresh")
+                    .withApiKey()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.success").value(false))
+        }
+
+        @Test
+        @DisplayName("API Key가 없으면 토큰 갱신 API에 접근할 수 없다")
+        fun accessRefreshWithoutApiKey() {
+            val request = """{"refreshToken": "non-existent-token"}"""
+            mockMvc.perform(
+                post("/api/v1/auth/refresh")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(request),
+            )
+                .andExpect(status().isUnauthorized)
+        }
+    }
+
     @Nested
     @DisplayName("허용되지 않은 경로")
     inner class UnknownPaths {
