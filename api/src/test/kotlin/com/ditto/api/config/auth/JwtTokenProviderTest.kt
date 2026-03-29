@@ -10,18 +10,19 @@ class JwtTokenProviderTest : FreeSpec(
         val jwtProperties = JwtProperties(
             secret = "test-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha-testing",
             expirationMs = 3600000L,
+            refreshExpirationMs = 1209600000L,
         )
         val jwtTokenProvider = JwtTokenProvider(jwtProperties)
 
         "토큰 생성" - {
             "유효한 JWT 문자열을 반환한다" {
-                val token = jwtTokenProvider.generateToken(1L)
+                val token = jwtTokenProvider.generateAccessToken(1L)
 
                 token.shouldNotBeBlank()
             }
 
             "생성된 토큰은 유효하다" {
-                val token = jwtTokenProvider.generateToken(1L)
+                val token = jwtTokenProvider.generateAccessToken(1L)
 
                 jwtTokenProvider.isValid(token) shouldBe true
             }
@@ -30,7 +31,7 @@ class JwtTokenProviderTest : FreeSpec(
         "토큰에서 memberId 추출" - {
             "올바른 memberId를 추출한다" {
                 val memberId = 42L
-                val token = jwtTokenProvider.generateToken(memberId)
+                val token = jwtTokenProvider.generateAccessToken(memberId)
 
                 jwtTokenProvider.getMemberId(token) shouldBe memberId
             }
@@ -39,9 +40,9 @@ class JwtTokenProviderTest : FreeSpec(
         "토큰 검증" - {
             "만료된 토큰은 유효하지 않다" {
                 val expiredProvider = JwtTokenProvider(
-                    JwtProperties(secret = jwtProperties.secret, expirationMs = 0L),
+                    JwtProperties(secret = jwtProperties.secret, expirationMs = 0L, refreshExpirationMs = 1209600000L),
                 )
-                val token = expiredProvider.generateToken(1L)
+                val token = expiredProvider.generateAccessToken(1L)
 
                 Thread.sleep(10)
                 jwtTokenProvider.isValid(token) shouldBe false
@@ -56,9 +57,10 @@ class JwtTokenProviderTest : FreeSpec(
                     JwtProperties(
                         secret = "other-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha-testing",
                         expirationMs = 3600000L,
+                        refreshExpirationMs = 1209600000L,
                     ),
                 )
-                val token = otherProvider.generateToken(1L)
+                val token = otherProvider.generateAccessToken(1L)
 
                 jwtTokenProvider.isValid(token) shouldBe false
             }

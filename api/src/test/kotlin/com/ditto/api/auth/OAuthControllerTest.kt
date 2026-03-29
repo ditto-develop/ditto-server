@@ -1,4 +1,4 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -59,6 +59,7 @@ class OAuthControllerTest : RestDocsTest() {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.accessToken").exists())
+            .andExpect(jsonPath("$.data.refreshToken").exists())
             .andDo(
                 document(
                     "oauth-callback",
@@ -78,6 +79,7 @@ class OAuthControllerTest : RestDocsTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.accessToken").description("JWT 액세스 토큰"),
+                                fieldWithPath("data.refreshToken").description("리프레시 토큰"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

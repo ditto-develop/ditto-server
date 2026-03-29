@@ -1,10 +1,11 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.infrastructure.oauth.OAuthClientFactory
@@ -18,7 +19,9 @@ class OAuthFacadeTest(
     private val memberSocialAccountService: MemberSocialAccountService,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
     private val jwtTokenProvider: JwtTokenProvider,
+    private val authService: AuthService,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -37,6 +40,7 @@ class OAuthFacadeTest(
                     oAuthService = OAuthService(OAuthClientFactory(emptyMap())),
                     memberSocialAccountService = memberSocialAccountService,
                     jwtTokenProvider = jwtTokenProvider,
+                    authService = authService,
                 )
 
                 val exception = shouldThrow<ErrorException> {
@@ -52,8 +56,10 @@ class OAuthFacadeTest(
 
                 result.accessToken shouldNotBe null
                 jwtTokenProvider.isValid(result.accessToken) shouldBe true
+                result.refreshToken shouldNotBe null
                 memberRepository.count() shouldBe 1
                 socialAccountRepository.count() shouldBe 1
+                refreshTokenRepository.count() shouldBe 1
             }
 
             "발급된 JWT의 memberId가 생성된 회원의 id와 일치한다" {
@@ -72,6 +78,7 @@ class OAuthFacadeTest(
 
                 result.accessToken shouldNotBe null
                 jwtTokenProvider.isValid(result.accessToken) shouldBe true
+                result.refreshToken shouldNotBe null
                 memberRepository.count() shouldBe memberCountBefore
             }
 

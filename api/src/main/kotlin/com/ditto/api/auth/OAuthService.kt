@@ -1,4 +1,4 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.infrastructure.oauth.OAuthClientFactory

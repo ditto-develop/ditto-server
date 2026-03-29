@@ -1,4 +1,4 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
 import com.ditto.common.response.ApiResponse
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -18,7 +18,7 @@ class OAuthController(
 ) {
 
     @GetMapping("/{provider}")
-    fun login(@PathVariable provider: SocialProvider): ResponseEntity<Void> {
+    fun login(@PathVariable provider: SocialProvider): ResponseEntity<Unit> {
         val authorizationUrl = oAuthFacade.getAuthorizationUrl(provider)
         return ResponseEntity.status(HttpStatus.FOUND)
             .location(URI.create(authorizationUrl))

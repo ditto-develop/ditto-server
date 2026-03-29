@@ -22,3 +22,4 @@ ditto:
   jwt:
     secret: local-dev-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha
     expiration-ms: 3600000
+    refresh-expiration-ms: 1209600000
