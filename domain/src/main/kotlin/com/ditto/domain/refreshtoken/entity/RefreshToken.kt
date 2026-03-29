@@ -25,7 +25,7 @@ class RefreshToken private constructor(
     @Column(name = "member_id", nullable = false)
     val memberId: Long,
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     val token: String,
 
     @Column(name = "expires_at", nullable = false)
