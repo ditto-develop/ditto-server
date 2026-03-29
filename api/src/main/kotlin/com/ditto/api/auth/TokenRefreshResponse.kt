@@ -1,6 +1,6 @@
-package com.ditto.api.oauth
+package com.ditto.api.auth
 
-data class OAuthLoginResponse(
+data class TokenRefreshResponse(
     val accessToken: String,
     val refreshToken: String,
 )
