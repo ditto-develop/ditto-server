@@ -12,7 +12,7 @@ class DatabaseCleanExtension(
             connection.createStatement().use { statement ->
                 statement.execute("SET REFERENTIAL_INTEGRITY FALSE")
                 val tables = statement.executeQuery(
-                    "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC'"
+                    "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE UPPER(TABLE_SCHEMA) = 'PUBLIC'"
                 )
                 val tableNames = mutableListOf<String>()
                 while (tables.next()) { tableNames.add(tables.getString("TABLE_NAME")) }
