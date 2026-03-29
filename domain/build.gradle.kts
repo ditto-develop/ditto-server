@@ -2,6 +2,9 @@ plugins {
     id("spring-convention")
 }
 
+tasks.bootJar { enabled = false }
+tasks.jar { enabled = true }
+
 dependencies {
     implementation(project(":common"))
 
