@@ -20,8 +20,7 @@ class JwtTokenProvider(
         Jwts.parser().verifyWith(key).build()
     }
 
-    fun generateToken(memberId: Long): String {
-        val now = Date()
+    fun generateAccessToken(memberId: Long, now: Date = Date()): String {
         return Jwts.builder()
             .subject(memberId.toString())
             .issuedAt(now)
@@ -43,6 +42,6 @@ class JwtTokenProvider(
 
     fun generateRefreshToken(): String = UUID.randomUUID().toString()
 
-    fun getRefreshTokenExpiresAt(): LocalDateTime =
-        LocalDateTime.now().plusSeconds(jwtProperties.refreshExpirationMs / 1_000)
+    fun createRefreshTokenExpiresAt(now: LocalDateTime = LocalDateTime.now()): LocalDateTime =
+        now.plusSeconds(jwtProperties.refreshExpirationMs / 1_000)
 }

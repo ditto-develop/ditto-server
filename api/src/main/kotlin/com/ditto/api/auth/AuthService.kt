@@ -18,7 +18,7 @@ class AuthService(
     @Transactional
     fun createRefreshToken(memberId: Long): RefreshToken {
         val token = jwtTokenProvider.generateRefreshToken()
-        val expiresAt = jwtTokenProvider.getRefreshTokenExpiresAt()
+        val expiresAt = jwtTokenProvider.createRefreshTokenExpiresAt()
         val refreshToken = RefreshToken.create(
             memberId = memberId,
             token = token,
@@ -32,13 +32,13 @@ class AuthService(
         val refreshToken = refreshTokenRepository.findByToken(request.refreshToken)
             ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
 
-        if (refreshToken.expiresAt.isBefore(LocalDateTime.now())) {
+        if (refreshToken.isExpired()) {
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         }
 
         refreshTokenRepository.delete(refreshToken)
 
-        val newAccessToken = jwtTokenProvider.generateToken(refreshToken.memberId)
+        val newAccessToken = jwtTokenProvider.generateAccessToken(refreshToken.memberId)
         val newRefreshToken = createRefreshToken(refreshToken.memberId)
 
         return TokenRefreshResponse(

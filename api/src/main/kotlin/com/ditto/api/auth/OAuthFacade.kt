@@ -17,7 +17,7 @@ class OAuthFacade(
     fun login(provider: SocialProvider, code: String): OAuthLoginResponse {
         val userInfo = oAuthService.getOAuthUserInfo(provider, code)
         val memberId = memberSocialAccountService.findOrCreateMember(provider, userInfo.id, userInfo.nickname)
-        val accessToken = jwtTokenProvider.generateToken(memberId)
+        val accessToken = jwtTokenProvider.generateAccessToken(memberId)
         val refreshToken = authService.createRefreshToken(memberId)
         return OAuthLoginResponse(accessToken = accessToken, refreshToken = refreshToken.token)
     }

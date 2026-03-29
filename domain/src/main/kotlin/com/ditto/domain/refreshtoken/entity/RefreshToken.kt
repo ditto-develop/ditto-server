@@ -36,6 +36,8 @@ class RefreshToken private constructor(
     val id: Long = 0L,
 ) : BaseEntity() {
 
+    fun isExpired(now: LocalDateTime = LocalDateTime.now()): Boolean = expiresAt < now
+
     companion object {
         fun create(
             memberId: Long,
