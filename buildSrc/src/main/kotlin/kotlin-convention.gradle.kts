@@ -4,6 +4,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm")
     jacoco
+    `java-library`
+    `java-test-fixtures`
 }
 
 group = "com.ditto"
@@ -43,12 +45,12 @@ tasks.jacocoTestReport {
         classDirectories.files.map { dir ->
             fileTree(dir) {
                 exclude(
-                        "**/*Config*",
-                        "**/*Dto*",
-                        "**/*Request*",
-                        "**/*Response*",
-                        "**/*Repository*",
-                    )
+                    "**/*Config*",
+                    "**/*Dto*",
+                    "**/*Request*",
+                    "**/*Response*",
+                    "**/*Properties*",
+                )
             }
         },
     )
@@ -59,12 +61,12 @@ tasks.jacocoTestCoverageVerification {
         classDirectories.files.map { dir ->
             fileTree(dir) {
                 exclude(
-                        "**/*Config*",
-                        "**/*Dto*",
-                        "**/*Request*",
-                        "**/*Response*",
-                        "**/*Repository*",
-                    )
+                    "**/*Config*",
+                    "**/*Dto*",
+                    "**/*Request*",
+                    "**/*Response*",
+                    "**/*Properties*",
+                )
             }
         },
     )

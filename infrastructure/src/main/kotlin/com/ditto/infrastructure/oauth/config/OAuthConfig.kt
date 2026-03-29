@@ -14,7 +14,6 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.support.RestClientAdapter
 import org.springframework.web.service.invoker.HttpServiceProxyFactory
-import java.time.Duration
 
 @Configuration
 @EnableConfigurationProperties(
@@ -38,7 +37,7 @@ class OAuthConfig {
 
     @Profile("prod")
     @Configuration
-    inner class oAuthConfig {
+    inner class OAuthConfig {
 
         @Bean
         fun oAuthClientFactory(properties: KakaoOAuthProperties, client: KakaoApiSender): OAuthClientFactory {
@@ -50,10 +49,10 @@ class OAuthConfig {
         }
 
         @Bean
-        fun kakaoApiSender(): KakaoApiSender {
+        fun kakaoApiSender(properties: KakaoOAuthProperties): KakaoApiSender {
             val requestFactory = SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(Duration.ofSeconds(5))
-                setReadTimeout(Duration.ofSeconds(5))
+                setConnectTimeout(properties.connectTimeout)
+                setReadTimeout(properties.readTimeout)
             }
             val restClient = RestClient.builder()
                 .requestFactory(requestFactory)

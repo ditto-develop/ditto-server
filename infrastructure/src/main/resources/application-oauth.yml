@@ -9,6 +9,8 @@ ditto:
       client-id: test-client-id
       client-secret: ""
       redirect-uri: http://localhost:8080/api/v1/users/social-login/kakao/callback
+      connect-timeout: 3s
+      read-timeout: 5s
 
 ---
 spring:
@@ -28,3 +30,5 @@ ditto:
       client-id: ${KAKAO_CLIENT_ID}
       client-secret: ${KAKAO_CLIENT_SECRET}
       redirect-uri: ${KAKAO_REDIRECT_URI}
+      connect-timeout: 3s
+      read-timeout: 5s

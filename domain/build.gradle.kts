@@ -1,25 +1,14 @@
 plugins {
-    id("kotlin-convention")
-    id("io.spring.dependency-management")
-
-    kotlin("plugin.jpa")
-
-    `java-library`
-    `java-test-fixtures`
+    id("spring-convention")
 }
 
-dependencyManagement {
-    imports {
-        mavenBom("org.springframework.boot:spring-boot-dependencies:${DependencyVersions.SPRING_BOOT}")
-    }
-}
+tasks.bootJar { enabled = false }
+tasks.jar { enabled = true }
 
 dependencies {
     implementation(project(":common"))
 
     api(Dependencies.SPRING_BOOT_STARTER_DATA_JPA)
-
-    testImplementation(Dependencies.SPRING_BOOT_STARTER_TEST)
-    testImplementation(Dependencies.KOTEST_SPRING)
+    runtimeOnly(Dependencies.MYSQL_CONNECTOR)
     testRuntimeOnly(Dependencies.H2)
 }

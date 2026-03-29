@@ -27,7 +27,7 @@ class OAuthControllerTest : RestDocsTest() {
     @Test
     @DisplayName("소셜 로그인 페이지로 리다이렉트한다")
     fun login() {
-        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "KAKAO"))
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "KAKAO").withApiKey())
             .andExpect(status().isFound)
             .andExpect(header().exists("Location"))
             .andDo(
@@ -43,9 +43,9 @@ class OAuthControllerTest : RestDocsTest() {
                             .pathParameters(
                                 parameterWithName("provider").description(PROVIDER_DESCRIPTION),
                             )
-                            .build()
-                    )
-                )
+                            .build(),
+                    ),
+                ),
             )
     }
 
@@ -53,7 +53,7 @@ class OAuthControllerTest : RestDocsTest() {
     @DisplayName("인가 코드로 로그인하고 JWT를 반환한다")
     fun callback() {
         mockMvc.perform(
-            get("/api/v1/users/social-login/{provider}/callback", "KAKAO")
+            get("/api/v1/users/social-login/{provider}/callback", "KAKAO").withApiKey()
                 .param("code", "test-auth-code"),
         )
             .andExpect(status().isOk)
@@ -80,16 +80,16 @@ class OAuthControllerTest : RestDocsTest() {
                                 fieldWithPath("data.accessToken").description("JWT 액세스 토큰"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
-                            .build()
-                    )
-                )
+                            .build(),
+                    ),
+                ),
             )
     }
 
     @Test
     @DisplayName("지원하지 않는 provider로 로그인 요청 시 에러를 반환한다")
     fun loginWithUnsupportedProvider() {
-        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "google"))
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "google").withApiKey())
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("1001"))

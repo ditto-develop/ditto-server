@@ -2,7 +2,6 @@ package com.ditto.domain.support
 
 import com.ditto.domain.config.DomainConfig
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.extensions.spring.SpringExtension
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -15,7 +14,7 @@ abstract class IntegrationTest(
     private val dataSource: DataSource,
     body: IntegrationTest.() -> Unit = {},
 ) : FreeSpec() {
-    override fun extensions() = listOf(SpringExtension, DatabaseCleanExtension(dataSource))
+    override fun extensions() = listOf(DatabaseCleanExtension(dataSource))
 
     init {
         body()
