@@ -1,11 +1,14 @@
 package com.ditto.api.config
 
+import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.common.logging.Loggable
+import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -26,6 +29,10 @@ class TestExceptionController {
 
     @PostMapping("/api/test/validation")
     fun throwValidation(@Valid @RequestBody request: TestRequest): Unit = Unit
+
+    @GetMapping("/api/test/me")
+    fun getMe(@AuthenticationPrincipal principal: MemberPrincipal): ApiResponse<MemberPrincipal> =
+        ApiResponse.ok(principal)
 }
 
 data class TestRequest(

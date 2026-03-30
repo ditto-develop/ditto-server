@@ -16,7 +16,7 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
     @Test
     @DisplayName("WarnException이 발생하면 success=false와 해당 ErrorCode 정보를 반환한다")
     fun warnException() {
-        mockMvc.perform(get("/api/test/warn").withApiKey())
+        mockMvc.perform(get("/api/test/warn").withApiKey().withBearerToken())
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(400))
@@ -27,7 +27,7 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
     @Test
     @DisplayName("ErrorException이 발생하면 success=false와 해당 ErrorCode 정보를 반환한다")
     fun errorException() {
-        mockMvc.perform(get("/api/test/error").withApiKey())
+        mockMvc.perform(get("/api/test/error").withApiKey().withBearerToken())
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(500))
@@ -38,7 +38,7 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
     @Test
     @DisplayName("처리되지 않은 예외가 발생하면 success=false와 INTERNAL_ERROR를 반환한다")
     fun unhandledException() {
-        mockMvc.perform(get("/api/test/unhandled").withApiKey())
+        mockMvc.perform(get("/api/test/unhandled").withApiKey().withBearerToken())
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(500))
@@ -51,6 +51,7 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
         mockMvc.perform(
             post("/api/test/validation")
                 .withApiKey()
+                .withBearerToken()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"name": ""}"""),
         )
@@ -66,6 +67,7 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
         mockMvc.perform(
             post("/api/test/validation")
                 .withApiKey()
+                .withBearerToken()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("invalid json"),
         )

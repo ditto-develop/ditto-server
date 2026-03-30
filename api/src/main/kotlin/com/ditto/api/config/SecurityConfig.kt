@@ -2,6 +2,8 @@ package com.ditto.api.config
 
 import com.ditto.api.config.auth.ApiKeyAuthFilter
 import com.ditto.api.config.auth.ApiKeyProperties
+import com.ditto.api.config.auth.JwtAuthenticationFilter
+import com.ditto.api.config.auth.JwtTokenProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
@@ -15,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 class SecurityConfig(
     private val apiKeyProperties: ApiKeyProperties,
+    private val jwtTokenProvider: JwtTokenProvider,
 ) {
 
     /**
@@ -47,13 +50,13 @@ class SecurityConfig(
     }
 
     /**
-     * API — API Key 인증 필수
+     * API Key만 필요 (소셜 로그인, 토큰 갱신 등 JWT 불필요)
      */
     @Bean
     @Order(3)
-    fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun apiKeyOnlySecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
-            .securityMatcher("/api/**")
+            .securityMatcher("/api/v1/users/social-login/**", "/api/v1/users/auth/refresh")
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
@@ -62,10 +65,26 @@ class SecurityConfig(
     }
 
     /**
-     * 그 외 모든 경로 — 차단
+     * API — API Key + JWT 인증 필수
      */
     @Bean
     @Order(4)
+    fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        return http
+            .securityMatcher("/api/**")
+            .csrf { it.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterAfter(JwtAuthenticationFilter(jwtTokenProvider), ApiKeyAuthFilter::class.java)
+            .authorizeHttpRequests { it.anyRequest().authenticated() }
+            .build()
+    }
+
+    /**
+     * 그 외 모든 경로 — 차단
+     */
+    @Bean
+    @Order(5)
     fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .csrf { it.disable() }

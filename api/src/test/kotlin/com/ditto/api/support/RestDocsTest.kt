@@ -1,6 +1,8 @@
 package com.ditto.api.support
 
+import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.serialization.ObjectMapperFactory
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
@@ -19,10 +21,18 @@ abstract class RestDocsTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 
+    @Autowired
+    lateinit var jwtTokenProvider: JwtTokenProvider
+
     protected val objectMapper: ObjectMapper = ObjectMapperFactory.create()
 
     protected fun MockHttpServletRequestBuilder.withApiKey(): MockHttpServletRequestBuilder {
         return this.header("X-API-Key", TEST_API_KEY)
+    }
+
+    protected fun MockHttpServletRequestBuilder.withBearerToken(): MockHttpServletRequestBuilder {
+        val token = jwtTokenProvider.generateAccessToken("test-user", SocialProvider.KAKAO)
+        return this.header("Authorization", "Bearer $token")
     }
 
     companion object {
