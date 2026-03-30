@@ -34,7 +34,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "9677bd91-e212-44cf-a5b3-adfc505c519e"
+                    "refreshToken" : "fcb64269-179a-4eab-a06b-7e57c62e47ed"
                   }
       responses:
         "200":
@@ -49,8 +49,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMTksImV4cCI6MTc3NDgwNDkxOX0.qyUu3zazSMN68jwVqHAIAoWKUzIQvLH18GzZYkws2uviERldTQ-y_9uxnxXm3ET6Eg4hiZxvz_CnFbgu7WsEnA",
-                        "refreshToken" : "dcd0a36c-e7f8-4e05-bada-4015eb04c860"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4NzYyMTUsImV4cCI6MTc3NDg3OTgxNX0.4EJ3fsXXrkoPo_nfmkok8rSM_UzIEHDRyXFdVlc_hf1CFK4afn3fsB4qUjchv8o1_X_aWK0Cm2GsaEijg_27aA",
+                        "refreshToken" : "ead3e7e7-fcba-4989-aec5-0e9cc3d5a716"
                       },
                       "error" : null
                     }
@@ -75,8 +75,8 @@ paths:
     get:
       tags:
       - OAuth
-      summary: 소셜 로그인 콜백
-      description: 소셜 로그인 제공자로부터 받은 인가 코드로 JWT를 발급합니다.
+      summary: 소셜 로그인 콜백 (신규 사용자)
+      description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
       operationId: oauth-callback
       parameters:
       - name: provider
@@ -97,15 +97,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback957263722"
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1685114549"
               examples:
+                oauth-callback-new-user:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
                 oauth-callback:
                   value: |-
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMjAsImV4cCI6MTc3NDgwNDkyMH0.kqnh-Cde7IvgLPBqNMwnNINyD6JmXf5GRD0dcQKTNFyYwCjE6FdRqT_i8i04W67dDfexgPZvl6hk2U521gsCKA",
-                        "refreshToken" : "0282aea0-e052-43f2-b5d7-0ece67b91425"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4NTA4NzksImV4cCI6MTc3NDg1NDQ3OX0.CDGZ96IwR2fxwzqzZryCrL_B4h3MeAlIofUtK7D4uiD3sijZqQocJMuK4iNGk8cLM3oRjpVbdKLPbPcicrg2PQ",
+                        "refreshToken" : "0373f9ba-adc3-4c34-a30d-6f6642d9a166"
                       },
                       "error" : null
                     }
@@ -138,8 +145,9 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-social-login-provider-callback957263722:
+    api-v1-users-social-login-provider-callback1685114549:
       required:
+      - data
       - error
       - success
       type: object
@@ -156,6 +164,7 @@ components:
             refreshToken:
               type: string
               description: 리프레시 토큰
+          description: 빈 객체 (신규 사용자)
         success:
           type: boolean
           description: 성공 여부

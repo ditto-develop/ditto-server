@@ -42,7 +42,7 @@ class OAuthFacadeTest(
             "지원하지 않는 제공자면 예외가 발생한다" {
                 val facadeWithNoClients = OAuthFacade(
                     oAuthService = OAuthService(OAuthClientFactory(emptyMap())),
-                    memberSocialAccountService = memberSocialAccountService,
+                    socialAccountRepository = socialAccountRepository,
                     jwtTokenProvider = jwtTokenProvider,
                     authService = authService,
                 )
@@ -55,44 +55,34 @@ class OAuthFacadeTest(
         }
 
         "소셜 로그인" - {
-            "신규 사용자면 회원가입 후 JWT를 발급한다" {
+            "신규 사용자면 토큰을 발급하지 않는다" {
+                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                result.accessToken shouldBe null
+                result.refreshToken shouldBe null
+                memberRepository.count() shouldBe 0
+                socialAccountRepository.count() shouldBe 0
+                refreshTokenRepository.count() shouldBe 0
+            }
+
+            "기존 사용자면 JWT를 발급한다" {
+                memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
                 result.accessToken shouldNotBe null
-                jwtTokenProvider.isValid(result.accessToken) shouldBe true
+                jwtTokenProvider.isValid(result.accessToken!!) shouldBe true
                 result.refreshToken shouldNotBe null
-                memberRepository.count() shouldBe 1
-                socialAccountRepository.count() shouldBe 1
                 refreshTokenRepository.count() shouldBe 1
             }
 
-            "발급된 JWT의 providerUserId와 provider가 일치한다" {
-                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
-
-                val socialAccount = socialAccountRepository.findAll().first()
-                jwtTokenProvider.getProviderUserId(result.accessToken) shouldBe socialAccount.providerUserId
-                jwtTokenProvider.getProvider(result.accessToken) shouldBe socialAccount.provider
-            }
-
-            "기존 사용자면 기존 회원으로 JWT를 발급한다" {
-                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
-                val memberCountBefore = memberRepository.count()
+            "기존 사용자의 JWT에 providerUserId와 provider가 포함된다" {
+                memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
 
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
-                result.accessToken shouldNotBe null
-                jwtTokenProvider.isValid(result.accessToken) shouldBe true
-                result.refreshToken shouldNotBe null
-                memberRepository.count() shouldBe memberCountBefore
-            }
-
-            "기존 사용자 재로그인 시 socialAccount가 추가 생성되지 않는다" {
-                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
-                val socialAccountCountBefore = socialAccountRepository.count()
-
-                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
-
-                socialAccountRepository.count() shouldBe socialAccountCountBefore
+                jwtTokenProvider.getProviderUserId(result.accessToken!!) shouldBe "12345"
+                jwtTokenProvider.getProvider(result.accessToken!!) shouldBe SocialProvider.KAKAO
             }
         }
     },
