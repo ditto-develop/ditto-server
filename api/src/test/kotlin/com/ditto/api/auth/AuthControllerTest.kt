@@ -1,8 +1,13 @@
 package com.ditto.api.auth
 
+import com.ditto.api.auth.dto.TokenRefreshRequest
+import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.socialaccount.entity.SocialAccount
+import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
@@ -26,10 +31,14 @@ class AuthControllerTest : RestDocsTest() {
     @Autowired
     private lateinit var memberRepository: MemberRepository
 
+    @Autowired
+    private lateinit var socialAccountRepository: SocialAccountRepository
+
     @Test
     @DisplayName("리프레시 토큰으로 새 토큰 쌍을 발급한다")
     fun refresh() {
         val member = memberRepository.save(Member(nickname = "테스트유저"))
+        socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
         val refreshToken = authService.createRefreshToken(member.id)
         val request = TokenRefreshRequest(refreshToken = refreshToken.token)
 

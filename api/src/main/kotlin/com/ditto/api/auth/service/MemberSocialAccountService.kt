@@ -1,4 +1,4 @@
-package com.ditto.api.auth
+package com.ditto.api.auth.service
 
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository

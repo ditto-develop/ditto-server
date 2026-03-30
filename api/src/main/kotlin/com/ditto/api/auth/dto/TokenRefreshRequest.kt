@@ -1,4 +1,4 @@
-package com.ditto.api.auth
+package com.ditto.api.auth.dto
 
 import jakarta.validation.constraints.NotBlank
 

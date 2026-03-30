@@ -1,5 +1,9 @@
 package com.ditto.api.auth
 
+import com.ditto.api.auth.facade.OAuthFacade
+import com.ditto.api.auth.service.AuthService
+import com.ditto.api.auth.service.MemberSocialAccountService
+import com.ditto.api.auth.service.OAuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -62,12 +66,12 @@ class OAuthFacadeTest(
                 refreshTokenRepository.count() shouldBe 1
             }
 
-            "발급된 JWT의 memberId가 생성된 회원의 id와 일치한다" {
+            "발급된 JWT의 providerUserId와 provider가 일치한다" {
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
-                val memberId = jwtTokenProvider.getMemberId(result.accessToken)
-                val member = memberRepository.findAll().first()
-                memberId shouldBe member.id
+                val socialAccount = socialAccountRepository.findAll().first()
+                jwtTokenProvider.getProviderUserId(result.accessToken) shouldBe socialAccount.providerUserId
+                jwtTokenProvider.getProvider(result.accessToken) shouldBe socialAccount.provider
             }
 
             "기존 사용자면 기존 회원으로 JWT를 발급한다" {
