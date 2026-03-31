@@ -8,6 +8,7 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -42,7 +43,7 @@ class OAuthFacadeTest(
             "지원하지 않는 제공자면 예외가 발생한다" {
                 val facadeWithNoClients = OAuthFacade(
                     oAuthService = OAuthService(OAuthClientFactory(emptyMap())),
-                    socialAccountRepository = socialAccountRepository,
+                    memberSocialAccountService = memberSocialAccountService,
                     jwtTokenProvider = jwtTokenProvider,
                     authService = authService,
                 )
@@ -55,18 +56,31 @@ class OAuthFacadeTest(
         }
 
         "소셜 로그인" - {
-            "신규 사용자면 토큰을 발급하지 않는다" {
+            "신규 사용자면 PENDING 상태로 생성되고 토큰을 발급하지 않는다" {
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
                 result.accessToken shouldBe null
                 result.refreshToken shouldBe null
-                memberRepository.count() shouldBe 0
-                socialAccountRepository.count() shouldBe 0
+                memberRepository.count() shouldBe 1
+                memberRepository.findAll().first().status shouldBe MemberStatus.PENDING
+                socialAccountRepository.count() shouldBe 1
                 refreshTokenRepository.count() shouldBe 0
             }
 
-            "기존 사용자면 JWT를 발급한다" {
-                memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+            "PENDING 사용자가 재로그인하면 토큰을 발급하지 않는다" {
+                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                result.accessToken shouldBe null
+                result.refreshToken shouldBe null
+                memberRepository.count() shouldBe 1
+            }
+
+            "ACTIVE 사용자면 JWT를 발급한다" {
+                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+                member.activate()
+                memberRepository.save(member)
 
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
@@ -76,8 +90,10 @@ class OAuthFacadeTest(
                 refreshTokenRepository.count() shouldBe 1
             }
 
-            "기존 사용자의 JWT에 providerUserId와 provider가 포함된다" {
-                memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+            "ACTIVE 사용자의 JWT에 providerUserId와 provider가 포함된다" {
+                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+                member.activate()
+                memberRepository.save(member)
 
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
