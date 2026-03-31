@@ -1,5 +1,6 @@
 package com.ditto.api.auth.controller
 
+import com.ditto.api.auth.dto.LogoutRequest
 import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.dto.TokenRefreshResponse
 import com.ditto.api.auth.service.AuthService
@@ -18,5 +19,11 @@ class AuthController(
     fun refresh(@Valid @RequestBody request: TokenRefreshRequest): ApiResponse<TokenRefreshResponse> {
         val result = authService.refresh(request)
         return ApiResponse.ok(result)
+    }
+
+    @PostMapping("/api/v1/users/auth/logout")
+    fun logout(@Valid @RequestBody request: LogoutRequest): ApiResponse<Unit> {
+        authService.logout(request)
+        return ApiResponse(success = true)
     }
 }

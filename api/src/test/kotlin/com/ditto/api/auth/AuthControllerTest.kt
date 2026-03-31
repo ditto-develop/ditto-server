@@ -1,5 +1,6 @@
 package com.ditto.api.auth
 
+import com.ditto.api.auth.dto.LogoutRequest
 import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.RestDocsTest
@@ -84,6 +85,62 @@ class AuthControllerTest : RestDocsTest() {
 
         mockMvc.perform(
             post("/api/v1/users/auth/refresh")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("2001"))
+    }
+
+    @Test
+    @DisplayName("리프레시 토큰으로 로그아웃한다")
+    fun logout() {
+        val member = memberRepository.save(Member(nickname = "테스트유저"))
+        val refreshToken = authService.createRefreshToken(member.id)
+        val request = LogoutRequest(refreshToken = refreshToken.token)
+
+        mockMvc.perform(
+            post("/api/v1/users/auth/logout")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andDo(
+                document(
+                    "logout",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Auth")
+                            .summary("로그아웃")
+                            .description("리프레시 토큰을 삭제하여 로그아웃합니다.")
+                            .requestFields(
+                                fieldWithPath("refreshToken").description("리프레시 토큰"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("데이터 (로그아웃 시 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 리프레시 토큰으로 로그아웃하면 에러를 반환한다")
+    fun logoutWithInvalidToken() {
+        val request = LogoutRequest(refreshToken = "invalid-token")
+
+        mockMvc.perform(
+            post("/api/v1/users/auth/logout")
                 .withApiKey()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),

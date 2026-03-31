@@ -1,5 +1,6 @@
 package com.ditto.api.auth.service
 
+import com.ditto.api.auth.dto.LogoutRequest
 import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.dto.TokenRefreshResponse
 import com.ditto.api.config.auth.JwtTokenProvider
@@ -29,6 +30,13 @@ class AuthService(
             expiresAt = expiresAt,
         )
         return refreshTokenRepository.save(refreshToken)
+    }
+
+    @Transactional
+    fun logout(request: LogoutRequest) {
+        val refreshToken = refreshTokenRepository.findByToken(request.refreshToken)
+            ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+        refreshTokenRepository.delete(refreshToken)
     }
 
     @Transactional
