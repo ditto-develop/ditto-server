@@ -45,7 +45,7 @@ class LoggingAspectTest : RestDocsTest() {
         @Test
         @DisplayName("진입 로그에 메서드명과 파라미터가 출력된다")
         fun logMethodEntry() {
-            mockMvc.perform(get("/api/test/logging/echo").withApiKey().param("name", "tuna"))
+            mockMvc.perform(get("/api/test/logging/echo").withApiKey().withBearerToken().param("name", "tuna"))
                 .andExpect(status().isOk)
 
             logs().forAtLeastOne {
@@ -57,7 +57,7 @@ class LoggingAspectTest : RestDocsTest() {
         @Test
         @DisplayName("반환 로그에 결과값과 실행 시간이 출력된다")
         fun logMethodReturn() {
-            mockMvc.perform(get("/api/test/logging/echo").withApiKey().param("name", "tuna"))
+            mockMvc.perform(get("/api/test/logging/echo").withApiKey().withBearerToken().param("name", "tuna"))
                 .andExpect(status().isOk)
 
             logs().forAtLeastOne {
@@ -76,7 +76,7 @@ class LoggingAspectTest : RestDocsTest() {
         @DisplayName("요청 파라미터에서 @Mask 필드는 ** 로 마스킹된다")
         fun maskRequestField() {
             mockMvc.perform(
-                post("/api/test/logging/masked-request").withApiKey()
+                post("/api/test/logging/masked-request").withApiKey().withBearerToken()
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""{"email":"user@test.com","password":"secret123"}"""),
             ).andExpect(status().isOk)
@@ -91,7 +91,7 @@ class LoggingAspectTest : RestDocsTest() {
         @Test
         @DisplayName("반환값에서 @Mask 필드는 ** 로 마스킹된다")
         fun maskResponseField() {
-            mockMvc.perform(get("/api/test/logging/masked-response").withApiKey())
+            mockMvc.perform(get("/api/test/logging/masked-response").withApiKey().withBearerToken())
                 .andExpect(status().isOk)
 
             logs().forAtLeastOne {
@@ -109,7 +109,7 @@ class LoggingAspectTest : RestDocsTest() {
         @Test
         @DisplayName("@Loggable 컨텍스트 내 내부 메서드 호출은 로깅된다")
         fun logInternalCallInsideLoggable() {
-            mockMvc.perform(get("/api/test/logging/call-service").withApiKey())
+            mockMvc.perform(get("/api/test/logging/call-service").withApiKey().withBearerToken())
                 .andExpect(status().isOk)
 
             logs().forAtLeastOne { it shouldContain "TestLoggingService.process" }
@@ -118,7 +118,7 @@ class LoggingAspectTest : RestDocsTest() {
         @Test
         @DisplayName("@Loggable 컨텍스트 밖의 내부 메서드 호출은 로깅되지 않는다")
         fun skipInternalCallOutsideLoggable() {
-            mockMvc.perform(get("/api/test/logging/direct-service").withApiKey())
+            mockMvc.perform(get("/api/test/logging/direct-service").withApiKey().withBearerToken())
                 .andExpect(status().isOk)
 
             logs().forNone { it shouldContain "TestLoggingService.process" }

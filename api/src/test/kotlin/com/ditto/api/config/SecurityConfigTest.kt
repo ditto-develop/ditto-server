@@ -50,9 +50,9 @@ class SecurityConfigTest : RestDocsTest() {
     inner class ApiEndpoints {
 
         @Test
-        @DisplayName("유효한 API Key로 접근하면 성공한다")
-        fun validApiKey() {
-            mockMvc.perform(get("/api/test/warn").withApiKey())
+        @DisplayName("유효한 API Key와 JWT로 접근하면 성공한다")
+        fun validApiKeyAndJwt() {
+            mockMvc.perform(get("/api/test/warn").withApiKey().withBearerToken())
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.statusCode").value(400))
