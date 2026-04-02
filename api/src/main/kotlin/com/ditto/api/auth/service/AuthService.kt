@@ -1,6 +1,5 @@
 package com.ditto.api.auth.service
 
-import com.ditto.api.auth.dto.LogoutRequest
 import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.dto.TokenRefreshResponse
 import com.ditto.api.config.auth.JwtTokenProvider
@@ -9,6 +8,7 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,10 +33,10 @@ class AuthService(
     }
 
     @Transactional
-    fun logout(request: LogoutRequest) {
-        val refreshToken = refreshTokenRepository.findByToken(request.refreshToken)
-            ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
-        refreshTokenRepository.delete(refreshToken)
+    fun logout(provider: SocialProvider, providerUserId: String) {
+        val socialAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+            ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
+        refreshTokenRepository.deleteByMemberId(socialAccount.memberId)
     }
 
     @Transactional

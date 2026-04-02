@@ -1,6 +1,5 @@
 package com.ditto.api.auth
 
-import com.ditto.api.auth.dto.LogoutRequest
 import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.config.auth.JwtTokenProvider
@@ -85,20 +84,14 @@ class AuthServiceTest(
         }
 
         "로그아웃" - {
-            "유효한 리프레시 토큰으로 로그아웃하면 토큰이 삭제된다" {
+            "로그아웃하면 해당 회원의 모든 토큰이 삭제된다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저"))
+                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
-                authService.logout(LogoutRequest(refreshToken = refreshToken.token))
+                authService.logout(SocialProvider.KAKAO, "providerUserId")
 
                 refreshTokenRepository.findByToken(refreshToken.token) shouldBe null
-            }
-
-            "존재하지 않는 리프레시 토큰으로 로그아웃하면 예외가 발생한다" {
-                val exception = shouldThrow<WarnException> {
-                    authService.logout(LogoutRequest(refreshToken = "non-existent-token"))
-                }
-                exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
             }
 
             "로그아웃 후 같은 리프레시 토큰으로 갱신할 수 없다" {
@@ -106,7 +99,7 @@ class AuthServiceTest(
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
-                authService.logout(LogoutRequest(refreshToken = refreshToken.token))
+                authService.logout(SocialProvider.KAKAO, "providerUserId")
 
                 val exception = shouldThrow<ErrorException> {
                     authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
