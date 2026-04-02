@@ -18,6 +18,39 @@ servers:
 - url: ""
 tags: []
 paths:
+  /api/v1/users/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: 로그아웃
+      description: 리프레시 토큰을 삭제하여 로그아웃합니다.
+      operationId: logout
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-auth-refresh1056639717"
+            examples:
+              logout:
+                value: |-
+                  {
+                    "refreshToken" : "1bdc3960-8daf-4815-9051-6ac5ea0ba7ad"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-auth-logout-1831456372"
+              examples:
+                logout:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : null,
+                      "error" : null
+                    }
   /api/v1/users/auth/refresh:
     post:
       tags:
@@ -34,7 +67,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "fcb64269-179a-4eab-a06b-7e57c62e47ed"
+                    "refreshToken" : "1e9c09be-e6b8-45b7-b108-0b018e94adb8"
                   }
       responses:
         "200":
@@ -49,8 +82,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4NzYyMTUsImV4cCI6MTc3NDg3OTgxNX0.4EJ3fsXXrkoPo_nfmkok8rSM_UzIEHDRyXFdVlc_hf1CFK4afn3fsB4qUjchv8o1_X_aWK0Cm2GsaEijg_27aA",
-                        "refreshToken" : "ead3e7e7-fcba-4989-aec5-0e9cc3d5a716"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzUxMDgxMzEsImV4cCI6MTc3NTExMTczMX0.WIyDFcCt3Iaknl6BdjHRHn-2B2plmCqqb_KBhppVJxZP6V0c5MzpnMoGL_eP1f91JIe1ARPM9PTCf0QH2ehHdQ",
+                        "refreshToken" : "a01e696d-a193-4994-99a0-5a16f9838eff"
                       },
                       "error" : null
                     }
@@ -75,7 +108,7 @@ paths:
     get:
       tags:
       - OAuth
-      summary: 소셜 로그인 콜백 (신규 사용자)
+      summary: 소셜 로그인 콜백
       description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
       operationId: oauth-callback
       parameters:
@@ -111,8 +144,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4NTA4NzksImV4cCI6MTc3NDg1NDQ3OX0.CDGZ96IwR2fxwzqzZryCrL_B4h3MeAlIofUtK7D4uiD3sijZqQocJMuK4iNGk8cLM3oRjpVbdKLPbPcicrg2PQ",
-                        "refreshToken" : "0373f9ba-adc3-4c34-a30d-6f6642d9a166"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ5Mzk3MTcsImV4cCI6MTc3NDk0MzMxN30.JyttZNZe03omDRMBg0ZqwOyU-ndwdYP-RbqGN3idW8XcxY4NOxqD8VQnq6k2jaM6mwKYDRGrMVPyfOJ_iNM5qQ",
+                        "refreshToken" : "397ea348-f690-435d-999e-fd5ad6a56332"
                       },
                       "error" : null
                     }
@@ -165,6 +198,16 @@ components:
               type: string
               description: 리프레시 토큰
           description: 빈 객체 (신규 사용자)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-logout-1831456372:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
         success:
           type: boolean
           description: 성공 여부

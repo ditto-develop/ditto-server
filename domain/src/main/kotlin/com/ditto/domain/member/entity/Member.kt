@@ -8,11 +8,15 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.Comment
 
 @Entity
-@Table(name = "member")
+@Table(
+    name = "member",
+    indexes = [Index(name = "member_index_1", columnList = "created_at, status")],
+)
 class Member(
 
     @Id

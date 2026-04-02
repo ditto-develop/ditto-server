@@ -1,6 +1,6 @@
 package com.ditto.domain.member.entity
 
-enum class MemberStatus {
-    PENDING, // 아직 회원가입을 진행하지 않은 상태(소셜 로그인만 했을 경우)
-    ACTIVE,
+enum class MemberStatus(private val description: String) {
+    PENDING("소셜 로그인만 완료한 상태"),
+    ACTIVE("회원가입 완료"),
 }

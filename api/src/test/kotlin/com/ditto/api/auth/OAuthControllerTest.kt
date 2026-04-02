@@ -68,7 +68,7 @@ class OAuthControllerTest : RestDocsTest() {
                     resource(
                         ResourceSnippetParameters.builder()
                             .tag("OAuth")
-                            .summary("소셜 로그인 콜백 (신규 사용자)")
+                            .summary("소셜 로그인 콜백")
                             .description("신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.")
                             .pathParameters(
                                 parameterWithName("provider").description(PROVIDER_DESCRIPTION),
