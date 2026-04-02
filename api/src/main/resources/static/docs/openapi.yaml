@@ -23,19 +23,8 @@ paths:
       tags:
       - Auth
       summary: 로그아웃
-      description: 리프레시 토큰을 삭제하여 로그아웃합니다.
+      description: 액세스 토큰의 회원 정보로 모든 리프레시 토큰을 삭제합니다.
       operationId: logout
-      requestBody:
-        content:
-          application/json;charset=UTF-8:
-            schema:
-              $ref: "#/components/schemas/api-v1-users-auth-refresh1056639717"
-            examples:
-              logout:
-                value: |-
-                  {
-                    "refreshToken" : "1bdc3960-8daf-4815-9051-6ac5ea0ba7ad"
-                  }
       responses:
         "200":
           description: "200"
@@ -51,6 +40,8 @@ paths:
                       "data" : null,
                       "error" : null
                     }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/auth/refresh:
     post:
       tags:
@@ -67,7 +58,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "1e9c09be-e6b8-45b7-b108-0b018e94adb8"
+                    "refreshToken" : "3fe6947b-91b0-4fad-81cd-4b93ec6b1ba5"
                   }
       responses:
         "200":
@@ -82,8 +73,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzUxMDgxMzEsImV4cCI6MTc3NTExMTczMX0.WIyDFcCt3Iaknl6BdjHRHn-2B2plmCqqb_KBhppVJxZP6V0c5MzpnMoGL_eP1f91JIe1ARPM9PTCf0QH2ehHdQ",
-                        "refreshToken" : "a01e696d-a193-4994-99a0-5a16f9838eff"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzUxMTE4MjUsImV4cCI6MTc3NTExNTQyNX0.b2KLxpMw9lp-DtCAahfFTIL7hM7crUfG8X8jAVfISXtVH1BAhmjyKy2-ykCeUc1_eb-tLCBxC5tTwV4Z15cA4w",
+                        "refreshToken" : "5d18d54f-2e50-43c6-86e6-0b2ef2df9723"
                       },
                       "error" : null
                     }
@@ -219,6 +210,11 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
+  securitySchemes:
+    bearerAuthJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 security:
 - ApiKey: []
