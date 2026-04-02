@@ -68,6 +68,16 @@ class AuthServiceTest(
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_EXPIRED
             }
 
+            "리프레시 토큰에 연결된 소셜 계정이 없으면 예외가 발생한다" {
+                val member = memberRepository.save(Member(nickname = "테스트유저"))
+                val refreshToken = authService.createRefreshToken(member.id)
+
+                val exception = shouldThrow<ErrorException> {
+                    authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
+                }
+                exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
+            }
+
             "갱신 후 이전 리프레시 토큰은 사용할 수 없다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저"))
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
@@ -92,6 +102,13 @@ class AuthServiceTest(
                 authService.logout(SocialProvider.KAKAO, "providerUserId")
 
                 refreshTokenRepository.findByToken(refreshToken.token) shouldBe null
+            }
+
+            "존재하지 않는 소셜 계정으로 로그아웃하면 예외가 발생한다" {
+                val exception = shouldThrow<ErrorException> {
+                    authService.logout(SocialProvider.KAKAO, "non-existent-user")
+                }
+                exception.errorCode shouldBe ErrorCode.UNAUTHORIZED_ERROR
             }
 
             "로그아웃 후 같은 리프레시 토큰으로 갱신할 수 없다" {
