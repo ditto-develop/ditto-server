@@ -18,6 +18,39 @@ servers:
 - url: ""
 tags: []
 paths:
+  /api/v1/users/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: 로그아웃
+      description: 리프레시 토큰을 삭제하여 로그아웃합니다.
+      operationId: logout
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-auth-refresh1056639717"
+            examples:
+              logout:
+                value: |-
+                  {
+                    "refreshToken" : "1bdc3960-8daf-4815-9051-6ac5ea0ba7ad"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-auth-logout-1831456372"
+              examples:
+                logout:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : null,
+                      "error" : null
+                    }
   /api/v1/users/auth/refresh:
     post:
       tags:
@@ -34,7 +67,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "9677bd91-e212-44cf-a5b3-adfc505c519e"
+                    "refreshToken" : "1e9c09be-e6b8-45b7-b108-0b018e94adb8"
                   }
       responses:
         "200":
@@ -49,8 +82,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMTksImV4cCI6MTc3NDgwNDkxOX0.qyUu3zazSMN68jwVqHAIAoWKUzIQvLH18GzZYkws2uviERldTQ-y_9uxnxXm3ET6Eg4hiZxvz_CnFbgu7WsEnA",
-                        "refreshToken" : "dcd0a36c-e7f8-4e05-bada-4015eb04c860"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzUxMDgxMzEsImV4cCI6MTc3NTExMTczMX0.WIyDFcCt3Iaknl6BdjHRHn-2B2plmCqqb_KBhppVJxZP6V0c5MzpnMoGL_eP1f91JIe1ARPM9PTCf0QH2ehHdQ",
+                        "refreshToken" : "a01e696d-a193-4994-99a0-5a16f9838eff"
                       },
                       "error" : null
                     }
@@ -76,7 +109,7 @@ paths:
       tags:
       - OAuth
       summary: 소셜 로그인 콜백
-      description: 소셜 로그인 제공자로부터 받은 인가 코드로 JWT를 발급합니다.
+      description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
       operationId: oauth-callback
       parameters:
       - name: provider
@@ -97,15 +130,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback957263722"
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1685114549"
               examples:
+                oauth-callback-new-user:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
                 oauth-callback:
                   value: |-
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMjAsImV4cCI6MTc3NDgwNDkyMH0.kqnh-Cde7IvgLPBqNMwnNINyD6JmXf5GRD0dcQKTNFyYwCjE6FdRqT_i8i04W67dDfexgPZvl6hk2U521gsCKA",
-                        "refreshToken" : "0282aea0-e052-43f2-b5d7-0ece67b91425"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ5Mzk3MTcsImV4cCI6MTc3NDk0MzMxN30.JyttZNZe03omDRMBg0ZqwOyU-ndwdYP-RbqGN3idW8XcxY4NOxqD8VQnq6k2jaM6mwKYDRGrMVPyfOJ_iNM5qQ",
+                        "refreshToken" : "397ea348-f690-435d-999e-fd5ad6a56332"
                       },
                       "error" : null
                     }
@@ -138,8 +178,9 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-social-login-provider-callback957263722:
+    api-v1-users-social-login-provider-callback1685114549:
       required:
+      - data
       - error
       - success
       type: object
@@ -156,6 +197,17 @@ components:
             refreshToken:
               type: string
               description: 리프레시 토큰
+          description: 빈 객체 (신규 사용자)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-logout-1831456372:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
         success:
           type: boolean
           description: 성공 여부

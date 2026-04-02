@@ -1,10 +1,13 @@
 package com.ditto.api.auth.service
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -14,11 +17,20 @@ class MemberSocialAccountService(
     private val socialAccountRepository: SocialAccountRepository,
 ) {
     @Transactional
-    fun findOrCreateMember(provider: SocialProvider, providerUserId: String, nickname: String): Long {
+    fun findOrCreateMember(
+        provider: SocialProvider,
+        providerUserId: String,
+        nickname: String,
+    ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
         if (existingAccount != null) {
-            return existingAccount.memberId
+            return memberRepository.findById(existingAccount.memberId).orElseThrow {
+                log.error {
+                    "SocialAccount(id=${existingAccount.id})에 연결된 Member(id=${existingAccount.memberId})가 존재하지 않습니다."
+                }
+                ErrorException(ErrorCode.INTERNAL_ERROR)
+            }
         }
 
         val newMember = memberRepository.save(Member(nickname = nickname))
@@ -29,6 +41,10 @@ class MemberSocialAccountService(
                 providerUserId = providerUserId,
             ),
         )
-        return newMember.id
+        return newMember
+    }
+
+    companion object {
+        private val log = KotlinLogging.logger {}
     }
 }

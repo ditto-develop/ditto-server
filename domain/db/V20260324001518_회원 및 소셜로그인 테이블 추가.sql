@@ -1,10 +1,12 @@
 create table member
 (
     id         bigint auto_increment
-        primary key,
-    nickname   varchar(50) not null comment '닉네임',
-    created_at datetime(6) not null comment '생성일시',
-    updated_at datetime(6) not null comment '수정일시'
+          primary key,
+    nickname   varchar(50)  not null comment '닉네임',
+    status     varchar(20)  not null comment '회원 상태 (PENDING, ACTIVE)',
+    created_at datetime(6)  not null comment '생성일시',
+    updated_at datetime(6)  not null comment '수정일시',
+    index member_index_1 (created_at, status)
 );
 
 create table social_account
