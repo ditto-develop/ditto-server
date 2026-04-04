@@ -78,7 +78,7 @@ class OAuthFacadeTest(
             }
 
             "ACTIVE 사용자면 JWT를 발급한다" {
-                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저", "test@example.com")
                 member.activate()
                 memberRepository.save(member)
 
@@ -91,7 +91,7 @@ class OAuthFacadeTest(
             }
 
             "ACTIVE 사용자의 JWT에 providerUserId와 provider가 포함된다" {
-                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저")
+                val member = memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "테스트유저", "test@example.com")
                 member.activate()
                 memberRepository.save(member)
 

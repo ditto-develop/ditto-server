@@ -20,7 +20,7 @@ class BaseEntityTest(
 
         "BaseEntity Auditing" - {
             "createdAt와 updatedAt는 엔티티 저장 시 자동 설정된다" {
-                val member = memberRepository.save(Member(nickname = "테스트"))
+                val member = memberRepository.save(Member(nickname = "테스트", email = "test@kakao.com"))
 
                 member.createdAt shouldNotBe null
                 member.updatedAt shouldNotBe null
@@ -28,7 +28,7 @@ class BaseEntityTest(
 
             "updatedAt은 엔티티 수정 시 자동 갱신된다" {
                 val memberId = transactionTemplate.execute {
-                    val member = memberRepository.save(Member(nickname = "테스트"))
+                    val member = memberRepository.save(Member(nickname = "테스트", email = "test@kakao.com"))
                     entityManager.flush()
                     entityManager.clear()
                     member.id
@@ -51,7 +51,7 @@ class BaseEntityTest(
 
             "createdAt은 엔티티 수정 시 변경되지 않는다" {
                 val memberId = transactionTemplate.execute {
-                    val member = memberRepository.save(Member(nickname = "테스트"))
+                    val member = memberRepository.save(Member(nickname = "테스트", email = "test@kakao.com"))
                     entityManager.flush()
                     entityManager.clear()
                     member.id
