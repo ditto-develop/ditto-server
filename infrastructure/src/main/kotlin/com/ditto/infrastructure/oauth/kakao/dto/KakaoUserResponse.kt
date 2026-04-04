@@ -6,6 +6,7 @@ data class KakaoUserResponse(
 ) {
     data class KakaoAccount(
         val profile: KakaoProfile?,
+        val email: String?,
     )
 
     data class KakaoProfile(

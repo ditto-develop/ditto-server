@@ -11,4 +11,5 @@ object OAuthConstants {
     const val PARAM_RESPONSE_TYPE = "response_type"
     const val PARAM_GRANT_TYPE = "grant_type"
     const val PARAM_CODE = "code"
+    const val PARAM_SCOPE = "scope"
 }

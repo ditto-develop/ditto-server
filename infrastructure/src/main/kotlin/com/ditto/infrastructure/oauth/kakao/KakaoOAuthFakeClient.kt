@@ -27,6 +27,7 @@ class KakaoOAuthFakeClient(
         return OAuthUserInfo(
             id = "12345",
             nickname = "테스트유저",
+            email = "test@example.com",
         )
     }
 }
