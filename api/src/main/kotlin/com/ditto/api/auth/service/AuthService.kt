@@ -36,7 +36,7 @@ class AuthService(
     fun logout(provider: SocialProvider, providerUserId: String) {
         val socialAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
             ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
-        refreshTokenRepository.deleteByMemberId(socialAccount.memberId)
+        refreshTokenRepository.deleteAllByMemberId(socialAccount.memberId)
     }
 
     @Transactional

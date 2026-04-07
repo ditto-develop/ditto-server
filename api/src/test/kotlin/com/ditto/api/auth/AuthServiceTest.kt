@@ -104,6 +104,20 @@ class AuthServiceTest(
                 refreshTokenRepository.findByToken(refreshToken.token) shouldBe null
             }
 
+            "로그아웃하면 해당 회원의 여러 토큰이 모두 삭제된다" {
+                val member = memberRepository.save(Member(nickname = "테스트유저"))
+                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
+                val token1 = authService.createRefreshToken(member.id)
+                val token2 = authService.createRefreshToken(member.id)
+                val token3 = authService.createRefreshToken(member.id)
+
+                authService.logout(SocialProvider.KAKAO, "providerUserId")
+
+                refreshTokenRepository.findByToken(token1.token) shouldBe null
+                refreshTokenRepository.findByToken(token2.token) shouldBe null
+                refreshTokenRepository.findByToken(token3.token) shouldBe null
+            }
+
             "존재하지 않는 소셜 계정으로 로그아웃하면 예외가 발생한다" {
                 val exception = shouldThrow<ErrorException> {
                     authService.logout(SocialProvider.KAKAO, "non-existent-user")
