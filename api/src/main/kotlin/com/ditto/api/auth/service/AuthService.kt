@@ -8,6 +8,7 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,6 +30,13 @@ class AuthService(
             expiresAt = expiresAt,
         )
         return refreshTokenRepository.save(refreshToken)
+    }
+
+    @Transactional
+    fun logout(provider: SocialProvider, providerUserId: String) {
+        val socialAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+            ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
+        refreshTokenRepository.deleteAllByMemberId(socialAccount.memberId)
     }
 
     @Transactional
