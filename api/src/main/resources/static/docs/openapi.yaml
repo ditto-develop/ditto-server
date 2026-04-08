@@ -147,6 +147,10 @@ components:
       in: header
       name: X-API-Key
       description: API 인증 키. 백엔드 담당자에게 발급받으세요.
+    bearerAuthJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     api-v1-users-auth-refresh-42454406:
       required:
@@ -210,11 +214,6 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
-  securitySchemes:
-    bearerAuthJWT:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
 
 security:
 - ApiKey: []
