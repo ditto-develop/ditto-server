@@ -10,7 +10,7 @@ permissions:
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: ditto-server
+  ECR_REPOSITORY: ditto-api
   ECR_ALLOY_REPOSITORY: ditto-alloy
   ECS_CLUSTER: ditto-cluster
   ECS_SERVICE: ditto-api-service
@@ -32,17 +32,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Amazon ECR Public
-        id: login-ecr-public
+      - name: Login to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        env:
-          AWS_REGION: us-east-1
-        with:
-          registry-type: public
 
       - name: Build and push API image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}/u1b1p7p4
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker buildx build --platform linux/arm64 --push \
@@ -51,7 +47,7 @@ jobs:
 
       - name: Build and push Alloy image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}/u1b1p7p4
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker buildx build --platform linux/arm64 --push \
@@ -66,27 +62,3 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
           force-new-deployment: true
-
-
-      - name: Get new task public IP
-        id: get-ip
-        run: |
-          TASK_ARN=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --desired-status RUNNING --query 'taskArns[0]' --output text --region $AWS_REGION)
-          ENI_ID=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text --region $AWS_REGION)
-          PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text --region $AWS_REGION)
-          echo "public_ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
-
-      - name: Update CloudFront origin
-        env:
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-        run: |
-          NEW_IP=${{ steps.get-ip.outputs.public_ip }}
-
-          aws cloudfront get-distribution-config --id "$CLOUDFRONT_DISTRIBUTION_ID" > config.json
-          ETAG=$(jq -r '.ETag' config.json)
-          jq --arg ip "$NEW_IP" '.DistributionConfig | .Origins.Items[0].DomainName = ($ip + ".sslip.io")' config.json > updated_config.json
-
-          aws cloudfront update-distribution \
-            --id "$CLOUDFRONT_DISTRIBUTION_ID" \
-            --if-match "$ETAG" \
-            --distribution-config "file://updated_config.json"
