@@ -58,7 +58,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "b79b77a2-2911-4991-b237-49d3bbbc3bc5"
+                    "refreshToken" : "b76975a5-5fe8-4f7f-8fba-8741e49b4b19"
                   }
       responses:
         "200":
@@ -73,8 +73,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU3MTI3NzcsImV4cCI6MTc3NTcxNjM3N30.KXdFdv61P8_Ovi2dNdOHMYPT5C2T1rjM17Oc5AshD-BCEd3V0MbjzuPOhcNVzMOeJ2Xpt-t73WdyT4eHG_0miQ",
-                        "refreshToken" : "f2c146b1-4207-47d2-b438-1cc250803a43"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU1NDE5MTAsImV4cCI6MTc3NTU0NTUxMH0.C7VIaiU_4m8CQCCB6tI0szx2FsdPwSEcKrfy7--EUCSYLiob8GwtY91-cO0YjxB_FTOLC-IDDHr-KJBODF5EVA",
+                        "refreshToken" : "1079e4e3-0fa5-4c2b-ac91-3e19036b9726"
                       },
                       "error" : null
                     }
@@ -147,6 +147,10 @@ components:
       in: header
       name: X-API-Key
       description: API 인증 키. 백엔드 담당자에게 발급받으세요.
+    bearerAuthJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     api-v1-users-auth-refresh-42454406:
       required:

@@ -92,4 +92,40 @@ class AuthControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("2001"))
     }
+
+    @Test
+    @DisplayName("액세스 토큰으로 로그아웃한다")
+    fun logout() {
+        val member = memberRepository.save(Member(nickname = "테스트유저"))
+        socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "test-user"))
+        authService.createRefreshToken(member.id)
+
+        mockMvc.perform(
+            post("/api/v1/users/auth/logout")
+                .withApiKey()
+                .withBearerToken(),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data").doesNotExist())
+            .andDo(
+                document(
+                    "logout",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Auth")
+                            .summary("로그아웃")
+                            .description("액세스 토큰의 회원 정보로 모든 리프레시 토큰을 삭제합니다.")
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("데이터 (로그아웃 시 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
 }

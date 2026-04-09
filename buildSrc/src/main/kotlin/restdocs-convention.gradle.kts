@@ -36,21 +36,31 @@ val addSecurityScheme by tasks.registering {
         if (outputFile.exists()) {
             var content = outputFile.readText()
 
-            content = content.replace(
-                "components:\n  schemas:",
-                """
-                components:
-                  securitySchemes:
-                    ApiKey:
-                      type: apiKey
-                      in: header
-                      name: X-API-Key
-                      description: API 인증 키. 백엔드 담당자에게 발급받으세요.
-                  schemas:
-                """.trimIndent()
-            )
+            val apiKeyScheme = """
+                |    ApiKey:
+                |      type: apiKey
+                |      in: header
+                |      name: X-API-Key
+                |      description: API 인증 키. 백엔드 담당자에게 발급받으세요.
+            """.trimMargin()
 
-            content += "\nsecurity:\n- ApiKey: []\n"
+            if (content.contains("  securitySchemes:")) {
+                content = content.replaceFirst(
+                    "  securitySchemes:",
+                    "  securitySchemes:\n$apiKeyScheme"
+                )
+            } else {
+                content = content.replace(
+                    "components:\n  schemas:",
+                    "components:\n  securitySchemes:\n$apiKeyScheme\n  schemas:"
+                )
+            }
+
+            if (!content.contains("\nsecurity:")) {
+                content += "\nsecurity:\n- ApiKey: []\n"
+            } else if (!content.contains("- ApiKey: []")) {
+                content = content.replace("\nsecurity:", "\nsecurity:\n- ApiKey: []")
+            }
 
             outputFile.writeText(content)
         }
