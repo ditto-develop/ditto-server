@@ -33,6 +33,7 @@ class MemberSocialAccountService(
                 ErrorException(ErrorCode.INTERNAL_ERROR)
             }
             if (member.hasEmailChanged(email)) {
+                log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
                 member.updateEmail(email)
             }
             return member
