@@ -37,7 +37,7 @@ class AuthControllerTest : RestDocsTest() {
     @Test
     @DisplayName("리프레시 토큰으로 새 토큰 쌍을 발급한다")
     fun refresh() {
-        val member = memberRepository.save(Member(nickname = "테스트유저"))
+        val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
         socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
         val refreshToken = authService.createRefreshToken(member.id)
         val request = TokenRefreshRequest(refreshToken = refreshToken.token)

@@ -17,7 +17,7 @@ class SocialAccountTest(
     {
         "SocialAccount 생성" - {
             "create로 SocialAccount를 생성할 수 있다" {
-                val member = memberRepository.save(Member(nickname = "테스트"))
+                val member = memberRepository.save(Member(nickname = "테스트", email = "test@kakao.com"))
                 val socialAccount = SocialAccount.create(
                     memberId = member.id,
                     provider = SocialProvider.KAKAO,

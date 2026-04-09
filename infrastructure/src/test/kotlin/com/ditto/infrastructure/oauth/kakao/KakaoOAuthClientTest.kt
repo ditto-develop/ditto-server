@@ -28,6 +28,7 @@ class KakaoOAuthClientTest : FreeSpec(
                 url shouldContain "${OAuthConstants.PARAM_CLIENT_ID}=${properties.clientId}"
                 url shouldContain "${OAuthConstants.PARAM_REDIRECT_URI}=${properties.redirectUri}"
                 url shouldContain "${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
+                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email"
             }
         }
 
@@ -83,11 +84,12 @@ class KakaoOAuthClientTest : FreeSpec(
         }
 
         "getUserInfo" - {
-            "닉네임이 있으면 해당 닉네임을 반환한다" {
+            "닉네임과 이메일이 있으면 해당 값을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
                     kakaoAccount = KakaoUserResponse.KakaoAccount(
                         profile = KakaoUserResponse.KakaoProfile(nickname = "카카오유저"),
+                        email = "user@kakao.com",
                     ),
                 )
 
@@ -95,6 +97,7 @@ class KakaoOAuthClientTest : FreeSpec(
 
                 userInfo.id shouldBe "12345"
                 userInfo.nickname shouldBe "카카오유저"
+                userInfo.email shouldBe "user@kakao.com"
             }
 
             "닉네임이 없으면 기본 닉네임을 반환한다" {
@@ -102,6 +105,7 @@ class KakaoOAuthClientTest : FreeSpec(
                     id = 12345L,
                     kakaoAccount = KakaoUserResponse.KakaoAccount(
                         profile = KakaoUserResponse.KakaoProfile(nickname = null),
+                        email = "user@kakao.com",
                     ),
                 )
 
@@ -113,7 +117,10 @@ class KakaoOAuthClientTest : FreeSpec(
             "프로필이 없으면 기본 닉네임을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = KakaoUserResponse.KakaoAccount(profile = null),
+                    kakaoAccount = KakaoUserResponse.KakaoAccount(
+                        profile = null,
+                        email = "user@kakao.com",
+                    ),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -121,7 +128,21 @@ class KakaoOAuthClientTest : FreeSpec(
                 userInfo.nickname shouldBe OAuthConstants.DEFAULT_NICKNAME
             }
 
-            "kakaoAccount가 없으면 기본 닉네임을 반환한다" {
+            "이메일이 없으면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = KakaoUserResponse.KakaoAccount(
+                        profile = KakaoUserResponse.KakaoProfile(nickname = "카카오유저"),
+                        email = null,
+                    ),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.email shouldBe null
+            }
+
+            "kakaoAccount가 없으면 email은 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
                     kakaoAccount = null,
@@ -129,7 +150,7 @@ class KakaoOAuthClientTest : FreeSpec(
 
                 val userInfo = client.getUserInfo("test-token")
 
-                userInfo.nickname shouldBe OAuthConstants.DEFAULT_NICKNAME
+                userInfo.email shouldBe null
             }
         }
     },

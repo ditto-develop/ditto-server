@@ -214,6 +214,11 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
+  securitySchemes:
+    bearerAuthJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 security:
 - ApiKey: []

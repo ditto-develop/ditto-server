@@ -33,7 +33,7 @@ class AuthServiceTest(
 
         "토큰 갱신" - {
             "유효한 리프레시 토큰으로 새 토큰 쌍을 발급한다" {
-                val member = memberRepository.save(Member(nickname = "테스트유저"))
+                val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
@@ -53,7 +53,7 @@ class AuthServiceTest(
             }
 
             "만료된 리프레시 토큰이면 예외가 발생한다" {
-                val member = memberRepository.save(Member(nickname = "테스트유저"))
+                val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val expiredToken = RefreshToken.create(
                     memberId = member.id,
@@ -79,7 +79,7 @@ class AuthServiceTest(
             }
 
             "갱신 후 이전 리프레시 토큰은 사용할 수 없다" {
-                val member = memberRepository.save(Member(nickname = "테스트유저"))
+                val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
                 val oldToken = refreshToken.token

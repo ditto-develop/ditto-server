@@ -15,7 +15,8 @@ class KakaoOAuthClient(
         return "${AUTHORIZATION_URI}?" +
                 "${OAuthConstants.PARAM_CLIENT_ID}=${properties.clientId}" +
                 "&${OAuthConstants.PARAM_REDIRECT_URI}=${properties.redirectUri}" +
-                "&${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
+                "&${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}" +
+                "&${OAuthConstants.PARAM_SCOPE}=${SCOPE_ACCOUNT_EMAIL}"
     }
 
     override fun getAccessToken(code: String): String {
@@ -26,10 +27,12 @@ class KakaoOAuthClient(
 
     override fun getUserInfo(accessToken: String): OAuthUserInfo {
         val response = client.getUserInfo("Bearer $accessToken")
+        val kakaoAccount = response.kakaoAccount
 
         return OAuthUserInfo(
             id = response.id.toString(),
-            nickname = response.kakaoAccount?.profile?.nickname ?: OAuthConstants.DEFAULT_NICKNAME,
+            nickname = kakaoAccount?.profile?.nickname ?: OAuthConstants.DEFAULT_NICKNAME,
+            email = kakaoAccount?.email,
         )
     }
 
@@ -50,5 +53,6 @@ class KakaoOAuthClient(
 
     companion object {
         private const val AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize"
+        private const val SCOPE_ACCOUNT_EMAIL = "account_email"
     }
 }

@@ -21,19 +21,25 @@ class MemberSocialAccountService(
         provider: SocialProvider,
         providerUserId: String,
         nickname: String,
+        email: String?,
     ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
         if (existingAccount != null) {
-            return memberRepository.findById(existingAccount.memberId).orElseThrow {
+            val member = memberRepository.findById(existingAccount.memberId).orElseThrow {
                 log.error {
                     "SocialAccount(id=${existingAccount.id})에 연결된 Member(id=${existingAccount.memberId})가 존재하지 않습니다."
                 }
                 ErrorException(ErrorCode.INTERNAL_ERROR)
             }
+            if (member.hasEmailChanged(email)) {
+                log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
+                member.updateEmail(email)
+            }
+            return member
         }
 
-        val newMember = memberRepository.save(Member(nickname = nickname))
+        val newMember = memberRepository.save(Member(nickname = nickname, email = email))
         socialAccountRepository.save(
             SocialAccount.create(
                 memberId = newMember.id,
