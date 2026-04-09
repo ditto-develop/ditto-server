@@ -64,6 +64,27 @@ class MemberSocialAccountServiceTest(
                 found.email shouldBe "new@kakao.com"
             }
 
+            "기존 사용자 재로그인 시 이메일이 null이면 기존 이메일을 유지한다" {
+                val created = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "old@kakao.com",
+                )
+
+                val found = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "테스트유저", null,
+                )
+
+                found.id shouldBe created.id
+                found.email shouldBe "old@kakao.com"
+            }
+
+            "신규 사용자 이메일 없이 가입할 수 있다" {
+                val member = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-456", "테스트유저", null,
+                )
+
+                member.email shouldBe null
+            }
+
             "기존 사용자 재조회 시 SocialAccount가 추가 생성되지 않는다" {
                 memberSocialAccountService.findOrCreateMember(
                     SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",

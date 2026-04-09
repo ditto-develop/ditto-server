@@ -3,9 +3,6 @@ package com.ditto.infrastructure.oauth.kakao
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoTokenResponse
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoUserResponse
-import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -131,7 +128,7 @@ class KakaoOAuthClientTest : FreeSpec(
                 userInfo.nickname shouldBe OAuthConstants.DEFAULT_NICKNAME
             }
 
-            "이메일이 없으면 예외가 발생한다" {
+            "이메일이 없으면 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
                     kakaoAccount = KakaoUserResponse.KakaoAccount(
@@ -140,22 +137,20 @@ class KakaoOAuthClientTest : FreeSpec(
                     ),
                 )
 
-                val exception = shouldThrow<WarnException> {
-                    client.getUserInfo("test-token")
-                }
-                exception.errorCode shouldBe ErrorCode.OAUTH_EMAIL_NOT_PROVIDED
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.email shouldBe null
             }
 
-            "kakaoAccount가 없으면 예외가 발생한다" {
+            "kakaoAccount가 없으면 email은 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
                     kakaoAccount = null,
                 )
 
-                val exception = shouldThrow<WarnException> {
-                    client.getUserInfo("test-token")
-                }
-                exception.errorCode shouldBe ErrorCode.OAUTH_EMAIL_NOT_PROVIDED
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.email shouldBe null
             }
         }
     },

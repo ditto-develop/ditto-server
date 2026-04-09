@@ -28,8 +28,8 @@ class Member(
     var nickname: String,
 
     @Comment("이메일")
-    @Column(nullable = false, length = 100)
-    var email: String,
+    @Column(nullable = true, length = 100)
+    var email: String? = null,
 
     @Comment("회원 상태")
     @Enumerated(EnumType.STRING)
@@ -42,10 +42,12 @@ class Member(
         status = MemberStatus.ACTIVE
     }
 
-    fun hasEmailChanged(email: String): Boolean = this.email != email
+    fun hasEmailChanged(email: String?): Boolean = email != null && this.email != email
 
-    fun updateEmail(email: String) {
-        this.email = email
+    fun updateEmail(email: String?) {
+        if (email != null) {
+            this.email = email
+        }
     }
 
     fun isPending(): Boolean = status == MemberStatus.PENDING

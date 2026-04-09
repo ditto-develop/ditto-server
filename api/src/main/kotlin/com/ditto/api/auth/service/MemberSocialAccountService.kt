@@ -21,7 +21,7 @@ class MemberSocialAccountService(
         provider: SocialProvider,
         providerUserId: String,
         nickname: String,
-        email: String,
+        email: String?,
     ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 

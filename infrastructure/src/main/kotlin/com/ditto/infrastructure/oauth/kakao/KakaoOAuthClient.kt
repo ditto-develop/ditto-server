@@ -1,7 +1,5 @@
 package com.ditto.infrastructure.oauth.kakao
 
-import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
@@ -30,13 +28,11 @@ class KakaoOAuthClient(
     override fun getUserInfo(accessToken: String): OAuthUserInfo {
         val response = client.getUserInfo("Bearer $accessToken")
         val kakaoAccount = response.kakaoAccount
-        val email = kakaoAccount?.email
-            ?: throw WarnException(ErrorCode.OAUTH_EMAIL_NOT_PROVIDED)
 
         return OAuthUserInfo(
             id = response.id.toString(),
-            nickname = kakaoAccount.profile?.nickname ?: OAuthConstants.DEFAULT_NICKNAME,
-            email = email,
+            nickname = kakaoAccount?.profile?.nickname ?: OAuthConstants.DEFAULT_NICKNAME,
+            email = kakaoAccount?.email,
         )
     }
 
