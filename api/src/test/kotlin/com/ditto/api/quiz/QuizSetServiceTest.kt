@@ -114,7 +114,7 @@ class QuizSetServiceTest(
             val exception = shouldThrow<WarnException> {
                 quizSetService.getQuizSet(99999L)
             }
-            exception.errorCode shouldBe ErrorCode.QUIZ_SET_NOT_FOUND
+            exception.errorCode shouldBe ErrorCode.NOT_FOUND
         }
     }
 })

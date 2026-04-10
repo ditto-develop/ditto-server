@@ -166,6 +166,6 @@ class QuizSetControllerTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.error.code").value("3001"))
+            .andExpect(jsonPath("$.error.code").value("0004"))
     }
 }

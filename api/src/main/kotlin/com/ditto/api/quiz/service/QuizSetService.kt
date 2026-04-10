@@ -74,7 +74,7 @@ class QuizSetService(
         val quizSet =
             quizSetRepository
                 .findById(id)
-                .orElseThrow { WarnException(ErrorCode.QUIZ_SET_NOT_FOUND) }
+                .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
 
         return QuizSetResponse.from(quizSet)
     }
