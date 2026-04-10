@@ -56,7 +56,12 @@ class SecurityConfig(
     @Order(3)
     fun apiKeyOnlySecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
-            .securityMatcher("/api/v1/users/social-login/**", "/api/v1/users/auth/refresh")
+            .securityMatcher(
+                "/api/v1/users/social-login/**",
+                "/api/v1/users/auth/refresh",
+                "/api/v1/users",
+                "/api/v1/users/nickname/**",
+            )
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
