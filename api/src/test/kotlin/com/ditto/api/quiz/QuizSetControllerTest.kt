@@ -1,6 +1,8 @@
 package com.ditto.api.quiz
 
 import com.ditto.api.support.RestDocsTest
+import com.ditto.api.support.TestClockConfig
+import org.springframework.context.annotation.Import
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
@@ -20,8 +22,8 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-import java.time.LocalDateTime
 
+@Import(TestClockConfig::class)
 class QuizSetControllerTest : RestDocsTest() {
 
     @Autowired
@@ -33,14 +35,15 @@ class QuizSetControllerTest : RestDocsTest() {
     @Autowired
     private lateinit var quizChoiceRepository: QuizChoiceRepository
 
+    private val fixedTime = TestClockConfig.FIXED_TIME
+
     @Test
     @DisplayName("이번 주차 퀴즈 세트를 조회한다")
     fun getCurrentWeek() {
-        val now = LocalDateTime.now()
         val quizSet = quizSetRepository.save(
             QuizSetFixture.create(
-                startDate = now.minusDays(1),
-                endDate = now.plusDays(1),
+                startDate = fixedTime.minusDays(1),
+                endDate = fixedTime.plusDays(1),
             ),
         )
         val quiz = quizRepository.save(
