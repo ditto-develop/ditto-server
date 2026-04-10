@@ -17,7 +17,7 @@ import org.hibernate.annotations.Comment
         Index(name = "quiz_index_1", columnList = "quiz_set_id, display_order"),
     ],
 )
-class Quiz(
+class Quiz private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
@@ -37,4 +37,16 @@ class Quiz(
     @Column(name = "display_order", nullable = false)
     var displayOrder: Int = displayOrder
         protected set
+
+    companion object {
+        fun create(
+            quizSetId: Long,
+            question: String,
+            displayOrder: Int,
+        ): Quiz = Quiz(
+            quizSetId = quizSetId,
+            question = question,
+            displayOrder = displayOrder,
+        )
+    }
 }

@@ -20,7 +20,7 @@ import java.time.LocalDateTime
         Index(name = "quiz_set_index_1", columnList = "year_no, month_no, week_no"),
     ],
 )
-class QuizSet(
+class QuizSet private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
@@ -84,5 +84,31 @@ class QuizSet(
 
     fun deactivate() {
         isActive = false
+    }
+
+    companion object {
+        fun create(
+            year: Int,
+            month: Int,
+            week: Int,
+            category: String,
+            title: String,
+            description: String? = null,
+            startDate: LocalDateTime,
+            endDate: LocalDateTime,
+            isActive: Boolean = false,
+            matchingType: MatchingType = MatchingType.ONE_TO_ONE,
+        ): QuizSet = QuizSet(
+            year = year,
+            month = month,
+            week = week,
+            category = category,
+            title = title,
+            description = description,
+            startDate = startDate,
+            endDate = endDate,
+            isActive = isActive,
+            matchingType = matchingType,
+        )
     }
 }
