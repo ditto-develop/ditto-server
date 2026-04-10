@@ -14,7 +14,8 @@ CREATE TABLE quiz_set
     created_at    DATETIME(6)  NOT NULL COMMENT '생성 일시',
     updated_at    DATETIME(6)  NOT NULL COMMENT '수정 일시',
     PRIMARY KEY (id),
-    INDEX quiz_set_index_1 (year_no, month_no, week_no)
+    INDEX quiz_set_index_1 (year_no, month_no, week_no),
+    INDEX quiz_set_index_2 (start_date, end_date, is_active)
 ) COMMENT ='퀴즈 세트';
 
 CREATE TABLE quiz

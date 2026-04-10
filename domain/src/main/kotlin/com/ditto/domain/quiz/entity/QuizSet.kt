@@ -18,6 +18,7 @@ import java.time.LocalDateTime
     name = "quiz_set",
     indexes = [
         Index(name = "quiz_set_index_1", columnList = "year_no, month_no, week_no"),
+        Index(name = "quiz_set_index_2", columnList = "start_date, end_date, is_active"),
     ],
 )
 class QuizSet private constructor(

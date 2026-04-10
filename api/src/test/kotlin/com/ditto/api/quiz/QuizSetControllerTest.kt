@@ -57,7 +57,7 @@ class QuizSetControllerTest : RestDocsTest() {
         )
 
         mockMvc.perform(
-            get("/api/quiz-sets/current-week")
+            get("/api/v1/quiz-sets/current-week")
                 .withApiKey()
                 .withBearerToken(),
         )
@@ -115,7 +115,7 @@ class QuizSetControllerTest : RestDocsTest() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
 
         mockMvc.perform(
-            get("/api/quiz-sets/{id}", quizSet.id)
+            get("/api/v1/quiz-sets/{id}", quizSet.id)
                 .withApiKey()
                 .withBearerToken(),
         )
@@ -160,7 +160,7 @@ class QuizSetControllerTest : RestDocsTest() {
     @DisplayName("존재하지 않는 퀴즈 세트를 조회하면 에러를 반환한다")
     fun getQuizSetNotFound() {
         mockMvc.perform(
-            get("/api/quiz-sets/{id}", 99999)
+            get("/api/v1/quiz-sets/{id}", 99999)
                 .withApiKey()
                 .withBearerToken(),
         )

@@ -4,11 +4,10 @@ import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.temporal.WeekFields
 
 class ServerClock(
-    private val clock: Clock = Clock.system(KST),
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) {
     fun now(): LocalDateTime = LocalDateTime.now(clock)
 
@@ -24,7 +23,6 @@ class ServerClock(
     }
 
     companion object {
-        private val KST: ZoneId = ZoneId.of("Asia/Seoul")
         private val WEEK_FIELDS = WeekFields.of(DayOfWeek.MONDAY, 1)
     }
 }

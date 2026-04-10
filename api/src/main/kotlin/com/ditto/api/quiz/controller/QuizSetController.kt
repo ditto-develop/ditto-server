@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RestController
 class QuizSetController(
     private val quizSetService: QuizSetService,
 ) {
-    @GetMapping("/api/quiz-sets/current-week")
+    @GetMapping("/api/v1/quiz-sets/current-week")
     fun getCurrentWeek(): ApiResponse<CurrentWeekQuizSetsResponse> {
         return ApiResponse.ok(quizSetService.getCurrentWeekQuizSets())
     }
 
-    @GetMapping("/api/quiz-sets/{id}")
+    @GetMapping("/api/v1/quiz-sets/{id}")
     fun getQuizSet(@PathVariable id: Long): ApiResponse<QuizSetResponse> {
         return ApiResponse.ok(quizSetService.getQuizSet(id))
     }
