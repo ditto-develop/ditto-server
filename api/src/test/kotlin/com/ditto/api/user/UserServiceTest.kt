@@ -10,6 +10,7 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -60,7 +61,7 @@ class UserServiceTest(
             }
 
             "존재하지 않는 소셜 계정이면 예외가 발생한다" {
-                val exception = shouldThrow<WarnException> {
+                val exception = shouldThrow<ErrorException> {
                     userService.register(
                         CreateUserRequest(
                             provider = SocialProvider.KAKAO,
@@ -77,7 +78,7 @@ class UserServiceTest(
                 memberRepository.save(member)
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "provider-user-2"))
 
-                val exception = shouldThrow<WarnException> {
+                val exception = shouldThrow<ErrorException> {
                     userService.register(
                         CreateUserRequest(
                             provider = SocialProvider.KAKAO,
