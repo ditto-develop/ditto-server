@@ -18,6 +18,60 @@ servers:
 - url: ""
 tags: []
 paths:
+  /api/v1/users:
+    post:
+      tags:
+      - Users
+      summary: 회원가입
+      description: 소셜 로그인 후 추가 정보를 입력하여 회원가입을 완료합니다.
+      operationId: user-register
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-1422985128"
+            examples:
+              user-register:
+                value: |-
+                  {
+                    "name" : "김철수",
+                    "nickname" : "철수123",
+                    "phoneNumber" : "010-1234-5678",
+                    "email" : null,
+                    "gender" : "MALE",
+                    "age" : 25,
+                    "birthDate" : null,
+                    "provider" : "KAKAO",
+                    "providerUserId" : "register-user"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-107230905"
+              examples:
+                user-register:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "id" : 1,
+                        "name" : "김철수",
+                        "nickname" : "철수123",
+                        "phoneNumber" : "010-1234-5678",
+                        "email" : null,
+                        "gender" : "MALE",
+                        "age" : 25,
+                        "birthDate" : null,
+                        "joinedAt" : "2026-04-10 19:24:28",
+                        "role" : null,
+                        "createdAt" : "2026-04-10 19:24:28",
+                        "updatedAt" : "2026-04-10 19:24:28"
+                      },
+                      "error" : null
+                    }
   /api/v1/users/auth/logout:
     post:
       tags:
@@ -58,7 +112,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "b76975a5-5fe8-4f7f-8fba-8741e49b4b19"
+                    "refreshToken" : "ffb7561c-4eb2-4336-bb28-99fa9fa4a08f"
                   }
       responses:
         "200":
@@ -73,8 +127,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU1NDE5MTAsImV4cCI6MTc3NTU0NTUxMH0.C7VIaiU_4m8CQCCB6tI0szx2FsdPwSEcKrfy7--EUCSYLiob8GwtY91-cO0YjxB_FTOLC-IDDHr-KJBODF5EVA",
-                        "refreshToken" : "1079e4e3-0fa5-4c2b-ac91-3e19036b9726"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU4MTY2NjYsImV4cCI6MTc3NTgyMDI2Nn0.9fJXw-0ITY-dMtw7j5n7K-2vTZln6V3ZhXZ3qKNytPi-wO3Y-_2RzpZKnbLItQlEX5Iij4ECGSzP44OXoLLsSg",
+                        "refreshToken" : "894b0ecb-ae1a-4d45-861b-a2ec6c80cbb4"
                       },
                       "error" : null
                     }
@@ -95,6 +149,81 @@ paths:
       responses:
         "302":
           description: "302"
+  /api/v1/users/{id}/leave:
+    post:
+      tags:
+      - Users
+      summary: 회원 탈퇴
+      description: 회원을 탈퇴 처리합니다.
+      operationId: user-leave
+      parameters:
+      - name: id
+        in: path
+        description: 사용자 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-id-leave-1444522536"
+              examples:
+                user-leave:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "id" : 1,
+                        "name" : null,
+                        "nickname" : "탈퇴유저",
+                        "phoneNumber" : null,
+                        "email" : null,
+                        "gender" : null,
+                        "age" : null,
+                        "birthDate" : null,
+                        "joinedAt" : null,
+                        "role" : null,
+                        "createdAt" : "2026-04-10 19:24:28",
+                        "updatedAt" : "2026-04-10 19:24:28"
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/users/nickname/{nickname}/availability:
+    get:
+      tags:
+      - Users
+      summary: 닉네임 중복 확인
+      description: 닉네임이 사용 가능한지 확인합니다.
+      operationId: nickname-availability
+      parameters:
+      - name: nickname
+        in: path
+        description: 확인할 닉네임
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-nickname-nickname-availability-125958969"
+              examples:
+                nickname-availability:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "available" : true
+                      },
+                      "error" : null
+                    }
   /api/v1/users/social-login/{provider}/callback:
     get:
       tags:
@@ -135,22 +264,12 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ5Mzk3MTcsImV4cCI6MTc3NDk0MzMxN30.JyttZNZe03omDRMBg0ZqwOyU-ndwdYP-RbqGN3idW8XcxY4NOxqD8VQnq6k2jaM6mwKYDRGrMVPyfOJ_iNM5qQ",
-                        "refreshToken" : "397ea348-f690-435d-999e-fd5ad6a56332"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMjAsImV4cCI6MTc3NDgwNDkyMH0.kqnh-Cde7IvgLPBqNMwnNINyD6JmXf5GRD0dcQKTNFyYwCjE6FdRqT_i8i04W67dDfexgPZvl6hk2U521gsCKA",
+                        "refreshToken" : "0282aea0-e052-43f2-b5d7-0ece67b91425"
                       },
                       "error" : null
                     }
 components:
-  securitySchemes:
-    ApiKey:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API 인증 키. 백엔드 담당자에게 발급받으세요.
-    bearerAuthJWT:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   schemas:
     api-v1-users-auth-refresh-42454406:
       required:
@@ -196,6 +315,55 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-1422985128:
+      required:
+      - provider
+      - providerUserId
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE)"
+          nullable: true
+        provider:
+          type: string
+          description: 소셜 로그인 제공자 (KAKAO)
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        providerUserId:
+          type: string
+          description: 소셜 로그인 제공자의 사용자 ID
+        age:
+          type: number
+          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
+          nullable: true
+    api-v1-users-nickname-nickname-availability-125958969:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - available
+          type: object
+          properties:
+            available:
+              type: boolean
+              description: 닉네임 사용 가능 여부
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-auth-logout-1831456372:
       required:
       - data
@@ -203,6 +371,58 @@ components:
       - success
       type: object
       properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-107230905:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            phoneNumber:
+              type: string
+              description: 전화번호
+            gender:
+              type: string
+              description: 성별
+            joinedAt:
+              type: string
+              description: 가입일시
+            nickname:
+              type: string
+              description: 닉네임
+            name:
+              type: string
+              description: 이름
+            id:
+              type: number
+              description: 사용자 ID
+            age:
+              type: number
+              description: 나이대
+            updatedAt:
+              type: string
+              description: 수정일시
         success:
           type: boolean
           description: 성공 여부
@@ -214,7 +434,49 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
+    api-v1-users-id-leave-1444522536:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
   securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API 인증 키. 백엔드 담당자에게 발급받으세요.
     bearerAuthJWT:
       type: http
       scheme: bearer

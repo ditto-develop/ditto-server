@@ -26,24 +26,44 @@ class MemberSocialAccountServiceTest(
         "findOrCreateMember" - {
             "신규 사용자면 PENDING 상태의 Member와 SocialAccount를 생성한다" {
                 val member = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                 )
 
                 member.id shouldNotBe 0L
-                member.nickname shouldBe "테스트유저"
+                member.nickname shouldNotBe null
                 member.email shouldBe "test@kakao.com"
                 member.status shouldBe MemberStatus.PENDING
                 memberRepository.count() shouldBe 1
                 socialAccountRepository.count() shouldBe 1
             }
 
+            "신규 사용자는 랜덤 닉네임이 부여되며 형용사+명사+숫자 형식이다" {
+                val member = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-1", null,
+                )
+
+                member.nickname shouldNotBe null
+                member.nickname.length shouldNotBe 0
+            }
+
+            "서로 다른 신규 사용자는 다른 닉네임을 가진다" {
+                val member1 = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-1", null,
+                )
+                val member2 = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-2", null,
+                )
+
+                member1.nickname shouldNotBe member2.nickname
+            }
+
             "기존 사용자면 기존 Member를 반환한다" {
                 val created = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                 )
 
                 val found = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "다른닉네임", "test@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                 )
 
                 found.id shouldBe created.id
@@ -53,11 +73,11 @@ class MemberSocialAccountServiceTest(
 
             "기존 사용자 재로그인 시 이메일이 변경되었으면 갱신한다" {
                 val created = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "old@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "old@kakao.com",
                 )
 
                 val found = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "new@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "new@kakao.com",
                 )
 
                 found.id shouldBe created.id
@@ -66,11 +86,11 @@ class MemberSocialAccountServiceTest(
 
             "기존 사용자 재로그인 시 이메일이 null이면 기존 이메일을 유지한다" {
                 val created = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "old@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "old@kakao.com",
                 )
 
                 val found = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", null,
+                    SocialProvider.KAKAO, "kakao-123", null,
                 )
 
                 found.id shouldBe created.id
@@ -79,7 +99,7 @@ class MemberSocialAccountServiceTest(
 
             "신규 사용자 이메일 없이 가입할 수 있다" {
                 val member = memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-456", "테스트유저", null,
+                    SocialProvider.KAKAO, "kakao-456", null,
                 )
 
                 member.email shouldBe null
@@ -87,11 +107,11 @@ class MemberSocialAccountServiceTest(
 
             "기존 사용자 재조회 시 SocialAccount가 추가 생성되지 않는다" {
                 memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                 )
 
                 memberSocialAccountService.findOrCreateMember(
-                    SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                 )
 
                 socialAccountRepository.count() shouldBe 1
@@ -110,7 +130,7 @@ class MemberSocialAccountServiceTest(
 
                 shouldThrow<ErrorException> {
                     memberSocialAccountService.findOrCreateMember(
-                        SocialProvider.KAKAO, "kakao-123", "테스트유저", "test@kakao.com",
+                        SocialProvider.KAKAO, "kakao-123", "test@kakao.com",
                     )
                 }
             }
