@@ -5,7 +5,6 @@ import com.ditto.api.quiz.dto.CurrentWeekQuizSetsResponse
 import com.ditto.api.quiz.dto.QuizSetResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.common.support.ServerClock
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
@@ -14,23 +13,40 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.temporal.WeekFields
 
 @Service
 @Transactional(readOnly = true)
 class QuizSetService(
-    private val serverClock: ServerClock,
     private val quizSetRepository: QuizSetRepository,
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
 ) {
-    fun getCurrentWeekQuizSets(): CurrentWeekQuizSetsResponse {
-        val quizSets = quizSetRepository.findCurrentWeekActive(serverClock.now())
-        val (year, month, week) = serverClock.currentWeekInfo()
+    fun getCurrentWeekQuizSets(now: LocalDateTime): CurrentWeekQuizSetsResponse {
+        val quizSets = quizSetRepository.findCurrentWeekActive(now)
+        val (year, month, week) = currentWeekInfo(now.toLocalDate())
 
         if (quizSets.isEmpty()) {
             return CurrentWeekQuizSetsResponse.empty(year, month, week)
         }
         return toCurrentWeekResponse(year, month, week, quizSets)
+    }
+
+    private fun currentWeekInfo(today: LocalDate): Triple<Int, Int, Int> {
+        val weekFields = WeekFields.of(DayOfWeek.MONDAY, 1)
+        return Triple(today.year, today.monthValue, today.get(weekFields.weekOfMonth()))
+    }
+
+    fun getQuizSet(id: Long): QuizSetResponse {
+        val quizSet =
+            quizSetRepository
+                .findById(id)
+                .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+
+        return QuizSetResponse.from(quizSet)
     }
 
     private fun toCurrentWeekResponse(
@@ -68,14 +84,5 @@ class QuizSetService(
         return quizChoiceRepository
             .findByQuizIdInOrderByDisplayOrderAsc(quizIds)
             .groupBy { it.quizId }
-    }
-
-    fun getQuizSet(id: Long): QuizSetResponse {
-        val quizSet =
-            quizSetRepository
-                .findById(id)
-                .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-
-        return QuizSetResponse.from(quizSet)
     }
 }

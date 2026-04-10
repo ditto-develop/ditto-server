@@ -1,8 +1,6 @@
 package com.ditto.api.quiz
 
 import com.ditto.api.support.RestDocsTest
-import com.ditto.api.support.TestClockConfig
-import org.springframework.context.annotation.Import
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
@@ -22,8 +20,8 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 
-@Import(TestClockConfig::class)
 class QuizSetControllerTest : RestDocsTest() {
 
     @Autowired
@@ -35,16 +33,13 @@ class QuizSetControllerTest : RestDocsTest() {
     @Autowired
     private lateinit var quizChoiceRepository: QuizChoiceRepository
 
-    private val fixedTime = TestClockConfig.FIXED_TIME
+    private val now = LocalDateTime.now()
 
     @Test
     @DisplayName("이번 주차 퀴즈 세트를 조회한다")
     fun getCurrentWeek() {
         val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(
-                startDate = fixedTime.minusDays(1),
-                endDate = fixedTime.plusDays(1),
-            ),
+            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
         )
         val quiz = quizRepository.save(
             QuizFixture.create(quizSetId = quizSet.id, question = "짜장면 vs 짬뽕?", displayOrder = 1),
@@ -98,7 +93,7 @@ class QuizSetControllerTest : RestDocsTest() {
                                 fieldWithPath("data.quizSets[].quizzes[].order").description("퀴즈 순서"),
                                 fieldWithPath("data.quizSets[].quizzes[].createdAt").description("생성일시"),
                                 fieldWithPath("data.quizSets[].quizzes[].updatedAt").description("수정일시"),
-                                fieldWithPath("data.quizSets[].quizzes[].choices[].id").description("���택지 ID"),
+                                fieldWithPath("data.quizSets[].quizzes[].choices[].id").description("선택지 ID"),
                                 fieldWithPath("data.quizSets[].quizzes[].choices[].content").description("선택지 내용"),
                                 fieldWithPath("data.quizSets[].quizzes[].choices[].order").description("선택지 순서"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
