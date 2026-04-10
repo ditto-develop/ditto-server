@@ -65,10 +65,10 @@ paths:
                         "gender" : "MALE",
                         "age" : 25,
                         "birthDate" : null,
-                        "joinedAt" : "2026-04-10 19:05:23",
+                        "joinedAt" : "2026-04-10 19:24:28",
                         "role" : null,
-                        "createdAt" : "2026-04-10 19:05:23",
-                        "updatedAt" : "2026-04-10 19:05:23"
+                        "createdAt" : "2026-04-10 19:24:28",
+                        "updatedAt" : "2026-04-10 19:24:28"
                       },
                       "error" : null
                     }
@@ -112,7 +112,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "f77c5bdd-56c5-4c8f-b92b-ee32664823fc"
+                    "refreshToken" : "ffb7561c-4eb2-4336-bb28-99fa9fa4a08f"
                   }
       responses:
         "200":
@@ -127,8 +127,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU4MTU1MjEsImV4cCI6MTc3NTgxOTEyMX0.qdCn5M_5RC6Fr4uq4NT4LIcdNuaIXHXA-Vq9Teui5cD15JJhajhdO1tH6nsL6shPR7fKTtwjOfehz-8SVQENEw",
-                        "refreshToken" : "8fc0f05a-35dd-4016-b5b7-f9b2c1c78de8"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU4MTY2NjYsImV4cCI6MTc3NTgyMDI2Nn0.9fJXw-0ITY-dMtw7j5n7K-2vTZln6V3ZhXZ3qKNytPi-wO3Y-_2RzpZKnbLItQlEX5Iij4ECGSzP44OXoLLsSg",
+                        "refreshToken" : "894b0ecb-ae1a-4d45-861b-a2ec6c80cbb4"
                       },
                       "error" : null
                     }
@@ -176,7 +176,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "id" : 2,
+                        "id" : 1,
                         "name" : null,
                         "nickname" : "탈퇴유저",
                         "phoneNumber" : null,
@@ -186,8 +186,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-04-10 19:05:23",
-                        "updatedAt" : "2026-04-10 19:05:23"
+                        "createdAt" : "2026-04-10 19:24:28",
+                        "updatedAt" : "2026-04-10 19:24:28"
                       },
                       "error" : null
                     }

@@ -20,7 +20,7 @@ class OAuthFacade(
 
     fun login(provider: SocialProvider, code: String): OAuthLoginResponse {
         val userInfo = oAuthService.getOAuthUserInfo(provider, code)
-        val member = memberSocialAccountService.findOrCreateMember(provider, userInfo.id, userInfo.nickname, userInfo.email)
+        val member = memberSocialAccountService.findOrCreateMember(provider, userInfo.id, userInfo.email)
 
         if (member.isPending()) {
             return OAuthLoginResponse()

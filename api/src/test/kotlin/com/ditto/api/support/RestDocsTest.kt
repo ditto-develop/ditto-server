@@ -4,6 +4,7 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.serialization.ObjectMapperFactory
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
+@ExtendWith(JunitDatabaseCleanExtension::class)
 abstract class RestDocsTest {
 
     @Autowired

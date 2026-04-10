@@ -1,5 +1,6 @@
 package com.ditto.api.auth.service
 
+import com.ditto.api.auth.NicknameGenerator
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.member.entity.Member
@@ -20,7 +21,6 @@ class MemberSocialAccountService(
     fun findOrCreateMember(
         provider: SocialProvider,
         providerUserId: String,
-        nickname: String,
         email: String?,
     ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
@@ -39,7 +39,7 @@ class MemberSocialAccountService(
             return member
         }
 
-        val newMember = memberRepository.save(Member(nickname = nickname, email = email))
+        val newMember = memberRepository.save(Member(nickname = generateUniqueNickname(), email = email))
         socialAccountRepository.save(
             SocialAccount.create(
                 memberId = newMember.id,
@@ -48,6 +48,14 @@ class MemberSocialAccountService(
             ),
         )
         return newMember
+    }
+
+    private fun generateUniqueNickname(): String {
+        repeat(5) {
+            val nickname = NicknameGenerator.generate()
+            if (!memberRepository.existsByNickname(nickname)) return nickname
+        }
+        return NicknameGenerator.generate()
     }
 
     companion object {

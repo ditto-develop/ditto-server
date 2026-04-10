@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
 import java.time.LocalDateTime
 
@@ -17,6 +18,7 @@ import java.time.LocalDateTime
 @Table(
     name = "member",
     indexes = [Index(name = "member_index_1", columnList = "created_at, status")],
+    uniqueConstraints = [UniqueConstraint(name = "member_unique_1", columnNames = ["nickname"])],
 )
 class Member(
 
@@ -61,7 +63,6 @@ class Member(
     @Comment("가입일시")
     @Column(name = "joined_at", nullable = true)
     var joinedAt: LocalDateTime? = null,
-
 ) : BaseEntity() {
 
     fun activate() {
