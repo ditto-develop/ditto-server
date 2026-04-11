@@ -14,5 +14,7 @@ enum class ErrorCode(
     REFRESH_TOKEN_EXPIRED(401, "2002", "리프레시 토큰이 만료되었습니다."),
     MEMBER_ALREADY_EXISTS(409, "3002", "이미 존재하는 사용자입니다."),
     NICKNAME_ALREADY_EXISTS(409, "3003", "이미 사용 중인 닉네임입니다."),
+    QUIZ_NOT_IN_ACTIVE_SET(400, "4001", "현재 활성화된 퀴즈 세트에 속한 퀴즈가 아닙니다."),
+    INVALID_CHOICE(400, "4002", "해당 퀴즈의 유효한 선택지가 아닙니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
