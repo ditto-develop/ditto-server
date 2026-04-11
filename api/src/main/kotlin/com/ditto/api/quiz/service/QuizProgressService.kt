@@ -52,11 +52,11 @@ class QuizProgressService(
         val quiz =
             quizRepository
                 .findById(quizId)
-                .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+                .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
         val quizSet =
             quizSetRepository
                 .findById(quiz.quizSetId)
-                .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+                .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
 
         val isInPeriod = !now.isBefore(quizSet.startDate) && !now.isAfter(quizSet.endDate)
         if (!quizSet.isActive || !isInPeriod) {

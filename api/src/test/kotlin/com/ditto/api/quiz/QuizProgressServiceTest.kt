@@ -109,7 +109,7 @@ class QuizProgressServiceTest(
         "존재하지 않는 quizId로 제출하면 예외가 발생한다" {
             val principal = setupMember()
 
-            val exception = shouldThrow<WarnException> {
+            val exception = shouldThrow<ErrorException> {
                 quizProgressService.submitAnswer(principal, SubmitAnswerRequest(99999L, 1L), now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
