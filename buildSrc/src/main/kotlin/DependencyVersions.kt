@@ -4,7 +4,7 @@ object DependencyVersions {
     const val SPRING_DEPENDENCY_MANAGEMENT = "1.1.7"
     const val H2 = "2.3.232"
     const val MYSQL_CONNECTOR = "8.3.0"
-    const val QUERYDSL = "5.1.0"
+    const val QUERYDSL = "7.1"
     const val KOTEST = "5.9.1"
     const val KOTEST_SPRING = "1.3.0"
     const val MOCKK = "1.13.13"
@@ -49,6 +49,8 @@ object Dependencies {
     const val JJWT_JACKSON = "io.jsonwebtoken:jjwt-jackson:${DependencyVersions.JJWT}"
     const val COROUTINES_CORE = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${DependencyVersions.COROUTINES}"
     const val COROUTINES_REACTOR = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:${DependencyVersions.COROUTINES}"
+    const val QUERYDSL_JPA = "io.github.openfeign.querydsl:querydsl-jpa:${DependencyVersions.QUERYDSL}"
+    const val QUERYDSL_APT = "io.github.openfeign.querydsl:querydsl-apt:${DependencyVersions.QUERYDSL}:jpa"
     const val SPRING_RESTDOCS_MOCKMVC = "org.springframework.restdocs:spring-restdocs-mockmvc"
     const val RESTDOCS_API_SPEC_MOCKMVC = "com.epages:restdocs-api-spec-mockmvc:${DependencyVersions.RESTDOCS_API_SPEC}"
 }
