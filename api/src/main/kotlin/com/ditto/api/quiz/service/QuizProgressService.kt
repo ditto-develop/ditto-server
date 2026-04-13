@@ -4,10 +4,12 @@ import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
-import com.ditto.common.exception.WarnException
+import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
+import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -18,6 +20,7 @@ import java.time.LocalDateTime
 @Service
 class QuizProgressService(
     private val quizAnswerRepository: QuizAnswerRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizSetRepository: QuizSetRepository,
@@ -30,11 +33,21 @@ class QuizProgressService(
         now: LocalDateTime,
     ) {
         val memberId = resolveMemberId(principal)
+        val quiz = findQuiz(request.quizId)
 
-        validateQuizInActiveSet(request.quizId, now)
+        validateActiveQuizSet(quiz.quizSetId, now)
         validateChoice(request.quizId, request.choiceId)
 
-        upsertAnswer(memberId, request.quizId, request.choiceId)
+        val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
+
+        if (existingQuizAnswer != null) {
+            existingQuizAnswer.changeChoice(request.choiceId)
+            quizAnswerRepository.save(existingQuizAnswer)
+            return
+        }
+
+        quizAnswerRepository.save(QuizAnswer.create(memberId, request.quizId, request.choiceId))
+        updateProgress(memberId, quiz.quizSetId)
     }
 
     private fun resolveMemberId(principal: MemberPrincipal): Long {
@@ -45,20 +58,22 @@ class QuizProgressService(
         return socialAccount.memberId
     }
 
-    private fun validateQuizInActiveSet(
-        quizId: Long,
+    private fun findQuiz(quizId: Long): Quiz =
+        quizRepository
+            .findById(quizId)
+            .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
+
+    private fun validateActiveQuizSet(
+        quizSetId: Long,
         now: LocalDateTime,
     ) {
-        val quiz =
-            quizRepository
-                .findById(quizId)
-                .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
         val quizSet =
             quizSetRepository
-                .findById(quiz.quizSetId)
+                .findById(quizSetId)
                 .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
 
         val isInPeriod = now >= quizSet.startDate && now <= quizSet.endDate
+
         if (!quizSet.isActive || !isInPeriod) {
             throw ErrorException(ErrorCode.QUIZ_NOT_IN_ACTIVE_SET)
         }
@@ -69,25 +84,25 @@ class QuizProgressService(
         choiceId: Long,
     ) {
         val choices = quizChoiceRepository.findByQuizIdInOrderByDisplayOrderAsc(listOf(quizId))
-        val valid = choices.any { it.id == choiceId }
-        if (!valid) {
+        if (choices.none { it.id == choiceId }) {
             throw ErrorException(ErrorCode.INVALID_CHOICE)
         }
     }
 
-    private fun upsertAnswer(
+    private fun updateProgress(
         memberId: Long,
-        quizId: Long,
-        choiceId: Long,
+        quizSetId: Long,
     ) {
-        val existing = quizAnswerRepository.findByMemberIdAndQuizId(memberId, quizId)
-
-        if (existing != null) {
-            existing.changeChoice(choiceId)
+        val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
+        if (progress != null) {
+            progress.recordAnswer()
             return
         }
 
-        val newQuizAnswer = QuizAnswer.create(memberId, quizId, choiceId)
-        quizAnswerRepository.save(newQuizAnswer)
+        val totalCount = quizRepository.countByQuizSetId(quizSetId).toInt()
+        val newProgress = QuizProgress.create(memberId, quizSetId, totalCount)
+
+        newProgress.recordAnswer()
+        quizProgressRepository.save(newProgress)
     }
 }
