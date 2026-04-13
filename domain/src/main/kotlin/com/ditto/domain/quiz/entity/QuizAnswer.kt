@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
@@ -15,6 +16,10 @@ import org.hibernate.annotations.Comment
     name = "quiz_answer",
     uniqueConstraints = [
         UniqueConstraint(name = "quiz_answer_uk_1", columnNames = ["member_id", "quiz_id"]),
+    ],
+    indexes = [
+        Index(name = "quiz_answer_index_1", columnList = "quiz_id"),
+        Index(name = "quiz_answer_index_2", columnList = "choice_id"),
     ],
 )
 class QuizAnswer private constructor(

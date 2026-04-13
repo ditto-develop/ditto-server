@@ -7,5 +7,7 @@ CREATE TABLE quiz_answer
     created_at DATETIME(6) NOT NULL COMMENT '생성 일시',
     updated_at DATETIME(6) NOT NULL COMMENT '수정 일시',
     PRIMARY KEY (id),
-    UNIQUE KEY quiz_answer_uk_1 (member_id, quiz_id)
+    UNIQUE KEY quiz_answer_uk_1 (member_id, quiz_id),
+    INDEX quiz_answer_index_1 (quiz_id),
+    INDEX quiz_answer_index_2 (choice_id)
 ) COMMENT ='퀴즈 답변';

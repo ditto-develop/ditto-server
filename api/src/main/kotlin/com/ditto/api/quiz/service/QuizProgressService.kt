@@ -58,7 +58,7 @@ class QuizProgressService(
                 .findById(quiz.quizSetId)
                 .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
 
-        val isInPeriod = !now.isBefore(quizSet.startDate) && !now.isAfter(quizSet.endDate)
+        val isInPeriod = now >= quizSet.startDate && now <= quizSet.endDate
         if (!quizSet.isActive || !isInPeriod) {
             throw ErrorException(ErrorCode.QUIZ_NOT_IN_ACTIVE_SET)
         }
