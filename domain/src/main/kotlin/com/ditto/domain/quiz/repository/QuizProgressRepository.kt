@@ -2,9 +2,10 @@ package com.ditto.domain.quiz.repository
 
 import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.entity.QuizProgressStatus
+import com.ditto.domain.quiz.repository.querydsl.QuizProgressRepositoryCustom
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface QuizProgressRepository : JpaRepository<QuizProgress, Long> {
+interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgressRepositoryCustom {
     fun findByMemberIdAndQuizSetId(
         memberId: Long,
         quizSetId: Long,
@@ -19,4 +20,5 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long> {
         quizSetIds: List<Long>,
         status: QuizProgressStatus,
     ): Long
+
 }
