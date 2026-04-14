@@ -14,6 +14,7 @@ import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -31,6 +32,7 @@ class QuizProgressServiceTest(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     dataSource: DataSource,
@@ -256,6 +258,75 @@ class QuizProgressServiceTest(
                 quizProgressService.getQuizSetWithProgress(principal, 99999L, now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
+        }
+    }
+
+    "퀴즈 진행 초기화" - {
+        "초기화하면 답변과 진행 상태가 모두 삭제된다" {
+            val principal = setupMember()
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+
+            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+
+            quizAnswerRepository.findAll().size shouldBe 1
+            quizProgressRepository.findAll().size shouldBe 1
+
+            quizProgressService.resetProgress(principal, now)
+
+            quizAnswerRepository.findAll().size shouldBe 0
+            quizProgressRepository.findAll().size shouldBe 0
+        }
+
+        "초기화 후 진행률 조회하면 NOT_STARTED를 반환한다" {
+            val principal = setupMember()
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+
+            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.resetProgress(principal, now)
+
+            val result = quizProgressService.getProgress(principal, now)
+            result.status shouldBe QuizProgressStatus.NOT_STARTED
+        }
+
+        "답변이 없어도 초기화 호출 시 예외가 발생하지 않는다" {
+            val principal = setupMember()
+            quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+
+            quizProgressService.resetProgress(principal, now)
+        }
+
+        "활성 퀴즈셋이 없어도 초기화 호출 시 예외가 발생하지 않는다" {
+            val principal = setupMember()
+
+            quizProgressService.resetProgress(principal, now)
+        }
+
+        "다른 사용자의 답변은 초기화되지 않는다" {
+            val principal1 = setupMember("user-1")
+            val principal2 = setupMember("user-2")
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+
+            quizProgressService.submitAnswer(principal1, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(principal2, SubmitAnswerRequest(quiz.id, choice.id), now)
+
+            quizProgressService.resetProgress(principal1, now)
+
+            quizAnswerRepository.findAll().size shouldBe 1
+            quizProgressRepository.findAll().size shouldBe 1
         }
     }
 })

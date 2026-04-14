@@ -261,4 +261,48 @@ class QuizProgressControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("4002"))
     }
+
+    @Test
+    @DisplayName("퀴즈 진행을 초기화한다")
+    fun resetProgress() {
+        setupAuthenticatedMember()
+        val quizSet = quizSetRepository.save(
+            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+        )
+        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+
+        quizProgressService.submitAnswer(
+            com.ditto.api.config.auth.MemberPrincipal("test-user", SocialProvider.KAKAO),
+            SubmitAnswerRequest(quiz.id, choice.id),
+            now,
+        )
+
+        mockMvc.perform(
+            post("/api/v1/quiz-progress/reset")
+                .withApiKey()
+                .withBearerToken(),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "quiz-progress-reset",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("QuizProgress")
+                            .summary("퀴즈 진행 초기화")
+                            .description("이번 주차의 퀴즈 답변과 진행 상태를 모두 초기화합니다.")
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("데이터 (초기화 시 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
 }
