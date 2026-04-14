@@ -144,6 +144,23 @@ class QuizProgressService(
         )
     }
 
+    @Transactional
+    fun resetProgress(principal: MemberPrincipal, now: LocalDateTime) {
+        val memberId = resolveMemberId(principal)
+        val quizSets = quizSetRepository.findCurrentWeekActive(now)
+
+        if (quizSets.isEmpty()) {
+            log.warn { "초기화 요청 시 활성 퀴즈셋 없음: memberId=$memberId" }
+            return
+        }
+
+        val quizSetIds = quizSets.map { it.id }
+        val quizIds = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(quizSetIds).map { it.id }
+
+        quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, quizIds)
+        quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, quizSetIds)
+    }
+
     private fun resolveMemberId(principal: MemberPrincipal): Long {
         val socialAccount =
             socialAccountRepository

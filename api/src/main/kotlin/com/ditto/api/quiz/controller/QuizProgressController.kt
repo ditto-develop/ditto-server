@@ -34,6 +34,14 @@ class QuizProgressController(
         return ApiResponse.ok(quizProgressService.getProgress(principal, LocalDateTime.now()))
     }
 
+    @PostMapping("/api/v1/quiz-progress/reset")
+    fun resetProgress(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<Unit> {
+        quizProgressService.resetProgress(principal, LocalDateTime.now())
+        return ApiResponse(success = true)
+    }
+
     @GetMapping("/api/v1/quiz-progress/quiz-sets/{id}")
     fun getQuizSetWithProgress(
         @AuthenticationPrincipal principal: MemberPrincipal,
