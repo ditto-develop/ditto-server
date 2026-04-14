@@ -1,21 +1,30 @@
 package com.ditto.api.quiz.service
 
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.quiz.dto.QuizProgressResponse
+import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
+import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
+import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgress
+import com.ditto.domain.quiz.entity.QuizProgressStatus
+import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+
+private val log = KotlinLogging.logger {}
 
 @Service
 class QuizProgressService(
@@ -48,6 +57,91 @@ class QuizProgressService(
 
         quizAnswerRepository.save(QuizAnswer.create(memberId, request.quizId, request.choiceId))
         updateProgress(memberId, quiz.quizSetId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getProgress(
+        principal: MemberPrincipal,
+        now: LocalDateTime,
+    ): QuizProgressResponse {
+        val memberId = resolveMemberId(principal)
+        val quizSets = quizSetRepository.findCurrentWeekActive(now)
+
+        if (quizSets.isEmpty()) {
+            throw ErrorException(ErrorCode.NOT_FOUND)
+        }
+
+        val progress = findActiveProgress(memberId, quizSets)
+
+        val participantCount =
+            quizProgressRepository.countByQuizSetIdInAndStatus(
+                quizSetIds = quizSets.map { it.id },
+                status = QuizProgressStatus.COMPLETED,
+            )
+
+        if (progress == null) {
+            return QuizProgressResponse.notStarted(participantCount)
+        }
+
+        val selectedQuizSet =
+            quizSets
+                .find { it.id == progress.quizSetId }
+                ?: throw ErrorException(ErrorCode.INTERNAL_ERROR)
+
+        return QuizProgressResponse(
+            status = progress.status,
+            quizSetId = progress.quizSetId,
+            quizSetTitle = selectedQuizSet.title,
+            totalQuizzes = progress.totalCount,
+            answeredQuizzes = progress.answeredCount,
+            participantCount = participantCount,
+        )
+    }
+
+    private fun findActiveProgress(
+        memberId: Long,
+        quizSets: List<QuizSet>,
+    ): QuizProgress? {
+        val progresses =
+            quizSets
+                .map { it.id }
+                .let { quizSetIds -> quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, quizSetIds) }
+
+        if (progresses.size > 1) {
+            log.error { "한 주에 여러 퀴즈셋에 참여한 사용자 발견: memberId=$memberId, quizSetIds=quizSetIds" }
+            throw ErrorException(ErrorCode.INTERNAL_ERROR)
+        }
+
+        return progresses.singleOrNull()
+    }
+
+    @Transactional(readOnly = true)
+    fun getQuizSetWithProgress(
+        principal: MemberPrincipal,
+        quizSetId: Long,
+        now: LocalDateTime,
+    ): QuizSetWithProgressResponse {
+        val memberId = resolveMemberId(principal)
+
+        validateActiveQuizSet(quizSetId, now)
+
+        val quizzes = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId))
+        val quizIds = quizzes.map { it.id }
+
+        val choicesByQuizId = findChoicesByQuizId(quizIds)
+        val answersByQuizId = findAnswersByQuizId(memberId, quizIds)
+
+        return QuizSetWithProgressResponse(
+            quizzes =
+                quizzes.map { quiz ->
+                    QuizWithAnswerResponse.from(
+                        quiz = quiz,
+                        choices = choicesByQuizId[quiz.id] ?: emptyList(),
+                        userAnswer = answersByQuizId[quiz.id]?.choiceId,
+                    )
+                },
+            totalCount = quizzes.size,
+        )
     }
 
     private fun resolveMemberId(principal: MemberPrincipal): Long {
@@ -104,5 +198,24 @@ class QuizProgressService(
 
         newProgress.recordAnswer()
         quizProgressRepository.save(newProgress)
+    }
+
+    private fun findChoicesByQuizId(quizIds: List<Long>): Map<Long, List<QuizChoice>> {
+        if (quizIds.isEmpty()) return emptyMap()
+
+        return quizChoiceRepository
+            .findByQuizIdInOrderByDisplayOrderAsc(quizIds)
+            .groupBy { it.quizId }
+    }
+
+    private fun findAnswersByQuizId(
+        memberId: Long,
+        quizIds: List<Long>,
+    ): Map<Long, QuizAnswer> {
+        if (quizIds.isEmpty()) return emptyMap()
+
+        return quizAnswerRepository
+            .findByMemberIdAndQuizIdIn(memberId, quizIds)
+            .associateBy { it.quizId }
     }
 }
