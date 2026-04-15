@@ -45,8 +45,7 @@ class JwtAuthenticationFilter(
     private fun setAuthentication(token: String) {
         val principal =
             MemberPrincipal(
-                providerUserId = jwtTokenProvider.getProviderUserId(token),
-                provider = jwtTokenProvider.getProvider(token),
+                memberId = jwtTokenProvider.getMemberId(token),
             )
 
         val authentication =

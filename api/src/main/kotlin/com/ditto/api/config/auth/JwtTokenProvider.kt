@@ -1,6 +1,5 @@
 package com.ditto.api.config.auth
 
-import com.ditto.domain.socialaccount.entity.SocialProvider
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
@@ -21,21 +20,17 @@ class JwtTokenProvider(
         Jwts.parser().verifyWith(key).build()
     }
 
-    fun generateAccessToken(providerUserId: String, provider: SocialProvider, now: Date = Date()): String {
+    fun generateAccessToken(memberId: Long, now: Date = Date()): String {
         return Jwts.builder()
-            .subject(providerUserId)
-            .claim(CLAIM_PROVIDER, provider.name)
+            .subject(memberId.toString())
             .issuedAt(now)
             .expiration(Date(now.time + jwtProperties.expirationMs))
             .signWith(key)
             .compact()
     }
 
-    fun getProviderUserId(token: String): String =
-        parser.parseSignedClaims(token).payload.subject
-
-    fun getProvider(token: String): SocialProvider =
-        SocialProvider.valueOf(parser.parseSignedClaims(token).payload[CLAIM_PROVIDER, String::class.java])
+    fun getMemberId(token: String): Long =
+        parser.parseSignedClaims(token).payload.subject.toLong()
 
     fun isValid(token: String): Boolean =
         try {
@@ -49,8 +44,4 @@ class JwtTokenProvider(
 
     fun createRefreshTokenExpiresAt(now: LocalDateTime = LocalDateTime.now()): LocalDateTime =
         now.plusSeconds(jwtProperties.refreshExpirationMs / 1_000)
-
-    companion object {
-        private const val CLAIM_PROVIDER = "provider"
-    }
 }
