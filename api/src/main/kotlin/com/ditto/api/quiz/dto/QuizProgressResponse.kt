@@ -1,9 +1,6 @@
 package com.ditto.api.quiz.dto
 
 import com.ditto.domain.quiz.entity.QuizProgressStatus
-import com.fasterxml.jackson.annotation.JsonInclude
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
 data class QuizProgressResponse(
     val status: QuizProgressStatus,
     val quizSetId: Long?,

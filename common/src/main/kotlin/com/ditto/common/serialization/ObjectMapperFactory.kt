@@ -40,7 +40,7 @@ object ObjectMapperFactory {
             registerModule(javaTimeModule)
             disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            setSerializationInclusion(JsonInclude.Include.ALWAYS)
+            setSerializationInclusion(JsonInclude.Include.NON_NULL)
         }
     }
 }
