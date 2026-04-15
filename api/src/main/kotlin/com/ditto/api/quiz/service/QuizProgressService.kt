@@ -1,6 +1,5 @@
 package com.ditto.api.quiz.service
 
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
@@ -35,11 +34,10 @@ class QuizProgressService(
 ) {
     @Transactional
     fun submitAnswer(
-        principal: MemberPrincipal,
+        memberId: Long,
         request: SubmitAnswerRequest,
         now: LocalDateTime,
     ) {
-        val memberId = principal.memberId
         val quiz = findQuiz(request.quizId)
 
         validateActiveQuizSet(quiz.quizSetId, now)
@@ -59,10 +57,9 @@ class QuizProgressService(
 
     @Transactional(readOnly = true)
     fun getProgress(
-        principal: MemberPrincipal,
+        memberId: Long,
         now: LocalDateTime,
     ): QuizProgressResponse {
-        val memberId = principal.memberId
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {
@@ -115,11 +112,10 @@ class QuizProgressService(
 
     @Transactional(readOnly = true)
     fun getQuizSetWithProgress(
-        principal: MemberPrincipal,
+        memberId: Long,
         quizSetId: Long,
         now: LocalDateTime,
     ): QuizSetWithProgressResponse {
-        val memberId = principal.memberId
 
         validateActiveQuizSet(quizSetId, now)
 
@@ -143,8 +139,7 @@ class QuizProgressService(
     }
 
     @Transactional
-    fun resetProgress(principal: MemberPrincipal, now: LocalDateTime) {
-        val memberId = principal.memberId
+    fun resetProgress(memberId: Long, now: LocalDateTime) {
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {

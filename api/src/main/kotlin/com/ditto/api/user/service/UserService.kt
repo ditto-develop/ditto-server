@@ -1,6 +1,5 @@
 package com.ditto.api.user.service
 
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.dto.LeaveResponse
@@ -63,12 +62,12 @@ class UserService(
     }
 
     @Transactional
-    fun leaveUser(id: Long, principal: MemberPrincipal): LeaveResponse {
+    fun leaveUser(id: Long, memberId: Long): LeaveResponse {
         val member = memberRepository.findById(id).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
         }
 
-        if (principal.memberId != id) {
+        if (memberId != id) {
             throw WarnException(ErrorCode.FORBIDDEN)
         }
 
