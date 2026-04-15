@@ -1,0 +1,6 @@
+ditto:
+  quiz:
+    available-days:
+      - MONDAY
+      - TUESDAY
+      - WEDNESDAY

@@ -1,5 +1,6 @@
 package com.ditto.api.quiz.service
 
+import com.ditto.api.config.quiz.QuizProperties
 import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
@@ -31,6 +32,7 @@ class QuizProgressService(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val quizProperties: QuizProperties,
 ) {
     @Transactional
     fun submitAnswer(
@@ -38,10 +40,13 @@ class QuizProgressService(
         request: SubmitAnswerRequest,
         now: LocalDateTime,
     ) {
+        validateAvailableDay(now)
+
         val quiz = findQuiz(request.quizId)
 
         validateActiveQuizSet(quiz.quizSetId, now)
         validateChoice(request.quizId, request.choiceId)
+        validateNotCompleted(memberId, quiz.quizSetId)
 
         val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
 
@@ -116,7 +121,6 @@ class QuizProgressService(
         quizSetId: Long,
         now: LocalDateTime,
     ): QuizSetWithProgressResponse {
-
         validateActiveQuizSet(quizSetId, now)
 
         val quizzes = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId))
@@ -139,7 +143,10 @@ class QuizProgressService(
     }
 
     @Transactional
-    fun resetProgress(memberId: Long, now: LocalDateTime) {
+    fun resetProgress(
+        memberId: Long,
+        now: LocalDateTime,
+    ) {
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {
@@ -172,6 +179,23 @@ class QuizProgressService(
 
         if (!quizSet.isActive || !isInPeriod) {
             throw ErrorException(ErrorCode.QUIZ_NOT_IN_ACTIVE_SET)
+        }
+    }
+
+    private fun validateAvailableDay(now: LocalDateTime) {
+        val availableDays = quizProperties.availableDays
+        if (availableDays.isNotEmpty() && now.dayOfWeek !in availableDays) {
+            throw ErrorException(ErrorCode.QUIZ_NOT_AVAILABLE_DAY)
+        }
+    }
+
+    private fun validateNotCompleted(
+        memberId: Long,
+        quizSetId: Long,
+    ) {
+        val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
+        if (progress?.status == QuizProgressStatus.COMPLETED) {
+            throw ErrorException(ErrorCode.QUIZ_ALREADY_COMPLETED)
         }
     }
 
