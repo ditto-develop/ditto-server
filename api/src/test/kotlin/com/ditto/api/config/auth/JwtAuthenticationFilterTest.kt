@@ -2,7 +2,6 @@ package com.ditto.api.config.auth
 
 import com.ditto.api.config.TestExceptionController
 import com.ditto.api.support.RestDocsTest
-import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.context.annotation.Import
@@ -16,7 +15,7 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
     @Test
     @DisplayName("유효한 Bearer 토큰이면 MemberPrincipal을 받을 수 있다")
     fun validBearerToken() {
-        val token = jwtTokenProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
+        val token = jwtTokenProvider.generateAccessToken(1L)
 
         mockMvc.perform(
             get("/api/test/me")
@@ -25,8 +24,7 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.providerUserId").value("kakao-123"))
-            .andExpect(jsonPath("$.data.provider").value("KAKAO"))
+            .andExpect(jsonPath("$.data.memberId").value(1))
     }
 
     @Test
@@ -59,7 +57,7 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
     @Test
     @DisplayName("API Key 없이 Bearer 토큰만 보내면 401과 에러 정보를 반환한다")
     fun bearerTokenWithoutApiKey() {
-        val token = jwtTokenProvider.generateAccessToken("kakao-123", SocialProvider.KAKAO)
+        val token = jwtTokenProvider.generateAccessToken(1L)
 
         mockMvc.perform(
             get("/api/test/me")

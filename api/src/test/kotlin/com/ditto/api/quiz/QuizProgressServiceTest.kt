@@ -1,6 +1,5 @@
 package com.ditto.api.quiz
 
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.api.quiz.service.QuizProgressService
 import com.ditto.api.support.IntegrationTest
@@ -17,9 +16,6 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.socialaccount.entity.SocialAccount
-import com.ditto.domain.socialaccount.entity.SocialProvider
-import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -34,16 +30,14 @@ class QuizProgressServiceTest(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizProgressRepository: QuizProgressRepository,
     private val memberRepository: MemberRepository,
-    private val socialAccountRepository: SocialAccountRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
     val now = LocalDateTime.now()
 
-    fun setupMember(providerUserId: String = "test-user"): MemberPrincipal {
-        val member = memberRepository.save(Member(nickname = "테스트유저-$providerUserId"))
-        socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, providerUserId))
-        return MemberPrincipal(providerUserId = providerUserId, provider = SocialProvider.KAKAO)
+    fun setupMember(nickname: String = "테스트유저"): Long {
+        val member = memberRepository.save(Member(nickname = nickname))
+        return member.id
     }
 
     fun setupActiveQuizData(): Triple<Long, Long, Long> {
@@ -58,10 +52,10 @@ class QuizProgressServiceTest(
 
     "퀴즈 답안 제출" - {
         "정상적인 답안을 제출하면 QuizAnswer가 저장된다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val (quizId, choiceId, _) = setupActiveQuizData()
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quizId, choiceId), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), now)
 
             val answer = quizAnswerRepository.findByMemberIdAndQuizId(1L, quizId)
             answer shouldNotBe null
@@ -69,11 +63,11 @@ class QuizProgressServiceTest(
         }
 
         "같은 퀴즈에 다른 선택지로 재제출하면 choiceId가 업데이트된다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val (quizId, choiceId1, choiceId2) = setupActiveQuizData()
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quizId, choiceId1), now)
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quizId, choiceId2), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId1), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId2), now)
 
             val answers = quizAnswerRepository.findAll()
             answers.size shouldBe 1
@@ -81,7 +75,7 @@ class QuizProgressServiceTest(
         }
 
         "비활성 퀴즈 세트의 퀴즈에 답안을 제출하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1), isActive = false),
             )
@@ -89,13 +83,13 @@ class QuizProgressServiceTest(
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice.id), now)
             }
             exception.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ACTIVE_SET
         }
 
         "기간이 지난 퀴즈 세트의 퀴즈에 답안을 제출하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(7), endDate = now.minusDays(1)),
             )
@@ -103,56 +97,47 @@ class QuizProgressServiceTest(
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice.id), now)
             }
             exception.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ACTIVE_SET
         }
 
         "존재하지 않는 quizId로 제출하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.submitAnswer(principal, SubmitAnswerRequest(99999L, 1L), now)
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(99999L, 1L), now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
         }
 
         "해당 퀴즈에 속하지 않는 choiceId로 제출하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val (quizId, _, _) = setupActiveQuizData()
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quizId, 99999L), now)
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, 99999L), now)
             }
             exception.errorCode shouldBe ErrorCode.INVALID_CHOICE
         }
 
-        "소셜 계정이 없는 principal로 제출하면 예외가 발생한다" {
-            val (quizId, choiceId, _) = setupActiveQuizData()
-            val unknownPrincipal = MemberPrincipal(providerUserId = "unknown", provider = SocialProvider.KAKAO)
-
-            val exception = shouldThrow<ErrorException> {
-                quizProgressService.submitAnswer(unknownPrincipal, SubmitAnswerRequest(quizId, choiceId), now)
-            }
-            exception.errorCode shouldBe ErrorCode.UNAUTHORIZED_ERROR
-        }
     }
 
     "퀴즈 진행률 조회" - {
         "퀴즈를 풀지 않았으면 NOT_STARTED를 반환한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
 
-            val result = quizProgressService.getProgress(principal, now)
+            val result = quizProgressService.getProgress(memberId, now)
 
             result.status shouldBe QuizProgressStatus.NOT_STARTED
             result.quizSetId shouldBe null
         }
 
         "퀴즈를 일부 풀었으면 IN_PROGRESS를 반환한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
@@ -160,9 +145,9 @@ class QuizProgressServiceTest(
             quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "두번째", displayOrder = 2))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id))
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz1.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz1.id, choice.id), now)
 
-            val result = quizProgressService.getProgress(principal, now)
+            val result = quizProgressService.getProgress(memberId, now)
 
             result.status shouldBe QuizProgressStatus.IN_PROGRESS
             result.quizSetId shouldBe quizSet.id
@@ -171,16 +156,16 @@ class QuizProgressServiceTest(
         }
 
         "퀴즈를 모두 풀었으면 COMPLETED를 반환한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
             val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice.id), now)
 
-            val result = quizProgressService.getProgress(principal, now)
+            val result = quizProgressService.getProgress(memberId, now)
 
             result.status shouldBe QuizProgressStatus.COMPLETED
             result.quizSetId shouldBe quizSet.id
@@ -189,9 +174,9 @@ class QuizProgressServiceTest(
         }
 
         "participantCount가 정확하게 계산된다" {
-            val principal1 = setupMember("user-1")
-            val principal2 = setupMember("user-2")
-            setupMember("user-3")
+            val memberId1 = setupMember("유저1")
+            val memberId2 = setupMember("유저2")
+            setupMember("유저3")
 
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
@@ -199,19 +184,19 @@ class QuizProgressServiceTest(
             val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
-            quizProgressService.submitAnswer(principal1, SubmitAnswerRequest(quiz.id, choice.id), now)
-            quizProgressService.submitAnswer(principal2, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId1, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId2, SubmitAnswerRequest(quiz.id, choice.id), now)
 
-            val result = quizProgressService.getProgress(principal1, now)
+            val result = quizProgressService.getProgress(memberId1, now)
 
             result.participantCount shouldBe 2
         }
 
         "활성 퀴즈셋이 없으면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.getProgress(principal, now)
+                quizProgressService.getProgress(memberId, now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
         }
@@ -219,7 +204,7 @@ class QuizProgressServiceTest(
 
     "퀴즈셋 + 답변 조회" - {
         "퀴즈와 답변을 함께 조회한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
@@ -230,9 +215,9 @@ class QuizProgressServiceTest(
             quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id, content = "C", displayOrder = 1))
             quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id, content = "D", displayOrder = 2))
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz1.id, choice1.id), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz1.id, choice1.id), now)
 
-            val result = quizProgressService.getQuizSetWithProgress(principal, quizSet.id, now)
+            val result = quizProgressService.getQuizSetWithProgress(memberId, quizSet.id, now)
 
             result.totalCount shouldBe 2
             result.quizzes[0].userAnswer shouldBe choice1.id
@@ -240,22 +225,22 @@ class QuizProgressServiceTest(
         }
 
         "비활성 퀴즈셋을 조회하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1), isActive = false),
             )
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.getQuizSetWithProgress(principal, quizSet.id, now)
+                quizProgressService.getQuizSetWithProgress(memberId, quizSet.id, now)
             }
             exception.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ACTIVE_SET
         }
 
         "존재하지 않는 퀴즈셋을 조회하면 예외가 발생한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
 
             val exception = shouldThrow<ErrorException> {
-                quizProgressService.getQuizSetWithProgress(principal, 99999L, now)
+                quizProgressService.getQuizSetWithProgress(memberId, 99999L, now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
         }
@@ -263,67 +248,67 @@ class QuizProgressServiceTest(
 
     "퀴즈 진행 초기화" - {
         "초기화하면 답변과 진행 상태가 모두 삭제된다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
             val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice.id), now)
 
             quizAnswerRepository.findAll().size shouldBe 1
             quizProgressRepository.findAll().size shouldBe 1
 
-            quizProgressService.resetProgress(principal, now)
+            quizProgressService.resetProgress(memberId, now)
 
             quizAnswerRepository.findAll().size shouldBe 0
             quizProgressRepository.findAll().size shouldBe 0
         }
 
         "초기화 후 진행률 조회하면 NOT_STARTED를 반환한다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
             val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
-            quizProgressService.submitAnswer(principal, SubmitAnswerRequest(quiz.id, choice.id), now)
-            quizProgressService.resetProgress(principal, now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.resetProgress(memberId, now)
 
-            val result = quizProgressService.getProgress(principal, now)
+            val result = quizProgressService.getProgress(memberId, now)
             result.status shouldBe QuizProgressStatus.NOT_STARTED
         }
 
         "답변이 없어도 초기화 호출 시 예외가 발생하지 않는다" {
-            val principal = setupMember()
+            val memberId = setupMember()
             quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
 
-            quizProgressService.resetProgress(principal, now)
+            quizProgressService.resetProgress(memberId, now)
         }
 
         "활성 퀴즈셋이 없어도 초기화 호출 시 예외가 발생하지 않는다" {
-            val principal = setupMember()
+            val memberId = setupMember()
 
-            quizProgressService.resetProgress(principal, now)
+            quizProgressService.resetProgress(memberId, now)
         }
 
         "다른 사용자의 답변은 초기화되지 않는다" {
-            val principal1 = setupMember("user-1")
-            val principal2 = setupMember("user-2")
+            val memberId1 = setupMember("유저1")
+            val memberId2 = setupMember("유저2")
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
             )
             val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
             val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
-            quizProgressService.submitAnswer(principal1, SubmitAnswerRequest(quiz.id, choice.id), now)
-            quizProgressService.submitAnswer(principal2, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId1, SubmitAnswerRequest(quiz.id, choice.id), now)
+            quizProgressService.submitAnswer(memberId2, SubmitAnswerRequest(quiz.id, choice.id), now)
 
-            quizProgressService.resetProgress(principal1, now)
+            quizProgressService.resetProgress(memberId1, now)
 
             quizAnswerRepository.findAll().size shouldBe 1
             quizProgressRepository.findAll().size shouldBe 1

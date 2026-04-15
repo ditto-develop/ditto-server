@@ -11,9 +11,6 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
-import com.ditto.domain.socialaccount.entity.SocialAccount
-import com.ditto.domain.socialaccount.entity.SocialProvider
-import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -23,7 +20,6 @@ import javax.sql.DataSource
 class AuthServiceTest(
     private val authService: AuthService,
     private val jwtTokenProvider: JwtTokenProvider,
-    private val socialAccountRepository: SocialAccountRepository,
     private val memberRepository: MemberRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     dataSource: DataSource,
@@ -34,14 +30,13 @@ class AuthServiceTest(
         "토큰 갱신" - {
             "유효한 리프레시 토큰으로 새 토큰 쌍을 발급한다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
                 val result = authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
 
                 result.accessToken shouldNotBe null
                 jwtTokenProvider.isValid(result.accessToken) shouldBe true
-                jwtTokenProvider.getProviderUserId(result.accessToken) shouldBe "providerUserId"
+                jwtTokenProvider.getMemberId(result.accessToken) shouldBe member.id
                 result.refreshToken shouldNotBe refreshToken.token
             }
 
@@ -54,7 +49,6 @@ class AuthServiceTest(
 
             "만료된 리프레시 토큰이면 예외가 발생한다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val expiredToken = RefreshToken.create(
                     memberId = member.id,
                     token = "expired-token",
@@ -68,19 +62,8 @@ class AuthServiceTest(
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_EXPIRED
             }
 
-            "리프레시 토큰에 연결된 소셜 계정이 없으면 예외가 발생한다" {
-                val member = memberRepository.save(Member(nickname = "테스트유저"))
-                val refreshToken = authService.createRefreshToken(member.id)
-
-                val exception = shouldThrow<ErrorException> {
-                    authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
-                }
-                exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
-            }
-
             "갱신 후 이전 리프레시 토큰은 사용할 수 없다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
                 val oldToken = refreshToken.token
 
@@ -96,41 +79,31 @@ class AuthServiceTest(
         "로그아웃" - {
             "로그아웃하면 해당 회원의 모든 토큰이 삭제된다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
-                authService.logout(SocialProvider.KAKAO, "providerUserId")
+                authService.logout(member.id)
 
                 refreshTokenRepository.findByToken(refreshToken.token) shouldBe null
             }
 
             "로그아웃하면 해당 회원의 여러 토큰이 모두 삭제된다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val token1 = authService.createRefreshToken(member.id)
                 val token2 = authService.createRefreshToken(member.id)
                 val token3 = authService.createRefreshToken(member.id)
 
-                authService.logout(SocialProvider.KAKAO, "providerUserId")
+                authService.logout(member.id)
 
                 refreshTokenRepository.findByToken(token1.token) shouldBe null
                 refreshTokenRepository.findByToken(token2.token) shouldBe null
                 refreshTokenRepository.findByToken(token3.token) shouldBe null
             }
 
-            "존재하지 않는 소셜 계정으로 로그아웃하면 예외가 발생한다" {
-                val exception = shouldThrow<ErrorException> {
-                    authService.logout(SocialProvider.KAKAO, "non-existent-user")
-                }
-                exception.errorCode shouldBe ErrorCode.UNAUTHORIZED_ERROR
-            }
-
             "로그아웃 후 같은 리프레시 토큰으로 갱신할 수 없다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "providerUserId"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
-                authService.logout(SocialProvider.KAKAO, "providerUserId")
+                authService.logout(member.id)
 
                 val exception = shouldThrow<ErrorException> {
                     authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))

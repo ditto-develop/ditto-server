@@ -2,7 +2,6 @@ package com.ditto.api.support
 
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.serialization.ObjectMapperFactory
-import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -33,7 +32,7 @@ abstract class RestDocsTest {
     }
 
     protected fun MockHttpServletRequestBuilder.withBearerToken(): MockHttpServletRequestBuilder {
-        val token = jwtTokenProvider.generateAccessToken("test-user", SocialProvider.KAKAO)
+        val token = jwtTokenProvider.generateAccessToken(1L)
         return this.header("Authorization", "Bearer $token")
     }
 
