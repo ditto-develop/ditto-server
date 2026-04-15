@@ -14,6 +14,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
@@ -115,7 +116,7 @@ class QuizProgressControllerTest : RestDocsTest() {
         val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
         quizProgressService.submitAnswer(
-            com.ditto.api.config.auth.MemberPrincipal("test-user", SocialProvider.KAKAO),
+            1L,
             SubmitAnswerRequest(quiz.id, choice.id),
             now,
         )
@@ -170,7 +171,7 @@ class QuizProgressControllerTest : RestDocsTest() {
         quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id, content = "D", displayOrder = 2))
 
         quizProgressService.submitAnswer(
-            com.ditto.api.config.auth.MemberPrincipal("test-user", SocialProvider.KAKAO),
+            1L,
             SubmitAnswerRequest(quiz1.id, choice1.id),
             now,
         )
@@ -273,7 +274,7 @@ class QuizProgressControllerTest : RestDocsTest() {
         val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
 
         quizProgressService.submitAnswer(
-            com.ditto.api.config.auth.MemberPrincipal("test-user", SocialProvider.KAKAO),
+            1L,
             SubmitAnswerRequest(quiz.id, choice.id),
             now,
         )

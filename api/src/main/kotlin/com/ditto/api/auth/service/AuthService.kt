@@ -8,8 +8,6 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
-import com.ditto.domain.socialaccount.entity.SocialProvider
-import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
 class AuthService(
     private val jwtTokenProvider: JwtTokenProvider,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val socialAccountRepository: SocialAccountRepository,
 ) {
 
     @Transactional
@@ -33,10 +30,8 @@ class AuthService(
     }
 
     @Transactional
-    fun logout(provider: SocialProvider, providerUserId: String) {
-        val socialAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
-            ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
-        refreshTokenRepository.deleteAllByMemberId(socialAccount.memberId)
+    fun logout(memberId: Long) {
+        refreshTokenRepository.deleteAllByMemberId(memberId)
     }
 
     @Transactional
@@ -49,13 +44,7 @@ class AuthService(
 
         refreshTokenRepository.delete(refreshToken)
 
-        val socialAccount = socialAccountRepository.findByMemberId(refreshToken.memberId)
-            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR)
-
-        val newAccessToken = jwtTokenProvider.generateAccessToken(
-            providerUserId = socialAccount.providerUserId,
-            provider = socialAccount.provider,
-        )
+        val newAccessToken = jwtTokenProvider.generateAccessToken(refreshToken.memberId)
         val newRefreshToken = createRefreshToken(refreshToken.memberId)
 
         return TokenRefreshResponse(

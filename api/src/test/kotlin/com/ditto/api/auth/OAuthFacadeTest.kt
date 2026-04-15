@@ -91,7 +91,7 @@ class OAuthFacadeTest(
                 refreshTokenRepository.count() shouldBe 1
             }
 
-            "ACTIVE 사용자의 JWT에 providerUserId와 provider가 포함된다" {
+            "ACTIVE 사용자의 JWT에 memberId가 포함된다" {
                 val member =
                     memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com")
                 member.activate()
@@ -99,8 +99,7 @@ class OAuthFacadeTest(
 
                 val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
-                jwtTokenProvider.getProviderUserId(result.accessToken!!) shouldBe "12345"
-                jwtTokenProvider.getProvider(result.accessToken!!) shouldBe SocialProvider.KAKAO
+                jwtTokenProvider.getMemberId(result.accessToken!!) shouldBe member.id
             }
         }
     },

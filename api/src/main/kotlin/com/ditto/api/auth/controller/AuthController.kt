@@ -24,7 +24,7 @@ class AuthController(
 
     @PostMapping("/api/v1/users/auth/logout")
     fun logout(@AuthenticationPrincipal principal: MemberPrincipal): ApiResponse<Unit> {
-        authService.logout(principal.provider, principal.providerUserId)
+        authService.logout(principal.memberId)
         return ApiResponse(success = true)
     }
 }

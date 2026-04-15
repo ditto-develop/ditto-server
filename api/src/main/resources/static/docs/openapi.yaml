@@ -65,13 +65,275 @@ paths:
                         "gender" : "MALE",
                         "age" : 25,
                         "birthDate" : null,
-                        "joinedAt" : "2026-04-10 19:24:28",
+                        "joinedAt" : "2026-04-15 13:30:35",
                         "role" : null,
-                        "createdAt" : "2026-04-10 19:24:28",
-                        "updatedAt" : "2026-04-10 19:24:28"
+                        "createdAt" : "2026-04-15 13:30:35",
+                        "updatedAt" : "2026-04-15 13:30:35"
                       },
                       "error" : null
                     }
+  /api/v1/quiz-progress/answers:
+    post:
+      tags:
+      - QuizProgress
+      summary: 퀴즈 답안 제출
+      description: 퀴즈에 대한 답안을 제출합니다. 이미 답변한 퀴즈에 재제출하면 선택지가 업데이트됩니다.
+      operationId: quiz-progress-submit-answer
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-quiz-progress-answers-1062387050"
+            examples:
+              quiz-progress-submit-answer:
+                value: |-
+                  {
+                    "quizId" : 1,
+                    "choiceId" : 1
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-progress-reset-1831456372"
+              examples:
+                quiz-progress-submit-answer:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : null,
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/quiz-progress/current:
+    get:
+      tags:
+      - QuizProgress
+      summary: 퀴즈 진행률 조회
+      description: 현재 주차의 퀴즈 진행 상태를 조회합니다.
+      operationId: quiz-progress-current
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-progress-current1012077415"
+              examples:
+                quiz-progress-current:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "status" : "COMPLETED",
+                        "quizSetId" : 1,
+                        "quizSetTitle" : "이번 주 1:1 매칭",
+                        "totalQuizzes" : 1,
+                        "answeredQuizzes" : 1,
+                        "participantCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/quiz-progress/reset:
+    post:
+      tags:
+      - QuizProgress
+      summary: 퀴즈 진행 초기화
+      description: 이번 주차의 퀴즈 답변과 진행 상태를 모두 초기화합니다.
+      operationId: quiz-progress-reset
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-progress-reset-1831456372"
+              examples:
+                quiz-progress-reset:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : null,
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/quiz-sets/current-week:
+    get:
+      tags:
+      - QuizSet
+      summary: 이번 주차 퀴즈 세트 조회
+      description: 현재 활성화된 이번 주차의 퀴즈 세트를 퀴즈 목록과 함께 조회합니다.
+      operationId: quiz-set-current-week
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-sets-current-week-523790867"
+              examples:
+                quiz-set-current-week:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "year" : 2026,
+                        "month" : 4,
+                        "week" : 3,
+                        "quizSets" : [ {
+                          "id" : 1,
+                          "year" : 2026,
+                          "month" : 4,
+                          "week" : 2,
+                          "category" : "성격",
+                          "title" : "이번 주 1:1 매칭",
+                          "description" : "테스트 퀴즈 세트 설명",
+                          "startDate" : "2026-04-14 13:30:35",
+                          "endDate" : "2026-04-16 13:30:35",
+                          "isActive" : true,
+                          "matchingType" : "ONE_TO_ONE",
+                          "quizzes" : [ {
+                            "id" : 1,
+                            "question" : "짜장면 vs 짬뽕?",
+                            "quizSetId" : 1,
+                            "choices" : [ {
+                              "id" : 1,
+                              "content" : "짜장면",
+                              "order" : 1
+                            }, {
+                              "id" : 2,
+                              "content" : "짬뽕",
+                              "order" : 2
+                            } ],
+                            "order" : 1,
+                            "createdAt" : "2026-04-15 13:30:35",
+                            "updatedAt" : "2026-04-15 13:30:35"
+                          } ]
+                        } ]
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/quiz-sets/{id}:
+    get:
+      tags:
+      - QuizSet
+      summary: 퀴즈 세트 단건 조회
+      description: ID로 퀴즈 세트 메타데이터를 조회합니다.
+      operationId: quiz-set-get
+      parameters:
+      - name: id
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-sets-id1440540832"
+              examples:
+                quiz-set-get:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "id" : 1,
+                        "year" : 2026,
+                        "month" : 4,
+                        "week" : 2,
+                        "category" : "성격",
+                        "title" : "이번 주 1:1 매칭",
+                        "description" : "테스트 퀴즈 세트 설명",
+                        "startDate" : "2026-04-06 00:00:00",
+                        "endDate" : "2026-04-12 23:59:59",
+                        "isActive" : true,
+                        "matchingType" : "ONE_TO_ONE",
+                        "createdAt" : "2026-04-15 13:30:35",
+                        "updatedAt" : "2026-04-15 13:30:35"
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/quiz-progress/quiz-sets/{id}:
+    get:
+      tags:
+      - QuizProgress
+      summary: 퀴즈셋 + 답변 조회
+      description: 퀴즈셋의 문제 목록과 사용자의 답변을 함께 조회합니다. 이어풀기에 사용됩니다.
+      operationId: quiz-progress-quiz-set-with-progress
+      parameters:
+      - name: id
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-quiz-progress-quiz-sets-id-1569645469"
+              examples:
+                quiz-progress-quiz-set-with-progress:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "quizzes" : [ {
+                          "id" : 1,
+                          "question" : "첫번째",
+                          "quizSetId" : 1,
+                          "choices" : [ {
+                            "id" : 1,
+                            "content" : "A",
+                            "order" : 1
+                          }, {
+                            "id" : 2,
+                            "content" : "B",
+                            "order" : 2
+                          } ],
+                          "order" : 1,
+                          "createdAt" : "2026-04-15 13:30:35",
+                          "updatedAt" : "2026-04-15 13:30:35",
+                          "userAnswer" : 1
+                        }, {
+                          "id" : 2,
+                          "question" : "두번째",
+                          "quizSetId" : 1,
+                          "choices" : [ {
+                            "id" : 3,
+                            "content" : "C",
+                            "order" : 1
+                          }, {
+                            "id" : 4,
+                            "content" : "D",
+                            "order" : 2
+                          } ],
+                          "order" : 2,
+                          "createdAt" : "2026-04-15 13:30:35",
+                          "updatedAt" : "2026-04-15 13:30:35",
+                          "userAnswer" : null
+                        } ],
+                        "totalCount" : 2
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/auth/logout:
     post:
       tags:
@@ -85,7 +347,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-auth-logout-1831456372"
+                $ref: "#/components/schemas/api-v1-quiz-progress-reset-1831456372"
               examples:
                 logout:
                   value: |-
@@ -112,7 +374,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "ffb7561c-4eb2-4336-bb28-99fa9fa4a08f"
+                    "refreshToken" : "c8e5d0e6-e3d5-416b-8fef-af3613ede3ee"
                   }
       responses:
         "200":
@@ -127,8 +389,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwcm92aWRlclVzZXJJZCIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzU4MTY2NjYsImV4cCI6MTc3NTgyMDI2Nn0.9fJXw-0ITY-dMtw7j5n7K-2vTZln6V3ZhXZ3qKNytPi-wO3Y-_2RzpZKnbLItQlEX5Iij4ECGSzP44OXoLLsSg",
-                        "refreshToken" : "894b0ecb-ae1a-4d45-861b-a2ec6c80cbb4"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc2MjI3NDMyLCJleHAiOjE3NzYyMzEwMzJ9.3UqDxKWPH822V0ud7GJGGZdHnSp26kByclBBQUkx6FwW0BD4HF57YMu5jRBn72zCvbXW2gD2IFlFbZDTEpoeNA",
+                        "refreshToken" : "588f033f-2a03-4e4f-8e22-d7746714add1"
                       },
                       "error" : null
                     }
@@ -186,8 +448,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-04-10 19:24:28",
-                        "updatedAt" : "2026-04-10 19:24:28"
+                        "createdAt" : "2026-04-15 13:30:35",
+                        "updatedAt" : "2026-04-15 13:30:35"
                       },
                       "error" : null
                     }
@@ -230,7 +492,7 @@ paths:
       - OAuth
       summary: 소셜 로그인 콜백
       description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
-      operationId: oauth-callback
+      operationId: oauth-callback-new-user
       parameters:
       - name: provider
         in: path
@@ -250,22 +512,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1685114549"
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback1248644946"
               examples:
                 oauth-callback-new-user:
                   value: |-
                     {
                       "success" : true,
-                      "data" : { },
-                      "error" : null
-                    }
-                oauth-callback:
-                  value: |-
-                    {
-                      "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjM0NSIsInByb3ZpZGVyIjoiS0FLQU8iLCJpYXQiOjE3NzQ4MDEzMjAsImV4cCI6MTc3NDgwNDkyMH0.kqnh-Cde7IvgLPBqNMwnNINyD6JmXf5GRD0dcQKTNFyYwCjE6FdRqT_i8i04W67dDfexgPZvl6hk2U521gsCKA",
-                        "refreshToken" : "0282aea0-e052-43f2-b5d7-0ece67b91425"
+                        "accessToken" : null,
+                        "refreshToken" : null
                       },
                       "error" : null
                     }
@@ -292,26 +547,232 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-social-login-provider-callback1685114549:
+    api-v1-quiz-sets-current-week-523790867:
       required:
-      - data
       - error
       - success
       type: object
       properties:
         data:
           required:
-          - accessToken
-          - refreshToken
+          - month
+          - week
+          - year
           type: object
           properties:
-            accessToken:
+            week:
+              type: number
+              description: 주차
+            month:
+              type: number
+              description: 월
+            year:
+              type: number
+              description: 년도
+            quizSets:
+              type: array
+              items:
+                required:
+                - category
+                - description
+                - endDate
+                - id
+                - isActive
+                - matchingType
+                - month
+                - startDate
+                - title
+                - week
+                - year
+                type: object
+                properties:
+                  week:
+                    type: number
+                    description: 주차
+                  month:
+                    type: number
+                    description: 월
+                  endDate:
+                    type: string
+                    description: 종료일시
+                  year:
+                    type: number
+                    description: 년도
+                  description:
+                    type: string
+                    description: 퀴즈 세트 설명
+                  quizzes:
+                    type: array
+                    items:
+                      required:
+                      - createdAt
+                      - id
+                      - order
+                      - question
+                      - quizSetId
+                      - updatedAt
+                      type: object
+                      properties:
+                        createdAt:
+                          type: string
+                          description: 생성일시
+                        question:
+                          type: string
+                          description: 퀴즈 질문
+                        quizSetId:
+                          type: number
+                          description: 퀴즈 세트 ID
+                        id:
+                          type: number
+                          description: 퀴즈 ID
+                        choices:
+                          type: array
+                          items:
+                            required:
+                            - content
+                            - id
+                            - order
+                            type: object
+                            properties:
+                              id:
+                                type: number
+                                description: 선택지 ID
+                              content:
+                                type: string
+                                description: 선택지 내용
+                              order:
+                                type: number
+                                description: 선택지 순서
+                        updatedAt:
+                          type: string
+                          description: 수정일시
+                        order:
+                          type: number
+                          description: 퀴즈 순서
+                  id:
+                    type: number
+                    description: 퀴즈 세트 ID
+                  isActive:
+                    type: boolean
+                    description: 활성화 여부
+                  title:
+                    type: string
+                    description: 퀴즈 세트 제목
+                  category:
+                    type: string
+                    description: 카테고리
+                  matchingType:
+                    type: string
+                    description: "매칭 타입 (ONE_TO_ONE, GROUP)"
+                  startDate:
+                    type: string
+                    description: 시작일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-quiz-progress-quiz-sets-id-1569645469:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - totalCount
+          type: object
+          properties:
+            quizzes:
+              type: array
+              items:
+                required:
+                - createdAt
+                - id
+                - order
+                - question
+                - quizSetId
+                - updatedAt
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 생성일시
+                  userAnswer:
+                    type: number
+                    description: 사용자가 선택한 choiceId (미답변 시 null)
+                    nullable: true
+                  question:
+                    type: string
+                    description: 퀴즈 질문
+                  quizSetId:
+                    type: number
+                    description: 퀴즈 세트 ID
+                  id:
+                    type: number
+                    description: 퀴즈 ID
+                  choices:
+                    type: array
+                    items:
+                      required:
+                      - content
+                      - id
+                      - order
+                      type: object
+                      properties:
+                        id:
+                          type: number
+                          description: 선택지 ID
+                        content:
+                          type: string
+                          description: 선택지 내용
+                        order:
+                          type: number
+                          description: 선택지 순서
+                  updatedAt:
+                    type: string
+                    description: 수정일시
+                  order:
+                    type: number
+                    description: 퀴즈 순서
+            totalCount:
+              type: number
+              description: 전체 퀴즈 수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-quiz-progress-current1012077415:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - participantCount
+          - status
+          type: object
+          properties:
+            answeredQuizzes:
+              type: number
+              description: 답변한 퀴즈 수
+              nullable: true
+            totalQuizzes:
+              type: number
+              description: 전체 퀴즈 수
+              nullable: true
+            quizSetId:
+              type: number
+              description: 참여 중인 퀴즈 세트 ID
+              nullable: true
+            participantCount:
+              type: number
+              description: 완료한 참여자 수
+            quizSetTitle:
               type: string
-              description: JWT 액세스 토큰
-            refreshToken:
+              description: 참여 중인 퀴즈 세트 제목
+              nullable: true
+            status:
               type: string
-              description: 리프레시 토큰
-          description: 빈 객체 (신규 사용자)
+              description: "진행 상태 (NOT_STARTED, IN_PROGRESS, COMPLETED)"
         success:
           type: boolean
           description: 성공 여부
@@ -364,7 +825,7 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-logout-1831456372:
+    api-v1-quiz-progress-reset-1831456372:
       required:
       - data
       - error
@@ -374,6 +835,18 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-quiz-progress-answers-1062387050:
+      required:
+      - choiceId
+      - quizId
+      type: object
+      properties:
+        choiceId:
+          type: number
+          description: 선택한 선택지 ID
+        quizId:
+          type: number
+          description: 퀴즈 ID
     api-v1-users-107230905:
       required:
       - error
@@ -423,6 +896,86 @@ components:
             updatedAt:
               type: string
               description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-quiz-sets-id1440540832:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - category
+          - createdAt
+          - description
+          - endDate
+          - id
+          - isActive
+          - matchingType
+          - month
+          - startDate
+          - title
+          - updatedAt
+          - week
+          - year
+          type: object
+          properties:
+            week:
+              type: number
+              description: 주차
+            endDate:
+              type: string
+              description: 종료일시
+            year:
+              type: number
+              description: 년도
+            description:
+              type: string
+              description: 퀴즈 세트 설명
+            isActive:
+              type: boolean
+              description: 활성화 여부
+            title:
+              type: string
+              description: 퀴즈 세트 제목
+            matchingType:
+              type: string
+              description: "매칭 타입 (ONE_TO_ONE, GROUP)"
+            createdAt:
+              type: string
+              description: 생성일시
+            month:
+              type: number
+              description: 월
+            id:
+              type: number
+              description: 퀴즈 세트 ID
+            category:
+              type: string
+              description: 카테고리
+            startDate:
+              type: string
+              description: 시작일시
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-social-login-provider-callback1248644946:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          - refreshToken
+          type: object
+          properties: {}
         success:
           type: boolean
           description: 성공 여부

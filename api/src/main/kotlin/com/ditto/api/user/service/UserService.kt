@@ -1,6 +1,5 @@
 package com.ditto.api.user.service
 
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.dto.LeaveResponse
@@ -63,23 +62,19 @@ class UserService(
     }
 
     @Transactional
-    fun leaveUser(id: Long, principal: MemberPrincipal): LeaveResponse {
+    fun leaveUser(id: Long, memberId: Long): LeaveResponse {
         val member = memberRepository.findById(id).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
         }
 
-        val socialAccount =
-            socialAccountRepository.findByProviderAndProviderUserId(principal.provider, principal.providerUserId)
-                ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
-
-        if (socialAccount.memberId != id) {
+        if (memberId != id) {
             throw WarnException(ErrorCode.FORBIDDEN)
         }
 
         val response = member.toLeaveResponse()
 
         refreshTokenRepository.deleteAllByMemberId(id)
-        socialAccountRepository.delete(socialAccount)
+        socialAccountRepository.findByMemberId(id)?.let { socialAccountRepository.delete(it) }
         memberRepository.delete(member)
 
         return response

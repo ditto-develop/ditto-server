@@ -23,7 +23,7 @@ class QuizProgressController(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @RequestBody request: SubmitAnswerRequest,
     ): ApiResponse<Unit> {
-        quizProgressService.submitAnswer(principal, request, LocalDateTime.now())
+        quizProgressService.submitAnswer(principal.memberId, request, LocalDateTime.now())
         return ApiResponse(success = true)
     }
 
@@ -31,14 +31,14 @@ class QuizProgressController(
     fun getProgress(
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<QuizProgressResponse> {
-        return ApiResponse.ok(quizProgressService.getProgress(principal, LocalDateTime.now()))
+        return ApiResponse.ok(quizProgressService.getProgress(principal.memberId, LocalDateTime.now()))
     }
 
     @PostMapping("/api/v1/quiz-progress/reset")
     fun resetProgress(
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<Unit> {
-        quizProgressService.resetProgress(principal, LocalDateTime.now())
+        quizProgressService.resetProgress(principal.memberId, LocalDateTime.now())
         return ApiResponse(success = true)
     }
 
@@ -47,6 +47,6 @@ class QuizProgressController(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable id: Long,
     ): ApiResponse<QuizSetWithProgressResponse> {
-        return ApiResponse.ok(quizProgressService.getQuizSetWithProgress(principal, id, LocalDateTime.now()))
+        return ApiResponse.ok(quizProgressService.getQuizSetWithProgress(principal.memberId, id, LocalDateTime.now()))
     }
 }

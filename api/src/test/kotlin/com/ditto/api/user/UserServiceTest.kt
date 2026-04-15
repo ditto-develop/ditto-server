@@ -1,7 +1,6 @@
 package com.ditto.api.user
 
 import com.ditto.api.auth.service.AuthService
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.service.UserService
@@ -135,7 +134,7 @@ class UserServiceTest(
 
                 val result = userService.leaveUser(
                     id = member.id,
-                    principal = MemberPrincipal(providerUserId = "leave-user", provider = SocialProvider.KAKAO),
+                    memberId = member.id,
                 )
 
                 result.id shouldBe member.id
@@ -150,7 +149,7 @@ class UserServiceTest(
 
                 userService.leaveUser(
                     id = member.id,
-                    principal = MemberPrincipal(providerUserId = "leave-user-2", provider = SocialProvider.KAKAO),
+                    memberId = member.id,
                 )
 
                 refreshTokenRepository.findByToken(token1.token) shouldBe null
@@ -161,7 +160,7 @@ class UserServiceTest(
                 val exception = shouldThrow<WarnException> {
                     userService.leaveUser(
                         id = 99999L,
-                        principal = MemberPrincipal(providerUserId = "any", provider = SocialProvider.KAKAO),
+                        memberId = 1L,
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.NOT_FOUND
@@ -169,28 +168,15 @@ class UserServiceTest(
 
             "다른 회원의 ID로 탈퇴 요청하면 예외가 발생한다" {
                 val memberA = memberRepository.save(Member(nickname = "멤버A"))
-                socialAccountRepository.save(SocialAccount.create(memberA.id, SocialProvider.KAKAO, "user-a"))
                 val memberB = memberRepository.save(Member(nickname = "멤버B"))
 
                 val exception = shouldThrow<WarnException> {
                     userService.leaveUser(
                         id = memberB.id,
-                        principal = MemberPrincipal(providerUserId = "user-a", provider = SocialProvider.KAKAO),
+                        memberId = memberA.id,
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.FORBIDDEN
-            }
-
-            "소셜 계정이 없으면 예외가 발생한다" {
-                val member = memberRepository.save(Member(nickname = "소셜없는유저"))
-
-                val exception = shouldThrow<ErrorException> {
-                    userService.leaveUser(
-                        id = member.id,
-                        principal = MemberPrincipal(providerUserId = "ghost-user", provider = SocialProvider.KAKAO),
-                    )
-                }
-                exception.errorCode shouldBe ErrorCode.UNAUTHORIZED_ERROR
             }
         }
     },

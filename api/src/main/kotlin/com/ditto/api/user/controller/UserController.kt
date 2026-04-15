@@ -37,7 +37,7 @@ class UserController(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<LeaveResponse> {
-        val result = userService.leaveUser(id, principal)
+        val result = userService.leaveUser(id, principal.memberId)
         return ApiResponse.ok(result)
     }
 }

@@ -26,10 +26,7 @@ class OAuthFacade(
             return OAuthLoginResponse()
         }
 
-        val accessToken = jwtTokenProvider.generateAccessToken(
-            providerUserId = userInfo.id,
-            provider = provider,
-        )
+        val accessToken = jwtTokenProvider.generateAccessToken(member.id)
         val refreshToken = authService.createRefreshToken(member.id)
         return OAuthLoginResponse(accessToken = accessToken, refreshToken = refreshToken.token)
     }
