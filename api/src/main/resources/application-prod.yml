@@ -18,6 +18,11 @@ springdoc:
     url: /docs/openapi.yaml
 
 ditto:
+  quiz:
+    available-days:
+      - MONDAY
+      - TUESDAY
+      - WEDNESDAY
   security:
     api-key: ${API_KEY}
   jwt:
