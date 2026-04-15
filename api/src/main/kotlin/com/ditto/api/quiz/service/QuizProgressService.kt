@@ -18,7 +18,6 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,7 +32,6 @@ class QuizProgressService(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizSetRepository: QuizSetRepository,
-    private val socialAccountRepository: SocialAccountRepository,
 ) {
     @Transactional
     fun submitAnswer(
@@ -41,7 +39,7 @@ class QuizProgressService(
         request: SubmitAnswerRequest,
         now: LocalDateTime,
     ) {
-        val memberId = resolveMemberId(principal)
+        val memberId = principal.memberId
         val quiz = findQuiz(request.quizId)
 
         validateActiveQuizSet(quiz.quizSetId, now)
@@ -64,7 +62,7 @@ class QuizProgressService(
         principal: MemberPrincipal,
         now: LocalDateTime,
     ): QuizProgressResponse {
-        val memberId = resolveMemberId(principal)
+        val memberId = principal.memberId
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {
@@ -121,7 +119,7 @@ class QuizProgressService(
         quizSetId: Long,
         now: LocalDateTime,
     ): QuizSetWithProgressResponse {
-        val memberId = resolveMemberId(principal)
+        val memberId = principal.memberId
 
         validateActiveQuizSet(quizSetId, now)
 
@@ -146,7 +144,7 @@ class QuizProgressService(
 
     @Transactional
     fun resetProgress(principal: MemberPrincipal, now: LocalDateTime) {
-        val memberId = resolveMemberId(principal)
+        val memberId = principal.memberId
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {
@@ -159,14 +157,6 @@ class QuizProgressService(
 
         quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, quizIds)
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, quizSetIds)
-    }
-
-    private fun resolveMemberId(principal: MemberPrincipal): Long {
-        val socialAccount =
-            socialAccountRepository
-                .findByProviderAndProviderUserId(principal.provider, principal.providerUserId)
-                ?: throw ErrorException(ErrorCode.UNAUTHORIZED_ERROR)
-        return socialAccount.memberId
     }
 
     private fun findQuiz(quizId: Long): Quiz =
