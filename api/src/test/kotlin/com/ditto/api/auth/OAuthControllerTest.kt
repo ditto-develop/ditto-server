@@ -58,8 +58,8 @@ class OAuthControllerTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.accessToken").doesNotExist())
-            .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+            .andExpect(jsonPath("$.data.accessToken").isEmpty)
+            .andExpect(jsonPath("$.data.refreshToken").isEmpty)
             .andDo(
                 document(
                     "oauth-callback-new-user",
@@ -78,7 +78,8 @@ class OAuthControllerTest : RestDocsTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data").description("빈 객체 (신규 사용자)"),
+                                fieldWithPath("data.accessToken").description("JWT 액세스 토큰 (신규 사용자는 null)"),
+                                fieldWithPath("data.refreshToken").description("리프레시 토큰 (신규 사용자는 null)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
