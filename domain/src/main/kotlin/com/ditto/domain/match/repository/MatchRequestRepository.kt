@@ -3,6 +3,7 @@ package com.ditto.domain.match.repository
 import com.ditto.domain.match.entity.MatchRequest
 import com.ditto.domain.match.entity.MatchRequestStatus
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 
 interface MatchRequestRepository : JpaRepository<MatchRequest, Long> {
 
@@ -17,11 +18,20 @@ interface MatchRequestRepository : JpaRepository<MatchRequest, Long> {
         status: MatchRequestStatus,
     ): Boolean
 
-    fun existsByQuizSetIdAndStatusAndFromMemberIdOrToMemberId(
+    // OR 우선순위 버그 방지: 파생 쿼리 대신 JPQL 명시
+    @Query(
+        """
+        SELECT CASE WHEN COUNT(mr) > 0 THEN TRUE ELSE FALSE END
+        FROM MatchRequest mr
+        WHERE mr.quizSetId = :quizSetId
+          AND mr.status = :status
+          AND (mr.fromMemberId = :memberId OR mr.toMemberId = :memberId)
+        """,
+    )
+    fun existsAcceptedMatchByQuizSetIdAndMemberId(
         quizSetId: Long,
         status: MatchRequestStatus,
-        fromMemberId: Long,
-        toMemberId: Long,
+        memberId: Long,
     ): Boolean
 
     fun findByFromMemberIdAndToMemberIdAndQuizSetIdAndStatus(
