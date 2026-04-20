@@ -6,10 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface GroupMatchParticipantRepository : JpaRepository<GroupMatchParticipant, Long> {
 
-    fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): GroupMatchParticipant?
+    fun findByQuizSetIdAndMemberId(quizSetId: Long, memberId: Long): GroupMatchParticipant?
 
-    fun existsByRoomIdAndMemberIdAndStatus(
-        roomId: Long,
+    fun existsByQuizSetIdAndMemberIdAndStatus(
+        quizSetId: Long,
         memberId: Long,
         status: GroupMatchParticipantStatus,
     ): Boolean
