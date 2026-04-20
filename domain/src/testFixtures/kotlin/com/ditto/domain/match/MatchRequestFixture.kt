@@ -7,14 +7,14 @@ import com.ditto.domain.withId
 object MatchRequestFixture {
 
     fun create(
-        fromMemberId: Long = 1L,
-        toMemberId: Long = 2L,
+        requesterId: Long = 1L,
+        receiverId: Long = 2L,
         quizSetId: Long = 1L,
         status: MatchRequestStatus = MatchRequestStatus.PENDING,
         id: Long = 0L,
     ): MatchRequest = MatchRequest.create(
-        fromMemberId = fromMemberId,
-        toMemberId = toMemberId,
+        requesterId = requesterId,
+        receiverId = receiverId,
         quizSetId = quizSetId,
     ).also { request ->
         if (status != MatchRequestStatus.PENDING) {
