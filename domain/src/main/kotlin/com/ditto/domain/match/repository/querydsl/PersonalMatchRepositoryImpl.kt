@@ -1,26 +1,26 @@
 package com.ditto.domain.match.repository.querydsl
 
-import com.ditto.domain.match.entity.MatchRequestStatus
-import com.ditto.domain.match.entity.QMatchRequest.matchRequest
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 
 @Transactional(readOnly = true)
-class MatchRequestRepositoryImpl(
+class PersonalMatchRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
-) : MatchRequestRepositoryCustom {
+) : PersonalMatchRepositoryCustom {
 
     override fun existsMatchByQuizSetIdAndStatusAndMemberId(
         quizSetId: Long,
-        status: MatchRequestStatus,
+        status: PersonalMatchStatus,
         memberId: Long,
     ): Boolean = queryFactory
         .selectOne()
-        .from(matchRequest)
+        .from(personalMatch)
         .where(
-            matchRequest.quizSetId.eq(quizSetId),
-            matchRequest.status.eq(status),
-            matchRequest.memberId1.eq(memberId).or(matchRequest.memberId2.eq(memberId)),
+            personalMatch.quizSetId.eq(quizSetId),
+            personalMatch.status.eq(status),
+            personalMatch.memberId1.eq(memberId).or(personalMatch.memberId2.eq(memberId)),
         )
         .fetchFirst() != null
 }

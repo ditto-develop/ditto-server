@@ -13,21 +13,21 @@ import org.hibernate.annotations.Comment
 
 @Entity
 @Table(
-    name = "group_match_room_member",
+    name = "group_match_member",
     uniqueConstraints = [
         // 같은 방에 같은 멤버가 중복 입장 불가
         // 단, 한 멤버가 동일 퀴즈셋의 여러 방에 참여하는 것은 허용
         UniqueConstraint(
-            name = "group_match_room_member_uk_1",
+            name = "group_match_member_uk_1",
             columnNames = ["room_id", "member_id"],
         ),
     ],
     indexes = [
-        Index(name = "group_match_room_member_index_1", columnList = "room_id"),
-        Index(name = "group_match_room_member_index_2", columnList = "member_id"),
+        Index(name = "group_match_member_index_1", columnList = "room_id"),
+        Index(name = "group_match_member_index_2", columnList = "member_id"),
     ],
 )
-class GroupMatchRoomMember private constructor(
+class GroupMatchMember private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
@@ -42,7 +42,7 @@ class GroupMatchRoomMember private constructor(
 ) : BaseEntity() {
 
     companion object {
-        fun of(roomId: Long, memberId: Long): GroupMatchRoomMember =
-            GroupMatchRoomMember(roomId = roomId, memberId = memberId)
+        fun of(roomId: Long, memberId: Long): GroupMatchMember =
+            GroupMatchMember(roomId = roomId, memberId = memberId)
     }
 }
