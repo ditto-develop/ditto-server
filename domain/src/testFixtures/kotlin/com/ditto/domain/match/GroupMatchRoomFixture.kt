@@ -12,15 +12,15 @@ object GroupMatchRoomFixture {
         id: Long = 0L,
     ): GroupMatchRoom = GroupMatchRoom.create(quizSetId = quizSetId)
         .also { room ->
-            if (isActive) {
-                val isActiveField = room::class.java.getDeclaredField("isActive")
-                isActiveField.isAccessible = true
-                isActiveField.set(room, true)
-            }
             if (participantCount > 0) {
                 val countField = room::class.java.getDeclaredField("participantCount")
                 countField.isAccessible = true
                 countField.set(room, participantCount)
+            }
+            if (isActive) {
+                val isActiveField = room::class.java.getDeclaredField("isActive")
+                isActiveField.isAccessible = true
+                isActiveField.set(room, true)
             }
         }.withId(id)
 }

@@ -17,13 +17,16 @@ import org.hibernate.annotations.Comment
 @Table(
     name = "group_match_participant",
     uniqueConstraints = [
+        // 한 멤버는 동일 퀴즈셋에서 하나의 그룹에만 참여 가능
+        // (room_id, member_id) 가 아닌 (quiz_set_id, member_id) 로 유니크 보장
         UniqueConstraint(
             name = "group_match_participant_uk_1",
-            columnNames = ["room_id", "member_id"],
+            columnNames = ["quiz_set_id", "member_id"],
         ),
     ],
     indexes = [
-        Index(name = "group_match_participant_index_1", columnList = "member_id, room_id"),
+        Index(name = "group_match_participant_index_1", columnList = "quiz_set_id, member_id"),
+        Index(name = "group_match_participant_index_2", columnList = "room_id"),
     ],
 )
 class GroupMatchParticipant private constructor(
@@ -31,9 +34,9 @@ class GroupMatchParticipant private constructor(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    @Comment("그룹 매칭 방 ID")
-    @Column(name = "room_id", nullable = false)
-    val roomId: Long,
+    @Comment("퀴즈 세트 ID")
+    @Column(name = "quiz_set_id", nullable = false)
+    val quizSetId: Long,
 
     @Comment("회원 ID")
     @Column(name = "member_id", nullable = false)
@@ -43,19 +46,27 @@ class GroupMatchParticipant private constructor(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     val status: GroupMatchParticipantStatus,
+
+    @Comment("그룹 매칭 방 ID (JOINED인 경우에만 존재)")
+    @Column(name = "room_id", nullable = true)
+    val roomId: Long? = null,
 ) : BaseEntity() {
 
     companion object {
-        fun join(roomId: Long, memberId: Long): GroupMatchParticipant = GroupMatchParticipant(
-            roomId = roomId,
-            memberId = memberId,
-            status = GroupMatchParticipantStatus.JOINED,
-        )
+        fun join(quizSetId: Long, memberId: Long, roomId: Long): GroupMatchParticipant =
+            GroupMatchParticipant(
+                quizSetId = quizSetId,
+                memberId = memberId,
+                status = GroupMatchParticipantStatus.JOINED,
+                roomId = roomId,
+            )
 
-        fun decline(roomId: Long, memberId: Long): GroupMatchParticipant = GroupMatchParticipant(
-            roomId = roomId,
-            memberId = memberId,
-            status = GroupMatchParticipantStatus.DECLINED,
-        )
+        fun decline(quizSetId: Long, memberId: Long): GroupMatchParticipant =
+            GroupMatchParticipant(
+                quizSetId = quizSetId,
+                memberId = memberId,
+                status = GroupMatchParticipantStatus.DECLINED,
+                roomId = null,
+            )
     }
 }
