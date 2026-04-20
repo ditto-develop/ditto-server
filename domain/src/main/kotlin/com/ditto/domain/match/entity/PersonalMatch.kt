@@ -18,21 +18,21 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(
-    name = "match_request",
+    name = "personal_match",
     uniqueConstraints = [
         // 방향 무관하게 두 멤버 + 퀴즈셋 조합은 유일
         // memberId1 = min(A, B), memberId2 = max(A, B) 로 정규화하여 저장
         UniqueConstraint(
-            name = "match_request_uk_1",
+            name = "personal_match_uk_1",
             columnNames = ["member_id_1", "member_id_2", "quiz_set_id"],
         ),
     ],
     indexes = [
-        Index(name = "match_request_index_1", columnList = "member_id_1, quiz_set_id, status"),
-        Index(name = "match_request_index_2", columnList = "member_id_2, quiz_set_id, status"),
+        Index(name = "personal_match_index_1", columnList = "member_id_1, quiz_set_id, status"),
+        Index(name = "personal_match_index_2", columnList = "member_id_2, quiz_set_id, status"),
     ],
 )
-class MatchRequest private constructor(
+class PersonalMatch private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
@@ -53,14 +53,14 @@ class MatchRequest private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
-    status: MatchRequestStatus = MatchRequestStatus.PENDING,
+    status: PersonalMatchStatus = PersonalMatchStatus.PENDING,
     respondedAt: LocalDateTime? = null,
 ) : BaseEntity() {
 
     @Comment("매칭 요청 상태")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    var status: MatchRequestStatus = status
+    var status: PersonalMatchStatus = status
         protected set
 
     @Comment("응답일시")
@@ -71,29 +71,29 @@ class MatchRequest private constructor(
     /** 요청을 받은 상대방 ID */
     fun receiverId(): Long = if (requesterId == memberId1) memberId2 else memberId1
 
-    fun isPending(): Boolean = status == MatchRequestStatus.PENDING
+    fun isPending(): Boolean = status == PersonalMatchStatus.PENDING
 
     fun accept() {
         requirePending()
-        status = MatchRequestStatus.ACCEPTED
+        status = PersonalMatchStatus.ACCEPTED
         respondedAt = LocalDateTime.now()
     }
 
     fun reject() {
         requirePending()
-        status = MatchRequestStatus.REJECTED
+        status = PersonalMatchStatus.REJECTED
         respondedAt = LocalDateTime.now()
     }
 
     fun cancel() {
         requirePending()
-        status = MatchRequestStatus.CANCELLED
+        status = PersonalMatchStatus.CANCELLED
         respondedAt = LocalDateTime.now()
     }
 
     fun expire() {
         requirePending()
-        status = MatchRequestStatus.EXPIRED
+        status = PersonalMatchStatus.EXPIRED
         respondedAt = LocalDateTime.now()
     }
 
@@ -106,7 +106,7 @@ class MatchRequest private constructor(
             requesterId: Long,
             receiverId: Long,
             quizSetId: Long,
-        ): MatchRequest = MatchRequest(
+        ): PersonalMatch = PersonalMatch(
             memberId1 = minOf(requesterId, receiverId),
             memberId2 = maxOf(requesterId, receiverId),
             requesterId = requesterId,

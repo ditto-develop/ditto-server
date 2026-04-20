@@ -1,6 +1,6 @@
 package com.ditto.domain.match.entity
 
-enum class MatchRequestStatus {
+enum class PersonalMatchStatus {
     PENDING,
     ACCEPTED,
     REJECTED,

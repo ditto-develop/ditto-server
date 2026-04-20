@@ -14,14 +14,14 @@ private const val ACTIVATION_THRESHOLD = 3
 
 @Entity
 @Table(
-    name = "group_match_room",
+    name = "group_match",
     // quizSetId UK 제거 — 퀴즈셋 1개에서 여러 그룹 생성 가능
     // 멤버당 1개 참여 보장은 GroupMatchParticipant.(quiz_set_id, member_id) UK로 처리
     indexes = [
-        Index(name = "group_match_room_index_1", columnList = "quiz_set_id, is_active"),
+        Index(name = "group_match_index_1", columnList = "quiz_set_id, is_active"),
     ],
 )
-class GroupMatchRoom private constructor(
+class GroupMatch private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
@@ -54,6 +54,6 @@ class GroupMatchRoom private constructor(
     }
 
     companion object {
-        fun create(quizSetId: Long): GroupMatchRoom = GroupMatchRoom(quizSetId = quizSetId)
+        fun create(quizSetId: Long): GroupMatch = GroupMatch(quizSetId = quizSetId)
     }
 }

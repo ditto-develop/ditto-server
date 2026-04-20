@@ -1,12 +1,12 @@
 package com.ditto.domain.match.repository.querydsl
 
-import com.ditto.domain.match.entity.MatchRequestStatus
+import com.ditto.domain.match.entity.PersonalMatchStatus
 
-interface MatchRequestRepositoryCustom {
+interface PersonalMatchRepositoryCustom {
 
     fun existsMatchByQuizSetIdAndStatusAndMemberId(
         quizSetId: Long,
-        status: MatchRequestStatus,
+        status: PersonalMatchStatus,
         memberId: Long,
     ): Boolean
 }
