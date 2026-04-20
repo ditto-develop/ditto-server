@@ -20,7 +20,7 @@ class MatchRequestRepositoryImpl(
         .where(
             matchRequest.quizSetId.eq(quizSetId),
             matchRequest.status.eq(status),
-            matchRequest.fromMemberId.eq(memberId).or(matchRequest.toMemberId.eq(memberId)),
+            matchRequest.memberId1.eq(memberId).or(matchRequest.memberId2.eq(memberId)),
         )
         .fetchFirst() != null
 }
