@@ -65,10 +65,10 @@ paths:
                         "gender" : "MALE",
                         "age" : 25,
                         "birthDate" : null,
-                        "joinedAt" : "2026-04-15 16:19:51",
+                        "joinedAt" : "2026-05-01 16:59:26",
                         "role" : null,
-                        "createdAt" : "2026-04-15 16:19:51",
-                        "updatedAt" : "2026-04-15 16:19:51"
+                        "createdAt" : "2026-05-01 16:59:26",
+                        "updatedAt" : "2026-05-01 16:59:26"
                       },
                       "error" : null
                     }
@@ -81,7 +81,7 @@ paths:
       operationId: quiz-progress-submit-answer
       requestBody:
         content:
-          application/json;charset=UTF-8:
+          application/json:
             schema:
               $ref: "#/components/schemas/api-v1-quiz-progress-answers-1062387050"
             examples:
@@ -89,7 +89,7 @@ paths:
                 value: |-
                   {
                     "quizId" : 1,
-                    "choiceId" : 1
+                    "choiceId" : 2
                   }
       responses:
         "200":
@@ -106,8 +106,6 @@ paths:
                       "data" : null,
                       "error" : null
                     }
-      security:
-      - bearerAuthJWT: []
   /api/v1/quiz-progress/current:
     get:
       tags:
@@ -130,15 +128,13 @@ paths:
                       "data" : {
                         "status" : "COMPLETED",
                         "quizSetId" : 1,
-                        "quizSetTitle" : "이번 주 1:1 매칭",
+                        "quizSetTitle" : "테스트 퀴즈셋",
                         "totalQuizzes" : 1,
                         "answeredQuizzes" : 1,
                         "participantCount" : 1
                       },
                       "error" : null
                     }
-      security:
-      - bearerAuthJWT: []
   /api/v1/quiz-progress/reset:
     post:
       tags:
@@ -161,8 +157,6 @@ paths:
                       "data" : null,
                       "error" : null
                     }
-      security:
-      - bearerAuthJWT: []
   /api/v1/quiz-sets/current-week:
     get:
       tags:
@@ -184,8 +178,8 @@ paths:
                       "success" : true,
                       "data" : {
                         "year" : 2026,
-                        "month" : 4,
-                        "week" : 3,
+                        "month" : 5,
+                        "week" : 1,
                         "quizSets" : [ {
                           "id" : 1,
                           "year" : 2026,
@@ -194,8 +188,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-04-14 16:19:51",
-                          "endDate" : "2026-04-16 16:19:51",
+                          "startDate" : "2026-04-30 16:59:25",
+                          "endDate" : "2026-05-02 16:59:25",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -212,8 +206,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-04-15 16:19:51",
-                            "updatedAt" : "2026-04-15 16:19:51"
+                            "createdAt" : "2026-05-01 16:59:25",
+                            "updatedAt" : "2026-05-01 16:59:25"
                           } ]
                         } ]
                       },
@@ -259,8 +253,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-04-15 16:19:51",
-                        "updatedAt" : "2026-04-15 16:19:51"
+                        "createdAt" : "2026-05-01 16:59:26",
+                        "updatedAt" : "2026-05-01 16:59:26"
                       },
                       "error" : null
                     }
@@ -307,8 +301,8 @@ paths:
                             "order" : 2
                           } ],
                           "order" : 1,
-                          "createdAt" : "2026-04-15 16:19:51",
-                          "updatedAt" : "2026-04-15 16:19:51",
+                          "createdAt" : "2026-01-01 00:00:00",
+                          "updatedAt" : "2026-01-01 00:00:00",
                           "userAnswer" : 1
                         }, {
                           "id" : 2,
@@ -324,16 +318,14 @@ paths:
                             "order" : 2
                           } ],
                           "order" : 2,
-                          "createdAt" : "2026-04-15 16:19:51",
-                          "updatedAt" : "2026-04-15 16:19:51",
+                          "createdAt" : "2026-01-01 00:00:00",
+                          "updatedAt" : "2026-01-01 00:00:00",
                           "userAnswer" : null
                         } ],
                         "totalCount" : 2
                       },
                       "error" : null
                     }
-      security:
-      - bearerAuthJWT: []
   /api/v1/users/auth/logout:
     post:
       tags:
@@ -374,7 +366,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "d6187db7-d9ff-45d0-adcf-e2cb0432c985"
+                    "refreshToken" : "7127eacb-a95e-4650-8d80-aa95bcdd1501"
                   }
       responses:
         "200":
@@ -389,8 +381,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc2MjM3NTg5LCJleHAiOjE3NzYyNDExODl9.asRYG6r2h0wYDluU6JPrQviKjTzwPsrN6sqRMcNt6A7otKsWLBcZTyjGLJHGwgK8RRIrQ35ut7Kix9Ay1YRjTQ",
-                        "refreshToken" : "bbab6ca6-dfd2-4b3e-8584-7ba7229f540a"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc3NjIyMzY0LCJleHAiOjE3Nzc2MjU5NjR9.IT7EKgI_2kG8NlOeL9lRyLQBYLVqSZyU0NLTD97gLqVQ_wvK1HtFHHanV-uV35KY_-vIvd_G5_B_oPQMaumHmg",
+                        "refreshToken" : "c7fe58b3-baf6-4c4d-9e8c-925008bbf12e"
                       },
                       "error" : null
                     }
@@ -448,8 +440,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-04-15 16:19:51",
-                        "updatedAt" : "2026-04-15 16:19:51"
+                        "createdAt" : "2026-05-01 16:59:26",
+                        "updatedAt" : "2026-05-01 16:59:26"
                       },
                       "error" : null
                     }
@@ -964,14 +956,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1056639717:
-      required:
-      - refreshToken
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          description: 리프레시 토큰
     api-v1-users-social-login-provider-callback1248644946:
       required:
       - error
@@ -987,6 +971,14 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-auth-refresh1056639717:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
     api-v1-users-id-leave-1444522536:
       required:
       - error

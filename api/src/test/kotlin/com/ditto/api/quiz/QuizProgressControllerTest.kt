@@ -1,26 +1,22 @@
 package com.ditto.api.quiz
 
-import com.ditto.api.quiz.dto.SubmitAnswerRequest
+import com.ditto.api.quiz.controller.QuizProgressController
+import com.ditto.api.quiz.dto.QuizChoiceResponse
+import com.ditto.api.quiz.dto.QuizProgressResponse
+import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
+import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.service.QuizProgressService
-import com.ditto.api.support.RestDocsTest
-import com.ditto.domain.member.entity.Member
-import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.quiz.QuizChoiceFixture
-import com.ditto.domain.quiz.QuizFixture
-import com.ditto.domain.quiz.QuizSetFixture
-import com.ditto.domain.quiz.repository.QuizChoiceRepository
-import com.ditto.domain.quiz.repository.QuizRepository
-import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.socialaccount.entity.SocialAccount
-import com.ditto.domain.socialaccount.entity.SocialProvider
-import com.ditto.domain.socialaccount.repository.SocialAccountRepository
-
+import com.ditto.api.support.ControllerUnitTest
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
+import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
@@ -32,48 +28,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
 
-class QuizProgressControllerTest : RestDocsTest() {
+class QuizProgressControllerTest : ControllerUnitTest() {
 
-    @Autowired
-    private lateinit var quizProgressService: QuizProgressService
+    private val quizProgressService: QuizProgressService = mockk()
 
-    @Autowired
-    private lateinit var quizSetRepository: QuizSetRepository
-
-    @Autowired
-    private lateinit var quizRepository: QuizRepository
-
-    @Autowired
-    private lateinit var quizChoiceRepository: QuizChoiceRepository
-
-    @Autowired
-    private lateinit var memberRepository: MemberRepository
-
-    @Autowired
-    private lateinit var socialAccountRepository: SocialAccountRepository
-
-    private val now = LocalDateTime.now()
-
-    private fun setupAuthenticatedMember() {
-        val member = memberRepository.save(Member(nickname = "테스트유저"))
-        socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "test-user"))
-    }
+    override val controller = QuizProgressController(quizProgressService)
 
     @Test
     @DisplayName("퀴즈 답안을 제출한다")
     fun submitAnswer() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
-        )
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
-        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
-        val request = mapOf("quizId" to quiz.id, "choiceId" to choice.id)
+        every { quizProgressService.submitAnswer(any(), any(), any()) } returns Unit
+        val request = mapOf("quizId" to 1L, "choiceId" to 2L)
 
         mockMvc.perform(
             post("/api/v1/quiz-progress/answers")
-                .withApiKey()
-                .withBearerToken()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
         )
@@ -108,24 +76,17 @@ class QuizProgressControllerTest : RestDocsTest() {
     @Test
     @DisplayName("퀴즈 진행률을 조회한다")
     fun getProgress() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
-        )
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
-        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+        every { quizProgressService.getProgress(any(), any()) } returns
+            QuizProgressResponse(
+                status = QuizProgressStatus.COMPLETED,
+                quizSetId = 1L,
+                quizSetTitle = "테스트 퀴즈셋",
+                totalQuizzes = 1,
+                answeredQuizzes = 1,
+                participantCount = 1,
+            )
 
-        quizProgressService.submitAnswer(
-            1L,
-            SubmitAnswerRequest(quiz.id, choice.id),
-            now,
-        )
-
-        mockMvc.perform(
-            get("/api/v1/quiz-progress/current")
-                .withApiKey()
-                .withBearerToken(),
-        )
+        mockMvc.perform(get("/api/v1/quiz-progress/current"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("COMPLETED"))
@@ -159,32 +120,45 @@ class QuizProgressControllerTest : RestDocsTest() {
     @Test
     @DisplayName("퀴즈셋의 문제와 답변을 조회한다")
     fun getQuizSetWithProgress() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
-        )
-        val quiz1 = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "첫번째", displayOrder = 1))
-        val quiz2 = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "두번째", displayOrder = 2))
-        val choice1 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id, content = "A", displayOrder = 1))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id, content = "B", displayOrder = 2))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id, content = "C", displayOrder = 1))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id, content = "D", displayOrder = 2))
+        val fixedTime = LocalDateTime.of(2026, 1, 1, 0, 0)
+        every { quizProgressService.getQuizSetWithProgress(any(), any(), any()) } returns
+            QuizSetWithProgressResponse(
+                quizzes = listOf(
+                    QuizWithAnswerResponse(
+                        id = 1L,
+                        question = "첫번째",
+                        quizSetId = 1L,
+                        choices = listOf(
+                            QuizChoiceResponse(id = 1L, content = "A", order = 1),
+                            QuizChoiceResponse(id = 2L, content = "B", order = 2),
+                        ),
+                        order = 1,
+                        createdAt = fixedTime,
+                        updatedAt = fixedTime,
+                        userAnswer = 1L,
+                    ),
+                    QuizWithAnswerResponse(
+                        id = 2L,
+                        question = "두번째",
+                        quizSetId = 1L,
+                        choices = listOf(
+                            QuizChoiceResponse(id = 3L, content = "C", order = 1),
+                            QuizChoiceResponse(id = 4L, content = "D", order = 2),
+                        ),
+                        order = 2,
+                        createdAt = fixedTime,
+                        updatedAt = fixedTime,
+                        userAnswer = null,
+                    ),
+                ),
+                totalCount = 2,
+            )
 
-        quizProgressService.submitAnswer(
-            1L,
-            SubmitAnswerRequest(quiz1.id, choice1.id),
-            now,
-        )
-
-        mockMvc.perform(
-            get("/api/v1/quiz-progress/quiz-sets/{id}", quizSet.id)
-                .withApiKey()
-                .withBearerToken(),
-        )
+        mockMvc.perform(get("/api/v1/quiz-progress/quiz-sets/{id}", 1L))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.totalCount").value(2))
-            .andExpect(jsonPath("$.data.quizzes[0].userAnswer").value(choice1.id.toInt()))
+            .andExpect(jsonPath("$.data.quizzes[0].userAnswer").value(1))
             .andExpect(jsonPath("$.data.quizzes[1].userAnswer").isEmpty)
             .andDo(
                 document(
@@ -220,18 +194,12 @@ class QuizProgressControllerTest : RestDocsTest() {
     @Test
     @DisplayName("비활성 퀴즈에 답안을 제출하면 에러를 반환한다")
     fun submitAnswerInactiveQuiz() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1), isActive = false),
-        )
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
-        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
-        val request = mapOf("quizId" to quiz.id, "choiceId" to choice.id)
+        every { quizProgressService.submitAnswer(any(), any(), any()) } throws
+            ErrorException(ErrorCode.QUIZ_NOT_IN_ACTIVE_SET)
+        val request = mapOf("quizId" to 1L, "choiceId" to 2L)
 
         mockMvc.perform(
             post("/api/v1/quiz-progress/answers")
-                .withApiKey()
-                .withBearerToken()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
         )
@@ -243,18 +211,12 @@ class QuizProgressControllerTest : RestDocsTest() {
     @Test
     @DisplayName("유효하지 않은 선택지로 답안을 제출하면 에러를 반환한다")
     fun submitAnswerInvalidChoice() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
-        )
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
-        val request = mapOf("quizId" to quiz.id, "choiceId" to 99999)
+        every { quizProgressService.submitAnswer(any(), any(), any()) } throws
+            ErrorException(ErrorCode.INVALID_CHOICE)
+        val request = mapOf("quizId" to 1L, "choiceId" to 99999)
 
         mockMvc.perform(
             post("/api/v1/quiz-progress/answers")
-                .withApiKey()
-                .withBearerToken()
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
         )
@@ -266,24 +228,9 @@ class QuizProgressControllerTest : RestDocsTest() {
     @Test
     @DisplayName("퀴즈 진행을 초기화한다")
     fun resetProgress() {
-        setupAuthenticatedMember()
-        val quizSet = quizSetRepository.save(
-            QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
-        )
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
-        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+        every { quizProgressService.resetProgress(any(), any()) } returns Unit
 
-        quizProgressService.submitAnswer(
-            1L,
-            SubmitAnswerRequest(quiz.id, choice.id),
-            now,
-        )
-
-        mockMvc.perform(
-            post("/api/v1/quiz-progress/reset")
-                .withApiKey()
-                .withBearerToken(),
-        )
+        mockMvc.perform(post("/api/v1/quiz-progress/reset"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andDo(
