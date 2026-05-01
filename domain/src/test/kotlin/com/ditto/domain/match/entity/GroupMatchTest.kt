@@ -106,45 +106,39 @@ class GroupMatchRoomTest(
             }
         }
 
-        "given: 멤버1이 quizSetId=1 인 방에 참여해 있을 때" - {
-            "when: existsByMemberIdAndQuizSetId(memberId=1, quizSetId=1) 를 조회하면" - {
-                "then: true 를 반환한다" {
-                    val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
-                    groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
+        "멤버1이 quizSetId=1 인 방에 참여해 있을 때, 동일 quizSetId 로 조회하면 true 를 반환한다" {
+            // given
+            val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+            groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
 
-                    groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(
-                        memberId = 1L,
-                        quizSetId = 1L,
-                    ) shouldBe true
-                }
-            }
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 1L)
+
+            // then
+            result shouldBe true
         }
 
-        "given: 멤버1이 quizSetId=1 인 방에 참여해 있을 때" - {
-            "when: existsByMemberIdAndQuizSetId(memberId=1, quizSetId=2) 를 조회하면" - {
-                "then: quizSetId 가 달라 false 를 반환한다" {
-                    val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
-                    groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
+        "멤버1이 quizSetId=1 인 방에 참여해 있을 때, 다른 quizSetId 로 조회하면 false 를 반환한다" {
+            // given
+            val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+            groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
 
-                    groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(
-                        memberId = 1L,
-                        quizSetId = 2L,
-                    ) shouldBe false
-                }
-            }
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 2L)
+
+            // then
+            result shouldBe false
         }
 
-        "given: 멤버1이 아무 방에도 참여하지 않았을 때" - {
-            "when: existsByMemberIdAndQuizSetId(memberId=1, quizSetId=1) 를 조회하면" - {
-                "then: false 를 반환한다" {
-                    groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+        "멤버1이 아무 방에도 참여하지 않았을 때, existsByMemberIdAndQuizSetId 는 false 를 반환한다" {
+            // given
+            groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
 
-                    groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(
-                        memberId = 1L,
-                        quizSetId = 1L,
-                    ) shouldBe false
-                }
-            }
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 1L)
+
+            // then
+            result shouldBe false
         }
     }
 
