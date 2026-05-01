@@ -105,6 +105,41 @@ class GroupMatchRoomTest(
                 }
             }
         }
+
+        "멤버1이 quizSetId=1 인 방에 참여해 있을 때, 동일 quizSetId 로 조회하면 true 를 반환한다" {
+            // given
+            val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+            groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
+
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 1L)
+
+            // then
+            result shouldBe true
+        }
+
+        "멤버1이 quizSetId=1 인 방에 참여해 있을 때, 다른 quizSetId 로 조회하면 false 를 반환한다" {
+            // given
+            val room = groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+            groupMatchRoomMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = 1L))
+
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 2L)
+
+            // then
+            result shouldBe false
+        }
+
+        "멤버1이 아무 방에도 참여하지 않았을 때, existsByMemberIdAndQuizSetId 는 false 를 반환한다" {
+            // given
+            groupMatchRoomRepository.save(GroupMatchFixture.create(quizSetId = 1L))
+
+            // when
+            val result = groupMatchRoomMemberRepository.existsByMemberIdAndQuizSetId(memberId = 1L, quizSetId = 1L)
+
+            // then
+            result shouldBe false
+        }
     }
 
     "GroupMatchDecline" - {
