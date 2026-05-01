@@ -19,7 +19,9 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.DayOfWeek
 import java.time.LocalDateTime
+import java.time.temporal.TemporalAdjusters
 import javax.sql.DataSource
 
 class QuizProgressServiceTest(
@@ -33,7 +35,7 @@ class QuizProgressServiceTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    val now = LocalDateTime.now()
+    val now = LocalDateTime.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
 
     fun setupMember(nickname: String = "테스트유저"): Long {
         val member = memberRepository.save(Member(nickname = nickname))
@@ -64,14 +66,20 @@ class QuizProgressServiceTest(
 
         "같은 퀴즈에 다른 선택지로 재제출하면 choiceId가 업데이트된다" {
             val memberId = setupMember()
-            val (quizId, choiceId1, choiceId2) = setupActiveQuizData()
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+            val quiz1 = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
+            quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "두번째", displayOrder = 2))
+            val choice1 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id, content = "A", displayOrder = 1))
+            val choice2 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id, content = "B", displayOrder = 2))
 
-            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId1), now)
-            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId2), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz1.id, choice1.id), now)
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz1.id, choice2.id), now)
 
             val answers = quizAnswerRepository.findAll()
             answers.size shouldBe 1
-            answers[0].choiceId shouldBe choiceId2
+            answers[0].choiceId shouldBe choice2.id
         }
 
         "비활성 퀴즈 세트의 퀴즈에 답안을 제출하면 예외가 발생한다" {
@@ -109,6 +117,43 @@ class QuizProgressServiceTest(
                 quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(99999L, 1L), now)
             }
             exception.errorCode shouldBe ErrorCode.NOT_FOUND
+        }
+
+        "참여 불가 요일에 제출하면 예외가 발생한다" {
+            val memberId = setupMember()
+            val thursday = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY))
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = thursday.minusDays(1), endDate = thursday.plusDays(1)),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+            val quizId = quiz.id
+            val choiceId = choice.id
+
+            val exception = shouldThrow<ErrorException> {
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), thursday)
+            }
+            exception.errorCode shouldBe ErrorCode.QUIZ_NOT_AVAILABLE_DAY
+        }
+
+        "COMPLETED 상태에서 답변을 수정하면 예외가 발생한다" {
+            val memberId = setupMember()
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(7)),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice1 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A", displayOrder = 1))
+            val choice2 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "B", displayOrder = 2))
+
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice1.id), now)
+
+            val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSet.id)
+            progress!!.status shouldBe QuizProgressStatus.COMPLETED
+
+            val exception = shouldThrow<ErrorException> {
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz.id, choice2.id), now)
+            }
+            exception.errorCode shouldBe ErrorCode.QUIZ_ALREADY_COMPLETED
         }
 
         "해당 퀴즈에 속하지 않는 choiceId로 제출하면 예외가 발생한다" {

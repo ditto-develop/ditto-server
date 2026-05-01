@@ -65,10 +65,10 @@ paths:
                         "gender" : "MALE",
                         "age" : 25,
                         "birthDate" : null,
-                        "joinedAt" : "2026-04-15 13:30:35",
+                        "joinedAt" : "2026-04-15 16:19:51",
                         "role" : null,
-                        "createdAt" : "2026-04-15 13:30:35",
-                        "updatedAt" : "2026-04-15 13:30:35"
+                        "createdAt" : "2026-04-15 16:19:51",
+                        "updatedAt" : "2026-04-15 16:19:51"
                       },
                       "error" : null
                     }
@@ -194,8 +194,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-04-14 13:30:35",
-                          "endDate" : "2026-04-16 13:30:35",
+                          "startDate" : "2026-04-14 16:19:51",
+                          "endDate" : "2026-04-16 16:19:51",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -212,8 +212,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-04-15 13:30:35",
-                            "updatedAt" : "2026-04-15 13:30:35"
+                            "createdAt" : "2026-04-15 16:19:51",
+                            "updatedAt" : "2026-04-15 16:19:51"
                           } ]
                         } ]
                       },
@@ -259,8 +259,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-04-15 13:30:35",
-                        "updatedAt" : "2026-04-15 13:30:35"
+                        "createdAt" : "2026-04-15 16:19:51",
+                        "updatedAt" : "2026-04-15 16:19:51"
                       },
                       "error" : null
                     }
@@ -307,8 +307,8 @@ paths:
                             "order" : 2
                           } ],
                           "order" : 1,
-                          "createdAt" : "2026-04-15 13:30:35",
-                          "updatedAt" : "2026-04-15 13:30:35",
+                          "createdAt" : "2026-04-15 16:19:51",
+                          "updatedAt" : "2026-04-15 16:19:51",
                           "userAnswer" : 1
                         }, {
                           "id" : 2,
@@ -324,8 +324,8 @@ paths:
                             "order" : 2
                           } ],
                           "order" : 2,
-                          "createdAt" : "2026-04-15 13:30:35",
-                          "updatedAt" : "2026-04-15 13:30:35",
+                          "createdAt" : "2026-04-15 16:19:51",
+                          "updatedAt" : "2026-04-15 16:19:51",
                           "userAnswer" : null
                         } ],
                         "totalCount" : 2
@@ -374,7 +374,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "c8e5d0e6-e3d5-416b-8fef-af3613ede3ee"
+                    "refreshToken" : "d6187db7-d9ff-45d0-adcf-e2cb0432c985"
                   }
       responses:
         "200":
@@ -389,8 +389,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc2MjI3NDMyLCJleHAiOjE3NzYyMzEwMzJ9.3UqDxKWPH822V0ud7GJGGZdHnSp26kByclBBQUkx6FwW0BD4HF57YMu5jRBn72zCvbXW2gD2IFlFbZDTEpoeNA",
-                        "refreshToken" : "588f033f-2a03-4e4f-8e22-d7746714add1"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc2MjM3NTg5LCJleHAiOjE3NzYyNDExODl9.asRYG6r2h0wYDluU6JPrQviKjTzwPsrN6sqRMcNt6A7otKsWLBcZTyjGLJHGwgK8RRIrQ35ut7Kix9Ay1YRjTQ",
+                        "refreshToken" : "bbab6ca6-dfd2-4b3e-8584-7ba7229f540a"
                       },
                       "error" : null
                     }
@@ -448,8 +448,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-04-15 13:30:35",
-                        "updatedAt" : "2026-04-15 13:30:35"
+                        "createdAt" : "2026-04-15 16:19:51",
+                        "updatedAt" : "2026-04-15 16:19:51"
                       },
                       "error" : null
                     }
@@ -964,6 +964,14 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-auth-refresh1056639717:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
     api-v1-users-social-login-provider-callback1248644946:
       required:
       - error
@@ -979,14 +987,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1056639717:
-      required:
-      - refreshToken
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          description: 리프레시 토큰
     api-v1-users-id-leave-1444522536:
       required:
       - error
