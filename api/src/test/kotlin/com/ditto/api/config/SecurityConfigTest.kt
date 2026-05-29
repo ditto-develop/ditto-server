@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -121,6 +123,34 @@ class SecurityConfigTest : RestDocsTest() {
                     .content(request),
             )
                 .andExpect(status().isUnauthorized)
+        }
+    }
+
+    @Nested
+    @DisplayName("CORS")
+    inner class Cors {
+
+        @Test
+        @DisplayName("허용된 origin의 preflight 요청은 CORS 헤더와 함께 허용된다")
+        fun allowedOriginPreflight() {
+            mockMvc.perform(
+                options("/api/test/warn")
+                    .header("Origin", "http://localhost:3000")
+                    .header("Access-Control-Request-Method", "GET"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+        }
+
+        @Test
+        @DisplayName("허용되지 않은 origin의 preflight 요청은 차단된다")
+        fun disallowedOriginPreflight() {
+            mockMvc.perform(
+                options("/api/test/warn")
+                    .header("Origin", "https://evil.com")
+                    .header("Access-Control-Request-Method", "GET"),
+            )
+                .andExpect(status().isForbidden)
         }
     }
 

@@ -2,6 +2,7 @@ package com.ditto.api.config
 
 import com.ditto.api.config.auth.ApiKeyAuthFilter
 import com.ditto.api.config.auth.ApiKeyProperties
+import com.ditto.api.config.auth.CorsProperties
 import com.ditto.api.config.auth.JwtAuthenticationFilter
 import com.ditto.api.config.auth.JwtTokenProvider
 import org.springframework.context.annotation.Bean
@@ -12,12 +13,16 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
     private val apiKeyProperties: ApiKeyProperties,
     private val jwtTokenProvider: JwtTokenProvider,
+    private val corsProperties: CorsProperties,
 ) {
 
     /**
@@ -63,6 +68,7 @@ class SecurityConfig(
                 "/api/v1/users/nickname/**",
             )
             .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
             .authorizeHttpRequests { it.anyRequest().authenticated() }
@@ -78,6 +84,7 @@ class SecurityConfig(
         return http
             .securityMatcher("/api/**")
             .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(JwtAuthenticationFilter(jwtTokenProvider), ApiKeyAuthFilter::class.java)
@@ -96,5 +103,24 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { it.anyRequest().denyAll() }
             .build()
+    }
+
+    /**
+     * CORS 설정 — 허용 origin은 `ditto.cors.allowed-origins`(yml/환경변수)로 관리
+     * 인증 헤더(Authorization, X-API-Key)를 allowedHeaders에 포함한다.
+     * Bearer 토큰 기반이라 쿠키를 쓰지 않으므로 allowCredentials는 false.
+     */
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowedOrigins = corsProperties.allowedOrigins
+            allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            allowedHeaders = listOf("Authorization", "Content-Type", "X-API-Key")
+            allowCredentials = false
+            maxAge = 3600L
+        }
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/api/**", config)
+        }
     }
 }

@@ -25,6 +25,9 @@ ditto:
       - WEDNESDAY
   security:
     api-key: ${API_KEY}
+  cors:
+    # 쉼표 구분 환경변수 (예: https://ditto.pics,https://www.ditto.pics) — TODO(#54): 프론트 도메인 확정 필요
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS}
