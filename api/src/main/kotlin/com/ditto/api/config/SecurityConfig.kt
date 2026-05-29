@@ -55,14 +55,31 @@ class SecurityConfig(
     }
 
     /**
-     * API Key만 필요 (소셜 로그인, 토큰 갱신 등 JWT 불필요)
+     * 인증 불필요 (permitAll) — X-API-Key·JWT 없이 접근 가능한 공개 엔드포인트
      */
     @Bean
     @Order(3)
+    fun publicApiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        return http
+            .securityMatcher(
+                "/api/v1/users/social-login/*",
+                "/api/v1/users/social-login/*/callback",
+            )
+            .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { it.anyRequest().permitAll() }
+            .build()
+    }
+
+    /**
+     * API Key만 필요 (토큰 갱신, 회원가입 등 JWT 불필요)
+     */
+    @Bean
+    @Order(4)
     fun apiKeyOnlySecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .securityMatcher(
-                "/api/v1/users/social-login/**",
                 "/api/v1/users/auth/refresh",
                 "/api/v1/users",
                 "/api/v1/users/nickname/**",
@@ -79,7 +96,7 @@ class SecurityConfig(
      * API — API Key + JWT 인증 필수
      */
     @Bean
-    @Order(4)
+    @Order(5)
     fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .securityMatcher("/api/**")
@@ -96,7 +113,7 @@ class SecurityConfig(
      * 그 외 모든 경로 — 차단
      */
     @Bean
-    @Order(5)
+    @Order(6)
     fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .csrf { it.disable() }

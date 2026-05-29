@@ -127,6 +127,30 @@ class SecurityConfigTest : RestDocsTest() {
     }
 
     @Nested
+    @DisplayName("OAuth 인증 예외")
+    inner class OAuthExempt {
+
+        @Test
+        @DisplayName("API Key 없이 소셜 로그인 시작 엔드포인트에 접근할 수 있다")
+        fun loginWithoutApiKey() {
+            mockMvc.perform(get("/api/v1/users/social-login/{provider}", "KAKAO"))
+                .andExpect(status().isFound)
+                .andExpect(header().exists("Location"))
+        }
+
+        @Test
+        @DisplayName("API Key 없이 소셜 로그인 콜백 엔드포인트에 접근할 수 있다")
+        fun callbackWithoutApiKey() {
+            mockMvc.perform(
+                get("/api/v1/users/social-login/{provider}/callback", "KAKAO")
+                    .param("code", "test-auth-code"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.success").value(true))
+        }
+    }
+
+    @Nested
     @DisplayName("CORS")
     inner class Cors {
 
