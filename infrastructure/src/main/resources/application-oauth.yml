@@ -8,7 +8,7 @@ ditto:
     kakao:
       client-id: test-client-id
       client-secret: ""
-      redirect-uri: http://localhost:8080/api/v1/users/social-login/kakao/callback
+      redirect-uri: http://localhost:8080/api/v1/users/social-login/KAKAO/callback
       connect-timeout: 3s
       read-timeout: 5s
 
