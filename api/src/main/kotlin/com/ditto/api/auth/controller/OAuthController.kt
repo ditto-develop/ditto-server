@@ -1,8 +1,6 @@
 package com.ditto.api.auth.controller
 
-import com.ditto.api.auth.dto.OAuthLoginResponse
 import com.ditto.api.auth.facade.OAuthFacade
-import com.ditto.common.response.ApiResponse
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -31,8 +29,10 @@ class OAuthController(
     fun callback(
         @PathVariable provider: SocialProvider,
         @RequestParam code: String,
-    ): ApiResponse<OAuthLoginResponse> {
-        val result = oAuthFacade.login(provider, code)
-        return ApiResponse.ok(result)
+    ): ResponseEntity<Unit> {
+        val redirectUrl = oAuthFacade.login(provider, code)
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .location(URI.create(redirectUrl))
+            .build()
     }
 }
