@@ -65,10 +65,10 @@ paths:
                         "gender" : "MALE",
                         "age" : 25,
                         "birthDate" : null,
-                        "joinedAt" : "2026-05-31 22:26:53",
+                        "joinedAt" : "2026-05-31 22:59:01",
                         "role" : null,
-                        "createdAt" : "2026-05-31 22:26:53",
-                        "updatedAt" : "2026-05-31 22:26:53"
+                        "createdAt" : "2026-05-31 22:59:01",
+                        "updatedAt" : "2026-05-31 22:59:01"
                       },
                       "error" : null
                     }
@@ -278,8 +278,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-05-30 22:26:53",
-                          "endDate" : "2026-06-01 22:26:53",
+                          "startDate" : "2026-05-30 22:59:00",
+                          "endDate" : "2026-06-01 22:59:00",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -296,8 +296,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-05-31 22:26:53",
-                            "updatedAt" : "2026-05-31 22:26:53"
+                            "createdAt" : "2026-05-31 22:59:01",
+                            "updatedAt" : "2026-05-31 22:59:01"
                           } ]
                         } ]
                       },
@@ -343,8 +343,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-05-31 22:26:53",
-                        "updatedAt" : "2026-05-31 22:26:53"
+                        "createdAt" : "2026-05-31 22:59:01",
+                        "updatedAt" : "2026-05-31 22:59:01"
                       },
                       "error" : null
                     }
@@ -577,7 +577,7 @@ paths:
               token-refresh:
                 value: |-
                   {
-                    "refreshToken" : "e94be462-9ea7-4b1d-a300-bfb8261760ef"
+                    "refreshToken" : "f0b3006c-48e1-4d51-b152-b71529c63ec8"
                   }
       responses:
         "200":
@@ -592,8 +592,8 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwMjM0MDA4LCJleHAiOjE3ODAyMzc2MDh9.PE2CHflgiY6B-gtSAKUWw8GD_nrVaaH3fRujZvG60cJdnQ9c4nER2XXlJmvhZtqyscwWlYb4MU7wH3BFJbWjTg",
-                        "refreshToken" : "6a75c2d1-fba5-411f-a5af-23ff55122a3b"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwMjM1OTM2LCJleHAiOjE3ODAyMzk1MzZ9.-40h2oPbK8fWGHq9gxgclpHkNkeVllwDE161wJPQ6Q2Fe0oPlaaVdEe6dEdtlud0boDLmvy7xXpM70YjPW8Mng",
+                        "refreshToken" : "8dc3caec-646f-49f9-85ab-f073ef0eac9f"
                       },
                       "error" : null
                     }
@@ -651,8 +651,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-05-31 22:26:53",
-                        "updatedAt" : "2026-05-31 22:26:53"
+                        "createdAt" : "2026-05-31 22:59:01",
+                        "updatedAt" : "2026-05-31 22:59:01"
                       },
                       "error" : null
                     }
@@ -1413,51 +1413,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1056639717:
-      required:
-      - refreshToken
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          description: 리프레시 토큰
-    api-v1-users-id-leave-1444522536:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - joinedAt
-          - name
-          - nickname
-          - phoneNumber
-          - role
-          - updatedAt
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 생성일시
-            nickname:
-              type: string
-              description: 닉네임
-            id:
-              type: number
-              description: 사용자 ID
-            updatedAt:
-              type: string
-              description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-1on1-795708692:
       required:
       - error
@@ -1532,6 +1487,51 @@ components:
                   status:
                     type: string
                     description: 상태 (PENDING / ACCEPTED / REJECTED / CANCELLED / EXPIRED)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1056639717:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
+    api-v1-users-id-leave-1444522536:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
+            updatedAt:
+              type: string
+              description: 수정일시
         success:
           type: boolean
           description: 성공 여부
