@@ -1,8 +1,7 @@
 package com.ditto.api.auth.controller
 
-import com.ditto.api.auth.dto.OAuthLoginResponse
 import com.ditto.api.auth.facade.OAuthFacade
-import com.ditto.common.response.ApiResponse
+import com.ditto.api.config.FrontProperties
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -11,12 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
 @RestController
 @RequestMapping("api/v1/users/social-login")
 class OAuthController(
     private val oAuthFacade: OAuthFacade,
+    private val frontProperties: FrontProperties,
 ) {
 
     @GetMapping("/{provider}")
@@ -31,8 +32,18 @@ class OAuthController(
     fun callback(
         @PathVariable provider: SocialProvider,
         @RequestParam code: String,
-    ): ApiResponse<OAuthLoginResponse> {
+    ): ResponseEntity<Unit> {
         val result = oAuthFacade.login(provider, code)
-        return ApiResponse.ok(result)
+        val redirectUri = UriComponentsBuilder.fromUriString(frontProperties.url)
+            .path(frontProperties.oauthCallbackPath)
+            .apply {
+                result.accessToken?.let { queryParam("accessToken", it) }
+                result.refreshToken?.let { queryParam("refreshToken", it) }
+            }
+            .build()
+            .toUri()
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .location(redirectUri)
+            .build()
     }
 }

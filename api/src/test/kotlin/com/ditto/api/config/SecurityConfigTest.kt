@@ -145,8 +145,8 @@ class SecurityConfigTest : RestDocsTest() {
                 get("/api/v1/users/social-login/{provider}/callback", "KAKAO")
                     .param("code", "test-auth-code"),
             )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(status().isFound)
+                .andExpect(header().exists("Location"))
         }
     }
 
