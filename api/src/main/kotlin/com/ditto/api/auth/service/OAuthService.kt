@@ -25,14 +25,13 @@ class OAuthService(
     }
 
     fun getAuthCallbackUrl(
-        accessToken: String?,
-        refreshToken: String?,
+        accessToken: String,
+        signupRequired: Boolean,
     ): String =
         UriComponentsBuilder
             .fromUriString(frontProperties.oauthCallbackUrl)
-            .apply {
-                accessToken?.let { queryParam("accessToken", it) }
-                refreshToken?.let { queryParam("refreshToken", it) }
-            }.build()
+            .queryParam("accessToken", accessToken)
+            .queryParam("signupRequired", signupRequired)
+            .build()
             .toUriString()
 }

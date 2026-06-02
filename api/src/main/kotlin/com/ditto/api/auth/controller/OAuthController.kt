@@ -1,7 +1,9 @@
 package com.ditto.api.auth.controller
 
 import com.ditto.api.auth.facade.OAuthFacade
+import com.ditto.api.config.auth.RefreshTokenCookieFactory
 import com.ditto.domain.socialaccount.entity.SocialProvider
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -15,10 +17,13 @@ import java.net.URI
 @RequestMapping("api/v1/users/social-login")
 class OAuthController(
     private val oAuthFacade: OAuthFacade,
+    private val refreshTokenCookieFactory: RefreshTokenCookieFactory,
 ) {
 
     @GetMapping("/{provider}")
-    fun login(@PathVariable provider: SocialProvider): ResponseEntity<Unit> {
+    fun login(
+        @PathVariable provider: SocialProvider,
+    ): ResponseEntity<Unit> {
         val authorizationUrl = oAuthFacade.getAuthorizationUrl(provider)
         return ResponseEntity.status(HttpStatus.FOUND)
             .location(URI.create(authorizationUrl))
@@ -29,10 +34,13 @@ class OAuthController(
     fun callback(
         @PathVariable provider: SocialProvider,
         @RequestParam code: String,
+        response: HttpServletResponse,
     ): ResponseEntity<Unit> {
-        val redirectUrl = oAuthFacade.login(provider, code)
+        val oauthLoginResult = oAuthFacade.login(provider, code)
+        refreshTokenCookieFactory.addTo(response, oauthLoginResult.refreshToken)
+
         return ResponseEntity.status(HttpStatus.FOUND)
-            .location(URI.create(redirectUrl))
+            .location(URI.create(oauthLoginResult.redirectUrl))
             .build()
     }
 }

@@ -3,15 +3,18 @@ package com.ditto.api.config.auth
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.response.ApiResponse
 import com.ditto.common.serialization.ObjectMapperFactory
+import com.ditto.domain.member.repository.MemberRepository
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
+import kotlin.jvm.optionals.getOrNull
 
 class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
+    private val memberRepository: MemberRepository,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -21,11 +24,24 @@ class JwtAuthenticationFilter(
         val token = resolveToken(request)
 
         if (token == null || !jwtTokenProvider.isValid(token)) {
-            retrieveUnauthorized(response)
+            sendError(response, ErrorCode.UNAUTHORIZED_ERROR)
             return
         }
 
-        setAuthentication(token)
+        val memberId = jwtTokenProvider.getMemberId(token)
+        val member = memberRepository.findById(memberId).getOrNull()
+            ?: run {
+                sendError(response, ErrorCode.UNAUTHORIZED_ERROR)
+                return
+            }
+
+        // 회원가입 미완료(PENDING) 회원은 보호 API 접근을 차단한다.
+        if (member.isPending()) {
+            sendError(response, ErrorCode.SIGNUP_REQUIRED)
+            return
+        }
+
+        setAuthentication(memberId)
 
         filterChain.doFilter(request, response)
     }
@@ -36,17 +52,18 @@ class JwtAuthenticationFilter(
             ?.takeIf { it.startsWith(BEARER_PREFIX) }
             ?.substring(BEARER_PREFIX.length)
 
-    private fun retrieveUnauthorized(response: HttpServletResponse) {
-        response.status = HttpServletResponse.SC_UNAUTHORIZED
+    private fun sendError(
+        response: HttpServletResponse,
+        errorCode: ErrorCode,
+    ) {
+        response.status = errorCode.status
         response.contentType = "application/json"
-        response.writer.write(objectMapper.writeValueAsString(ApiResponse.error(ErrorCode.UNAUTHORIZED_ERROR)))
+        response.characterEncoding = "UTF-8"
+        response.writer.write(objectMapper.writeValueAsString(ApiResponse.error(errorCode)))
     }
 
-    private fun setAuthentication(token: String) {
-        val principal =
-            MemberPrincipal(
-                memberId = jwtTokenProvider.getMemberId(token),
-            )
+    private fun setAuthentication(memberId: Long) {
+        val principal = MemberPrincipal(memberId = memberId)
 
         val authentication =
             UsernamePasswordAuthenticationToken(

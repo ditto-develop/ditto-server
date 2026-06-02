@@ -19,6 +19,11 @@ springdoc:
 ditto:
   security:
     api-key: test-api-key
+  auth:
+    cookie:
+      secure: ${COOKIE_SECURE:false}
+      same-site: Lax
+      path: /api/v1/users/auth
   cors:
     # TODO(#54): 웹 프론트 dev origin 확정 필요
     allowed-origins:

@@ -1,5 +1,6 @@
 package com.ditto.api.auth.facade
 
+import com.ditto.api.auth.dto.OAuthLoginResult
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
@@ -19,16 +20,14 @@ class OAuthFacade(
     fun login(
         provider: SocialProvider,
         code: String,
-    ): String {
+    ): OAuthLoginResult {
         val userInfo = oAuthService.getOAuthUserInfo(provider, code)
         val member = memberSocialAccountService.findOrCreateMember(provider, userInfo.id, userInfo.email)
 
-        if (member.isPending()) {
-            return oAuthService.getAuthCallbackUrl(accessToken = null, refreshToken = null)
-        }
-
         val accessToken = jwtTokenProvider.generateAccessToken(member.id)
         val refreshToken = authService.createRefreshToken(member.id)
-        return oAuthService.getAuthCallbackUrl(accessToken, refreshToken.token)
+        val redirectUrl = oAuthService.getAuthCallbackUrl(accessToken, signupRequired = member.isPending())
+
+        return OAuthLoginResult(redirectUrl = redirectUrl, refreshToken = refreshToken.token)
     }
 }

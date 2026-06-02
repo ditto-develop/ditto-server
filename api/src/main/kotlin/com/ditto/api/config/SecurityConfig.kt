@@ -5,6 +5,7 @@ import com.ditto.api.config.auth.ApiKeyProperties
 import com.ditto.api.config.auth.CorsProperties
 import com.ditto.api.config.auth.JwtAuthenticationFilter
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
@@ -23,6 +24,7 @@ class SecurityConfig(
     private val apiKeyProperties: ApiKeyProperties,
     private val jwtTokenProvider: JwtTokenProvider,
     private val corsProperties: CorsProperties,
+    private val memberRepository: MemberRepository,
 ) {
 
     /**
@@ -104,7 +106,7 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
-            .addFilterAfter(JwtAuthenticationFilter(jwtTokenProvider), ApiKeyAuthFilter::class.java)
+            .addFilterAfter(JwtAuthenticationFilter(jwtTokenProvider, memberRepository), ApiKeyAuthFilter::class.java)
             .authorizeHttpRequests { it.anyRequest().authenticated() }
             .build()
     }
@@ -125,7 +127,8 @@ class SecurityConfig(
     /**
      * CORS 설정 — 허용 origin은 `ditto.cors.allowed-origins`(yml/환경변수)로 관리
      * 인증 헤더(Authorization, X-API-Key)를 allowedHeaders에 포함한다.
-     * Bearer 토큰 기반이라 쿠키를 쓰지 않으므로 allowCredentials는 false.
+     * refreshToken을 HttpOnly 쿠키로 주고받으므로 allowCredentials는 true.
+     * (allowCredentials=true이면 allowedOrigins에 와일드카드 `*`를 쓸 수 없어 명시적 origin 목록을 사용한다.)
      */
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
@@ -133,7 +136,7 @@ class SecurityConfig(
             allowedOrigins = corsProperties.allowedOrigins
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type", "X-API-Key")
-            allowCredentials = false
+            allowCredentials = true
             maxAge = 3600L
         }
         return UrlBasedCorsConfigurationSource().apply {
