@@ -8,6 +8,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingRequestCookieException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -45,6 +46,12 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun handleMessageNotReadable(e: HttpMessageNotReadableException): ApiResponse<Unit> {
         logger.warn { "[PARSE_ERROR] ${e.message}" }
+        return ApiResponse.error(ErrorCode.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(MissingRequestCookieException::class)
+    fun handleMissingCookie(e: MissingRequestCookieException): ApiResponse<Unit> {
+        logger.warn { "[MISSING_COOKIE] ${e.cookieName}" }
         return ApiResponse.error(ErrorCode.BAD_REQUEST)
     }
 

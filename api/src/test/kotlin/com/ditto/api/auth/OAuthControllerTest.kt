@@ -6,6 +6,7 @@ import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
+import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -50,18 +51,21 @@ class OAuthControllerTest : RestDocsTest() {
     }
 
     @Test
-    @DisplayName("신규 사용자면 토큰 없이 프론트 콜백으로 리다이렉트한다")
-    fun callbackNewUser() {
+    @DisplayName("콜백은 accessToken·signupRequired를 쿼리로, refreshToken을 HttpOnly 쿠키로 전달한다")
+    fun callback() {
         mockMvc.perform(
             get("/api/v1/users/social-login/{provider}/callback", "KAKAO").withApiKey()
                 .param("code", "test-auth-code"),
         )
             .andExpect(status().isFound)
             .andExpect(header().string("Location", startsWith("http://localhost:3000/auth/callback")))
-            .andExpect(header().string("Location", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("accessToken"))))
+            .andExpect(header().string("Location", containsString("accessToken")))
+            .andExpect(header().string("Location", containsString("signupRequired")))
+            .andExpect(header().string("Set-Cookie", containsString("refreshToken=")))
+            .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
             .andDo(
                 document(
-                    "oauth-callback-new-user",
+                    "oauth-callback",
                     preprocessRequest(prettyPrint()),
                     preprocessResponse(prettyPrint()),
                     resource(
@@ -69,8 +73,9 @@ class OAuthControllerTest : RestDocsTest() {
                             .tag("OAuth")
                             .summary("소셜 로그인 콜백")
                             .description(
-                                "소셜 로그인 인가 코드를 받아 토큰을 발급한 뒤 프론트 콜백 페이지로 리다이렉트합니다. " +
-                                    "기존 사용자는 accessToken/refreshToken 쿼리 파라미터가 포함되고, 신규 사용자는 미포함됩니다.",
+                                "소셜 로그인 인가 코드를 받아 토큰을 발급한 뒤 프론트 콜백 페이지로 리다이렉트한다. " +
+                                    "accessToken과 회원가입 필요 여부(signupRequired)는 쿼리 파라미터로, " +
+                                    "refreshToken은 HttpOnly 쿠키로 전달된다.",
                             )
                             .pathParameters(
                                 parameterWithName("provider").description(PROVIDER_DESCRIPTION),

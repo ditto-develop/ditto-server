@@ -12,6 +12,7 @@ enum class ErrorCode(
     UNSUPPORTED_PROVIDER(400, "1001", "지원하지 않는 소셜 로그인 제공자입니다."),
     REFRESH_TOKEN_NOT_FOUND(401, "2001", "리프레시 토큰이 존재하지 않습니다."),
     REFRESH_TOKEN_EXPIRED(401, "2002", "리프레시 토큰이 만료되었습니다."),
+    SIGNUP_REQUIRED(403, "3001", "회원가입을 완료해야 이용할 수 있습니다."),
     MEMBER_ALREADY_EXISTS(409, "3002", "이미 존재하는 사용자입니다."),
     NICKNAME_ALREADY_EXISTS(409, "3003", "이미 사용 중인 닉네임입니다."),
     QUIZ_NOT_IN_ACTIVE_SET(400, "4001", "현재 활성화된 퀴즈 세트에 속한 퀴즈가 아닙니다."),

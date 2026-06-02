@@ -1,6 +1,5 @@
 package com.ditto.api.auth
 
-import com.ditto.api.auth.dto.TokenRefreshRequest
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
@@ -32,7 +31,7 @@ class AuthServiceTest(
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
                 val refreshToken = authService.createRefreshToken(member.id)
 
-                val result = authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
+                val result = authService.refresh(refreshToken.token)
 
                 result.accessToken shouldNotBe null
                 jwtTokenProvider.isValid(result.accessToken) shouldBe true
@@ -42,7 +41,7 @@ class AuthServiceTest(
 
             "존재하지 않는 리프레시 토큰이면 예외가 발생한다" {
                 val exception = shouldThrow<ErrorException> {
-                    authService.refresh(TokenRefreshRequest(refreshToken = "non-existent-token"))
+                    authService.refresh("non-existent-token")
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
             }
@@ -57,7 +56,7 @@ class AuthServiceTest(
                 refreshTokenRepository.save(expiredToken)
 
                 val exception = shouldThrow<WarnException> {
-                    authService.refresh(TokenRefreshRequest(refreshToken = "expired-token"))
+                    authService.refresh("expired-token")
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_EXPIRED
             }
@@ -67,10 +66,10 @@ class AuthServiceTest(
                 val refreshToken = authService.createRefreshToken(member.id)
                 val oldToken = refreshToken.token
 
-                authService.refresh(TokenRefreshRequest(refreshToken = oldToken))
+                authService.refresh(oldToken)
 
                 val exception = shouldThrow<ErrorException> {
-                    authService.refresh(TokenRefreshRequest(refreshToken = oldToken))
+                    authService.refresh(oldToken)
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
             }
@@ -106,7 +105,7 @@ class AuthServiceTest(
                 authService.logout(member.id)
 
                 val exception = shouldThrow<ErrorException> {
-                    authService.refresh(TokenRefreshRequest(refreshToken = refreshToken.token))
+                    authService.refresh(refreshToken.token)
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
             }

@@ -4,7 +4,6 @@ import com.ditto.api.support.RestDocsTest
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Member
-import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -26,9 +25,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 class UserControllerTest : RestDocsTest() {
-
-    @Autowired
-    private lateinit var memberRepository: MemberRepository
 
     @Autowired
     private lateinit var socialAccountRepository: SocialAccountRepository
@@ -138,13 +134,13 @@ class UserControllerTest : RestDocsTest() {
     @Test
     @DisplayName("회원 탈퇴에 성공한다")
     fun leaveUser() {
-        val member = memberRepository.save(Member(nickname = "탈퇴유저"))
+        val member = memberRepository.save(Member(nickname = "탈퇴유저").apply { activate() })
         socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "test-user"))
 
         mockMvc.perform(
             post("/api/v1/users/{id}/leave", member.id)
                 .withApiKey()
-                .withBearerToken(),
+                .withBearerToken(member.id),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))

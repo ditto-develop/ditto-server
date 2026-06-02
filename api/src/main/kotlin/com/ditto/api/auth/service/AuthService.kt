@@ -1,7 +1,6 @@
 package com.ditto.api.auth.service
 
-import com.ditto.api.auth.dto.TokenRefreshRequest
-import com.ditto.api.auth.dto.TokenRefreshResponse
+import com.ditto.api.auth.dto.TokenRefreshResult
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
@@ -35,19 +34,20 @@ class AuthService(
     }
 
     @Transactional
-    fun refresh(request: TokenRefreshRequest): TokenRefreshResponse {
-        val refreshToken = refreshTokenRepository.findByToken(request.refreshToken)
+    fun refresh(refreshToken: String): TokenRefreshResult {
+        val existedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
             ?: throw ErrorException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
-        if (refreshToken.isExpired()) {
+
+        if (existedRefreshToken.isExpired()) {
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         }
 
-        refreshTokenRepository.delete(refreshToken)
+        refreshTokenRepository.delete(existedRefreshToken)
 
-        val newAccessToken = jwtTokenProvider.generateAccessToken(refreshToken.memberId)
-        val newRefreshToken = createRefreshToken(refreshToken.memberId)
+        val newAccessToken = jwtTokenProvider.generateAccessToken(existedRefreshToken.memberId)
+        val newRefreshToken = createRefreshToken(existedRefreshToken.memberId)
 
-        return TokenRefreshResponse(
+        return TokenRefreshResult(
             accessToken = newAccessToken,
             refreshToken = newRefreshToken.token,
         )
