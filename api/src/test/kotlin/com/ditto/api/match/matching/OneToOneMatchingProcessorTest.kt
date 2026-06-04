@@ -15,7 +15,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val p3 = MatchParticipant(3L, mapOf(101L to 1L, 102L to 2L, 103L to 2L)) // 1 과 1개, 2 와 2개 일치
 
                 // 점수(3문항): (1,2)=66.7, (1,3)=33.3, (2,3)=66.7 → 상위20%+동점으로 66.7 두 쌍 선발
-                val result = processor.match(MatchingContext(listOf(p1, p2, p3)))
+                val result = processor.match(listOf(p1, p2, p3))
 
                 result.survivingDuos.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(
                     1L to 2L,
@@ -24,9 +24,9 @@ class OneToOneMatchingProcessorTest : FreeSpec(
             }
 
             "참여자가 2명 미만이면 빈 결과 (7.1)" {
-                processor.match(MatchingContext(emptyList())).survivingDuos shouldBe emptyList()
+                processor.match(emptyList()).survivingDuos shouldBe emptyList()
                 processor.match(
-                    MatchingContext(listOf(MatchParticipant(1L, mapOf(101L to 1L)))),
+                    listOf(MatchParticipant(1L, mapOf(101L to 1L))),
                 ).survivingDuos shouldBe emptyList()
             }
 
@@ -34,7 +34,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val p1 = MatchParticipant(1L, mapOf(101L to 1L, 102L to 1L))
                 val p2 = MatchParticipant(2L, mapOf(101L to 1L, 102L to 2L)) // 2문항 중 1개 일치
 
-                val result = processor.match(MatchingContext(listOf(p1, p2)))
+                val result = processor.match(listOf(p1, p2))
 
                 result.survivingDuos.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }

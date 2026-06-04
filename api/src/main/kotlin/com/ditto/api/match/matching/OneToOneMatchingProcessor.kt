@@ -15,9 +15,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
 
     override val matchingType: MatchingType = MatchingType.ONE_TO_ONE
 
-    override fun match(context: MatchingContext): MatchingResult {
-        val participants = context.participants
-
+    override fun match(participants: List<MatchParticipant>): MatchingResult {
         if (participants.size < 2) return MatchingResult(emptyList())
 
         val scoredDuos = scoreAllDuos(participants)

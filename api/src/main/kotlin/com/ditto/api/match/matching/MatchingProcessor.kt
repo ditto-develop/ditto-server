@@ -14,5 +14,5 @@ interface MatchingProcessor {
     val matchingType: MatchingType
 
     /** 참여자 답변을 바탕으로 매칭 프로세스를 실행해 결과를 계산한다. */
-    fun match(context: MatchingContext): MatchingResult
+    fun match(participants: List<MatchParticipant>): MatchingResult
 }

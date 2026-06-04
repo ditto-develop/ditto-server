@@ -10,11 +10,6 @@ data class MatchParticipant(
     val answers: Map<Long, Long>,
 )
 
-/** 매칭 알고리즘 입력 컨텍스트 */
-data class MatchingContext(
-    val participants: List<MatchParticipant>,
-)
-
 /**
  * 점수화된 페어. memberId1 < memberId2 로 정규화하여 방향 무관하게 동일 페어를 표현한다.
  *

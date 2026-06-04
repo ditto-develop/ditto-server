@@ -78,6 +78,7 @@ class Member(
     }
 
     fun isPending(): Boolean = status == MemberStatus.PENDING
+    fun isActive(): Boolean = status == MemberStatus.ACTIVE
 
     fun register(
         name: String?,
