@@ -1,5 +1,6 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.domain.member.entity.Gender
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
@@ -39,7 +40,51 @@ class KakaoOAuthClient(
                 birthyear = kakaoAccount?.birthyear,
                 birthday = kakaoAccount?.birthday,
             ),
+            name = kakaoAccount?.name,
+            phoneNumber = formatPhoneNumber(kakaoAccount?.phoneNumber),
+            gender = parseGender(kakaoAccount?.gender),
         )
+    }
+
+    /**
+     * 카카오 전화번호("+82 10-1234-5678" 등)를 국내 표준 "010-XXXX-XXXX" 포맷으로 변환한다.
+     * - 숫자만 추출 → 국가코드(82) 제거 → 선두 0 보정 → 11자리면 하이픈 포맷
+     * - 미동의/비정상 포맷이면 로그인 자체는 성공해야 하므로 예외 없이 null + 경고 로그
+     */
+    private fun formatPhoneNumber(phoneNumber: String?): String? {
+        if (phoneNumber.isNullOrBlank()) return null
+
+        var digits = phoneNumber.filter { it.isDigit() }
+        if (digits.startsWith(KOREA_COUNTRY_CODE)) {
+            digits = digits.removePrefix(KOREA_COUNTRY_CODE)
+        }
+        if (!digits.startsWith("0")) {
+            digits = "0$digits"
+        }
+
+        if (digits.length != PHONE_NUMBER_LENGTH) {
+            log.warn { "카카오 전화번호 포맷 비정상(11자리 아님): $phoneNumber" }
+            return null
+        }
+
+        return "${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+    }
+
+    /**
+     * 카카오 성별("male"/"female")을 Gender enum으로 변환한다.
+     * - 미동의/알 수 없는 값이면 예외 없이 null + 경고 로그
+     */
+    private fun parseGender(gender: String?): Gender? {
+        if (gender.isNullOrBlank()) return null
+
+        return when (gender.lowercase()) {
+            KAKAO_GENDER_MALE -> Gender.MALE
+            KAKAO_GENDER_FEMALE -> Gender.FEMALE
+            else -> {
+                log.warn { "카카오 성별 값 알 수 없음: $gender" }
+                null
+            }
+        }
     }
 
     /**
@@ -90,8 +135,13 @@ class KakaoOAuthClient(
         private const val AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize"
         private const val BIRTHDAY_LENGTH = 4 // MMDD
 
+        private const val KOREA_COUNTRY_CODE = "82"
+        private const val PHONE_NUMBER_LENGTH = 11 // 01012345678
+        private const val KAKAO_GENDER_MALE = "male"
+        private const val KAKAO_GENDER_FEMALE = "female"
+
         // 카카오는 콤마로 구분된 scope 목록을 허용한다.
         private const val SCOPE_DELIMITER = ","
-        private val SCOPES = listOf("account_email", "birthyear", "birthday")
+        private val SCOPES = listOf("account_email", "birthyear", "birthday", "name", "phone_number", "gender")
     }
 }

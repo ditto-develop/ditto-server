@@ -27,6 +27,9 @@ class OAuthFacade(
             providerUserId = userInfo.id,
             email = userInfo.email,
             birthDate = userInfo.birthDate?.atStartOfDay(),
+            name = userInfo.name,
+            phoneNumber = userInfo.phoneNumber,
+            gender = userInfo.gender,
         )
 
         val accessToken = jwtTokenProvider.generateAccessToken(member.id)

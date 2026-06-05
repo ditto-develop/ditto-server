@@ -3,6 +3,7 @@ package com.ditto.api.auth
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -66,6 +67,51 @@ class MemberSocialAccountServiceTest(
                 )
 
                 member.birthDate shouldBe birthDate
+            }
+
+            "신규 사용자면 카카오에서 받은 이름·전화번호·성별을 저장한다" {
+                val member = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                    name = "홍길동", phoneNumber = "010-1234-5678", gender = Gender.MALE,
+                )
+
+                member.name shouldBe "홍길동"
+                member.phoneNumber shouldBe "010-1234-5678"
+                member.gender shouldBe Gender.MALE
+            }
+
+            "기존 사용자 재로그인 시 이름·전화번호·성별을 카카오 값으로 갱신한다" {
+                val created = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                    name = "홍길동", phoneNumber = "010-1111-1111", gender = Gender.MALE,
+                )
+
+                val found = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                    name = "김철수", phoneNumber = "010-2222-2222", gender = Gender.FEMALE,
+                )
+
+                found.id shouldBe created.id
+                found.name shouldBe "김철수"
+                found.phoneNumber shouldBe "010-2222-2222"
+                found.gender shouldBe Gender.FEMALE
+            }
+
+            "기존 사용자 재로그인 시 이름·전화번호·성별이 null이면 기존 값을 유지한다" {
+                val created = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                    name = "홍길동", phoneNumber = "010-1111-1111", gender = Gender.MALE,
+                )
+
+                val found = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                    name = null, phoneNumber = null, gender = null,
+                )
+
+                found.id shouldBe created.id
+                found.name shouldBe "홍길동"
+                found.phoneNumber shouldBe "010-1111-1111"
+                found.gender shouldBe Gender.MALE
             }
 
             "기존 사용자면 기존 Member를 반환한다" {
