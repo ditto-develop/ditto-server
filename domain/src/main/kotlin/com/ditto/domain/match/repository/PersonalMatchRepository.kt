@@ -47,4 +47,7 @@ interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, Personal
         memberId2: Long,
         status: PersonalMatchStatus,
     ): Boolean
+
+    /** 특정 quizSetId + status 의 모든 매칭 (이미 매칭된 회원 추출용) */
+    fun findByQuizSetIdAndStatus(quizSetId: Long, status: PersonalMatchStatus): List<PersonalMatch>
 }

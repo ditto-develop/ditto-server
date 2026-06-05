@@ -71,10 +71,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-06-05 22:48:04",
+                        "joinedAt" : "2026-06-05 23:19:17",
                         "role" : null,
-                        "createdAt" : "2026-06-05 22:48:04",
-                        "updatedAt" : "2026-06-05 22:48:04"
+                        "createdAt" : "2026-06-05 23:19:17",
+                        "updatedAt" : "2026-06-05 23:19:17"
                       },
                       "error" : null
                     }
@@ -286,8 +286,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-06-04 22:48:04",
-                          "endDate" : "2026-06-06 22:48:04",
+                          "startDate" : "2026-06-04 23:19:17",
+                          "endDate" : "2026-06-06 23:19:17",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -304,8 +304,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-06-05 22:48:04",
-                            "updatedAt" : "2026-06-05 22:48:04"
+                            "createdAt" : "2026-06-05 23:19:17",
+                            "updatedAt" : "2026-06-05 23:19:17"
                           } ]
                         } ]
                       },
@@ -351,8 +351,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-06-05 22:48:04",
-                        "updatedAt" : "2026-06-05 22:48:04"
+                        "createdAt" : "2026-06-05 23:19:17",
+                        "updatedAt" : "2026-06-05 23:19:17"
                       },
                       "error" : null
                     }
@@ -617,7 +617,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwNjY3MjgxLCJleHAiOjE3ODA2NzA4ODF9.DKw9PgpVvF2TIgJ9CsjrzkVE0_eVJdubVVqT32_1cdGSCTyIk2A_VpxUSiM0c2Db_tgrqB2kCRfuR0Cx_jRtHQ"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwNjY5MTUzLCJleHAiOjE3ODA2NzI3NTN9.ruPkVRbhkPSe8rV1RE4A4jGhtaCHAtADffZhekJYjRQw0VdaFun_I2NgZjCZ7OKBoBuGVZB_9t7L_cJ_CymdbQ"
                       },
                       "error" : null
                     }
@@ -816,8 +816,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-06-05 22:48:04",
-                        "updatedAt" : "2026-06-05 22:48:04"
+                        "createdAt" : "2026-06-05 23:19:17",
+                        "updatedAt" : "2026-06-05 23:19:17"
                       },
                       "error" : null
                     }
@@ -1169,23 +1169,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-quiz-sets-current-week-523790867:
       required:
       - error
@@ -1306,6 +1289,23 @@ components:
                   startDate:
                     type: string
                     description: 시작일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
         success:
           type: boolean
           description: 성공 여부
@@ -1557,16 +1557,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-logout-1831456372:
-      required:
-      - data
-      - error
-      - success
-      type: object
-      properties:
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users-1640911349:
       required:
       - error
@@ -1638,6 +1628,16 @@ components:
             updatedAt:
               type: string
               description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-logout-1831456372:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
         success:
           type: boolean
           description: 성공 여부
