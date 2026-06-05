@@ -8,7 +8,7 @@ data class OAuthUserInfo(
     val nickname: String,
     val email: String?,
     val birthDate: LocalDate? = null,
-    val name: String? = null,
-    val phoneNumber: String? = null,
-    val gender: Gender? = null,
+    val name: String?,
+    val phoneNumber: String?,
+    val gender: Gender?,
 )

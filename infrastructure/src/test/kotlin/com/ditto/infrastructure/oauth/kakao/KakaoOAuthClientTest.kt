@@ -284,10 +284,32 @@ class KakaoOAuthClientTest : FreeSpec(
                 userInfo.phoneNumber shouldBe "010-1234-5678"
             }
 
+            "전화번호가 국가코드 없는 국내 포맷이면 그대로 010-XXXX-XXXX로 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "010-9876-5432"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe "010-9876-5432"
+            }
+
             "전화번호가 없으면 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
                     kakaoAccount = kakaoAccount(phoneNumber = null),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe null
+            }
+
+            "전화번호가 빈 문자열이면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "  "),
                 )
 
                 val userInfo = client.getUserInfo("test-token")

@@ -70,6 +70,33 @@ class MemberTest(
             }
         }
 
+        "Member 소셜 개인정보 갱신" - {
+            "updateOAuthInfo() - 이름·전화번호·성별을 갱신한다" {
+                val member = Member(nickname = "테스트유저")
+
+                member.updateOAuthInfo(name = "홍길동", phoneNumber = "010-1234-5678", gender = Gender.FEMALE)
+
+                member.name shouldBe "홍길동"
+                member.phoneNumber shouldBe "010-1234-5678"
+                member.gender shouldBe Gender.FEMALE
+            }
+
+            "updateOAuthInfo() - null 값인 필드는 기존 값을 유지한다" {
+                val member = Member(
+                    nickname = "테스트유저",
+                    name = "기존이름",
+                    phoneNumber = "010-1111-1111",
+                    gender = Gender.MALE,
+                )
+
+                member.updateOAuthInfo(name = null, phoneNumber = null, gender = null)
+
+                member.name shouldBe "기존이름"
+                member.phoneNumber shouldBe "010-1111-1111"
+                member.gender shouldBe Gender.MALE
+            }
+        }
+
         "Member 상태 변경" - {
             "activate() 호출 시 ACTIVE 상태로 변경된다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))
