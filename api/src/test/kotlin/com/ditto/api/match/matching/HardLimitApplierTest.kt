@@ -86,6 +86,21 @@ class HardLimitApplierTest : FreeSpec(
                 )
             }
 
+            "같은 시드면 재실행해도 동일한 결과를 반환한다 (재계산 결정성)" {
+                val x = 100L
+                val scoredDuos = listOf(
+                    ScoredDuo.of(x, 1L, 10.0),
+                    ScoredDuo.of(x, 2L, 5.0), // 동점
+                    ScoredDuo.of(x, 3L, 5.0), // 동점
+                    ScoredDuo.of(x, 4L, 5.0), // 동점 — 시드 고정 시 항상 같은 하나만 생존
+                )
+
+                val first = HardLimitApplier.apply(scoredDuos, 2, Random(42))
+                val second = HardLimitApplier.apply(scoredDuos, 2, Random(42))
+
+                first shouldBe second
+            }
+
             "빈 입력이면 빈 결과를 반환한다" {
                 HardLimitApplier.apply(emptyList(), 5) shouldBe emptyList()
             }

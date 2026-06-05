@@ -78,7 +78,7 @@ class MatchingSchedulerTest(
         "이미 후보가 계산된 마감 퀴즈셋은 다시 계산하지 않는다" {
             val quizSetId = saveOneToOneQuizSet(endDate = LocalDateTime.now().minusDays(1))
             setupMatchingPair(quizSetId)
-            // 사전 계산 흔적(센티넬) → existsByQuizSetId=true → 스킵되어야 한다
+            // 사전 계산 흔적(센티넬) → anti-join(findEndedQuizSetsWithoutCandidates)에서 제외되어 스킵되어야 한다
             matchCandidateRepository.save(
                 MatchCandidateFixture.create(ownerMemberId = 999L, otherMemberId = 998L, quizSetId = quizSetId, score = 1.0),
             )

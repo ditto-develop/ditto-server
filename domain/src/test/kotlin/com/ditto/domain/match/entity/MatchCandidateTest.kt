@@ -5,7 +5,6 @@ import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
 
 class MatchCandidateTest(
@@ -33,15 +32,27 @@ class MatchCandidateTest(
         }
     }
 
-    "quizSet 단위 멱등/삭제" - {
-        "existsByQuizSetId 로 계산 여부를 판단한다" {
-            matchCandidateRepository.existsByQuizSetId(10L) shouldBe false
-
-            matchCandidateRepository.save(MatchCandidateFixture.create(quizSetId = 10L))
-
-            matchCandidateRepository.existsByQuizSetId(10L) shouldBe true
+    "create 불변식" - {
+        "자기 자신은 매칭 후보가 될 수 없다" {
+            shouldThrow<IllegalArgumentException> {
+                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 1L, quizSetId = 10L, score = 80.0)
+            }
         }
 
+        "점수가 0.0 미만이면 예외" {
+            shouldThrow<IllegalArgumentException> {
+                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L, score = -0.1)
+            }
+        }
+
+        "점수가 100.0 초과면 예외" {
+            shouldThrow<IllegalArgumentException> {
+                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L, score = 100.1)
+            }
+        }
+    }
+
+    "quizSet 단위 삭제" - {
         "deleteByQuizSetId 로 해당 셋 후보만 모두 삭제한다 (재계산용)" {
             matchCandidateRepository.save(MatchCandidateFixture.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L))
             matchCandidateRepository.save(MatchCandidateFixture.create(ownerMemberId = 2L, otherMemberId = 1L, quizSetId = 10L))
@@ -50,7 +61,7 @@ class MatchCandidateTest(
             matchCandidateRepository.deleteByQuizSetId(10L)
 
             matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(1L, 10L) shouldHaveSize 0
-            matchCandidateRepository.existsByQuizSetId(99L) shouldBe true
+            matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(1L, 99L) shouldHaveSize 1
         }
     }
 })

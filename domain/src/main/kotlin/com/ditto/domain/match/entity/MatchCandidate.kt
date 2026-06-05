@@ -48,16 +48,28 @@ class MatchCandidate private constructor(
 ) : BaseEntity() {
 
     companion object {
+        const val MIN_SCORE = 0.0
+        const val MAX_SCORE = 100.0
+
         fun create(
             ownerMemberId: Long,
             otherMemberId: Long,
             quizSetId: Long,
             score: Double,
-        ): MatchCandidate = MatchCandidate(
-            ownerMemberId = ownerMemberId,
-            otherMemberId = otherMemberId,
-            quizSetId = quizSetId,
-            score = score,
-        )
+        ): MatchCandidate {
+            // 배치가 생성하는 값이므로 위반 시 클라이언트가 아닌 알고리즘 버그다. 경계에서 불변식을 강제한다.
+            require(ownerMemberId != otherMemberId) {
+                "자기 자신은 매칭 후보가 될 수 없습니다: $ownerMemberId"
+            }
+            require(score in MIN_SCORE..MAX_SCORE) {
+                "매칭 점수는 $MIN_SCORE~$MAX_SCORE 범위여야 합니다: $score"
+            }
+            return MatchCandidate(
+                ownerMemberId = ownerMemberId,
+                otherMemberId = otherMemberId,
+                quizSetId = quizSetId,
+                score = score,
+            )
+        }
     }
 }
