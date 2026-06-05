@@ -11,6 +11,9 @@ import com.ditto.api.user.dto.toRegisterResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -48,6 +51,9 @@ class UserService(
             age = request.age,
             birthDate = request.birthDate,
             email = request.email,
+            interests = request.interests.map { Interest.from(it) }.toSet(),
+            location = Location.from(request.location),
+            job = Job.from(request.job),
         )
 
         return member.toRegisterResponse()

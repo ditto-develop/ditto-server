@@ -83,6 +83,49 @@ class MemberTest(
             }
         }
 
+        "Member 관심사/사는곳/직업" - {
+            "관심사 여러 개를 저장하고 다시 조회할 수 있다" {
+                val member = memberRepository.save(
+                    Member(
+                        nickname = "테스트유저",
+                        interests = setOf(Interest.TRAVEL, Interest.MUSIC, Interest.GAMING),
+                    ),
+                )
+
+                val found = memberRepository.findById(member.id).get()
+                found.interests shouldBe setOf(Interest.TRAVEL, Interest.MUSIC, Interest.GAMING)
+            }
+
+            "관심사를 지정하지 않으면 빈 집합이다" {
+                val member = memberRepository.save(Member(nickname = "테스트유저"))
+
+                val found = memberRepository.findById(member.id).get()
+                found.interests shouldBe emptySet()
+            }
+
+            "사는곳과 직업을 저장하고 다시 조회할 수 있다" {
+                val member = memberRepository.save(
+                    Member(
+                        nickname = "테스트유저",
+                        location = Location.SEOUL,
+                        job = Job.IT_TECH,
+                    ),
+                )
+
+                val found = memberRepository.findById(member.id).get()
+                found.location shouldBe Location.SEOUL
+                found.job shouldBe Job.IT_TECH
+            }
+
+            "사는곳과 직업은 지정하지 않으면 null이다" {
+                val member = memberRepository.save(Member(nickname = "테스트유저"))
+
+                val found = memberRepository.findById(member.id).get()
+                found.location shouldBe null
+                found.job shouldBe null
+            }
+        }
+
         "Member 회원가입" - {
             "register() 호출 시 ACTIVE 상태로 변경되고 필드가 채워진다" {
                 val member = memberRepository.save(Member(nickname = "임시닉네임"))
@@ -95,6 +138,9 @@ class MemberTest(
                     age = 25,
                     birthDate = null,
                     email = "test@example.com",
+                    interests = setOf(Interest.TRAVEL, Interest.MUSIC),
+                    location = Location.SEOUL,
+                    job = Job.IT_TECH,
                 )
                 memberRepository.save(member)
 
@@ -106,6 +152,9 @@ class MemberTest(
                 found.gender shouldBe Gender.MALE
                 found.age shouldBe 25
                 found.email shouldBe "test@example.com"
+                found.interests shouldBe setOf(Interest.TRAVEL, Interest.MUSIC)
+                found.location shouldBe Location.SEOUL
+                found.job shouldBe Job.IT_TECH
                 found.joinedAt shouldNotBe null
             }
 
@@ -120,10 +169,16 @@ class MemberTest(
                     age = null,
                     birthDate = null,
                     email = null,
+                    interests = setOf(Interest.READING),
+                    location = Location.BUSAN,
+                    job = Job.STUDENT,
                 )
 
                 member.nickname shouldBe "임시닉네임"
                 member.email shouldBe "original@kakao.com"
+                member.interests shouldBe setOf(Interest.READING)
+                member.location shouldBe Location.BUSAN
+                member.job shouldBe Job.STUDENT
                 member.status shouldBe MemberStatus.ACTIVE
                 member.joinedAt shouldNotBe null
             }
