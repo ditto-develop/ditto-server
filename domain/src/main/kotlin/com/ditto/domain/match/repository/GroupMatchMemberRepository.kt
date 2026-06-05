@@ -24,18 +24,4 @@ interface GroupMatchMemberRepository : JpaRepository<GroupMatchMember, Long>, Gr
         @Param("memberId") memberId: Long,
         @Param("quizSetId") quizSetId: Long,
     ): List<GroupMatchMember>
-
-    /** 두 멤버가 같은 그룹 채팅방(roomId)에 함께 참여한 적이 있는지 여부 */
-    @Query(
-        """
-        SELECT COUNT(a) > 0 FROM GroupMatchMember a, GroupMatchMember b
-        WHERE a.roomId = b.roomId
-          AND a.memberId = :memberId
-          AND b.memberId = :otherMemberId
-        """,
-    )
-    fun existsSharedRoom(
-        @Param("memberId") memberId: Long,
-        @Param("otherMemberId") otherMemberId: Long,
-    ): Boolean
 }

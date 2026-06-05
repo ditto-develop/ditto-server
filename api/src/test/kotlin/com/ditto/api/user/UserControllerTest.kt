@@ -3,6 +3,9 @@ package com.ditto.api.user
 import com.ditto.api.support.RestDocsTest
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -24,6 +27,11 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
+
+// FE와 공유하는 code 목록. enum에서 생성해 문서가 항상 최신 상태를 유지한다.
+private val INTEREST_CODES = Interest.entries.joinToString(", ") { it.code }
+private val LOCATION_CODES = Location.entries.joinToString(", ") { it.code }
+private val JOB_CODES = Job.entries.joinToString(", ") { it.code }
 
 class UserControllerTest : RestDocsTest() {
 
@@ -75,10 +83,11 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("gender").description("성별 (MALE, FEMALE)").optional(),
                                 fieldWithPath("age").description("나이대 (20, 25, 30, 35, 40, 45, 50, 60)").optional(),
                                 fieldWithPath("birthDate").description("생년월일").optional(),
-                                fieldWithPath("interests[]").description("관심사 code 목록 (필수, 최소 1개)"),
-                                fieldWithPath("location").description("사는곳 code (필수)"),
-                                fieldWithPath("job").description("직업 code (필수)"),
-                                fieldWithPath("caricature").description("프로필 캐리커쳐 (필수)"),
+                                fieldWithPath("interests[]")
+                                    .description("관심사 code 목록 (필수, 최소 1개). 가능한 값: $INTEREST_CODES"),
+                                fieldWithPath("location").description("사는곳 code (필수). 가능한 값: $LOCATION_CODES"),
+                                fieldWithPath("job").description("직업 code (필수). 가능한 값: $JOB_CODES"),
+                                fieldWithPath("caricature").description("프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

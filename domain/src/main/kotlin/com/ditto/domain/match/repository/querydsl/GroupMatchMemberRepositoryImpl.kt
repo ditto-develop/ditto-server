@@ -1,6 +1,7 @@
 package com.ditto.domain.match.repository.querydsl
 
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
+import com.ditto.domain.match.entity.QGroupMatchMember
 import com.ditto.domain.match.entity.QGroupMatchMember.groupMatchMember
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
@@ -19,4 +20,17 @@ class GroupMatchMemberRepositoryImpl(
             groupMatch.quizSetId.eq(quizSetId),
         )
         .fetchFirst() != null
+
+    override fun existsSharedRoom(memberId: Long, otherMemberId: Long): Boolean {
+        val other = QGroupMatchMember("other")
+        return queryFactory
+            .selectOne()
+            .from(groupMatchMember)
+            .join(other).on(groupMatchMember.roomId.eq(other.roomId))
+            .where(
+                groupMatchMember.memberId.eq(memberId),
+                other.memberId.eq(otherMemberId),
+            )
+            .fetchFirst() != null
+    }
 }

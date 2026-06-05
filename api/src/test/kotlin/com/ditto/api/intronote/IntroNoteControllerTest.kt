@@ -26,6 +26,9 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+// FE와 공유하는 소개노트 질문 code 목록. enum에서 생성해 문서가 항상 최신 상태를 유지한다.
+private val INTRO_QUESTION_CODES = IntroQuestion.entries.joinToString(", ") { "${it.code}(${it.text})" }
+
 class IntroNoteControllerTest : RestDocsTest() {
 
     @Autowired
@@ -62,14 +65,15 @@ class IntroNoteControllerTest : RestDocsTest() {
                             .summary("소개노트 답변 저장")
                             .description("질문 하나의 답변을 저장/수정합니다. 빈 문자열로 부분 저장이 가능합니다.")
                             .pathParameters(
-                                parameterWithName("questionCode").description("소개노트 질문 code"),
+                                parameterWithName("questionCode")
+                                    .description("소개노트 질문 code. 가능한 값: $INTRO_QUESTION_CODES"),
                             )
                             .requestFields(
                                 fieldWithPath("answer").description("답변 (빈 문자열 허용, 최대 500자)"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.answers[].questionCode").description("질문 code"),
+                                fieldWithPath("data.answers[].questionCode").description("질문 code (가능한 값: $INTRO_QUESTION_CODES)"),
                                 fieldWithPath("data.answers[].question").description("질문 문구"),
                                 fieldWithPath("data.answers[].answer").description("답변 (미작성 시 빈 문자열)"),
                                 fieldWithPath("data.completedCount").description("작성 완료된 답변 수"),
@@ -107,7 +111,7 @@ class IntroNoteControllerTest : RestDocsTest() {
                             .description("본인의 소개노트 전체를 고정 질문 순서대로 조회합니다. 미작성 질문은 빈 문자열입니다.")
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.answers[].questionCode").description("질문 code"),
+                                fieldWithPath("data.answers[].questionCode").description("질문 code (가능한 값: $INTRO_QUESTION_CODES)"),
                                 fieldWithPath("data.answers[].question").description("질문 문구"),
                                 fieldWithPath("data.answers[].answer").description("답변 (미작성 시 빈 문자열)"),
                                 fieldWithPath("data.completedCount").description("작성 완료된 답변 수"),
@@ -156,7 +160,7 @@ class IntroNoteControllerTest : RestDocsTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.answers[].questionCode").description("질문 code"),
+                                fieldWithPath("data.answers[].questionCode").description("질문 code (가능한 값: $INTRO_QUESTION_CODES)"),
                                 fieldWithPath("data.answers[].question").description("질문 문구"),
                                 fieldWithPath("data.answers[].answer").description("답변 (미작성 시 빈 문자열)"),
                                 fieldWithPath("data.completedCount").description("작성 완료된 답변 수"),
