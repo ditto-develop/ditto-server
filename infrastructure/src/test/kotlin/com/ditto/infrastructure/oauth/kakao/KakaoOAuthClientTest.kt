@@ -232,6 +232,28 @@ class KakaoOAuthClientTest : FreeSpec(
 
                 userInfo.birthDate shouldBe null
             }
+
+            "출생연도가 숫자가 아니면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "abcd", birthday = "0315", birthdayType = "SOLAR"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
+
+            "생일이 MMDD(4자리) 형식이 아니면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "315", birthdayType = "SOLAR"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
         }
     },
 )

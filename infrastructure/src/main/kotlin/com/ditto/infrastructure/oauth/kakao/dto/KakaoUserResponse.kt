@@ -14,7 +14,7 @@ data class KakaoUserResponse(
         val email: String?,
         val birthyear: String?,
         val birthday: String?,
-        val birthdayType: String?, // 음력 생일 구분 용 ,
+        val birthdayType: String?, // 음력/양력 구분 (SOLAR/LUNAR)
     )
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy::class)
