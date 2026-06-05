@@ -2,22 +2,19 @@ package com.ditto.api.intronote.service
 
 import com.ditto.api.intronote.dto.IntroNoteResponse
 import com.ditto.api.intronote.dto.IntroNotesResponse
+import com.ditto.api.match.MatchAccessChecker
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
-import com.ditto.domain.match.entity.PersonalMatchStatus
-import com.ditto.domain.match.repository.GroupMatchMemberRepository
-import com.ditto.domain.match.repository.PersonalMatchRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class IntroNoteService(
     private val introNoteRepository: IntroNoteRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
-    private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val matchAccessChecker: MatchAccessChecker,
 ) {
 
     /** 질문 하나의 답변을 저장/수정(upsert)하고 전체 소개노트를 반환한다. */
@@ -40,20 +37,10 @@ class IntroNoteService(
     /** 타인 소개노트 조회. 매칭 성사 또는 같은 그룹 채팅 참여자만 가능. */
     @Transactional(readOnly = true)
     fun getIntroNotes(viewerId: Long, targetId: Long): IntroNotesResponse {
-        if (viewerId != targetId && !canView(viewerId, targetId)) {
+        if (viewerId != targetId && !matchAccessChecker.isMatched(viewerId, targetId)) {
             throw WarnException(ErrorCode.FORBIDDEN)
         }
         return buildResponse(targetId)
-    }
-
-    private fun canView(viewerId: Long, targetId: Long): Boolean {
-        val matched = personalMatchRepository.existsByMemberId1AndMemberId2AndStatus(
-            minOf(viewerId, targetId),
-            maxOf(viewerId, targetId),
-            PersonalMatchStatus.ACCEPTED,
-        )
-        if (matched) return true
-        return groupMatchMemberRepository.existsSharedRoom(viewerId, targetId)
     }
 
     private fun buildResponse(memberId: Long): IntroNotesResponse {

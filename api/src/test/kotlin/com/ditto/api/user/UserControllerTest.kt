@@ -5,6 +5,12 @@ import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
+import com.ditto.domain.intronote.entity.IntroNote
+import com.ditto.domain.intronote.entity.IntroQuestion
+import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -37,6 +43,12 @@ class UserControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var socialAccountRepository: SocialAccountRepository
+
+    @Autowired
+    private lateinit var personalMatchRepository: PersonalMatchRepository
+
+    @Autowired
+    private lateinit var introNoteRepository: IntroNoteRepository
 
     @Test
     @DisplayName("회원가입에 성공한다")
@@ -161,6 +173,78 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.name").description("이름 (미동의 시 null)"),
                                 fieldWithPath("data.phoneNumber").description("전화번호 010-XXXX-XXXX (미동의 시 null)"),
                                 fieldWithPath("data.gender").description("성별 MALE/FEMALE (미동의 시 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("매칭된 상대의 공개 프로필을 조회한다")
+    fun getPublicProfile() {
+        val viewer = memberRepository.save(Member(nickname = "조회자").apply { activate() })
+        val target = memberRepository.save(
+            Member(
+                nickname = "디토러버",
+                gender = Gender.FEMALE,
+                age = 27,
+                interests = setOf(Interest.WORKOUT, Interest.TRAVEL, Interest.MUSIC),
+                location = Location.SEOUL,
+                job = Job.DESIGN,
+                caricature = "/assets/avatar/f3.png",
+            ).apply { activate() },
+        )
+        introNoteRepository.save(IntroNote.create(target.id, IntroQuestion.ONE_WORD, "안녕하세요, 만나서 반가워요!"))
+        personalMatchRepository.save(
+            PersonalMatchFixture.create(
+                requesterId = viewer.id,
+                receiverId = target.id,
+                status = PersonalMatchStatus.ACCEPTED,
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/profile", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.nickname").value("디토러버"))
+            .andExpect(jsonPath("$.data.occupation").value("design"))
+            .andDo(
+                document(
+                    "user-public-profile",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("타인 공개 프로필 조회")
+                            .description(
+                                "매칭이 성사된 상대(또는 같은 그룹채팅 참여자)의 공개 프로필을 조회합니다. " +
+                                    "권한이 없으면 403. 민감정보(이메일·전화번호·실명)는 포함하지 않습니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("id").description("대상 사용자 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.userId").description("대상 사용자 ID"),
+                                fieldWithPath("data.nickname").description("닉네임"),
+                                fieldWithPath("data.gender").description("성별 (MALE, FEMALE)").optional(),
+                                fieldWithPath("data.age").description("나이").optional(),
+                                fieldWithPath("data.introduction")
+                                    .description("자기소개 (소개노트 one-word 답변, 없으면 null)").optional(),
+                                fieldWithPath("data.profileImageUrl").description("프로필 이미지 경로").optional(),
+                                fieldWithPath("data.location").description("지역 code. 가능한 값: $LOCATION_CODES").optional(),
+                                fieldWithPath("data.occupation").description("직업 code. 가능한 값: $JOB_CODES").optional(),
+                                fieldWithPath("data.interests[]").description("관심사 code 목록. 가능한 값: $INTEREST_CODES").optional(),
+                                fieldWithPath("data.rating").description("평점 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMinAge").description("선호 최소 나이 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMaxAge").description("선호 최대 나이 (현재 미지원, null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
