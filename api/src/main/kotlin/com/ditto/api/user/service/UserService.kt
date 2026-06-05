@@ -25,12 +25,10 @@ class UserService(
 ) {
 
     @Transactional
-    fun register(request: CreateUserRequest): RegisterResponse {
-        val socialAccount =
-            socialAccountRepository.findByProviderAndProviderUserId(request.provider, request.providerUserId)
-                ?: throw ErrorException(ErrorCode.NOT_FOUND)
-
-        val member = memberRepository.findById(socialAccount.memberId).orElseThrow {
+    fun register(memberId: Long, request: CreateUserRequest): RegisterResponse {
+        // memberId는 JWT 필터가 검증해 넘긴 값이라 회원이 존재해야 정상이다.
+        // 여기서 못 찾으면 클라이언트 잘못이 아니라 토큰-DB 정합성이 깨진 서버 오류다.
+        val member = memberRepository.findById(memberId).orElseThrow {
             ErrorException(ErrorCode.INTERNAL_ERROR)
         }
 

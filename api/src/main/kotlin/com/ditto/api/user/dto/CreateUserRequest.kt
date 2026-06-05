@@ -1,10 +1,7 @@
 package com.ditto.api.user.dto
 
 import com.ditto.domain.member.entity.Gender
-import com.ditto.domain.socialaccount.entity.SocialProvider
 import jakarta.validation.constraints.Email
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.LocalDateTime
@@ -29,10 +26,4 @@ data class CreateUserRequest(
     val age: Int? = null,
 
     val birthDate: LocalDateTime? = null,
-
-    @field:NotNull
-    val provider: SocialProvider,
-
-    @field:NotBlank
-    val providerUserId: String,
 )

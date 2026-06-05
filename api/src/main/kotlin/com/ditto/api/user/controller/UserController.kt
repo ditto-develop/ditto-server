@@ -22,8 +22,11 @@ class UserController(
 ) {
 
     @PostMapping("/api/v1/users")
-    fun register(@Valid @RequestBody request: CreateUserRequest): ApiResponse<RegisterResponse> {
-        val result = userService.register(request)
+    fun register(
+        @Valid @RequestBody request: CreateUserRequest,
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<RegisterResponse> {
+        val result = userService.register(principal.memberId, request)
         return ApiResponse.ok(result)
     }
 

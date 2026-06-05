@@ -15,7 +15,6 @@ import kotlin.jvm.optionals.getOrNull
 class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
-    // PENDING 회원도 접근을 허용할 경로 (예: 가입 정보 조회용 /me). 그 외 보호 API는 SIGNUP_REQUIRED로 차단.
     private val pendingAllowedPaths: Set<String> = emptySet(),
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(
