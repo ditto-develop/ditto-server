@@ -8,6 +8,9 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -21,6 +24,14 @@ import io.kotest.matchers.shouldNotBe
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
+
+// 관심사·사는곳·직업이 필수가 된 register 요청을, 검증 대상이 아닌 분기 테스트에서 간편히 만들기 위한 헬퍼.
+private fun validRegisterRequest(nickname: String? = null) = CreateUserRequest(
+    nickname = nickname,
+    interests = setOf("music"),
+    location = "seoul",
+    job = "it-tech",
+)
 
 class UserServiceTest(
     private val userService: UserService,
@@ -45,6 +56,9 @@ class UserServiceTest(
                         phoneNumber = "010-1234-5678",
                         gender = Gender.MALE,
                         age = 25,
+                        interests = setOf("travel", "music"),
+                        location = "seoul",
+                        job = "it-tech",
                     ),
                 )
 
@@ -53,17 +67,23 @@ class UserServiceTest(
                 result.phoneNumber shouldBe "010-1234-5678"
                 result.gender shouldBe Gender.MALE.name
                 result.age shouldBe 25
+                result.interests.toSet() shouldBe setOf("travel", "music")
+                result.location shouldBe "seoul"
+                result.job shouldBe "it-tech"
                 result.joinedAt shouldNotBe null
 
                 val saved = memberRepository.findById(member.id).get()
                 saved.status shouldBe MemberStatus.ACTIVE
+                saved.interests shouldBe setOf(Interest.TRAVEL, Interest.MUSIC)
+                saved.location shouldBe Location.SEOUL
+                saved.job shouldBe Job.IT_TECH
             }
 
             "토큰의 회원이 존재하지 않으면 서버 오류가 발생한다" {
                 val exception = shouldThrow<ErrorException> {
                     userService.register(
                         99999L,
-                        CreateUserRequest(),
+                        validRegisterRequest(),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
@@ -77,7 +97,7 @@ class UserServiceTest(
                 val exception = shouldThrow<ErrorException> {
                     userService.register(
                         member.id,
-                        CreateUserRequest(),
+                        validRegisterRequest(),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.MEMBER_ALREADY_EXISTS
@@ -93,12 +113,26 @@ class UserServiceTest(
                 val exception = shouldThrow<WarnException> {
                     userService.register(
                         pending.id,
-                        CreateUserRequest(
-                            nickname = "중복닉네임",
-                        ),
+                        validRegisterRequest(nickname = "중복닉네임"),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.NICKNAME_ALREADY_EXISTS
+            }
+
+            "유효하지 않은 code(직업 등)이면 BAD_REQUEST 예외가 발생한다" {
+                val pending = memberRepository.save(Member(nickname = "임시닉네임"))
+
+                val exception = shouldThrow<WarnException> {
+                    userService.register(
+                        pending.id,
+                        CreateUserRequest(
+                            interests = setOf("travel"),
+                            location = "seoul",
+                            job = "invalid-code",
+                        ),
+                    )
+                }
+                exception.errorCode shouldBe ErrorCode.BAD_REQUEST
             }
         }
 

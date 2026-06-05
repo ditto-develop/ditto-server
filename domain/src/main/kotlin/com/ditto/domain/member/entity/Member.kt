@@ -1,7 +1,9 @@
 package com.ditto.domain.member.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.member.converter.InterestSetConverter
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -63,6 +65,21 @@ class Member(
     @Comment("가입일시")
     @Column(name = "joined_at", nullable = true)
     var joinedAt: LocalDateTime? = null,
+
+    @Comment("관심사 (콤마 구분 enum 문자열)")
+    @Convert(converter = InterestSetConverter::class)
+    @Column(nullable = false, length = 500)
+    var interests: Set<Interest> = emptySet(),
+
+    @Comment("사는곳")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true, length = 20)
+    var location: Location? = null,
+
+    @Comment("직업")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true, length = 30)
+    var job: Job? = null,
 ) : BaseEntity() {
 
     fun activate() {
@@ -87,6 +104,9 @@ class Member(
         age: Int?,
         birthDate: LocalDateTime?,
         email: String?,
+        interests: Set<Interest>,
+        location: Location,
+        job: Job,
     ) {
         if (name != null) this.name = name
         if (nickname != null) this.nickname = nickname
@@ -95,6 +115,10 @@ class Member(
         if (age != null) this.age = age
         if (birthDate != null) this.birthDate = birthDate
         if (email != null) this.email = email
+        // 관심사·사는곳·직업은 가입 완료 시 필수값이므로 항상 채운다.
+        this.interests = interests
+        this.location = location
+        this.job = job
         this.joinedAt = LocalDateTime.now()
         this.status = MemberStatus.ACTIVE
     }

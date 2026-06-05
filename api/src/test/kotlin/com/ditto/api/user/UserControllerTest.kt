@@ -40,6 +40,9 @@ class UserControllerTest : RestDocsTest() {
             phoneNumber = "010-1234-5678",
             gender = Gender.MALE,
             age = 25,
+            interests = setOf("travel", "music"),
+            location = "seoul",
+            job = "it-tech",
         )
 
         mockMvc.perform(
@@ -71,6 +74,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("gender").description("성별 (MALE, FEMALE)").optional(),
                                 fieldWithPath("age").description("나이대 (20, 25, 30, 35, 40, 45, 50, 60)").optional(),
                                 fieldWithPath("birthDate").description("생년월일").optional(),
+                                fieldWithPath("interests[]").description("관심사 code 목록 (필수, 최소 1개)"),
+                                fieldWithPath("location").description("사는곳 code (필수)"),
+                                fieldWithPath("job").description("직업 code (필수)"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
@@ -82,6 +88,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.gender").description("성별"),
                                 fieldWithPath("data.age").description("나이대"),
                                 fieldWithPath("data.birthDate").description("생년월일"),
+                                fieldWithPath("data.interests[]").description("관심사 code 목록"),
+                                fieldWithPath("data.location").description("사는곳 code"),
+                                fieldWithPath("data.job").description("직업 code"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
                                 fieldWithPath("data.role").description("역할"),
                                 fieldWithPath("data.createdAt").description("생성일시"),
