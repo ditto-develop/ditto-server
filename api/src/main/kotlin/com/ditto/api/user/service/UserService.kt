@@ -3,8 +3,10 @@ package com.ditto.api.user.service
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.dto.LeaveResponse
+import com.ditto.api.user.dto.MeResponse
 import com.ditto.api.user.dto.RegisterResponse
 import com.ditto.api.user.dto.toLeaveResponse
+import com.ditto.api.user.dto.toMeResponse
 import com.ditto.api.user.dto.toRegisterResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
@@ -51,6 +53,14 @@ class UserService(
         )
 
         return member.toRegisterResponse()
+    }
+
+    @Transactional(readOnly = true)
+    fun getMe(memberId: Long): MeResponse {
+        val member = memberRepository.findById(memberId).orElseThrow {
+            WarnException(ErrorCode.NOT_FOUND)
+        }
+        return member.toMeResponse()
     }
 
     @Transactional(readOnly = true)

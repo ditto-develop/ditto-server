@@ -22,7 +22,12 @@ class OAuthFacade(
         code: String,
     ): OAuthLoginResult {
         val userInfo = oAuthService.getOAuthUserInfo(provider, code)
-        val member = memberSocialAccountService.findOrCreateMember(provider, userInfo.id, userInfo.email)
+        val member = memberSocialAccountService.findOrCreateMember(
+            provider = provider,
+            providerUserId = userInfo.id,
+            email = userInfo.email,
+            birthDate = userInfo.birthDate?.atStartOfDay(),
+        )
 
         val accessToken = jwtTokenProvider.generateAccessToken(member.id)
         val refreshToken = authService.createRefreshToken(member.id)

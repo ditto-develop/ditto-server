@@ -23,6 +23,7 @@ import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPri
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 
 class UserControllerTest : RestDocsTest() {
 
@@ -89,6 +90,51 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.role").description("역할"),
                                 fieldWithPath("data.createdAt").description("생성일시"),
                                 fieldWithPath("data.updatedAt").description("수정일시"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("가입 정보(email·생년월일)를 조회한다 - PENDING 회원도 접근 가능")
+    fun getMe() {
+        val member = memberRepository.save(
+            Member(
+                nickname = "가입정보유저",
+                email = "user@kakao.com",
+                birthDate = LocalDateTime.of(1995, 3, 15, 0, 0),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/v1/users/me")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.email").value("user@kakao.com"))
+            .andExpect(jsonPath("$.data.birthDate").value("1995-03-15"))
+            .andDo(
+                document(
+                    "user-me",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("가입 정보 조회")
+                            .description(
+                                "소셜 로그인에서 받아온 가입 정보(이메일·생년월일)를 조회합니다. " +
+                                    "온보딩 화면 prefill 용도이며, 가입 미완료(PENDING) 회원도 접근할 수 있습니다.",
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.email").description("이메일 (없으면 null)"),
+                                fieldWithPath("data.birthDate").description("생년월일 (없거나 음력이면 null)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

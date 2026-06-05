@@ -3,6 +3,7 @@ package com.ditto.infrastructure.oauth.kakao
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
+import java.time.LocalDate
 
 class KakaoOAuthFakeClient(
     private val properties: KakaoOAuthProperties,
@@ -28,6 +29,7 @@ class KakaoOAuthFakeClient(
             id = "12345",
             nickname = "테스트유저",
             email = "test@example.com",
+            birthDate = LocalDate.of(1995, 3, 15),
         )
     }
 }

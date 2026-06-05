@@ -18,6 +18,8 @@ import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class UserServiceTest(
@@ -106,6 +108,39 @@ class UserServiceTest(
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.NICKNAME_ALREADY_EXISTS
+            }
+        }
+
+        "가입 정보 조회" - {
+            "회원의 email과 생년월일을 반환한다" {
+                val member = memberRepository.save(
+                    Member(
+                        nickname = "조회유저",
+                        email = "user@kakao.com",
+                        birthDate = LocalDateTime.of(1995, 3, 15, 0, 0),
+                    ),
+                )
+
+                val result = userService.getMe(member.id)
+
+                result.email shouldBe "user@kakao.com"
+                result.birthDate shouldBe LocalDate.of(1995, 3, 15)
+            }
+
+            "email과 생년월일이 없으면 null을 반환한다" {
+                val member = memberRepository.save(Member(nickname = "정보없는유저"))
+
+                val result = userService.getMe(member.id)
+
+                result.email shouldBe null
+                result.birthDate shouldBe null
+            }
+
+            "존재하지 않는 회원이면 예외가 발생한다" {
+                val exception = shouldThrow<WarnException> {
+                    userService.getMe(99999L)
+                }
+                exception.errorCode shouldBe ErrorCode.NOT_FOUND
             }
         }
 

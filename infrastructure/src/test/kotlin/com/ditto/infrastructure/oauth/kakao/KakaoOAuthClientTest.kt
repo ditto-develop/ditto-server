@@ -10,6 +10,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.util.MultiValueMap
+import java.time.LocalDate
 
 class KakaoOAuthClientTest : FreeSpec(
     {
@@ -28,7 +29,12 @@ class KakaoOAuthClientTest : FreeSpec(
                 url shouldContain "${OAuthConstants.PARAM_CLIENT_ID}=${properties.clientId}"
                 url shouldContain "${OAuthConstants.PARAM_REDIRECT_URI}=${properties.redirectUri}"
                 url shouldContain "${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
-                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email"
+            }
+
+            "scope에 account_email·birthyear·birthday를 포함한다" {
+                val url = client.getAuthorizationUrl()
+
+                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email,birthyear,birthday"
             }
         }
 
@@ -84,13 +90,22 @@ class KakaoOAuthClientTest : FreeSpec(
         }
 
         "getUserInfo" - {
+            fun kakaoAccount(
+                nickname: String? = "카카오유저",
+                email: String? = "user@kakao.com",
+                birthyear: String? = null,
+                birthday: String? = null,
+            ) = KakaoUserResponse.KakaoAccount(
+                profile = KakaoUserResponse.KakaoProfile(nickname = nickname),
+                email = email,
+                birthyear = birthyear,
+                birthday = birthday,
+            )
+
             "닉네임과 이메일이 있으면 해당 값을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = KakaoUserResponse.KakaoAccount(
-                        profile = KakaoUserResponse.KakaoProfile(nickname = "카카오유저"),
-                        email = "user@kakao.com",
-                    ),
+                    kakaoAccount = kakaoAccount(nickname = "카카오유저", email = "user@kakao.com"),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -103,10 +118,7 @@ class KakaoOAuthClientTest : FreeSpec(
             "닉네임이 없으면 기본 닉네임을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = KakaoUserResponse.KakaoAccount(
-                        profile = KakaoUserResponse.KakaoProfile(nickname = null),
-                        email = "user@kakao.com",
-                    ),
+                    kakaoAccount = kakaoAccount(nickname = null),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -120,6 +132,8 @@ class KakaoOAuthClientTest : FreeSpec(
                     kakaoAccount = KakaoUserResponse.KakaoAccount(
                         profile = null,
                         email = "user@kakao.com",
+                        birthyear = null,
+                        birthday = null,
                     ),
                 )
 
@@ -131,10 +145,7 @@ class KakaoOAuthClientTest : FreeSpec(
             "이메일이 없으면 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = KakaoUserResponse.KakaoAccount(
-                        profile = KakaoUserResponse.KakaoProfile(nickname = "카카오유저"),
-                        email = null,
-                    ),
+                    kakaoAccount = kakaoAccount(email = null),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -151,6 +162,72 @@ class KakaoOAuthClientTest : FreeSpec(
                 val userInfo = client.getUserInfo("test-token")
 
                 userInfo.email shouldBe null
+            }
+
+            "birthyear와 birthday가 모두 있으면 음력/양력 구분 없이 생년월일을 저장한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "0315"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe LocalDate.of(1990, 3, 15)
+            }
+
+            "birthyear가 없으면 생년월일은 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = null, birthday = "0315"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
+
+            "birthday가 없으면 생년월일은 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = null),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
+
+            "생년월일 포맷이 잘못되면 예외 없이 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "9999"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
+
+            "출생연도가 숫자가 아니면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "abcd", birthday = "0315"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
+            }
+
+            "생일이 MMDD(4자리) 형식이 아니면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "315"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.birthDate shouldBe null
             }
         }
     },
