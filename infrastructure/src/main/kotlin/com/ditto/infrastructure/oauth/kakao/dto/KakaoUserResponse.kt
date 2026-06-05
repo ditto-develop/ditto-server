@@ -12,6 +12,9 @@ data class KakaoUserResponse(
     data class KakaoAccount(
         val profile: KakaoProfile?,
         val email: String?,
+        val birthyear: String?,
+        val birthday: String?,
+        val birthdayType: String?, // 음력 생일 구분 용 ,
     )
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy::class)
