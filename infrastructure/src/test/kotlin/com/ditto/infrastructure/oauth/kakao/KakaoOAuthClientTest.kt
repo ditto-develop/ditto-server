@@ -95,13 +95,11 @@ class KakaoOAuthClientTest : FreeSpec(
                 email: String? = "user@kakao.com",
                 birthyear: String? = null,
                 birthday: String? = null,
-                birthdayType: String? = null,
             ) = KakaoUserResponse.KakaoAccount(
                 profile = KakaoUserResponse.KakaoProfile(nickname = nickname),
                 email = email,
                 birthyear = birthyear,
                 birthday = birthday,
-                birthdayType = birthdayType,
             )
 
             "닉네임과 이메일이 있으면 해당 값을 반환한다" {
@@ -136,7 +134,6 @@ class KakaoOAuthClientTest : FreeSpec(
                         email = "user@kakao.com",
                         birthyear = null,
                         birthday = null,
-                        birthdayType = null,
                     ),
                 )
 
@@ -167,21 +164,10 @@ class KakaoOAuthClientTest : FreeSpec(
                 userInfo.email shouldBe null
             }
 
-            "birthyear와 birthday가 모두 있으면 생년월일을 합쳐 반환한다" {
+            "birthyear와 birthday가 모두 있으면 음력/양력 구분 없이 생년월일을 저장한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "0315", birthdayType = "SOLAR"),
-                )
-
-                val userInfo = client.getUserInfo("test-token")
-
-                userInfo.birthDate shouldBe LocalDate.of(1990, 3, 15)
-            }
-
-            "birthdayType이 없어도(기본 양력) 생년월일을 합쳐 반환한다" {
-                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
-                    id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "0315", birthdayType = null),
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "0315"),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -211,21 +197,10 @@ class KakaoOAuthClientTest : FreeSpec(
                 userInfo.birthDate shouldBe null
             }
 
-            "음력(LUNAR) 생일이면 생년월일은 null을 반환한다" {
-                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
-                    id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "0315", birthdayType = "LUNAR"),
-                )
-
-                val userInfo = client.getUserInfo("test-token")
-
-                userInfo.birthDate shouldBe null
-            }
-
             "생년월일 포맷이 잘못되면 예외 없이 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "9999", birthdayType = "SOLAR"),
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "9999"),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -236,7 +211,7 @@ class KakaoOAuthClientTest : FreeSpec(
             "출생연도가 숫자가 아니면 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "abcd", birthday = "0315", birthdayType = "SOLAR"),
+                    kakaoAccount = kakaoAccount(birthyear = "abcd", birthday = "0315"),
                 )
 
                 val userInfo = client.getUserInfo("test-token")
@@ -247,7 +222,7 @@ class KakaoOAuthClientTest : FreeSpec(
             "생일이 MMDD(4자리) 형식이 아니면 null을 반환한다" {
                 every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
                     id = 12345L,
-                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "315", birthdayType = "SOLAR"),
+                    kakaoAccount = kakaoAccount(birthyear = "1990", birthday = "315"),
                 )
 
                 val userInfo = client.getUserInfo("test-token")

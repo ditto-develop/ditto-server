@@ -38,7 +38,6 @@ class KakaoOAuthClient(
             birthDate = parseBirthDate(
                 birthyear = kakaoAccount?.birthyear,
                 birthday = kakaoAccount?.birthday,
-                birthdayType = kakaoAccount?.birthdayType,
             ),
         )
     }
@@ -46,22 +45,16 @@ class KakaoOAuthClient(
     /**
      * 카카오의 birthyear(YYYY) + birthday(MMDD)를 LocalDate로 합친다.
      * - 둘 중 하나라도 없으면(부분 동의) null
-     * - 음력(LUNAR) 생일은 양력 변환을 지원하지 않으므로 null (FE에서 직접 입력 fallback)
+     * - 음력/양력(birthday_type) 구분 없이 받은 연·월·일을 그대로 저장한다.
      * - 포맷이 잘못된 경우에도 로그인 자체는 성공해야 하므로 예외 없이 null + 경고 로그
      */
     private fun parseBirthDate(
         birthyear: String?,
         birthday: String?,
-        birthdayType: String?,
     ): LocalDate? {
         if (birthyear.isNullOrBlank() || birthday.isNullOrBlank()) return null
         if (birthday.length != BIRTHDAY_LENGTH) {
             log.warn { "카카오 birthday 포맷 비정상(MMDD 아님): $birthday" }
-            return null
-        }
-        if (birthdayType != null && birthdayType != BIRTHDAY_TYPE_SOLAR) {
-            // 음력 생일은 정상 데이터지만 양력 변환이 모호해 채우지 않는다. 서버 에러가 아니므로 info.
-            log.info { "음력 생일이라 birthDate를 채우지 않습니다. (FE 직접 입력)" }
             return null
         }
 
@@ -95,7 +88,6 @@ class KakaoOAuthClient(
     companion object {
         private val log = KotlinLogging.logger {}
         private const val AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize"
-        private const val BIRTHDAY_TYPE_SOLAR = "SOLAR"
         private const val BIRTHDAY_LENGTH = 4 // MMDD
 
         // 카카오는 콤마로 구분된 scope 목록을 허용한다.
