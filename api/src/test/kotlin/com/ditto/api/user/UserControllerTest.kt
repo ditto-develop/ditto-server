@@ -116,13 +116,16 @@ class UserControllerTest : RestDocsTest() {
     }
 
     @Test
-    @DisplayName("가입 정보(email·생년월일)를 조회한다 - PENDING 회원도 접근 가능")
+    @DisplayName("가입 정보(카카오 수집 정보)를 조회한다 - PENDING 회원도 접근 가능")
     fun getMe() {
         val member = memberRepository.save(
             Member(
                 nickname = "가입정보유저",
                 email = "user@kakao.com",
                 birthDate = LocalDateTime.of(1995, 3, 15, 0, 0),
+                name = "홍길동",
+                phoneNumber = "010-1234-5678",
+                gender = Gender.MALE,
             ),
         )
 
@@ -135,6 +138,9 @@ class UserControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.email").value("user@kakao.com"))
             .andExpect(jsonPath("$.data.birthDate").value("1995-03-15"))
+            .andExpect(jsonPath("$.data.name").value("홍길동"))
+            .andExpect(jsonPath("$.data.phoneNumber").value("010-1234-5678"))
+            .andExpect(jsonPath("$.data.gender").value("MALE"))
             .andDo(
                 document(
                     "user-me",
@@ -145,13 +151,16 @@ class UserControllerTest : RestDocsTest() {
                             .tag("Users")
                             .summary("가입 정보 조회")
                             .description(
-                                "소셜 로그인에서 받아온 가입 정보(이메일·생년월일)를 조회합니다. " +
+                                "소셜 로그인에서 받아온 가입 정보(이메일·생년월일·이름·전화번호·성별)를 조회합니다. " +
                                     "온보딩 화면 prefill 용도이며, 가입 미완료(PENDING) 회원도 접근할 수 있습니다.",
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.email").description("이메일 (없으면 null)"),
                                 fieldWithPath("data.birthDate").description("생년월일 (없거나 음력이면 null)"),
+                                fieldWithPath("data.name").description("이름 (미동의 시 null)"),
+                                fieldWithPath("data.phoneNumber").description("전화번호 010-XXXX-XXXX (미동의 시 null)"),
+                                fieldWithPath("data.gender").description("성별 MALE/FEMALE (미동의 시 null)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

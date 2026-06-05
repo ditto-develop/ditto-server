@@ -142,12 +142,15 @@ class UserServiceTest(
         }
 
         "가입 정보 조회" - {
-            "회원의 email과 생년월일을 반환한다" {
+            "회원의 카카오 수집 정보를 반환한다" {
                 val member = memberRepository.save(
                     Member(
                         nickname = "조회유저",
                         email = "user@kakao.com",
                         birthDate = LocalDateTime.of(1995, 3, 15, 0, 0),
+                        name = "홍길동",
+                        phoneNumber = "010-1234-5678",
+                        gender = Gender.MALE,
                     ),
                 )
 
@@ -155,15 +158,21 @@ class UserServiceTest(
 
                 result.email shouldBe "user@kakao.com"
                 result.birthDate shouldBe LocalDate.of(1995, 3, 15)
+                result.name shouldBe "홍길동"
+                result.phoneNumber shouldBe "010-1234-5678"
+                result.gender shouldBe "MALE"
             }
 
-            "email과 생년월일이 없으면 null을 반환한다" {
+            "카카오 수집 정보가 없으면 null을 반환한다" {
                 val member = memberRepository.save(Member(nickname = "정보없는유저"))
 
                 val result = userService.getMe(member.id)
 
                 result.email shouldBe null
                 result.birthDate shouldBe null
+                result.name shouldBe null
+                result.phoneNumber shouldBe null
+                result.gender shouldBe null
             }
 
             "존재하지 않는 회원이면 예외가 발생한다" {
