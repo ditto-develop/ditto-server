@@ -7,6 +7,12 @@ import com.ditto.api.user.service.UserService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.intronote.entity.IntroNote
+import com.ditto.domain.intronote.entity.IntroQuestion
+import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
@@ -40,6 +46,8 @@ class UserServiceTest(
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val personalMatchRepository: PersonalMatchRepository,
+    private val introNoteRepository: IntroNoteRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -180,6 +188,106 @@ class UserServiceTest(
                     userService.getMe(99999L)
                 }
                 exception.errorCode shouldBe ErrorCode.NOT_FOUND
+            }
+        }
+
+        "타인 공개 프로필 조회" - {
+            fun saveFullMember(nickname: String) = memberRepository.save(
+                Member(
+                    nickname = nickname,
+                    name = "실명비공개",
+                    email = "secret@kakao.com",
+                    phoneNumber = "010-9999-8888",
+                    gender = Gender.FEMALE,
+                    age = 27,
+                    interests = setOf(Interest.WORKOUT, Interest.TRAVEL, Interest.MUSIC),
+                    location = Location.SEOUL,
+                    job = Job.DESIGN,
+                    caricature = "/assets/avatar/f3.png",
+                ).apply { activate() },
+            )
+
+            "매칭이 성사된 상대의 프로필을 조회한다 (introduction은 ONE_WORD 소개노트 답변)" {
+                val viewer = memberRepository.save(Member(nickname = "조회자").apply { activate() })
+                val target = saveFullMember("대상자")
+                introNoteRepository.save(IntroNote.create(target.id, IntroQuestion.ONE_WORD, "열정적인사람"))
+                personalMatchRepository.save(
+                    PersonalMatchFixture.create(
+                        requesterId = viewer.id,
+                        receiverId = target.id,
+                        status = PersonalMatchStatus.ACCEPTED,
+                    ),
+                )
+
+                val result = userService.getPublicProfile(viewer.id, target.id)
+
+                result.userId shouldBe target.id
+                result.nickname shouldBe "대상자"
+                result.gender shouldBe "FEMALE"
+                result.age shouldBe 27
+                result.introduction shouldBe "열정적인사람"
+                result.profileImageUrl shouldBe "/assets/avatar/f3.png"
+                result.location shouldBe "seoul"
+                result.occupation shouldBe "design"
+                result.interests.toSet() shouldBe setOf("workout", "travel", "music")
+                result.rating shouldBe null
+                result.preferredMinAge shouldBe null
+                result.preferredMaxAge shouldBe null
+            }
+
+            "소개노트 ONE_WORD가 없으면 introduction은 null이다" {
+                val viewer = memberRepository.save(Member(nickname = "조회자2").apply { activate() })
+                val target = saveFullMember("대상자2")
+                personalMatchRepository.save(
+                    PersonalMatchFixture.create(
+                        requesterId = viewer.id,
+                        receiverId = target.id,
+                        status = PersonalMatchStatus.ACCEPTED,
+                    ),
+                )
+
+                val result = userService.getPublicProfile(viewer.id, target.id)
+
+                result.introduction shouldBe null
+            }
+
+            "본인 프로필은 매칭 없이도 조회할 수 있다" {
+                val me = saveFullMember("본인")
+
+                val result = userService.getPublicProfile(me.id, me.id)
+
+                result.userId shouldBe me.id
+            }
+
+            "매칭이 성사되지 않은 상대면 FORBIDDEN 예외가 발생한다" {
+                val viewer = memberRepository.save(Member(nickname = "조회자3").apply { activate() })
+                val target = saveFullMember("대상자3")
+
+                val exception = shouldThrow<WarnException> {
+                    userService.getPublicProfile(viewer.id, target.id)
+                }
+                exception.errorCode shouldBe ErrorCode.FORBIDDEN
+            }
+
+            "본인 프로필 조회 시 회원이 존재하지 않으면 NOT_FOUND 예외가 발생한다" {
+                val exception = shouldThrow<WarnException> {
+                    userService.getPublicProfile(99999L, 99999L)
+                }
+                exception.errorCode shouldBe ErrorCode.NOT_FOUND
+            }
+
+            "프로필 항목이 비어있으면 null로, 공백 ONE_WORD 답변이면 introduction은 null로 반환한다" {
+                val target = memberRepository.save(Member(nickname = "빈프로필").apply { activate() })
+                introNoteRepository.save(IntroNote.create(target.id, IntroQuestion.ONE_WORD, "   "))
+
+                val result = userService.getPublicProfile(target.id, target.id)
+
+                result.introduction shouldBe null
+                result.gender shouldBe null
+                result.age shouldBe null
+                result.location shouldBe null
+                result.occupation shouldBe null
+                result.interests shouldBe emptyList()
             }
         }
 

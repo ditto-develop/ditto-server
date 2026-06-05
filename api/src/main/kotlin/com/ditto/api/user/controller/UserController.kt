@@ -5,6 +5,7 @@ import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.dto.LeaveResponse
 import com.ditto.api.user.dto.MeResponse
+import com.ditto.api.user.dto.PublicProfileResponse
 import com.ditto.api.user.dto.RegisterResponse
 import com.ditto.api.user.service.UserService
 import com.ditto.common.response.ApiResponse
@@ -33,6 +34,15 @@ class UserController(
     @GetMapping("/api/v1/users/me")
     fun getMe(@AuthenticationPrincipal principal: MemberPrincipal): ApiResponse<MeResponse> {
         val result = userService.getMe(principal.memberId)
+        return ApiResponse.ok(result)
+    }
+
+    @GetMapping("/api/v1/users/{id}/profile")
+    fun getPublicProfile(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<PublicProfileResponse> {
+        val result = userService.getPublicProfile(principal.memberId, id)
         return ApiResponse.ok(result)
     }
 
