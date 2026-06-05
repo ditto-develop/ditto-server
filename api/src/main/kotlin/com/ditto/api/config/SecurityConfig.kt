@@ -106,7 +106,10 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
-            .addFilterAfter(JwtAuthenticationFilter(jwtTokenProvider, memberRepository), ApiKeyAuthFilter::class.java)
+            .addFilterAfter(
+                JwtAuthenticationFilter(jwtTokenProvider, memberRepository, pendingAllowedPaths = PENDING_ALLOWED_PATHS),
+                ApiKeyAuthFilter::class.java,
+            )
             .authorizeHttpRequests { it.anyRequest().authenticated() }
             .build()
     }
@@ -142,5 +145,10 @@ class SecurityConfig(
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/api/**", config)
         }
+    }
+
+    companion object {
+        // PENDING(가입 미완료) 회원도 JWT만으로 접근 가능한 경로 — 가입 정보 prefill 조회용.
+        private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me")
     }
 }
