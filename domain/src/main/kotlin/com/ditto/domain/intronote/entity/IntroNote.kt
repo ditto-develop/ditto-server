@@ -17,7 +17,7 @@ import org.hibernate.annotations.Comment
 @Table(
     name = "intro_note",
     uniqueConstraints = [
-        UniqueConstraint(name = "intro_note_unique_1", columnNames = ["member_id", "question"]),
+        UniqueConstraint(name = "intro_note_uk_1", columnNames = ["member_id", "question"]),
     ],
     indexes = [
         Index(name = "intro_note_index_1", columnList = "member_id"),
