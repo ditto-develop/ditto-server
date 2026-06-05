@@ -45,6 +45,14 @@ class MatchCandidate private constructor(
     @Comment("매칭 점수 (0.0 ~ 100.0)")
     @Column(nullable = false)
     val score: Double,
+
+    @Comment("일치한 문항 수")
+    @Column(name = "matched_question_count", nullable = false)
+    val matchedQuestionCount: Int,
+
+    @Comment("전체 비교 문항 수")
+    @Column(name = "total_question_count", nullable = false)
+    val totalQuestionCount: Int,
 ) : BaseEntity() {
 
     companion object {
@@ -56,6 +64,8 @@ class MatchCandidate private constructor(
             otherMemberId: Long,
             quizSetId: Long,
             score: Double,
+            matchedQuestionCount: Int,
+            totalQuestionCount: Int,
         ): MatchCandidate {
             // 배치가 생성하는 값이므로 위반 시 클라이언트가 아닌 알고리즘 버그다. 경계에서 불변식을 강제한다.
             require(ownerMemberId != otherMemberId) {
@@ -64,11 +74,19 @@ class MatchCandidate private constructor(
             require(score in MIN_SCORE..MAX_SCORE) {
                 "매칭 점수는 $MIN_SCORE~$MAX_SCORE 범위여야 합니다: $score"
             }
+            require(totalQuestionCount >= 0) {
+                "전체 문항 수는 음수일 수 없습니다: $totalQuestionCount"
+            }
+            require(matchedQuestionCount in 0..totalQuestionCount) {
+                "일치 문항 수는 0~전체($totalQuestionCount) 범위여야 합니다: $matchedQuestionCount"
+            }
             return MatchCandidate(
                 ownerMemberId = ownerMemberId,
                 otherMemberId = otherMemberId,
                 quizSetId = quizSetId,
                 score = score,
+                matchedQuestionCount = matchedQuestionCount,
+                totalQuestionCount = totalQuestionCount,
             )
         }
     }

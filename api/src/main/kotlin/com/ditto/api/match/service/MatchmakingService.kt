@@ -50,10 +50,10 @@ class MatchmakingService(
         }
 
         val participants = loadParticipants(quizSetId, availableMemberIds)
-        val result = processor.match(participants)
+        val survivingDuos = processor.match(participants)
 
         matchCandidateRepository.deleteByQuizSetId(quizSetId)
-        matchCandidateRepository.saveAll(toCandidates(quizSetId, result.survivingDuos))
+        matchCandidateRepository.saveAll(toCandidates(quizSetId, survivingDuos))
     }
 
     /** 퀴즈를 완료(COMPLETED)한 참여자 중, 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
@@ -89,12 +89,16 @@ class MatchmakingService(
                     otherMemberId = duo.memberId2,
                     quizSetId = quizSetId,
                     score = duo.score,
+                    matchedQuestionCount = duo.matchedQuestionCount,
+                    totalQuestionCount = duo.totalQuestionCount,
                 ),
                 MatchCandidate.create(
                     ownerMemberId = duo.memberId2,
                     otherMemberId = duo.memberId1,
                     quizSetId = quizSetId,
                     score = duo.score,
+                    matchedQuestionCount = duo.matchedQuestionCount,
+                    totalQuestionCount = duo.totalQuestionCount,
                 ),
             )
         }

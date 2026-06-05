@@ -35,19 +35,46 @@ class MatchCandidateTest(
     "create 불변식" - {
         "자기 자신은 매칭 후보가 될 수 없다" {
             shouldThrow<IllegalArgumentException> {
-                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 1L, quizSetId = 10L, score = 80.0)
+                MatchCandidate.create(
+                    ownerMemberId = 1L, otherMemberId = 1L, quizSetId = 10L,
+                    score = 80.0, matchedQuestionCount = 8, totalQuestionCount = 10,
+                )
             }
         }
 
         "점수가 0.0 미만이면 예외" {
             shouldThrow<IllegalArgumentException> {
-                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L, score = -0.1)
+                MatchCandidate.create(
+                    ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L,
+                    score = -0.1, matchedQuestionCount = 0, totalQuestionCount = 10,
+                )
             }
         }
 
         "점수가 100.0 초과면 예외" {
             shouldThrow<IllegalArgumentException> {
-                MatchCandidate.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L, score = 100.1)
+                MatchCandidate.create(
+                    ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L,
+                    score = 100.1, matchedQuestionCount = 10, totalQuestionCount = 10,
+                )
+            }
+        }
+
+        "일치 문항 수가 전체 문항 수보다 크면 예외" {
+            shouldThrow<IllegalArgumentException> {
+                MatchCandidate.create(
+                    ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L,
+                    score = 80.0, matchedQuestionCount = 11, totalQuestionCount = 10,
+                )
+            }
+        }
+
+        "전체 문항 수가 음수면 예외" {
+            shouldThrow<IllegalArgumentException> {
+                MatchCandidate.create(
+                    ownerMemberId = 1L, otherMemberId = 2L, quizSetId = 10L,
+                    score = 0.0, matchedQuestionCount = 0, totalQuestionCount = -1,
+                )
             }
         }
     }

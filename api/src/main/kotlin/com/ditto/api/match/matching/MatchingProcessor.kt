@@ -13,6 +13,6 @@ interface MatchingProcessor {
     /** 이 구현이 담당하는 매칭 타입 */
     val matchingType: MatchingType
 
-    /** 참여자 답변을 바탕으로 매칭 프로세스를 실행해 결과를 계산한다. */
-    fun match(participants: List<MatchParticipant>): MatchingResult
+    /** 참여자 답변을 바탕으로 매칭 프로세스를 실행해 최종 생존 페어 목록을 계산한다. */
+    fun match(participants: List<MatchParticipant>): List<ScoredDuo>
 }

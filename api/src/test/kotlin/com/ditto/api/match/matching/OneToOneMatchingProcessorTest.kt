@@ -17,17 +17,17 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 // 점수(3문항): (1,2)=66.7, (1,3)=33.3, (2,3)=66.7 → 상위20%+동점으로 66.7 두 쌍 선발
                 val result = processor.match(listOf(p1, p2, p3))
 
-                result.survivingDuos.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(
+                result.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(
                     1L to 2L,
                     2L to 3L,
                 )
             }
 
             "참여자가 2명 미만이면 빈 결과 (7.1)" {
-                processor.match(emptyList()).survivingDuos shouldBe emptyList()
+                processor.match(emptyList()) shouldBe emptyList()
                 processor.match(
                     listOf(MatchParticipant(1L, mapOf(101L to 1L))),
-                ).survivingDuos shouldBe emptyList()
+                ) shouldBe emptyList()
             }
 
             "참여자가 정확히 2명이면 페어 1개가 결과로 나온다" {
@@ -36,7 +36,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
 
                 val result = processor.match(listOf(p1, p2))
 
-                result.survivingDuos.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                result.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
         }
     },

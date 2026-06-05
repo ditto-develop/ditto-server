@@ -85,6 +85,11 @@ class MatchmakingServiceTest(
                 matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(b, quizSetId)
                     .map { it.otherMemberId } shouldBe listOf(a)
                 matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(c, quizSetId) shouldHaveSize 0
+
+                // 일치/전체 문항 수(scoreBreakdown)도 함께 저장된다 — A·B 두 문항 모두 일치
+                val abCandidate = matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId).first()
+                abCandidate.matchedQuestionCount shouldBe 2
+                abCandidate.totalQuestionCount shouldBe 2
             }
 
             "이미 ACCEPTED 매칭된 회원은 제외된다" {

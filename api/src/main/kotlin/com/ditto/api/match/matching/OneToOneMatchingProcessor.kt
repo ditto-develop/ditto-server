@@ -15,21 +15,25 @@ class OneToOneMatchingProcessor : MatchingProcessor {
 
     override val matchingType: MatchingType = MatchingType.ONE_TO_ONE
 
-    override fun match(participants: List<MatchParticipant>): MatchingResult {
-        if (participants.size < 2) return MatchingResult(emptyList())
+    override fun match(participants: List<MatchParticipant>): List<ScoredDuo> {
+        if (participants.size < 2) return emptyList()
 
         val scoredDuos = scoreAllDuos(participants)
         val selected = TopRatioSelector.select(scoredDuos, TOP_RATIO)
-        val survivors = HardLimitApplier.apply(selected, HARD_LIMIT)
-        
-        return MatchingResult(survivors)
+        return HardLimitApplier.apply(selected, HARD_LIMIT)
     }
 
     private fun scoreAllDuos(participants: List<MatchParticipant>): List<ScoredDuo> =
         participants.flatMapIndexed { index, participant ->
             participants.drop(index + 1).map { otherParticipant ->
                 val matchScore = MatchScoreCalculator.calculate(participant, otherParticipant)
-                ScoredDuo.of(participant.memberId, otherParticipant.memberId, matchScore)
+                ScoredDuo.of(
+                    memberA = participant.memberId,
+                    memberB = otherParticipant.memberId,
+                    score = matchScore.score,
+                    matchedQuestionCount = matchScore.matchedQuestionCount,
+                    totalQuestionCount = matchScore.totalQuestionCount,
+                )
             }
         }
 
