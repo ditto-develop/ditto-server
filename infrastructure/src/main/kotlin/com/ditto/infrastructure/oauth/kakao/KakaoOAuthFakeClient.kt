@@ -1,5 +1,6 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.domain.member.entity.Gender
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
@@ -30,6 +31,9 @@ class KakaoOAuthFakeClient(
             nickname = "테스트유저",
             email = "test@example.com",
             birthDate = LocalDate.of(1995, 3, 15),
+            name = "테스트",
+            phoneNumber = "010-1234-5678",
+            gender = Gender.MALE,
         )
     }
 }

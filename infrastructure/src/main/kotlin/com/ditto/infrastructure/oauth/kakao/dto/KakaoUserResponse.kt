@@ -14,6 +14,9 @@ data class KakaoUserResponse(
         val email: String?,
         val birthyear: String?,
         val birthday: String?,
+        val name: String?,
+        val phoneNumber: String?,
+        val gender: String?,
     )
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy::class)

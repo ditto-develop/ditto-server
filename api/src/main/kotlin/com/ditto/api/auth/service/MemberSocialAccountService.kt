@@ -3,6 +3,7 @@ package com.ditto.api.auth.service
 import com.ditto.api.auth.NicknameGenerator
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -24,6 +25,9 @@ class MemberSocialAccountService(
         providerUserId: String,
         email: String?,
         birthDate: LocalDateTime?,
+        name: String? = null,
+        phoneNumber: String? = null,
+        gender: Gender? = null,
     ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
@@ -38,10 +42,20 @@ class MemberSocialAccountService(
                 log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
                 member.updateEmail(email)
             }
+            member.updateOAuthInfo(name = name, phoneNumber = phoneNumber, gender = gender)
             return member
         }
 
-        val newMember = memberRepository.save(Member(nickname = generateUniqueNickname(), email = email, birthDate = birthDate))
+        val newMember = memberRepository.save(
+            Member(
+                nickname = generateUniqueNickname(),
+                email = email,
+                birthDate = birthDate,
+                name = name,
+                phoneNumber = phoneNumber,
+                gender = gender,
+            ),
+        )
         socialAccountRepository.save(
             SocialAccount.create(
                 memberId = newMember.id,

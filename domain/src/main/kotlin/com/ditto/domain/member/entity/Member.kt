@@ -94,6 +94,20 @@ class Member(
         }
     }
 
+    /**
+     * 소셜 로그인에서 받은 개인정보로 갱신한다.
+     * 제공된(non-null) 값만 덮어쓰며, 미동의로 null이 온 항목은 기존 값을 유지한다.
+     */
+    fun updateOAuthInfo(
+        name: String?,
+        phoneNumber: String?,
+        gender: Gender?,
+    ) {
+        if (name != null) this.name = name
+        if (phoneNumber != null) this.phoneNumber = phoneNumber
+        if (gender != null) this.gender = gender
+    }
+
     fun isPending(): Boolean = status == MemberStatus.PENDING
 
     fun register(

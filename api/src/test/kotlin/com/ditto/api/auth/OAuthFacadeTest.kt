@@ -9,6 +9,7 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
@@ -80,6 +81,16 @@ class OAuthFacadeTest(
 
                 // KakaoOAuthFakeClient가 1995-03-15를 반환한다.
                 memberRepository.findAll().first().birthDate shouldBe LocalDateTime.of(1995, 3, 15, 0, 0)
+            }
+
+            "신규 사용자면 카카오에서 받은 이름·전화번호·성별이 Member에 저장된다" {
+                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                // KakaoOAuthFakeClient가 이름=테스트, 전화번호=010-1234-5678, 성별=MALE을 반환한다.
+                val member = memberRepository.findAll().first()
+                member.name shouldBe "테스트"
+                member.phoneNumber shouldBe "010-1234-5678"
+                member.gender shouldBe Gender.MALE
             }
 
             "PENDING 사용자가 재로그인해도 토큰과 signupRequired=true를 반환한다" {

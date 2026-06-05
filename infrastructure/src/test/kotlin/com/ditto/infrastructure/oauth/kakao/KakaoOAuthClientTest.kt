@@ -1,5 +1,6 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.domain.member.entity.Gender
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoTokenResponse
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoUserResponse
@@ -31,10 +32,10 @@ class KakaoOAuthClientTest : FreeSpec(
                 url shouldContain "${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
             }
 
-            "scope에 account_email·birthyear·birthday를 포함한다" {
+            "scope에 account_email·birthyear·birthday·name·phone_number·gender를 포함한다" {
                 val url = client.getAuthorizationUrl()
 
-                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email,birthyear,birthday"
+                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email,birthyear,birthday,name,phone_number,gender"
             }
         }
 
@@ -95,11 +96,17 @@ class KakaoOAuthClientTest : FreeSpec(
                 email: String? = "user@kakao.com",
                 birthyear: String? = null,
                 birthday: String? = null,
+                name: String? = null,
+                phoneNumber: String? = null,
+                gender: String? = null,
             ) = KakaoUserResponse.KakaoAccount(
                 profile = KakaoUserResponse.KakaoProfile(nickname = nickname),
                 email = email,
                 birthyear = birthyear,
                 birthday = birthday,
+                name = name,
+                phoneNumber = phoneNumber,
+                gender = gender,
             )
 
             "닉네임과 이메일이 있으면 해당 값을 반환한다" {
@@ -134,6 +141,9 @@ class KakaoOAuthClientTest : FreeSpec(
                         email = "user@kakao.com",
                         birthyear = null,
                         birthday = null,
+                        name = null,
+                        phoneNumber = null,
+                        gender = null,
                     ),
                 )
 
@@ -228,6 +238,138 @@ class KakaoOAuthClientTest : FreeSpec(
                 val userInfo = client.getUserInfo("test-token")
 
                 userInfo.birthDate shouldBe null
+            }
+
+            "이름이 있으면 해당 값을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(name = "홍길동"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.name shouldBe "홍길동"
+            }
+
+            "이름이 없으면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(name = null),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.name shouldBe null
+            }
+
+            "전화번호 +82 국가코드를 010-XXXX-XXXX 포맷으로 변환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "+82 10-1234-5678"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe "010-1234-5678"
+            }
+
+            "전화번호 +82 010 형식도 010-XXXX-XXXX로 변환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "+82 010-1234-5678"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe "010-1234-5678"
+            }
+
+            "전화번호가 국가코드 없는 국내 포맷이면 그대로 010-XXXX-XXXX로 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "010-9876-5432"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe "010-9876-5432"
+            }
+
+            "전화번호가 없으면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = null),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe null
+            }
+
+            "전화번호가 빈 문자열이면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "  "),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe null
+            }
+
+            "전화번호 자릿수가 비정상이면 예외 없이 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(phoneNumber = "+82 10-123"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.phoneNumber shouldBe null
+            }
+
+            "성별 male을 MALE로 변환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(gender = "male"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.gender shouldBe Gender.MALE
+            }
+
+            "성별 female을 FEMALE로 변환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(gender = "female"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.gender shouldBe Gender.FEMALE
+            }
+
+            "성별이 없으면 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(gender = null),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.gender shouldBe null
+            }
+
+            "성별 값을 알 수 없으면 예외 없이 null을 반환한다" {
+                every { apiSender.getUserInfo("Bearer test-token") } returns KakaoUserResponse(
+                    id = 12345L,
+                    kakaoAccount = kakaoAccount(gender = "unknown"),
+                )
+
+                val userInfo = client.getUserInfo("test-token")
+
+                userInfo.gender shouldBe null
             }
         }
     },
