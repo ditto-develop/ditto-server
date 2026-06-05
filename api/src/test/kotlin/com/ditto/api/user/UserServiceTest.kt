@@ -36,17 +36,15 @@ class UserServiceTest(
         "회원가입" - {
             "PENDING 상태의 회원을 정상 등록한다" {
                 val member = memberRepository.save(Member(nickname = "임시닉네임"))
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "provider-user-1"))
 
                 val result = userService.register(
+                    member.id,
                     CreateUserRequest(
                         name = "김철수",
                         nickname = "철수123",
                         phoneNumber = "010-1234-5678",
                         gender = Gender.MALE,
                         age = 25,
-                        provider = SocialProvider.KAKAO,
-                        providerUserId = "provider-user-1",
                     ),
                 )
 
@@ -61,30 +59,25 @@ class UserServiceTest(
                 saved.status shouldBe MemberStatus.ACTIVE
             }
 
-            "존재하지 않는 소셜 계정이면 예외가 발생한다" {
+            "토큰의 회원이 존재하지 않으면 서버 오류가 발생한다" {
                 val exception = shouldThrow<ErrorException> {
                     userService.register(
-                        CreateUserRequest(
-                            provider = SocialProvider.KAKAO,
-                            providerUserId = "non-existent",
-                        ),
+                        99999L,
+                        CreateUserRequest(),
                     )
                 }
-                exception.errorCode shouldBe ErrorCode.NOT_FOUND
+                exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
             }
 
             "이미 ACTIVE인 회원이면 예외가 발생한다" {
                 val member = memberRepository.save(Member(nickname = "임시닉네임"))
                 member.activate()
                 memberRepository.save(member)
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "provider-user-2"))
 
                 val exception = shouldThrow<ErrorException> {
                     userService.register(
-                        CreateUserRequest(
-                            provider = SocialProvider.KAKAO,
-                            providerUserId = "provider-user-2",
-                        ),
+                        member.id,
+                        CreateUserRequest(),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.MEMBER_ALREADY_EXISTS
@@ -96,14 +89,12 @@ class UserServiceTest(
                 memberRepository.save(existingMember)
 
                 val pending = memberRepository.save(Member(nickname = "임시닉네임"))
-                socialAccountRepository.save(SocialAccount.create(pending.id, SocialProvider.KAKAO, "provider-user-3"))
 
                 val exception = shouldThrow<WarnException> {
                     userService.register(
+                        pending.id,
                         CreateUserRequest(
                             nickname = "중복닉네임",
-                            provider = SocialProvider.KAKAO,
-                            providerUserId = "provider-user-3",
                         ),
                     )
                 }

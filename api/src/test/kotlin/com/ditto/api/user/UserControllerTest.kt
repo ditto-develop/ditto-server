@@ -34,20 +34,18 @@ class UserControllerTest : RestDocsTest() {
     @DisplayName("회원가입에 성공한다")
     fun register() {
         val member = memberRepository.save(Member(nickname = "임시닉네임"))
-        socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "register-user"))
         val request = CreateUserRequest(
             name = "김철수",
             nickname = "철수123",
             phoneNumber = "010-1234-5678",
             gender = Gender.MALE,
             age = 25,
-            provider = SocialProvider.KAKAO,
-            providerUserId = "register-user",
         )
 
         mockMvc.perform(
             post("/api/v1/users")
                 .withApiKey()
+                .withBearerToken(member.id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
         )
@@ -73,8 +71,6 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("gender").description("성별 (MALE, FEMALE)").optional(),
                                 fieldWithPath("age").description("나이대 (20, 25, 30, 35, 40, 45, 50, 60)").optional(),
                                 fieldWithPath("birthDate").description("생년월일").optional(),
-                                fieldWithPath("provider").description("소셜 로그인 제공자 (KAKAO)"),
-                                fieldWithPath("providerUserId").description("소셜 로그인 제공자의 사용자 ID"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

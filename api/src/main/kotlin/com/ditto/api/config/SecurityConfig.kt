@@ -75,7 +75,7 @@ class SecurityConfig(
     }
 
     /**
-     * API Key만 필요 (토큰 갱신, 회원가입 등 JWT 불필요)
+     * API Key만 필요 (토큰 갱신·닉네임 중복확인 등 JWT 불필요)
      */
     @Bean
     @Order(4)
@@ -83,7 +83,6 @@ class SecurityConfig(
         return http
             .securityMatcher(
                 "/api/v1/users/auth/refresh",
-                "/api/v1/users",
                 "/api/v1/users/nickname/**",
             )
             .csrf { it.disable() }
@@ -148,7 +147,13 @@ class SecurityConfig(
     }
 
     companion object {
-        // PENDING(가입 미완료) 회원도 JWT만으로 접근 가능한 경로 — 가입 정보 prefill 조회용.
-        private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me")
+        // PENDING(가입 미완료) 회원도 JWT만으로 접근 가능한 경로.
+        // - GET /api/v1/users/me: 가입 정보 prefill 조회
+        // - POST /api/v1/users: 회원가입 완료(추가 정보 입력) — 호출 시점엔 아직 PENDING이므로 허용 필요
+        //
+        // ⚠️ JwtAuthenticationFilter는 HTTP method를 무시하고 경로(requestURI)만으로 매칭한다.
+        //    같은 경로에 다른 method 엔드포인트(예: GET/DELETE /api/v1/users)를 추가하면
+        //    PENDING 회원에게도 함께 열리므로, 그때 PENDING 노출 여부를 반드시 재검토할 것.
+        private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me", "/api/v1/users")
     }
 }
