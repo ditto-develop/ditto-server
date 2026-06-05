@@ -43,6 +43,7 @@ class UserControllerTest : RestDocsTest() {
             interests = setOf("travel", "music"),
             location = "seoul",
             job = "it-tech",
+            caricature = "m1",
         )
 
         mockMvc.perform(
@@ -77,6 +78,7 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("interests[]").description("관심사 code 목록 (필수, 최소 1개)"),
                                 fieldWithPath("location").description("사는곳 code (필수)"),
                                 fieldWithPath("job").description("직업 code (필수)"),
+                                fieldWithPath("caricature").description("프로필 캐리커쳐 (필수)"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
@@ -91,6 +93,7 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.interests[]").description("관심사 code 목록"),
                                 fieldWithPath("data.location").description("사는곳 code"),
                                 fieldWithPath("data.job").description("직업 code"),
+                                fieldWithPath("data.caricature").description("프로필 캐리커쳐"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
                                 fieldWithPath("data.role").description("역할"),
                                 fieldWithPath("data.createdAt").description("생성일시"),

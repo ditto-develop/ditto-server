@@ -29,7 +29,7 @@ paths:
         content:
           application/json;charset=UTF-8:
             schema:
-              $ref: "#/components/schemas/api-v1-users-1404755115"
+              $ref: "#/components/schemas/api-v1-users728557781"
             examples:
               user-register:
                 value: |-
@@ -43,7 +43,8 @@ paths:
                     "birthDate" : null,
                     "interests" : [ "travel", "music" ],
                     "location" : "seoul",
-                    "job" : "it-tech"
+                    "job" : "it-tech",
+                    "caricature" : "m1"
                   }
       responses:
         "200":
@@ -51,7 +52,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-1043784852"
+                $ref: "#/components/schemas/api-v1-users-1640911349"
               examples:
                 user-register:
                   value: |-
@@ -69,10 +70,11 @@ paths:
                         "interests" : [ "music", "travel" ],
                         "location" : "seoul",
                         "job" : "it-tech",
-                        "joinedAt" : "2026-06-05 22:03:13",
+                        "caricature" : "m1",
+                        "joinedAt" : "2026-06-05 22:48:04",
                         "role" : null,
-                        "createdAt" : "2026-06-05 22:03:13",
-                        "updatedAt" : "2026-06-05 22:03:13"
+                        "createdAt" : "2026-06-05 22:48:04",
+                        "updatedAt" : "2026-06-05 22:48:04"
                       },
                       "error" : null
                     }
@@ -284,8 +286,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-06-04 22:03:16",
-                          "endDate" : "2026-06-06 22:03:16",
+                          "startDate" : "2026-06-04 22:48:04",
+                          "endDate" : "2026-06-06 22:48:04",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -302,8 +304,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-06-05 22:03:16",
-                            "updatedAt" : "2026-06-05 22:03:16"
+                            "createdAt" : "2026-06-05 22:48:04",
+                            "updatedAt" : "2026-06-05 22:48:04"
                           } ]
                         } ]
                       },
@@ -349,8 +351,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-06-05 22:03:16",
-                        "updatedAt" : "2026-06-05 22:03:16"
+                        "createdAt" : "2026-06-05 22:48:04",
+                        "updatedAt" : "2026-06-05 22:48:04"
                       },
                       "error" : null
                     }
@@ -615,10 +617,77 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwNjY0NTkzLCJleHAiOjE3ODA2NjgxOTN9.gGHQfXBZe7iGneZFVe0AYo24Y4UAzpINXX2PuqTs90vHNNbJykMp4eyCeVdZ5yCwme8NqwnBeo2Eck-vAFDCQw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwNjY3MjgxLCJleHAiOjE3ODA2NzA4ODF9.DKw9PgpVvF2TIgJ9CsjrzkVE0_eVJdubVVqT32_1cdGSCTyIk2A_VpxUSiM0c2Db_tgrqB2kCRfuR0Cx_jRtHQ"
                       },
                       "error" : null
                     }
+  /api/v1/users/me/intro-notes:
+    get:
+      tags:
+      - Users
+      summary: 본인 소개노트 조회
+      description: 본인의 소개노트 전체를 고정 질문 순서대로 조회합니다. 미작성 질문은 빈 문자열입니다.
+      operationId: intro-note-me
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-intro-notes-questionCode-148109110"
+              examples:
+                intro-note-me:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "answers" : [ {
+                          "questionCode" : "travel-items",
+                          "question" : "여행갈 때 꼭 챙겨야 하는 3가지는?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "weekend-morning",
+                          "question" : "주말 아침 10시, 나는 주로 뭐하고 있을까?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "friends-say",
+                          "question" : "친구들이 나한테 제일 많이 하는 말은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "stress-relief",
+                          "question" : "스트레스 받을 때 나만의 해소법은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "best-choice",
+                          "question" : "최근 1년 내 가장 잘한 선택은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "happiest-moment",
+                          "question" : "나를 가장 행복하게 만드는 순간은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "most-used-apps",
+                          "question" : "요즘 내가 가장 많이 쓰는 앱 3개는?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "favorite-time",
+                          "question" : "하루 중 가장 좋아하는 시간대는? 그때 주로 뭐해?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "non-negotiable",
+                          "question" : "내가 절대 양보 못하는 것은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "one-word",
+                          "question" : "나를 한 단어로 표현한다면?",
+                          "answer" : "도전"
+                        } ],
+                        "completedCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/social-login/{provider}:
     get:
       tags:
@@ -636,6 +705,80 @@ paths:
       responses:
         "302":
           description: "302"
+  /api/v1/users/{id}/intro-notes:
+    get:
+      tags:
+      - Users
+      summary: 타인 소개노트 조회
+      description: 매칭이 성사되었거나 같은 그룹 채팅에 참여한 상대의 소개노트를 조회합니다. 권한이 없으면 403.
+      operationId: intro-note-other
+      parameters:
+      - name: id
+        in: path
+        description: 대상 사용자 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-intro-notes-questionCode-148109110"
+              examples:
+                intro-note-other:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "answers" : [ {
+                          "questionCode" : "travel-items",
+                          "question" : "여행갈 때 꼭 챙겨야 하는 3가지는?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "weekend-morning",
+                          "question" : "주말 아침 10시, 나는 주로 뭐하고 있을까?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "friends-say",
+                          "question" : "친구들이 나한테 제일 많이 하는 말은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "stress-relief",
+                          "question" : "스트레스 받을 때 나만의 해소법은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "best-choice",
+                          "question" : "최근 1년 내 가장 잘한 선택은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "happiest-moment",
+                          "question" : "나를 가장 행복하게 만드는 순간은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "most-used-apps",
+                          "question" : "요즘 내가 가장 많이 쓰는 앱 3개는?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "favorite-time",
+                          "question" : "하루 중 가장 좋아하는 시간대는? 그때 주로 뭐해?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "non-negotiable",
+                          "question" : "내가 절대 양보 못하는 것은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "one-word",
+                          "question" : "나를 한 단어로 표현한다면?",
+                          "answer" : "열정"
+                        } ],
+                        "completedCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/{id}/leave:
     post:
       tags:
@@ -673,8 +816,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-06-05 22:03:13",
-                        "updatedAt" : "2026-06-05 22:03:13"
+                        "createdAt" : "2026-06-05 22:48:04",
+                        "updatedAt" : "2026-06-05 22:48:04"
                       },
                       "error" : null
                     }
@@ -754,6 +897,91 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/users/me/intro-notes/{questionCode}:
+    put:
+      tags:
+      - Users
+      summary: 소개노트 답변 저장
+      description: 질문 하나의 답변을 저장/수정합니다. 빈 문자열로 부분 저장이 가능합니다.
+      operationId: intro-note-save
+      parameters:
+      - name: questionCode
+        in: path
+        description: 소개노트 질문 code
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-me-intro-notes-questionCode974133747"
+            examples:
+              intro-note-save:
+                value: |-
+                  {
+                    "answer" : "이어폰, 선크림, 카메라"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-intro-notes-questionCode-148109110"
+              examples:
+                intro-note-save:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "answers" : [ {
+                          "questionCode" : "travel-items",
+                          "question" : "여행갈 때 꼭 챙겨야 하는 3가지는?",
+                          "answer" : "이어폰, 선크림, 카메라"
+                        }, {
+                          "questionCode" : "weekend-morning",
+                          "question" : "주말 아침 10시, 나는 주로 뭐하고 있을까?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "friends-say",
+                          "question" : "친구들이 나한테 제일 많이 하는 말은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "stress-relief",
+                          "question" : "스트레스 받을 때 나만의 해소법은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "best-choice",
+                          "question" : "최근 1년 내 가장 잘한 선택은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "happiest-moment",
+                          "question" : "나를 가장 행복하게 만드는 순간은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "most-used-apps",
+                          "question" : "요즘 내가 가장 많이 쓰는 앱 3개는?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "favorite-time",
+                          "question" : "하루 중 가장 좋아하는 시간대는? 그때 주로 뭐해?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "non-negotiable",
+                          "question" : "내가 절대 양보 못하는 것은?",
+                          "answer" : ""
+                        }, {
+                          "questionCode" : "one-word",
+                          "question" : "나를 한 단어로 표현한다면?",
+                          "answer" : ""
+                        } ],
+                        "completedCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/nickname/{nickname}/availability:
     get:
       tags:
@@ -790,8 +1018,7 @@ paths:
       tags:
       - OAuth
       summary: 소셜 로그인 콜백
-      description: "소셜 로그인 인가 코드를 받아 토큰을 발급한 뒤 프론트 콜백 페이지로 리다이렉트한다. accessToken과 회\
-        원가입 필요 여부(signupRequired)는 쿼리 파라미터로, refreshToken은 HttpOnly 쿠키로 전달된다."
+      description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
       operationId: oauth-callback
       parameters:
       - name: provider
@@ -807,6 +1034,20 @@ paths:
         schema:
           type: string
       responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback-272682272"
+              examples:
+                oauth-callback-new-user:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
         "302":
           description: "302"
 components:
@@ -819,6 +1060,14 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
+    api-v1-users-me-intro-notes-questionCode974133747:
+      required:
+      - answer
+      type: object
+      properties:
+        answer:
+          type: string
+          description: "답변 (빈 문자열 허용, 최대 500자)"
     api-v1-matches-group-join-2080112672:
       required:
       - error
@@ -885,7 +1134,7 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-1043784852:
+    api-v1-users-me-intro-notes-questionCode-148109110:
       required:
       - error
       - success
@@ -893,65 +1142,47 @@ components:
       properties:
         data:
           required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - interests
-          - job
-          - joinedAt
-          - location
-          - name
-          - nickname
-          - phoneNumber
-          - role
-          - updatedAt
+          - completedCount
           type: object
           properties:
-            gender:
-              type: string
-              description: 성별
-            joinedAt:
-              type: string
-              description: 가입일시
-            createdAt:
-              type: string
-              description: 생성일시
-            phoneNumber:
-              type: string
-              description: 전화번호
-            nickname:
-              type: string
-              description: 닉네임
-            name:
-              type: string
-              description: 이름
-            location:
-              type: string
-              description: 사는곳 code
-            id:
-              type: number
-              description: 사용자 ID
-            job:
-              type: string
-              description: 직업 code
-            interests:
+            answers:
               type: array
-              description: 관심사 code 목록
               items:
-                oneOf:
-                - type: object
-                - type: boolean
-                - type: string
-                - type: number
-            age:
+                required:
+                - answer
+                - question
+                - questionCode
+                type: object
+                properties:
+                  answer:
+                    type: string
+                    description: 답변 (미작성 시 빈 문자열)
+                  question:
+                    type: string
+                    description: 질문 문구
+                  questionCode:
+                    type: string
+                    description: 질문 code
+            completedCount:
               type: number
-              description: 나이대
-            updatedAt:
+              description: 작성 완료된 답변 수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
               type: string
-              description: 수정일시
+              description: 새 JWT 액세스 토큰
         success:
           type: boolean
           description: 성공 여부
@@ -1078,23 +1309,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-request-793255208:
       required:
       - quizSetId
@@ -1107,48 +1321,6 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
-    api-v1-users-1404755115:
-      required:
-      - interests
-      - job
-      - location
-      type: object
-      properties:
-        phoneNumber:
-          type: string
-          description: 전화번호 (010-0000-0000)
-          nullable: true
-        gender:
-          type: string
-          description: "성별 (MALE, FEMALE)"
-          nullable: true
-        nickname:
-          type: string
-          description: "닉네임 (2~10자, 한글·영문·숫자)"
-          nullable: true
-        name:
-          type: string
-          description: 이름
-          nullable: true
-        location:
-          type: string
-          description: 사는곳 code (필수)
-        job:
-          type: string
-          description: 직업 code (필수)
-        interests:
-          type: array
-          description: "관심사 code 목록 (필수, 최소 1개)"
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        age:
-          type: number
-          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
-          nullable: true
     api-v1-matches-group-decline-789252668:
       required:
       - error
@@ -1322,6 +1494,52 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users728557781:
+      required:
+      - caricature
+      - interests
+      - job
+      - location
+      type: object
+      properties:
+        caricature:
+          type: string
+          description: 프로필 캐리커쳐 (필수)
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE)"
+          nullable: true
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        location:
+          type: string
+          description: 사는곳 code (필수)
+        job:
+          type: string
+          description: 직업 code (필수)
+        interests:
+          type: array
+          description: "관심사 code 목록 (필수, 최소 1개)"
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        age:
+          type: number
+          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
+          nullable: true
     api-v1-users-nickname-nickname-availability-125958969:
       required:
       - error
@@ -1346,6 +1564,80 @@ components:
       - success
       type: object
       properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-1640911349:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - caricature
+          - createdAt
+          - email
+          - gender
+          - id
+          - interests
+          - job
+          - joinedAt
+          - location
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            caricature:
+              type: string
+              description: 프로필 캐리커쳐
+            gender:
+              type: string
+              description: 성별
+            joinedAt:
+              type: string
+              description: 가입일시
+            createdAt:
+              type: string
+              description: 생성일시
+            phoneNumber:
+              type: string
+              description: 전화번호
+            nickname:
+              type: string
+              description: 닉네임
+            name:
+              type: string
+              description: 이름
+            location:
+              type: string
+              description: 사는곳 code
+            id:
+              type: number
+              description: 사용자 ID
+            job:
+              type: string
+              description: 직업 code
+            interests:
+              type: array
+              description: 관심사 code 목록
+              items:
+                oneOf:
+                - type: object
+                - type: boolean
+                - type: string
+                - type: number
+            age:
+              type: number
+              description: 나이대
+            updatedAt:
+              type: string
+              description: 수정일시
         success:
           type: boolean
           description: 성공 여부
@@ -1557,6 +1849,43 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-id-leave-1444522536:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-request-id-accept-2011455419:
       required:
       - error
@@ -1594,40 +1923,16 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-id-leave-1444522536:
+    api-v1-users-social-login-provider-callback-272682272:
       required:
+      - data
       - error
       - success
       type: object
       properties:
         data:
-          required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - joinedAt
-          - name
-          - nickname
-          - phoneNumber
-          - role
-          - updatedAt
           type: object
-          properties:
-            createdAt:
-              type: string
-              description: 생성일시
-            nickname:
-              type: string
-              description: 닉네임
-            id:
-              type: number
-              description: 사용자 ID
-            updatedAt:
-              type: string
-              description: 수정일시
+          description: 빈 객체 (신규 사용자)
         success:
           type: boolean
           description: 성공 여부

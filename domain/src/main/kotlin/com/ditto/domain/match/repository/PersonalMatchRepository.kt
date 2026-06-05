@@ -37,4 +37,14 @@ interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, Personal
         quizSetId: Long,
         status: PersonalMatchStatus,
     ): PersonalMatch?
+
+    /**
+     * 두 멤버 간 특정 status의 매칭 존재 여부 (quizSet 무관, 방향 무관).
+     * memberId1 = min(A, B), memberId2 = max(A, B) 정규화 규칙을 따른다.
+     */
+    fun existsByMemberId1AndMemberId2AndStatus(
+        memberId1: Long,
+        memberId2: Long,
+        status: PersonalMatchStatus,
+    ): Boolean
 }
