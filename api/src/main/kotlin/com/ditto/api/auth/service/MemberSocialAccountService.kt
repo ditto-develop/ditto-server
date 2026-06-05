@@ -11,6 +11,7 @@ import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Service
 class MemberSocialAccountService(
@@ -22,6 +23,7 @@ class MemberSocialAccountService(
         provider: SocialProvider,
         providerUserId: String,
         email: String?,
+        birthDate: LocalDateTime?,
     ): Member {
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
@@ -39,7 +41,7 @@ class MemberSocialAccountService(
             return member
         }
 
-        val newMember = memberRepository.save(Member(nickname = generateUniqueNickname(), email = email))
+        val newMember = memberRepository.save(Member(nickname = generateUniqueNickname(), email = email, birthDate = birthDate))
         socialAccountRepository.save(
             SocialAccount.create(
                 memberId = newMember.id,
