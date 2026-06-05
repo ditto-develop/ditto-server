@@ -54,6 +54,7 @@ class UserService(
             interests = request.interests.map { Interest.from(it) }.toSet(),
             location = Location.from(request.location),
             job = Job.from(request.job),
+            caricature = request.caricature,
         )
 
         return member.toRegisterResponse()

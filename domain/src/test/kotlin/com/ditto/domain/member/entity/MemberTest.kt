@@ -168,6 +168,7 @@ class MemberTest(
                     interests = setOf(Interest.TRAVEL, Interest.MUSIC),
                     location = Location.SEOUL,
                     job = Job.IT_TECH,
+                    caricature = "m1",
                 )
                 memberRepository.save(member)
 
@@ -182,6 +183,7 @@ class MemberTest(
                 found.interests shouldBe setOf(Interest.TRAVEL, Interest.MUSIC)
                 found.location shouldBe Location.SEOUL
                 found.job shouldBe Job.IT_TECH
+                found.caricature shouldBe "m1"
                 found.joinedAt shouldNotBe null
             }
 
@@ -199,6 +201,7 @@ class MemberTest(
                     interests = setOf(Interest.READING),
                     location = Location.BUSAN,
                     job = Job.STUDENT,
+                    caricature = "f2",
                 )
 
                 member.nickname shouldBe "임시닉네임"

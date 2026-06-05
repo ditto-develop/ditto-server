@@ -80,6 +80,10 @@ class Member(
     @Enumerated(EnumType.STRING)
     @Column(nullable = true, length = 30)
     var job: Job? = null,
+
+    @Comment("프로필 캐리커쳐 (FE에서 받은 문자열 그대로 저장)")
+    @Column(nullable = true, length = 100)
+    var caricature: String? = null,
 ) : BaseEntity() {
 
     fun activate() {
@@ -122,6 +126,7 @@ class Member(
         interests: Set<Interest>,
         location: Location,
         job: Job,
+        caricature: String,
     ) {
         if (name != null) this.name = name
         if (nickname != null) this.nickname = nickname
@@ -130,10 +135,11 @@ class Member(
         if (age != null) this.age = age
         if (birthDate != null) this.birthDate = birthDate
         if (email != null) this.email = email
-        // 관심사·사는곳·직업은 가입 완료 시 필수값이므로 항상 채운다.
+        // 관심사·사는곳·직업·캐리커쳐는 가입 완료 시 필수값이므로 항상 채운다.
         this.interests = interests
         this.location = location
         this.job = job
+        this.caricature = caricature
         this.joinedAt = LocalDateTime.now()
         this.status = MemberStatus.ACTIVE
     }

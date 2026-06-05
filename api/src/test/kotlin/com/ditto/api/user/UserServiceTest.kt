@@ -31,6 +31,7 @@ private fun validRegisterRequest(nickname: String? = null) = CreateUserRequest(
     interests = setOf("music"),
     location = "seoul",
     job = "it-tech",
+    caricature = "m1",
 )
 
 class UserServiceTest(
@@ -59,6 +60,7 @@ class UserServiceTest(
                         interests = setOf("travel", "music"),
                         location = "seoul",
                         job = "it-tech",
+                        caricature = "m1",
                     ),
                 )
 
@@ -70,6 +72,7 @@ class UserServiceTest(
                 result.interests.toSet() shouldBe setOf("travel", "music")
                 result.location shouldBe "seoul"
                 result.job shouldBe "it-tech"
+                result.caricature shouldBe "m1"
                 result.joinedAt shouldNotBe null
 
                 val saved = memberRepository.findById(member.id).get()
@@ -77,6 +80,7 @@ class UserServiceTest(
                 saved.interests shouldBe setOf(Interest.TRAVEL, Interest.MUSIC)
                 saved.location shouldBe Location.SEOUL
                 saved.job shouldBe Job.IT_TECH
+                saved.caricature shouldBe "m1"
             }
 
             "토큰의 회원이 존재하지 않으면 서버 오류가 발생한다" {
@@ -129,6 +133,7 @@ class UserServiceTest(
                             interests = setOf("travel"),
                             location = "seoul",
                             job = "invalid-code",
+                            caricature = "m1",
                         ),
                     )
                 }

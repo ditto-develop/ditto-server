@@ -37,4 +37,9 @@ data class CreateUserRequest(
 
     @field:NotBlank
     val job: String,
+
+    // 프론트에서 고른 캐리커쳐 문자열을 그대로 저장한다.
+    @field:NotBlank
+    @field:Size(max = 100)
+    val caricature: String,
 )
