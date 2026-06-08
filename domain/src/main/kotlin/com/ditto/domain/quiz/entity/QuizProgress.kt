@@ -1,6 +1,7 @@
 package com.ditto.domain.quiz.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.member.entity.GenderPreference
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -38,6 +39,8 @@ class QuizProgress private constructor(
     val totalCount: Int,
     status: QuizProgressStatus = QuizProgressStatus.NOT_STARTED,
     answeredCount: Int = 0,
+    // 별도 선택 전 기본값은 이성(OPPOSITE) — 연애 매칭의 기본 동작.
+    preferredGender: GenderPreference = GenderPreference.OPPOSITE,
 ) : BaseEntity() {
 
     @Comment("진행 상태")
@@ -51,6 +54,12 @@ class QuizProgress private constructor(
     var answeredCount: Int = answeredCount
         protected set
 
+    @Comment("매칭 성별 선호 (OPPOSITE, SAME, ANY). 기본값 OPPOSITE")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_gender", nullable = false, length = 20)
+    var preferredGender: GenderPreference = preferredGender
+        protected set
+
     fun recordAnswer() {
         answeredCount++
         if (answeredCount >= totalCount) {
@@ -58,6 +67,11 @@ class QuizProgress private constructor(
             return
         }
         status = QuizProgressStatus.IN_PROGRESS
+    }
+
+    /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */
+    fun selectPreferredGender(preferredGender: GenderPreference) {
+        this.preferredGender = preferredGender
     }
 
     companion object {

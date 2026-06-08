@@ -8,7 +8,9 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -32,6 +34,7 @@ class MatchmakingService(
     private val quizProgressRepository: QuizProgressRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val memberRepository: MemberRepository,
     private val exclusionPolicies: List<MatchExclusionPolicy>,
     private val matchingProcessors: List<MatchingProcessor>,
 ) {
@@ -43,41 +46,66 @@ class MatchmakingService(
         val matchingType = quizSet.matchingType
         val processor = matchingProcessors.firstOrNull { it.matchingType == matchingType } ?: return
 
-        val availableMemberIds = findAvailableMembers(quizSetId, matchingType)
+        // 완료자 진행 기록을 한 번만 조회해 성별 선호까지 함께 활용한다.
+        val completedProgresses =
+            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
+        val availableMemberIds = availableMemberIds(quizSetId, matchingType, completedProgresses)
         if (availableMemberIds.size < 2) {
             matchCandidateRepository.deleteByQuizSetId(quizSetId)
             return
         }
 
-        val participants = loadParticipants(quizSetId, availableMemberIds)
+        val participants = loadParticipants(quizSetId, availableMemberIds, completedProgresses)
         val survivingDuos = processor.match(participants)
 
         matchCandidateRepository.deleteByQuizSetId(quizSetId)
         matchCandidateRepository.saveAll(toCandidates(quizSetId, survivingDuos))
     }
 
-    /** 퀴즈를 완료(COMPLETED)한 참여자 중, 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
-    private fun findAvailableMembers(quizSetId: Long, matchingType: MatchingType): Set<Long> {
-        val participantIds = quizProgressRepository
-            .findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
-            .map { it.memberId }
-            .toSet()
-        if (participantIds.isEmpty()) return emptySet()
+    /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
+    private fun availableMemberIds(
+        quizSetId: Long,
+        matchingType: MatchingType,
+        completedProgresses: List<QuizProgress>,
+    ): Set<Long> {
+        val participantMemberIds = completedProgresses.map { it.memberId }.toSet()
 
-        val excluded = exclusionPolicies
+        if (participantMemberIds.isEmpty()) return emptySet()
+
+        val excludedMemberIds = exclusionPolicies
             .firstOrNull { it.matchingType == matchingType }
-            ?.excludedMemberIds(quizSetId, participantIds)
+            ?.excludedMemberIds(quizSetId, participantMemberIds)
             ?: emptySet()
-        return participantIds - excluded
+
+        return participantMemberIds - excludedMemberIds
     }
 
-    private fun loadParticipants(quizSetId: Long, memberIds: Set<Long>): List<MatchParticipant> {
+    private fun loadParticipants(
+        quizSetId: Long,
+        memberIds: Set<Long>,
+        completedProgresses: List<QuizProgress>,
+    ): List<MatchParticipant> {
         val quizIds = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId)).map { it.id }
         val answersByMember = quizAnswerRepository
             .findByMemberIdInAndQuizIdIn(memberIds.toList(), quizIds)
             .groupBy { it.memberId }
             .mapValues { (_, answers) -> answers.associate { it.quizId to it.choiceId } }
-        return memberIds.map { memberId -> MatchParticipant(memberId, answersByMember[memberId].orEmpty()) }
+        val membersById = memberRepository.findAllById(memberIds).associateBy { it.id }
+        val preferenceByMember = completedProgresses.associate { it.memberId to it.preferredGender }
+        return memberIds.mapNotNull { memberId ->
+            // 성별·나이 미상 회원은 성별·나이 기반 매칭이 불가하므로 후보 풀에서 제외한다.
+            val member = membersById[memberId] ?: return@mapNotNull null
+            val gender = member.gender ?: return@mapNotNull null
+            val age = member.age ?: return@mapNotNull null
+            MatchParticipant(
+                memberId = memberId,
+                answers = answersByMember[memberId].orEmpty(),
+                gender = gender,
+                age = age,
+                // memberIds 는 completedProgresses 에서 유래하므로 선호값은 항상 존재한다(기본값은 QuizProgress 가 보유).
+                preferredGender = preferenceByMember.getValue(memberId),
+            )
+        }
     }
 
     /** 페어(A,B) 하나를 (A→B), (B→A) 두 방향 행으로 변환한다. */
