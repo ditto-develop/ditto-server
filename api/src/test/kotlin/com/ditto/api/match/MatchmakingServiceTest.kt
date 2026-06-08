@@ -108,6 +108,16 @@ class MatchmakingServiceTest(
                 abCandidate.totalQuestionCount shouldBe 2
             }
 
+            "완료한 참여자가 없으면 후보를 만들지 않는다" {
+                val (quizSetId, _, _) = saveOneToOneQuizSetWithTwoQuizzes()
+                val a = saveMember("회원A")
+                // 답변/완료 처리 없음 → 완료자 0명
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId) shouldHaveSize 0
+            }
+
             "이미 ACCEPTED 매칭된 회원은 제외된다" {
                 val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
                 val a = saveMember("회원A")
