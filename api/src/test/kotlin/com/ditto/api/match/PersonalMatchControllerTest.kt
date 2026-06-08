@@ -1,7 +1,6 @@
 package com.ditto.api.match
 
 import com.ditto.api.match.controller.PersonalMatchController
-import com.ditto.api.match.dto.PersonalMatchListResponse
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
@@ -21,8 +20,6 @@ import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPri
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
 import org.springframework.restdocs.request.RequestDocumentation.pathParameters
-import org.springframework.restdocs.request.RequestDocumentation.queryParameters
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -48,60 +45,6 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
         createdAt = LocalDateTime.of(2026, 5, 1, 12, 0),
         respondedAt = null,
     )
-
-    @Test
-    @DisplayName("보낸/받은 1:1 매칭 요청 목록을 조회한다")
-    fun getPersonalMatches() {
-        every { personalMatchService.getPersonalMatches(any(), any()) } returns PersonalMatchListResponse(
-            sent = listOf(sampleResponse(requesterId = 1L, receiverId = 2L)),
-            received = listOf(sampleResponse(id = 2L, requesterId = 3L, receiverId = 1L)),
-        )
-
-        mockMvc.perform(
-            get("/api/v1/matches/1on1").param("quizSetId", "10"),
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.sent.length()").value(1))
-            .andExpect(jsonPath("$.data.received.length()").value(1))
-            .andDo(
-                document(
-                    "personal-match-list",
-                    preprocessRequest(prettyPrint()),
-                    preprocessResponse(prettyPrint()),
-                    resource(
-                        ResourceSnippetParameters.builder()
-                            .tag("Matching")
-                            .summary("1:1 매칭 요청 목록 조회")
-                            .description("퀴즈셋에 대한 내가 보낸/받은 1:1 매칭 요청 목록을 조회합니다.")
-                            .queryParameters(
-                                parameterWithName("quizSetId").description("퀴즈 세트 ID"),
-                            )
-                            .responseFields(
-                                fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.sent[]").description("내가 보낸 요청 목록"),
-                                fieldWithPath("data.sent[].id").description("매칭 ID"),
-                                fieldWithPath("data.sent[].quizSetId").description("퀴즈 세트 ID"),
-                                fieldWithPath("data.sent[].requesterId").description("요청자 ID"),
-                                fieldWithPath("data.sent[].receiverId").description("수신자 ID"),
-                                fieldWithPath("data.sent[].status").description("상태 (PENDING / ACCEPTED / REJECTED / CANCELLED / EXPIRED)"),
-                                fieldWithPath("data.sent[].createdAt").description("요청 생성일시"),
-                                fieldWithPath("data.sent[].respondedAt").description("응답 일시 (없으면 null)").optional(),
-                                fieldWithPath("data.received[]").description("내가 받은 요청 목록"),
-                                fieldWithPath("data.received[].id").description("매칭 ID"),
-                                fieldWithPath("data.received[].quizSetId").description("퀴즈 세트 ID"),
-                                fieldWithPath("data.received[].requesterId").description("요청자 ID"),
-                                fieldWithPath("data.received[].receiverId").description("수신자 ID"),
-                                fieldWithPath("data.received[].status").description("상태"),
-                                fieldWithPath("data.received[].createdAt").description("요청 생성일시"),
-                                fieldWithPath("data.received[].respondedAt").description("응답 일시 (없으면 null)").optional(),
-                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
-                            )
-                            .build(),
-                    ),
-                ),
-            )
-    }
 
     @Test
     @DisplayName("1:1 매칭을 요청한다")
