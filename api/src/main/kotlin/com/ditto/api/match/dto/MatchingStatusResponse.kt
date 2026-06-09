@@ -1,35 +1,21 @@
 package com.ditto.api.match.dto
 
-import com.ditto.domain.match.entity.PersonalMatch
-import com.ditto.domain.match.entity.PersonalMatchStatus
-import java.time.LocalDateTime
-
+/**
+ * 매칭 상태 조회 응답.
+ * 1:1 보낸/받은 요청 목록과 수락 여부, 그룹 매칭 참여/거절 상태를 함께 담는다.
+ */
 data class MatchingStatusResponse(
     val quizSetId: Long,
-    /** ACCEPTED > PENDING 순으로 우선 노출. 매칭이 없으면 null */
-    val personalMatch: PersonalMatchSummary?,
-    /** NONE / JOINED / DECLINED */
-    val groupMatchStatus: GroupMatchStatus,
-    /** groupMatchStatus == JOINED 일 때 설정 */
-    val groupMatchRoomId: Long?,
+    val sentRequests: List<PersonalMatchResponse>,
+    val receivedRequests: List<PersonalMatchResponse>,
+    /** ACCEPTED 1:1 매칭 보유 여부 */
+    val hasAcceptedMatch: Boolean,
+    /** 수락된 매칭 상대 회원 ID. 없으면 null */
+    val acceptedMatchUserId: Long?,
+    /** 그룹 매칭 거절 여부 */
+    val groupDeclined: Boolean,
+    /** 활성화된(참가자 3명 이상) 그룹 방 참여 여부 */
+    val groupJoined: Boolean,
+    /** 그룹 방에 참여했으나 아직 비활성(인원 대기) 여부 */
+    val groupJoinPending: Boolean,
 )
-
-data class PersonalMatchSummary(
-    val id: Long,
-    val requesterId: Long,
-    val receiverId: Long,
-    val status: PersonalMatchStatus,
-    val createdAt: LocalDateTime,
-    val respondedAt: LocalDateTime?,
-) {
-    companion object {
-        fun from(match: PersonalMatch): PersonalMatchSummary = PersonalMatchSummary(
-            id = match.id,
-            requesterId = match.requesterId,
-            receiverId = match.receiverId(),
-            status = match.status,
-            createdAt = match.createdAt,
-            respondedAt = match.respondedAt,
-        )
-    }
-}

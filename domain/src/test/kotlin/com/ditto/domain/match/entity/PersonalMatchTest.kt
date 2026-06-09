@@ -80,6 +80,19 @@ class MatchRequestTest(
         }
     }
 
+    "counterpartOf — memberId 기준 상대방 ID" - {
+        "given: requester=5, receiver=2 (memberId1=2, memberId2=5) 페어일 때" - {
+            "when: counterpartOf 를 호출하면" - {
+                "then: 요청자/수신자 방향과 무관하게 페어의 상대방 ID를 반환한다" {
+                    val match = PersonalMatchFixture.create(requesterId = 5L, receiverId = 2L, quizSetId = 1L)
+
+                    match.counterpartOf(2L) shouldBe 5L
+                    match.counterpartOf(5L) shouldBe 2L
+                }
+            }
+        }
+    }
+
     "PersonalMatch 상태 전이" - {
         "given: PENDING 상태의 요청이 있을 때" - {
             "when: accept() 하면" - {

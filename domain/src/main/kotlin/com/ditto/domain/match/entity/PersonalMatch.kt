@@ -71,6 +71,9 @@ class PersonalMatch private constructor(
     /** 요청을 받은 상대방 ID */
     fun receiverId(): Long = if (requesterId == memberId1) memberId2 else memberId1
 
+    /** memberId 기준 페어의 상대방 ID. memberId 는 이 매칭의 페어(memberId1/memberId2)에 속해야 한다. */
+    fun counterpartOf(memberId: Long): Long = if (memberId == memberId1) memberId2 else memberId1
+
     fun isPending(): Boolean = status == PersonalMatchStatus.PENDING
 
     fun accept() {

@@ -1,9 +1,8 @@
 package com.ditto.api.match.service
 
-import com.ditto.api.match.dto.GroupMatchStatus
 import com.ditto.api.match.dto.MatchingStatusResponse
-import com.ditto.api.match.dto.PersonalMatchSummary
-import com.ditto.domain.match.entity.PersonalMatch
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchDeclineRepository
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
@@ -15,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 @Transactional(readOnly = true)
 class MatchingStatusService(
+    private val personalMatchService: PersonalMatchService,
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
@@ -22,39 +22,49 @@ class MatchingStatusService(
 ) {
 
     fun getMatchingStatus(memberId: Long, quizSetId: Long): MatchingStatusResponse {
-        val personalMatch = resolvePersonalMatch(memberId, quizSetId)
-        val (groupMatchStatus, groupMatchRoomId) = resolveGroupMatchStatus(memberId, quizSetId)
+        val personalMatches = personalMatchService.getPersonalMatches(memberId, quizSetId)
+        val acceptedMatchUserId = findAcceptedMatchUserId(memberId, quizSetId)
+        val group = groupFlags(memberId, quizSetId)
 
         return MatchingStatusResponse(
             quizSetId = quizSetId,
-            personalMatch = personalMatch?.let { PersonalMatchSummary.from(it) },
-            groupMatchStatus = groupMatchStatus,
-            groupMatchRoomId = groupMatchRoomId,
+            sentRequests = personalMatches.sent,
+            receivedRequests = personalMatches.received,
+            hasAcceptedMatch = acceptedMatchUserId != null,
+            acceptedMatchUserId = acceptedMatchUserId,
+            groupDeclined = group.declined,
+            groupJoined = group.joined,
+            groupJoinPending = group.pending,
         )
     }
 
-    /** ACCEPTED 매칭 우선, 없으면 PENDING 반환 */
-    private fun resolvePersonalMatch(memberId: Long, quizSetId: Long): PersonalMatch? {
-        return personalMatchRepository.findMatchByQuizSetIdAndStatusAndMemberId(
+    /** ACCEPTED 1:1 매칭이 있으면 상대 회원 ID, 없으면 null */
+    private fun findAcceptedMatchUserId(memberId: Long, quizSetId: Long): Long? {
+        val accepted = personalMatchRepository.findMatchByQuizSetIdAndStatusAndMemberId(
             quizSetId, PersonalMatchStatus.ACCEPTED, memberId,
-        ) ?: personalMatchRepository.findMatchByQuizSetIdAndStatusAndMemberId(
-            quizSetId, PersonalMatchStatus.PENDING, memberId,
-        )
+        ) ?: return null
+        return accepted.counterpartOf(memberId)
     }
 
-    /** 그룹 매칭 상태: DECLINED > JOINED > NONE 순으로 판단 */
-    private fun resolveGroupMatchStatus(memberId: Long, quizSetId: Long): Pair<GroupMatchStatus, Long?> {
+    /** 그룹 매칭 상태: 거절 > (활성 방=joined / 비활성 방=pending) > 미참여 */
+    private fun groupFlags(memberId: Long, quizSetId: Long): GroupFlags {
         if (groupMatchDeclineRepository.existsByQuizSetIdAndMemberId(quizSetId, memberId)) {
-            return Pair(GroupMatchStatus.DECLINED, null)
+            return GroupFlags(declined = true, joined = false, pending = false)
         }
 
-        val memberships = groupMatchMemberRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
-        if (memberships.isNotEmpty()) {
-            // 여러 방에 참여했을 경우 가장 최근 방 반환
-            val latestMembership = memberships.maxByOrNull { it.createdAt }!!
-            return Pair(GroupMatchStatus.JOINED, latestMembership.roomId)
-        }
+        val latestMembership = groupMatchMemberRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
+            .maxByOrNull { it.createdAt }
+            ?: return GroupFlags(declined = false, joined = false, pending = false)
 
-        return Pair(GroupMatchStatus.NONE, null)
+        val room = groupMatchRepository.findById(latestMembership.roomId).orElseThrow {
+            ErrorException(ErrorCode.INTERNAL_ERROR, "참여 기록의 그룹 방이 없습니다: roomId=${latestMembership.roomId}")
+        }
+        return GroupFlags(declined = false, joined = room.isActive, pending = !room.isActive)
     }
+
+    private data class GroupFlags(
+        val declined: Boolean,
+        val joined: Boolean,
+        val pending: Boolean,
+    )
 }
