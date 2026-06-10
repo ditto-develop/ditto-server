@@ -42,6 +42,11 @@ class JwtAuthenticationFilter(
             return
         }
 
+        if (request.requestURI.startsWith(ADMIN_PATH_PREFIX) && !member.isAdmin()) {
+            sendError(response, ErrorCode.FORBIDDEN)
+            return
+        }
+
         setAuthentication(memberId)
 
         filterChain.doFilter(request, response)
@@ -78,6 +83,7 @@ class JwtAuthenticationFilter(
     companion object {
         private const val AUTHORIZATION_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
+        private const val ADMIN_PATH_PREFIX = "/api/v1/admin"
         private val objectMapper = ObjectMapperFactory.create()
     }
 }

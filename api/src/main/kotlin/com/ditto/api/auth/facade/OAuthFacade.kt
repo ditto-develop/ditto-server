@@ -32,7 +32,7 @@ class OAuthFacade(
             gender = userInfo.gender,
         )
 
-        val accessToken = jwtTokenProvider.generateAccessToken(member.id)
+        val accessToken = jwtTokenProvider.generateAccessToken(member.id, member.role)
         val refreshToken = authService.createRefreshToken(member.id)
         val redirectUrl = oAuthService.getAuthCallbackUrl(accessToken, signupRequired = member.isPending())
 

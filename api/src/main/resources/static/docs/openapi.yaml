@@ -71,10 +71,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-06-09 11:08:41",
+                        "joinedAt" : "2026-06-10 21:11:03",
                         "role" : null,
-                        "createdAt" : "2026-06-09 11:08:41",
-                        "updatedAt" : "2026-06-09 11:08:41"
+                        "createdAt" : "2026-06-10 21:11:03",
+                        "updatedAt" : "2026-06-10 21:11:03"
                       },
                       "error" : null
                     }
@@ -281,8 +281,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-06-08 11:08:41",
-                          "endDate" : "2026-06-10 11:08:41",
+                          "startDate" : "2026-06-09 21:11:03",
+                          "endDate" : "2026-06-11 21:11:03",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -299,8 +299,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-06-09 11:08:41",
-                            "updatedAt" : "2026-06-09 11:08:41"
+                            "createdAt" : "2026-06-10 21:11:03",
+                            "updatedAt" : "2026-06-10 21:11:03"
                           } ]
                         } ]
                       },
@@ -346,8 +346,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-06-09 11:08:41",
-                        "updatedAt" : "2026-06-09 11:08:41"
+                        "createdAt" : "2026-06-10 21:11:03",
+                        "updatedAt" : "2026-06-10 21:11:03"
                       },
                       "error" : null
                     }
@@ -629,7 +629,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzgwOTcwOTE4LCJleHAiOjE3ODA5NzQ1MTh9.CYcw_yEYF-hkxYtalBjJPNUVzjOyTxmSIIknDo4CtSp0y5P3tFTB5RtY8cmbEADQXIij06vpoR0VcrbZfGUMbw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODEwOTM0NjAsImV4cCI6MTc4MTA5NzA2MH0.5F0dst_NMQuYlLjWSZxoqJO8fPnUv4rDrv1ZdJGKAwmbq4SsiFBDU_UdbuDeu52plk0vzX_96ZDUNfaGc1KeuQ"
                       },
                       "error" : null
                     }
@@ -828,8 +828,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-06-09 11:08:41",
-                        "updatedAt" : "2026-06-09 11:08:41"
+                        "createdAt" : "2026-06-10 21:11:03",
+                        "updatedAt" : "2026-06-10 21:11:03"
                       },
                       "error" : null
                     }
@@ -1099,94 +1099,37 @@ paths:
       responses:
         "302":
           description: "302"
+  /api/v1/admin/quiz-sets/{quizSetId}/matching/regenerate:
+    post:
+      tags:
+      - Matching
+      summary: "[Admin] 퀴즈셋 매칭 재생성"
+      description: 특정 퀴즈셋의 1:1 매칭 후보를 재생성합니다(기존 후보 삭제 후 재계산). 마감·후보 존재 여부와 무관하게 실행됩니다.
+      operationId: admin-match-regenerate
+      parameters:
+      - name: quizSetId
+        in: path
+        description: 퀴즈 세트 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622"
+              examples:
+                admin-match-regenerate:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : null,
+                      "error" : null
+                    }
 components:
   schemas:
-    api-v1-matches-group-join-1969670024:
-      required:
-      - quizSetId
-      type: object
-      properties:
-        quizSetId:
-          type: number
-          description: 퀴즈 세트 ID
-    api-v1-users-me-intro-notes-questionCode-1298820809:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - completedCount
-          type: object
-          properties:
-            answers:
-              type: array
-              items:
-                required:
-                - answer
-                - question
-                - questionCode
-                type: object
-                properties:
-                  answer:
-                    type: string
-                    description: 답변 (미작성 시 빈 문자열)
-                  question:
-                    type: string
-                    description: 질문 문구
-                  questionCode:
-                    type: string
-                    description: "질문 code (가능한 값: travel-items(여행갈 때 꼭 챙겨야 하는 3가지는\
-                      ?), weekend-morning(주말 아침 10시, 나는 주로 뭐하고 있을까?), friends-say(친\
-                      구들이 나한테 제일 많이 하는 말은?), stress-relief(스트레스 받을 때 나만의 해소법은?), best-choice(최\
-                      근 1년 내 가장 잘한 선택은?), happiest-moment(나를 가장 행복하게 만드는 순간은?), most-used-apps(요\
-                      즘 내가 가장 많이 쓰는 앱 3개는?), favorite-time(하루 중 가장 좋아하는 시간대는? 그때 주\
-                      로 뭐해?), non-negotiable(내가 절대 양보 못하는 것은?), one-word(나를 한 단어로\
-                      \ 표현한다면?))"
-            completedCount:
-              type: number
-              description: 작성 완료된 답변 수
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-me-intro-notes-questionCode974133747:
-      required:
-      - answer
-      type: object
-      properties:
-        answer:
-          type: string
-          description: "답변 (빈 문자열 허용, 최대 500자)"
-    api-v1-matches-group-join-2080112672:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - isActive
-          - participantCount
-          - quizSetId
-          - roomId
-          type: object
-          properties:
-            quizSetId:
-              type: number
-              description: 퀴즈 세트 ID
-            participantCount:
-              type: number
-              description: 현재 참여자 수
-            isActive:
-              type: boolean
-              description: 방 활성화 여부 (참여자 3명 이상이면 true)
-            roomId:
-              type: number
-              description: 배정된 그룹 방 ID
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-request-1327932902:
       required:
       - error
@@ -1329,6 +1272,353 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-matches-1on1-1115011008:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - algorithmVersion
+          - candidates
+          - matchingType
+          - quizSetId
+          type: object
+          properties:
+            candidates:
+              type: array
+              description: 추천 후보 목록 (매칭 점수 내림차순)
+              items:
+                required:
+                - location
+                - matchRate
+                - nickname
+                - profileImageUrl
+                - scoreBreakdown
+                - userId
+                type: object
+                properties:
+                  scoreBreakdown:
+                    required:
+                    - matchedQuestions
+                    - quizMatchRate
+                    - reasons
+                    - totalQuestions
+                    type: object
+                    properties:
+                      totalQuestions:
+                        type: number
+                        description: 전체 비교 문항 수
+                      reasons:
+                        type: array
+                        description: 매칭 사유 문구
+                        items:
+                          oneOf:
+                          - type: object
+                          - type: boolean
+                          - type: string
+                          - type: number
+                      quizMatchRate:
+                        type: number
+                        description: 퀴즈 답변 일치율 (0~100)
+                      matchedQuestions:
+                        type: number
+                        description: 일치한 문항 수
+                    description: 매칭 점수 상세
+                  gender:
+                    type: string
+                    description: "성별 (MALE / FEMALE, 없으면 null)"
+                    nullable: true
+                  nickname:
+                    type: string
+                    description: 닉네임
+                  location:
+                    type: string
+                    description: 사는 곳 코드
+                  matchRate:
+                    type: number
+                    description: 매칭 점수 (0~100)
+                  profileImageUrl:
+                    type: string
+                    description: 프로필 이미지 (캐리커쳐)
+                  userId:
+                    type: number
+                    description: 후보 회원 ID
+                  introduction:
+                    type: string
+                    description: "자기소개 (소개노트 한 단어, 없으면 null)"
+                    nullable: true
+                  age:
+                    type: number
+                    description: 나이 (없으면 null)
+                    nullable: true
+            algorithmVersion:
+              type: string
+              description: 매칭 알고리즘 버전
+            quizSetId:
+              type: number
+              description: 후보가 속한 퀴즈 세트 ID
+            matchingType:
+              type: string
+              description: 매칭 타입 (ONE_TO_ONE / GROUP)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-quiz-progress-quiz-sets-id-1569645469:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - totalCount
+          type: object
+          properties:
+            quizzes:
+              type: array
+              items:
+                required:
+                - createdAt
+                - id
+                - order
+                - question
+                - quizSetId
+                - updatedAt
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 생성일시
+                  userAnswer:
+                    type: number
+                    description: 사용자가 선택한 choiceId (미답변 시 null)
+                    nullable: true
+                  question:
+                    type: string
+                    description: 퀴즈 질문
+                  quizSetId:
+                    type: number
+                    description: 퀴즈 세트 ID
+                  id:
+                    type: number
+                    description: 퀴즈 ID
+                  choices:
+                    type: array
+                    items:
+                      required:
+                      - content
+                      - id
+                      - order
+                      type: object
+                      properties:
+                        id:
+                          type: number
+                          description: 선택지 ID
+                        content:
+                          type: string
+                          description: 선택지 내용
+                        order:
+                          type: number
+                          description: 선택지 순서
+                  updatedAt:
+                    type: string
+                    description: 수정일시
+                  order:
+                    type: number
+                    description: 퀴즈 순서
+            totalCount:
+              type: number
+              description: 전체 퀴즈 수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-logout-1831456372:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-matches-request-id-accept-2011455419:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - createdAt
+          - id
+          - quizSetId
+          - receiverId
+          - requesterId
+          - status
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 요청 생성일시
+            receiverId:
+              type: number
+              description: 수신자 ID
+            requesterId:
+              type: number
+              description: 요청자 ID
+            quizSetId:
+              type: number
+              description: 퀴즈 세트 ID
+            id:
+              type: number
+              description: 매칭 ID
+            status:
+              type: string
+              description: 변경된 매칭 상태 (ACCEPTED)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-2041696623:
+      required:
+      - caricature
+      - interests
+      - job
+      - location
+      type: object
+      properties:
+        caricature:
+          type: string
+          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE)"
+          nullable: true
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        location:
+          type: string
+          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
+            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
+            \ jeonnam, gyeongbuk, gyeongnam, jeju"
+        job:
+          type: string
+          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
+            \ education, medical, finance, legal, manufacturing, distribution, service,\
+            \ construction, arts-media, research, public-admin, student, etc"
+        interests:
+          type: array
+          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, performance,\
+            \ photography, reading, music, cooking, travel, gaming, finance, self-improvement,\
+            \ pets, etc"
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        age:
+          type: number
+          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
+          nullable: true
+    api-v1-matches-group-join-1969670024:
+      required:
+      - quizSetId
+      type: object
+      properties:
+        quizSetId:
+          type: number
+          description: 퀴즈 세트 ID
+    api-v1-users-me-intro-notes-questionCode-1298820809:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - completedCount
+          type: object
+          properties:
+            answers:
+              type: array
+              items:
+                required:
+                - answer
+                - question
+                - questionCode
+                type: object
+                properties:
+                  answer:
+                    type: string
+                    description: 답변 (미작성 시 빈 문자열)
+                  question:
+                    type: string
+                    description: 질문 문구
+                  questionCode:
+                    type: string
+                    description: "질문 code (가능한 값: travel-items(여행갈 때 꼭 챙겨야 하는 3가지는\
+                      ?), weekend-morning(주말 아침 10시, 나는 주로 뭐하고 있을까?), friends-say(친\
+                      구들이 나한테 제일 많이 하는 말은?), stress-relief(스트레스 받을 때 나만의 해소법은?), best-choice(최\
+                      근 1년 내 가장 잘한 선택은?), happiest-moment(나를 가장 행복하게 만드는 순간은?), most-used-apps(요\
+                      즘 내가 가장 많이 쓰는 앱 3개는?), favorite-time(하루 중 가장 좋아하는 시간대는? 그때 주\
+                      로 뭐해?), non-negotiable(내가 절대 양보 못하는 것은?), one-word(나를 한 단어로\
+                      \ 표현한다면?))"
+            completedCount:
+              type: number
+              description: 작성 완료된 답변 수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-me-intro-notes-questionCode974133747:
+      required:
+      - answer
+      type: object
+      properties:
+        answer:
+          type: string
+          description: "답변 (빈 문자열 허용, 최대 500자)"
+    api-v1-matches-group-join-2080112672:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - isActive
+          - participantCount
+          - quizSetId
+          - roomId
+          type: object
+          properties:
+            quizSetId:
+              type: number
+              description: 퀴즈 세트 ID
+            participantCount:
+              type: number
+              description: 현재 참여자 수
+            isActive:
+              type: boolean
+              description: 방 활성화 여부 (참여자 3명 이상이면 true)
+            roomId:
+              type: number
+              description: 배정된 그룹 방 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me861338172:
       required:
       - error
@@ -1359,6 +1649,23 @@ components:
             email:
               type: string
               description: 이메일 (없으면 null)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
         success:
           type: boolean
           description: 성공 여부
@@ -1485,116 +1792,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-matches-1on1-1115011008:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - algorithmVersion
-          - candidates
-          - matchingType
-          - quizSetId
-          type: object
-          properties:
-            candidates:
-              type: array
-              description: 추천 후보 목록 (매칭 점수 내림차순)
-              items:
-                required:
-                - location
-                - matchRate
-                - nickname
-                - profileImageUrl
-                - scoreBreakdown
-                - userId
-                type: object
-                properties:
-                  scoreBreakdown:
-                    required:
-                    - matchedQuestions
-                    - quizMatchRate
-                    - reasons
-                    - totalQuestions
-                    type: object
-                    properties:
-                      totalQuestions:
-                        type: number
-                        description: 전체 비교 문항 수
-                      reasons:
-                        type: array
-                        description: 매칭 사유 문구
-                        items:
-                          oneOf:
-                          - type: object
-                          - type: boolean
-                          - type: string
-                          - type: number
-                      quizMatchRate:
-                        type: number
-                        description: 퀴즈 답변 일치율 (0~100)
-                      matchedQuestions:
-                        type: number
-                        description: 일치한 문항 수
-                    description: 매칭 점수 상세
-                  gender:
-                    type: string
-                    description: "성별 (MALE / FEMALE, 없으면 null)"
-                    nullable: true
-                  nickname:
-                    type: string
-                    description: 닉네임
-                  location:
-                    type: string
-                    description: 사는 곳 코드
-                  matchRate:
-                    type: number
-                    description: 매칭 점수 (0~100)
-                  profileImageUrl:
-                    type: string
-                    description: 프로필 이미지 (캐리커쳐)
-                  userId:
-                    type: number
-                    description: 후보 회원 ID
-                  introduction:
-                    type: string
-                    description: "자기소개 (소개노트 한 단어, 없으면 null)"
-                    nullable: true
-                  age:
-                    type: number
-                    description: 나이 (없으면 null)
-                    nullable: true
-            algorithmVersion:
-              type: string
-              description: 매칭 알고리즘 버전
-            quizSetId:
-              type: number
-              description: 후보가 속한 퀴즈 세트 ID
-            matchingType:
-              type: string
-              description: 매칭 타입 (ONE_TO_ONE / GROUP)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-request-793255208:
       required:
       - quizSetId
@@ -1613,75 +1810,6 @@ components:
       - success
       type: object
       properties:
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-quiz-progress-quiz-sets-id-1569645469:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - totalCount
-          type: object
-          properties:
-            quizzes:
-              type: array
-              items:
-                required:
-                - createdAt
-                - id
-                - order
-                - question
-                - quizSetId
-                - updatedAt
-                type: object
-                properties:
-                  createdAt:
-                    type: string
-                    description: 생성일시
-                  userAnswer:
-                    type: number
-                    description: 사용자가 선택한 choiceId (미답변 시 null)
-                    nullable: true
-                  question:
-                    type: string
-                    description: 퀴즈 질문
-                  quizSetId:
-                    type: number
-                    description: 퀴즈 세트 ID
-                  id:
-                    type: number
-                    description: 퀴즈 ID
-                  choices:
-                    type: array
-                    items:
-                      required:
-                      - content
-                      - id
-                      - order
-                      type: object
-                      properties:
-                        id:
-                          type: number
-                          description: 선택지 ID
-                        content:
-                          type: string
-                          description: 선택지 내용
-                        order:
-                          type: number
-                          description: 선택지 순서
-                  updatedAt:
-                    type: string
-                    description: 수정일시
-                  order:
-                    type: number
-                    description: 퀴즈 순서
-            totalCount:
-              type: number
-              description: 전체 퀴즈 수
         success:
           type: boolean
           description: 성공 여부
@@ -1719,6 +1847,14 @@ components:
             status:
               type: string
               description: 변경된 매칭 상태 (REJECTED)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
+      required:
+      - success
+      type: object
+      properties:
         success:
           type: boolean
           description: 성공 여부
@@ -1773,16 +1909,6 @@ components:
             available:
               type: boolean
               description: 닉네임 사용 가능 여부
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-auth-logout-1831456372:
-      required:
-      - data
-      - error
-      - success
-      type: object
-      properties:
         success:
           type: boolean
           description: 성공 여부
@@ -1937,43 +2063,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-matches-request-id-accept-2011455419:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - createdAt
-          - id
-          - quizSetId
-          - receiverId
-          - requesterId
-          - status
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 요청 생성일시
-            receiverId:
-              type: number
-              description: 수신자 ID
-            requesterId:
-              type: number
-              description: 요청자 ID
-            quizSetId:
-              type: number
-              description: 퀴즈 세트 ID
-            id:
-              type: number
-              description: 매칭 ID
-            status:
-              type: string
-              description: 변경된 매칭 상태 (ACCEPTED)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users-id-leave-1444522536:
       required:
       - error
@@ -2011,58 +2100,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-2041696623:
-      required:
-      - caricature
-      - interests
-      - job
-      - location
-      type: object
-      properties:
-        caricature:
-          type: string
-          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"
-        phoneNumber:
-          type: string
-          description: 전화번호 (010-0000-0000)
-          nullable: true
-        gender:
-          type: string
-          description: "성별 (MALE, FEMALE)"
-          nullable: true
-        nickname:
-          type: string
-          description: "닉네임 (2~10자, 한글·영문·숫자)"
-          nullable: true
-        name:
-          type: string
-          description: 이름
-          nullable: true
-        location:
-          type: string
-          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
-            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
-            \ jeonnam, gyeongbuk, gyeongnam, jeju"
-        job:
-          type: string
-          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
-            \ education, medical, finance, legal, manufacturing, distribution, service,\
-            \ construction, arts-media, research, public-admin, student, etc"
-        interests:
-          type: array
-          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, performance,\
-            \ photography, reading, music, cooking, travel, gaming, finance, self-improvement,\
-            \ pets, etc"
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        age:
-          type: number
-          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
-          nullable: true
     api-v1-users-id-profile-829103765:
       required:
       - error
