@@ -97,6 +97,21 @@ class MemberTest(
             }
         }
 
+        "Member 권한" - {
+            "기본 권한은 USER이다" {
+                val member = memberRepository.save(Member(nickname = "테스트유저"))
+
+                member.role shouldBe MemberRole.USER
+                member.isAdmin() shouldBe false
+            }
+
+            "ADMIN 권한이면 isAdmin()이 true다" {
+                val member = Member(nickname = "관리자", role = MemberRole.ADMIN)
+
+                member.isAdmin() shouldBe true
+            }
+        }
+
         "Member 상태 변경" - {
             "activate() 호출 시 ACTIVE 상태로 변경된다" {
                 val member = memberRepository.save(Member(nickname = "테스트유저", email = "test@kakao.com"))

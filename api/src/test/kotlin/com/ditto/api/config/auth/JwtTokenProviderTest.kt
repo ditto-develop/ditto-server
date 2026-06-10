@@ -1,8 +1,11 @@
 package com.ditto.api.config.auth
 
+import com.ditto.domain.member.entity.MemberRole
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotBeBlank
+import java.util.Base64
 
 class JwtTokenProviderTest : FreeSpec(
     {
@@ -16,13 +19,13 @@ class JwtTokenProviderTest : FreeSpec(
 
         "토큰 생성" - {
             "유효한 JWT 문자열을 반환한다" {
-                val token = jwtTokenProvider.generateAccessToken(1L)
+                val token = jwtTokenProvider.generateAccessToken(1L, MemberRole.USER)
 
                 token.shouldNotBeBlank()
             }
 
             "생성된 토큰은 유효하다" {
-                val token = jwtTokenProvider.generateAccessToken(1L)
+                val token = jwtTokenProvider.generateAccessToken(1L, MemberRole.USER)
 
                 jwtTokenProvider.isValid(token) shouldBe true
             }
@@ -31,9 +34,16 @@ class JwtTokenProviderTest : FreeSpec(
         "토큰에서 claim 추출" - {
             "올바른 memberId를 추출한다" {
                 val memberId = 42L
-                val token = jwtTokenProvider.generateAccessToken(memberId)
+                val token = jwtTokenProvider.generateAccessToken(memberId, MemberRole.USER)
 
                 jwtTokenProvider.getMemberId(token) shouldBe memberId
+            }
+
+            "role 클레임을 포함한다" {
+                val token = jwtTokenProvider.generateAccessToken(1L, MemberRole.ADMIN)
+
+                val payload = String(Base64.getUrlDecoder().decode(token.split(".")[1]))
+                payload shouldContain "\"role\":\"ADMIN\""
             }
         }
 
@@ -42,7 +52,7 @@ class JwtTokenProviderTest : FreeSpec(
                 val expiredProvider = JwtTokenProvider(
                     JwtProperties(secret = jwtProperties.secret, expirationMs = 0L, refreshExpirationMs = 1209600000L),
                 )
-                val token = expiredProvider.generateAccessToken(1L)
+                val token = expiredProvider.generateAccessToken(1L, MemberRole.USER)
 
                 Thread.sleep(10)
                 jwtTokenProvider.isValid(token) shouldBe false
@@ -60,7 +70,7 @@ class JwtTokenProviderTest : FreeSpec(
                         refreshExpirationMs = 1209600000L,
                     ),
                 )
-                val token = otherProvider.generateAccessToken(1L)
+                val token = otherProvider.generateAccessToken(1L, MemberRole.USER)
 
                 jwtTokenProvider.isValid(token) shouldBe false
             }

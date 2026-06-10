@@ -3,6 +3,7 @@ package com.ditto.api.support
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.serialization.ObjectMapperFactory
 import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.repository.MemberRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.extension.ExtendWith
@@ -48,7 +49,15 @@ abstract class RestDocsTest {
 
     /** 지정한 회원 id의 Bearer 토큰을 헤더에 추가한다. */
     protected fun MockHttpServletRequestBuilder.withBearerToken(memberId: Long): MockHttpServletRequestBuilder {
-        return this.header("Authorization", "Bearer ${jwtTokenProvider.generateAccessToken(memberId)}")
+        return this.header("Authorization", "Bearer ${jwtTokenProvider.generateAccessToken(memberId, MemberRole.USER)}")
+    }
+
+    /** ACTIVE + ADMIN 회원을 새로 만들어 그 회원의 Bearer 토큰을 헤더에 추가한다. */
+    protected fun MockHttpServletRequestBuilder.withAdminBearerToken(): MockHttpServletRequestBuilder {
+        val member = memberRepository.save(
+            Member(nickname = "admin-${memberSeq.incrementAndGet()}", role = MemberRole.ADMIN).apply { activate() },
+        )
+        return this.header("Authorization", "Bearer ${jwtTokenProvider.generateAccessToken(member.id, member.role)}")
     }
 
     companion object {

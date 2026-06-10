@@ -100,7 +100,7 @@ class AuthControllerTest : RestDocsTest() {
         val member = memberRepository.save(Member(nickname = "테스트유저").apply { activate() })
         socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "test-user"))
         authService.createRefreshToken(member.id)
-        val accessToken = jwtTokenProvider.generateAccessToken(member.id)
+        val accessToken = jwtTokenProvider.generateAccessToken(member.id, member.role)
 
         mockMvc.perform(
             post("/api/v1/users/auth/logout")

@@ -41,6 +41,11 @@ class Member(
     @Column(nullable = false, length = 20)
     var status: MemberStatus = MemberStatus.PENDING,
 
+    @Comment("회원 권한")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var role: MemberRole = MemberRole.USER,
+
     @Comment("이름")
     @Column(nullable = true, length = 50)
     var name: String? = null,
@@ -114,6 +119,7 @@ class Member(
 
     fun isPending(): Boolean = status == MemberStatus.PENDING
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
+    fun isAdmin(): Boolean = role == MemberRole.ADMIN
 
     fun register(
         name: String?,

@@ -33,6 +33,11 @@ class TestExceptionController {
     @GetMapping("/api/test/me")
     fun getMe(@AuthenticationPrincipal principal: MemberPrincipal): ApiResponse<MemberPrincipal> =
         ApiResponse.ok(principal)
+
+    /** admin 경로 인가(JwtAuthenticationFilter) 테스트용 — 서비스 의존 없이 게이트 통과 여부만 확인한다. */
+    @GetMapping("/api/v1/admin/test/me")
+    fun getAdminMe(@AuthenticationPrincipal principal: MemberPrincipal): ApiResponse<MemberPrincipal> =
+        ApiResponse.ok(principal)
 }
 
 data class TestRequest(

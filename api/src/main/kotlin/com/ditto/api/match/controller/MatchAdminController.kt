@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * 매칭 운영용(admin) API.
  *
- * admin 전용 인가는 후속 작업이다. 현재는 공통 인증(API Key + JWT)만 적용되어 인증된 회원이면 호출할 수 있다.
- * admin 경로 접두사(api/v1/admin)는 추후 전용 SecurityFilterChain 부착용이다.
+ * admin 경로(`/api/v1/admin` 하위 전체)는 JwtAuthenticationFilter에서 role=ADMIN 회원만 접근할 수 있다.
  */
 @RestController
 class MatchAdminController(

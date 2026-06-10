@@ -5,6 +5,7 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.entity.RefreshToken
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import org.springframework.stereotype.Service
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 class AuthService(
     private val jwtTokenProvider: JwtTokenProvider,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val memberRepository: MemberRepository,
 ) {
 
     @Transactional
@@ -44,8 +46,11 @@ class AuthService(
 
         refreshTokenRepository.delete(existedRefreshToken)
 
-        val newAccessToken = jwtTokenProvider.generateAccessToken(existedRefreshToken.memberId)
-        val newRefreshToken = createRefreshToken(existedRefreshToken.memberId)
+        val member = memberRepository.findById(existedRefreshToken.memberId)
+            .orElseThrow { ErrorException(ErrorCode.UNAUTHORIZED_ERROR) }
+
+        val newAccessToken = jwtTokenProvider.generateAccessToken(member.id, member.role)
+        val newRefreshToken = createRefreshToken(member.id)
 
         return TokenRefreshResult(
             accessToken = newAccessToken,

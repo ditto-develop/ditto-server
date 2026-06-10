@@ -1,5 +1,6 @@
 package com.ditto.api.config.auth
 
+import com.ditto.domain.member.entity.MemberRole
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
@@ -20,9 +21,10 @@ class JwtTokenProvider(
         Jwts.parser().verifyWith(key).build()
     }
 
-    fun generateAccessToken(memberId: Long, now: Date = Date()): String {
+    fun generateAccessToken(memberId: Long, role: MemberRole, now: Date = Date()): String {
         return Jwts.builder()
             .subject(memberId.toString())
+            .claim("role", role.name)
             .issuedAt(now)
             .expiration(Date(now.time + jwtProperties.expirationMs))
             .signWith(key)
