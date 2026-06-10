@@ -5,6 +5,7 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
@@ -32,8 +33,10 @@ class MatchingSchedulerTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    fun saveMember(nickname: String): Long =
-        memberRepository.save(MemberFixture.create(nickname = nickname, status = MemberStatus.ACTIVE)).id
+    fun saveMember(nickname: String, gender: Gender, age: Int = 25): Long =
+        memberRepository.save(
+            MemberFixture.create(nickname = nickname, status = MemberStatus.ACTIVE, gender = gender, age = age),
+        ).id
 
     fun saveOneToOneQuizSet(endDate: LocalDateTime): Long =
         quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE, endDate = endDate)).id
@@ -42,8 +45,9 @@ class MatchingSchedulerTest(
     fun setupMatchingPair(quizSetId: Long): Pair<Long, Long> {
         val quizId1 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 1)).id
         val quizId2 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 2)).id
-        val a = saveMember("회원A")
-        val b = saveMember("회원B")
+        // 기본 선호(OPPOSITE)로 매칭되도록 이성 한 쌍으로 구성한다.
+        val a = saveMember("회원A", Gender.MALE)
+        val b = saveMember("회원B", Gender.FEMALE)
         listOf(a, b).forEach { memberId ->
             quizAnswerRepository.save(QuizAnswerFixture.create(memberId = memberId, quizId = quizId1, choiceId = 1L))
             quizAnswerRepository.save(QuizAnswerFixture.create(memberId = memberId, quizId = quizId2, choiceId = 1L))

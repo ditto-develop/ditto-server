@@ -1,5 +1,6 @@
 package com.ditto.domain.quiz.entity
 
+import com.ditto.domain.member.entity.GenderPreference
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -75,6 +76,30 @@ class QuizProgressTest(
             found shouldNotBe null
             found!!.answeredCount shouldBe 2
             found.status shouldBe QuizProgressStatus.COMPLETED
+        }
+    }
+
+    "매칭 성별 선호" - {
+        "기본값은 OPPOSITE(이성)이다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val progress = quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id),
+            )
+
+            progress.preferredGender shouldBe GenderPreference.OPPOSITE
+        }
+
+        "selectPreferredGender 로 선호를 변경하고 저장할 수 있다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val progress = quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id),
+            )
+
+            progress.selectPreferredGender(GenderPreference.SAME)
+            quizProgressRepository.saveAndFlush(progress)
+
+            val found = quizProgressRepository.findByMemberIdAndQuizSetId(1L, quizSet.id)
+            found!!.preferredGender shouldBe GenderPreference.SAME
         }
     }
 
