@@ -9,4 +9,7 @@ interface IntroNoteRepository : JpaRepository<IntroNote, Long> {
     fun findAllByMemberId(memberId: Long): List<IntroNote>
 
     fun findByMemberIdAndQuestion(memberId: Long, question: IntroQuestion): IntroNote?
+
+    /** 여러 회원의 특정 질문 답변을 한 번에 조회 (후보 목록 프로필 조인 시 N+1 방지) */
+    fun findByMemberIdInAndQuestion(memberIds: List<Long>, question: IntroQuestion): List<IntroNote>
 }

@@ -1,6 +1,5 @@
 package com.ditto.api.match
 
-import com.ditto.api.match.dto.GroupMatchStatus
 import com.ditto.api.match.service.MatchingStatusService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.GroupMatchFixture
@@ -13,7 +12,6 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import javax.sql.DataSource
 
 class MatchingStatusServiceTest(
@@ -28,113 +26,109 @@ class MatchingStatusServiceTest(
     val memberId = 1L
     val quizSetId = 10L
 
-    "아무 매칭도 없으면 personalMatch 가 null 로 반환된다" {
-        // when
+    "아무 매칭도 없으면 빈 목록과 false 플래그를 반환한다" {
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.personalMatch shouldBe null
         result.quizSetId shouldBe quizSetId
+        result.sentRequests.size shouldBe 0
+        result.receivedRequests.size shouldBe 0
+        result.hasAcceptedMatch shouldBe false
+        result.acceptedMatchUserId shouldBe null
+        result.groupDeclined shouldBe false
+        result.groupJoined shouldBe false
+        result.groupJoinPending shouldBe false
     }
 
-    "PENDING 1:1 매칭이 있으면 해당 매칭을 반환한다" {
-        // given
+    "내가 보낸 PENDING 요청은 sentRequests 에 담기고 hasAcceptedMatch 는 false 다" {
         personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = memberId, receiverId = 2L, quizSetId = quizSetId)
+            PersonalMatchFixture.create(requesterId = memberId, receiverId = 2L, quizSetId = quizSetId),
         )
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.personalMatch shouldNotBe null
-        result.personalMatch!!.status shouldBe PersonalMatchStatus.PENDING
+        result.sentRequests.size shouldBe 1
+        result.sentRequests[0].requesterId shouldBe memberId
+        result.sentRequests[0].status shouldBe PersonalMatchStatus.PENDING
+        result.hasAcceptedMatch shouldBe false
     }
 
-    "PENDING 과 ACCEPTED 매칭이 모두 있을 때 ACCEPTED 가 우선 반환된다" {
-        // given
-        personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = memberId, receiverId = 2L, quizSetId = quizSetId,
-                status = PersonalMatchStatus.PENDING,
-            )
-        )
+    "내가 요청자인 ACCEPTED 매칭이 있으면 hasAcceptedMatch=true, 상대 ID를 반환한다" {
         personalMatchRepository.save(
             PersonalMatchFixture.create(
                 requesterId = memberId, receiverId = 3L, quizSetId = quizSetId,
                 status = PersonalMatchStatus.ACCEPTED,
-            )
+            ),
         )
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.personalMatch!!.status shouldBe PersonalMatchStatus.ACCEPTED
+        result.hasAcceptedMatch shouldBe true
+        result.acceptedMatchUserId shouldBe 3L
     }
 
-    "수신자 입장에서도 ACCEPTED 매칭이 반환된다" {
-        // given
+    "내가 수신자인 ACCEPTED 매칭도 hasAcceptedMatch=true, 요청자 ID를 반환한다" {
         personalMatchRepository.save(
             PersonalMatchFixture.create(
                 requesterId = 2L, receiverId = memberId, quizSetId = quizSetId,
                 status = PersonalMatchStatus.ACCEPTED,
-            )
+            ),
         )
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.personalMatch shouldNotBe null
-        result.personalMatch!!.status shouldBe PersonalMatchStatus.ACCEPTED
-        result.personalMatch!!.receiverId shouldBe memberId
+        result.hasAcceptedMatch shouldBe true
+        result.acceptedMatchUserId shouldBe 2L
+        result.receivedRequests.size shouldBe 1
+        result.receivedRequests[0].requesterId shouldBe 2L
     }
 
-    "그룹 매칭 이력이 없으면 NONE 이 반환된다" {
-        // when
+    "그룹 이력이 없으면 declined/joined/pending 모두 false 다" {
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.groupMatchStatus shouldBe GroupMatchStatus.NONE
-        result.groupMatchRoomId shouldBe null
+        result.groupDeclined shouldBe false
+        result.groupJoined shouldBe false
+        result.groupJoinPending shouldBe false
     }
 
-    "그룹 매칭을 거절하면 DECLINED 가 반환된다" {
-        // given
+    "그룹 매칭을 거절하면 groupDeclined=true 다" {
         groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.groupMatchStatus shouldBe GroupMatchStatus.DECLINED
-        result.groupMatchRoomId shouldBe null
+        result.groupDeclined shouldBe true
+        result.groupJoined shouldBe false
+        result.groupJoinPending shouldBe false
     }
 
-    "그룹 방에 참여하면 JOINED 와 roomId 가 반환된다" {
-        // given
-        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
+    "활성화된 방에 참여하면 groupJoined=true, groupJoinPending=false 다" {
+        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId, isActive = true))
         groupMatchMemberRepository.save(GroupMatchMember.of(room.id, memberId))
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.groupMatchStatus shouldBe GroupMatchStatus.JOINED
-        result.groupMatchRoomId shouldBe room.id
+        result.groupJoined shouldBe true
+        result.groupJoinPending shouldBe false
     }
 
-    "거절 이력과 참여 이력이 모두 있으면 DECLINED 가 우선 반환된다" {
-        // given
-        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
+    "비활성(인원 대기) 방에 참여하면 groupJoinPending=true, groupJoined=false 다" {
+        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId, isActive = false))
+        groupMatchMemberRepository.save(GroupMatchMember.of(room.id, memberId))
+
+        val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
+
+        result.groupJoinPending shouldBe true
+        result.groupJoined shouldBe false
+    }
+
+    "거절 이력과 참여 이력이 모두 있으면 groupDeclined 가 우선이다" {
+        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId, isActive = true))
         groupMatchMemberRepository.save(GroupMatchMember.of(room.id, memberId))
         groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
 
-        // when
         val result = matchingStatusService.getMatchingStatus(memberId, quizSetId)
 
-        // then
-        result.groupMatchStatus shouldBe GroupMatchStatus.DECLINED
+        result.groupDeclined shouldBe true
+        result.groupJoined shouldBe false
+        result.groupJoinPending shouldBe false
     }
 })
