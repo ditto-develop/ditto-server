@@ -1,6 +1,6 @@
 package com.ditto.api.match.scheduler
 
-import com.ditto.application.match.service.MatchmakingService
+import com.ditto.api.match.service.MatchmakingService
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime

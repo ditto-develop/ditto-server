@@ -1,6 +1,6 @@
 package com.ditto.api.match.controller
 
-import com.ditto.application.match.service.MatchmakingService
+import com.ditto.api.match.service.MatchmakingService
 import com.ditto.common.response.ApiResponse
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping

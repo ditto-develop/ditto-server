@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('매칭 실행')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('matching')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">매칭 실행</h1>
+            <p class="page-desc">실시간 스케줄러(매주 목 05:00)와 별개로, 매칭 배치를 수동 실행합니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <h2>스케줄러 배치 수동 실행</h2>
+                <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로
+                    마감됐고 후보가 없는 퀴즈셋의 매칭 후보를 생성합니다.</p>
+                <form th:action="@{/admin/matching/run-scheduled}" method="post" class="inline-form">
+                    <button class="btn" type="submit">스케줄러 배치 실행</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>퀴즈셋별 매칭 재생성</h2>
+                <p class="muted" th:if="${quizSets.isEmpty()}">퀴즈셋이 없습니다.</p>
+                <table class="tbl" th:unless="${quizSets.isEmpty()}">
+                    <thead><tr><th>주차</th><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="qs : ${quizSets}">
+                        <td class="num" th:text="${qs.year} + '.' + ${qs.month} + '.' + ${qs.week} + '주'">-</td>
+                        <td th:text="${qs.title}">title</td>
+                        <td class="num" th:text="${qs.matchingType}">type</td>
+                        <td>
+                            <span class="badge on" th:if="${qs.isActive}">활성</span>
+                            <span class="badge off" th:unless="${qs.isActive}">비활성</span>
+                        </td>
+                        <td>
+                            <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post">
+                                <button class="btn secondary sm" type="submit">매칭 재생성</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

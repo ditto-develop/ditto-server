@@ -6,5 +6,4 @@ include(
     "infrastructure",
     "application",
     "api",
-    "admin",
 )

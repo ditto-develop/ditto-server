@@ -13,6 +13,8 @@ dependencies {
     implementation(Dependencies.SPRING_BOOT_STARTER_SECURITY)
     implementation(Dependencies.SPRING_BOOT_STARTER_AOP)
     implementation(Dependencies.SPRING_BOOT_STARTER_ACTUATOR)
+    implementation(Dependencies.SPRING_BOOT_STARTER_THYMELEAF)
+    implementation(Dependencies.THYMELEAF_EXTRAS_SPRING_SECURITY)
     implementation(Dependencies.LOGSTASH_LOGBACK)
     implementation(Dependencies.SPRINGDOC_OPENAPI)
     implementation(Dependencies.JJWT_API)
@@ -25,4 +27,5 @@ dependencies {
 
     testImplementation(testFixtures(project(":domain")))
     testImplementation(Dependencies.KOTEST_SPRING)
+    testImplementation("org.springframework.security:spring-security-test")
 }
