@@ -4,5 +4,7 @@ include(
     "common",
     "domain",
     "infrastructure",
+    "application",
     "api",
+    "admin",
 )

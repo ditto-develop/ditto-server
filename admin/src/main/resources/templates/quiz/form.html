@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('퀴즈셋 ' + (${mode} == 'create' ? '생성' : '수정'))}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('quiz')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title" th:text="${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정'">퀴즈셋</h1>
+            <p class="page-desc">주차(연/월/주)는 식별 키입니다. 수정 시에는 변경되지 않습니다.</p>
+
+            <form class="card"
+                  th:object="${form}"
+                  th:action="${mode} == 'create' ? @{/quiz-sets} : @{/quiz-sets/{id}(id=${quizSetId})}"
+                  method="post">
+                <div class="field-row">
+                    <div class="field"><label>연도</label><input type="number" th:field="*{year}"/></div>
+                    <div class="field"><label>월</label><input type="number" th:field="*{month}"/></div>
+                    <div class="field"><label>주차</label><input type="number" th:field="*{week}"/></div>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label>카테고리</label><input type="text" th:field="*{category}" placeholder="예: 성격"/></div>
+                    <div class="field">
+                        <label>매칭 타입</label>
+                        <select th:field="*{matchingType}">
+                            <option th:value="ONE_TO_ONE">ONE_TO_ONE</option>
+                            <option th:value="GROUP">GROUP</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field"><label>제목</label><input type="text" th:field="*{title}" placeholder="예: 이번 주 1:1 매칭"/></div>
+                <div class="field"><label>설명</label><textarea rows="2" th:field="*{description}"></textarea></div>
+                <div class="field-row">
+                    <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}"/></div>
+                    <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}"/></div>
+                </div>
+                <div class="field check">
+                    <input type="checkbox" id="isActive" th:field="*{isActive}"/>
+                    <label for="isActive" style="margin:0">활성화</label>
+                </div>
+                <hr class="sep"/>
+                <div class="btn-row">
+                    <button type="submit" class="btn">저장</button>
+                    <a class="btn secondary" th:href="@{/quiz-sets}">취소</a>
+                </div>
+            </form>
+        </main>
+    </div>
+</div>
+</body>
+</html>

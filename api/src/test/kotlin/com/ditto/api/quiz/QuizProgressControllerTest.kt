@@ -7,6 +7,7 @@ import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.service.QuizProgressService
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.application.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.quiz.entity.QuizProgressStatus
@@ -31,8 +32,11 @@ import java.time.LocalDateTime
 class QuizProgressControllerTest : ControllerUnitTest() {
 
     private val quizProgressService: QuizProgressService = mockk()
+    private val serverTimeProvider: ServerTimeProvider = mockk {
+        every { now() } returns LocalDateTime.now()
+    }
 
-    override val controller = QuizProgressController(quizProgressService)
+    override val controller = QuizProgressController(quizProgressService, serverTimeProvider)
 
     @Test
     @DisplayName("퀴즈 답안을 제출한다")

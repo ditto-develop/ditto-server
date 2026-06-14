@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('시간 조정')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('time')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">시간 조정</h1>
+            <p class="page-desc">서버가 사용할 "현재 시각"을 임의로 설정합니다. 해제하면 실제 시각을 사용합니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="grid cols-2">
+                <div class="card stat">
+                    <span class="label">현재 적용 중인 서버 시각</span>
+                    <span class="value" style="font-size:20px" th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>
+                    <span>
+                        <span class="badge on" th:if="${override.enabled}">오버라이드 ON</span>
+                        <span class="badge off" th:unless="${override.enabled}">실제 시각</span>
+                        <span class="badge"
+                              th:classappend="${state.period.name() == 'QUIZ_PERIOD'} ? 'quiz' : (${state.period.name() == 'MATCHING_PERIOD'} ? 'matching' : 'chatting')"
+                              th:text="${state.period}">PERIOD</span>
+                    </span>
+                </div>
+                <div class="card stat">
+                    <span class="label">마지막 설정자</span>
+                    <span class="value" style="font-size:16px"
+                          th:text="${override.enabled and override.authorName != null} ? (${override.authorName} + ' (' + ${override.authorEmail} + ')') : '—'">—</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>시각 설정</h2>
+                <form th:action="@{/time-override}" method="post" class="field-row" style="align-items:flex-end">
+                    <div class="field" style="flex:1">
+                        <label>서버 시각</label>
+                        <input type="datetime-local" name="dateTime" required/>
+                    </div>
+                    <div class="field"><button class="btn" type="submit">이 시각으로 설정</button></div>
+                </form>
+                <hr class="sep"/>
+                <form th:action="@{/time-override/disable}" method="post" class="inline-form">
+                    <button class="btn secondary" type="submit">오버라이드 해제 (실제 시각 사용)</button>
+                </form>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

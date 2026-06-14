@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":common"))
     implementation(project(":domain"))
     implementation(project(":infrastructure"))
+    implementation(project(":application"))
 
     implementation(Dependencies.SPRING_BOOT_STARTER_WEB)
     implementation(Dependencies.SPRING_BOOT_STARTER_VALIDATION)

@@ -29,6 +29,8 @@ object Dependencies {
     const val SPRING_BOOT_STARTER_SECURITY = "org.springframework.boot:spring-boot-starter-security"
     const val SPRING_BOOT_STARTER_ACTUATOR = "org.springframework.boot:spring-boot-starter-actuator"
     const val SPRING_BOOT_STARTER_AOP = "org.springframework.boot:spring-boot-starter-aop"
+    const val SPRING_BOOT_STARTER_THYMELEAF = "org.springframework.boot:spring-boot-starter-thymeleaf"
+    const val THYMELEAF_EXTRAS_SPRING_SECURITY = "org.thymeleaf.extras:thymeleaf-extras-springsecurity6"
     const val SPRING_BOOT_STARTER_TEST = "org.springframework.boot:spring-boot-starter-test"
     const val H2 = "com.h2database:h2:${DependencyVersions.H2}"
     const val MYSQL_CONNECTOR = "com.mysql:mysql-connector-j:${DependencyVersions.MYSQL_CONNECTOR}"

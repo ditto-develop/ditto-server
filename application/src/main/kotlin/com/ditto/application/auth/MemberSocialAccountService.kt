@@ -1,0 +1,89 @@
+package com.ditto.application.auth
+
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.socialaccount.entity.SocialAccount
+import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+
+@Service
+class MemberSocialAccountService(
+    private val memberRepository: MemberRepository,
+    private val socialAccountRepository: SocialAccountRepository,
+) {
+    @Transactional
+    fun findOrCreateMember(
+        provider: SocialProvider,
+        providerUserId: String,
+        email: String?,
+        birthDate: LocalDateTime?,
+        name: String? = null,
+        phoneNumber: String? = null,
+        gender: Gender? = null,
+    ): Member {
+        val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+
+        if (existingAccount != null) {
+            val member = memberRepository.findById(existingAccount.memberId).orElseThrow {
+                log.error {
+                    "SocialAccount(id=${existingAccount.id})에 연결된 Member(id=${existingAccount.memberId})가 존재하지 않습니다."
+                }
+                ErrorException(ErrorCode.INTERNAL_ERROR)
+            }
+            if (member.hasEmailChanged(email)) {
+                log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
+                member.updateEmail(email)
+            }
+            member.updateOAuthInfo(name = name, phoneNumber = phoneNumber, gender = gender)
+            return member
+        }
+
+        val newMember = memberRepository.save(
+            Member(
+                nickname = generateUniqueNickname(),
+                email = email,
+                birthDate = birthDate,
+                name = name,
+                phoneNumber = phoneNumber,
+                gender = gender,
+            ),
+        )
+        socialAccountRepository.save(
+            SocialAccount.create(
+                memberId = newMember.id,
+                provider = provider,
+                providerUserId = providerUserId,
+            ),
+        )
+        return newMember
+    }
+
+    /**
+     * 소셜 계정에 연결된 회원을 조회한다(없으면 null). 어드민 로그인처럼 신규 가입 없이
+     * 기존 회원만 식별해야 하는 경우 사용한다.
+     */
+    @Transactional(readOnly = true)
+    fun findMemberBySocial(provider: SocialProvider, providerUserId: String): Member? {
+        val account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId) ?: return null
+        return memberRepository.findById(account.memberId).orElse(null)
+    }
+
+    private fun generateUniqueNickname(): String {
+        repeat(5) {
+            val nickname = NicknameGenerator.generate()
+            if (!memberRepository.existsByNickname(nickname)) return nickname
+        }
+        return NicknameGenerator.generate()
+    }
+
+    companion object {
+        private val log = KotlinLogging.logger {}
+    }
+}

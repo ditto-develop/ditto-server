@@ -1,7 +1,7 @@
 package com.ditto.api.match
 
 import com.ditto.api.match.controller.MatchAdminController
-import com.ditto.api.match.service.MatchmakingService
+import com.ditto.application.match.service.MatchmakingService
 import com.ditto.api.support.ControllerUnitTest
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource

@@ -2,7 +2,7 @@ package com.ditto.api.auth.facade
 
 import com.ditto.api.auth.dto.OAuthLoginResult
 import com.ditto.api.auth.service.AuthService
-import com.ditto.api.auth.service.MemberSocialAccountService
+import com.ditto.application.auth.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.domain.socialaccount.entity.SocialProvider
