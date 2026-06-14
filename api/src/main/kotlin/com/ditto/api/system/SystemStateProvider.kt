@@ -1,4 +1,4 @@
-package com.ditto.application.system
+package com.ditto.api.system
 
 import org.springframework.stereotype.Component
 import java.time.DayOfWeek

@@ -1,4 +1,4 @@
-package com.ditto.application.system
+package com.ditto.api.system
 
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe

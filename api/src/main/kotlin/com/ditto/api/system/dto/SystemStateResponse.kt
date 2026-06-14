@@ -1,7 +1,7 @@
 package com.ditto.api.system.dto
 
-import com.ditto.application.system.SystemPeriod
-import com.ditto.application.system.SystemState
+import com.ditto.api.system.SystemPeriod
+import com.ditto.api.system.SystemState
 
 /**
  * 현재 시스템 상태 응답. FE 홈이 period 로 화면(퀴즈/매칭/채팅)을 분기한다.

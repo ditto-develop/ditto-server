@@ -1,9 +1,9 @@
 package com.ditto.api.admin.system
 
 import com.ditto.api.admin.auth.AdminPrincipal
-import com.ditto.application.system.ServerTimeProvider
-import com.ditto.application.system.ServerTimeService
-import com.ditto.application.system.SystemStateProvider
+import com.ditto.api.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeService
+import com.ditto.api.system.SystemStateProvider
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller

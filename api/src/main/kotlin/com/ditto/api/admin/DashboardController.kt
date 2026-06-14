@@ -1,6 +1,6 @@
 package com.ditto.api.admin
 
-import com.ditto.application.system.SystemStateProvider
+import com.ditto.api.system.SystemStateProvider
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping

@@ -1,7 +1,7 @@
 package com.ditto.api.admin.match
 
 import com.ditto.api.match.service.MatchmakingService
-import com.ditto.application.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model

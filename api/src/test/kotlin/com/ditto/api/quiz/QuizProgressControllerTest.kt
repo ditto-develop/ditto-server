@@ -7,7 +7,7 @@ import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.service.QuizProgressService
 import com.ditto.api.support.ControllerUnitTest
-import com.ditto.application.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.quiz.entity.QuizProgressStatus

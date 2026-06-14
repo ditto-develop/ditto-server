@@ -3,7 +3,7 @@ package com.ditto.api.quiz.controller
 import com.ditto.api.quiz.dto.CurrentWeekQuizSetsResponse
 import com.ditto.api.quiz.dto.QuizSetResponse
 import com.ditto.api.quiz.service.QuizSetService
-import com.ditto.application.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.response.ApiResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable

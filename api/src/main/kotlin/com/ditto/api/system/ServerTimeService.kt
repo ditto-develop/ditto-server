@@ -1,4 +1,4 @@
-package com.ditto.application.system
+package com.ditto.api.system
 
 import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository

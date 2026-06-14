@@ -5,7 +5,7 @@ import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.api.quiz.service.QuizProgressService
-import com.ditto.application.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
