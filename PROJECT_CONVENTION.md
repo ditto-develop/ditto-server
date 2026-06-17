@@ -336,7 +336,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 - `main`으로의 직접 push 금지
 - MR 생성 시 관련 이슈 번호 연결
 - **최소 1명의 Approve** 필수
-- CI(빌드 & 테스트 & 커버리지 50%) 통과 필수
+- CI 통과 필수: 빌드 & 테스트 & Jacoco(모듈별 50%) + **SonarCloud 품질 게이트(New Code 커버리지 80%)** — 자세한 내용은 `5. 테스트 코드 컨벤션 > 테스트 커버리지` 참고
 - **머지 방식: Squash and merge** (피처 브랜치의 커밋들을 하나로 합쳐서 main에 머지)
 - 스쿼시 머지 커밋 메시지는 커밋 메시지 컨벤션을 따름
 
