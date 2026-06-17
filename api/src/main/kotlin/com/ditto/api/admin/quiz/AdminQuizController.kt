@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
@@ -16,33 +15,32 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
  * 하위 항목 라우트는 quizSetId 를 경로에 포함해 작업 후 상세로 복귀한다.
  */
 @Controller
-@RequestMapping("/admin/quiz-sets")
 class AdminQuizController(
     private val adminQuizService: AdminQuizService,
 ) {
-    @GetMapping
+    @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
         model.addAttribute("quizSets", adminQuizService.listQuizSets())
         model.addAttribute("active", "quiz")
         return "quiz/list"
     }
 
-    @GetMapping("/new")
-    fun newForm(model: Model): String {
+    @GetMapping("/admin/quiz-sets/new")
+    fun newPage(model: Model): String {
         model.addAttribute("form", QuizSetForm())
         model.addAttribute("mode", "create")
         model.addAttribute("active", "quiz")
         return "quiz/form"
     }
 
-    @PostMapping
+    @PostMapping("/admin/quiz-sets")
     fun create(@ModelAttribute("form") form: QuizSetForm, redirectAttributes: RedirectAttributes): String {
         val created = adminQuizService.createQuizSet(form)
         redirectAttributes.addFlashAttribute("message", "퀴즈셋이 생성되었습니다.")
         return "redirect:/admin/quiz-sets/${created.id}"
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/admin/quiz-sets/{id}")
     fun detail(@PathVariable id: Long, model: Model): String {
         val quizSet = adminQuizService.getQuizSet(id)
         val quizzes = adminQuizService.getQuizzes(id)
@@ -53,8 +51,8 @@ class AdminQuizController(
         return "quiz/detail"
     }
 
-    @GetMapping("/{id}/edit")
-    fun editForm(@PathVariable id: Long, model: Model): String {
+    @GetMapping("/admin/quiz-sets/{id}/edit")
+    fun editPage(@PathVariable id: Long, model: Model): String {
         model.addAttribute("form", QuizSetForm.from(adminQuizService.getQuizSet(id)))
         model.addAttribute("mode", "edit")
         model.addAttribute("quizSetId", id)
@@ -62,7 +60,7 @@ class AdminQuizController(
         return "quiz/form"
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/admin/quiz-sets/{id}")
     fun update(
         @PathVariable id: Long,
         @ModelAttribute("form") form: QuizSetForm,
@@ -73,28 +71,28 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/activate")
+    @PostMapping("/admin/quiz-sets/{id}/activate")
     fun activate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.activate(id)
         redirectAttributes.addFlashAttribute("message", "활성화되었습니다.")
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/deactivate")
+    @PostMapping("/admin/quiz-sets/{id}/deactivate")
     fun deactivate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.deactivate(id)
         redirectAttributes.addFlashAttribute("message", "비활성화되었습니다.")
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/delete")
+    @PostMapping("/admin/quiz-sets/{id}/delete")
     fun delete(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.deleteQuizSet(id)
         redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
         return "redirect:/admin/quiz-sets"
     }
 
-    @PostMapping("/{id}/quizzes")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes")
     fun addQuiz(
         @PathVariable id: Long,
         @RequestParam question: String,
@@ -106,7 +104,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/quizzes/{quizId}/update")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/update")
     fun updateQuiz(
         @PathVariable id: Long,
         @PathVariable quizId: Long,
@@ -119,7 +117,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/quizzes/{quizId}/delete")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/delete")
     fun deleteQuiz(
         @PathVariable id: Long,
         @PathVariable quizId: Long,
@@ -130,7 +128,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/quizzes/{quizId}/choices")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices")
     fun addChoice(
         @PathVariable id: Long,
         @PathVariable quizId: Long,
@@ -143,7 +141,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/quizzes/{quizId}/choices/{choiceId}/update")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices/{choiceId}/update")
     fun updateChoice(
         @PathVariable id: Long,
         @PathVariable choiceId: Long,
@@ -156,7 +154,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets/$id"
     }
 
-    @PostMapping("/{id}/quizzes/{quizId}/choices/{choiceId}/delete")
+    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices/{choiceId}/delete")
     fun deleteChoice(
         @PathVariable id: Long,
         @PathVariable choiceId: Long,

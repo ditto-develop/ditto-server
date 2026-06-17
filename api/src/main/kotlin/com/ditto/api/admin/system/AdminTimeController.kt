@@ -4,13 +4,11 @@ import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.system.ServerTimeService
 import com.ditto.api.system.SystemStateProvider
-import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.LocalDateTime
@@ -20,13 +18,12 @@ import java.time.LocalDateTime
  * 설정 변경자(이름·이메일)는 로그인한 어드민으로 기록한다.
  */
 @Controller
-@RequestMapping("/admin/time-override")
 class AdminTimeController(
     private val serverTimeService: ServerTimeService,
     private val serverTimeProvider: ServerTimeProvider,
     private val systemStateProvider: SystemStateProvider,
 ) {
-    @GetMapping
+    @GetMapping("/admin/time-override")
     fun page(model: Model): String {
         model.addAttribute("override", serverTimeService.getOverride())
         model.addAttribute("currentTime", serverTimeProvider.now())
@@ -35,9 +32,10 @@ class AdminTimeController(
         return "time-override"
     }
 
-    @PostMapping
+    // datetime-local 입력은 ISO_LOCAL_DATE_TIME("yyyy-MM-ddTHH:mm") 이라 스프링 기본 변환으로 바인딩된다.
+    @PostMapping("/admin/time-override")
     fun override(
-        @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") dateTime: LocalDateTime,
+        @RequestParam dateTime: LocalDateTime,
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
@@ -46,7 +44,7 @@ class AdminTimeController(
         return "redirect:/admin/time-override"
     }
 
-    @PostMapping("/disable")
+    @PostMapping("/admin/time-override/disable")
     fun disable(redirectAttributes: RedirectAttributes): String {
         serverTimeService.disable()
         redirectAttributes.addFlashAttribute("message", "서버 시각 오버라이드가 해제되었습니다. 실제 시각을 사용합니다.")
