@@ -154,6 +154,33 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("회원 관리 페이지 — 검색 전/검색 결과 렌더")
+    fun memberSearchPage() {
+        // 검색 전 빈 상태
+        mockMvc.perform(get("/admin/members").with(authentication(admin()))).andExpect(status().isOk)
+
+        // 같은 이메일을 가진 회원 2명
+        memberRepository.save(MemberFixture.create(nickname = "m1", email = "dup@ditto.pics", role = MemberRole.USER))
+        memberRepository.save(MemberFixture.create(nickname = "m2", email = "dup@ditto.pics", role = MemberRole.ADMIN))
+
+        mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("회원 권한 변경 후 검색어 유지 리다이렉트")
+    fun memberRoleChange() {
+        val member = memberRepository.save(
+            MemberFixture.create(nickname = "rolechg", email = "role@ditto.pics", role = MemberRole.USER),
+        )
+
+        mockMvc.perform(
+            post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
+                .param("role", "ADMIN").param("email", "role@ditto.pics"),
+        ).andExpect(status().is3xxRedirection)
+    }
+
+    @Test
     @DisplayName("카카오 로그인 진입은 인가 URL로 리다이렉트된다")
     fun oauthAuthorizeRedirect() {
         mockMvc.perform(get("/admin/oauth/kakao")).andExpect(status().is3xxRedirection)

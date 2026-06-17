@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('회원 관리')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('member')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">회원 관리</h1>
+            <p class="page-desc">이메일로 회원을 검색해 권한(Role)을 변경합니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
+                    <div class="field" style="flex:1">
+                        <label>이메일</label>
+                        <input type="text" name="email" th:value="${email}" placeholder="member@example.com"/>
+                    </div>
+                    <div class="field"><button class="btn" type="submit">검색</button></div>
+                </form>
+            </div>
+
+            <div class="card" th:if="${searched}">
+                <p class="muted" th:if="${members == null or members.isEmpty()}">검색 결과가 없습니다.</p>
+                <table class="tbl" th:unless="${members == null or members.isEmpty()}">
+                    <thead>
+                    <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 변경</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="m : ${members}">
+                        <td class="num" th:text="${m.id}">-</td>
+                        <td th:text="${m.nickname}">nick</td>
+                        <td th:text="${m.email}">email</td>
+                        <td class="num" th:text="${m.status}">status</td>
+                        <td>
+                            <span class="badge" th:classappend="${m.admin} ? 'on' : 'off'" th:text="${m.role}">role</span>
+                        </td>
+                        <td>
+                            <form class="btn-row" style="margin:0" th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
+                                  onsubmit="return confirm('이 회원의 권한을 변경할까요?');">
+                                <input type="hidden" name="email" th:value="${email}"/>
+                                <select name="role" style="width:auto; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit;">
+                                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r.label}" th:selected="${r == m.role}"></option>
+                                </select>
+                                <button class="btn sm" type="submit">변경</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

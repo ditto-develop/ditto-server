@@ -121,6 +121,11 @@ class Member(
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
     fun isAdmin(): Boolean = role == MemberRole.ADMIN
 
+    /** 회원 권한을 변경한다(어드민 운영용). */
+    fun changeRole(role: MemberRole) {
+        this.role = role
+    }
+
     fun register(
         name: String?,
         nickname: String?,
