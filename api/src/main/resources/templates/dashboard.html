@@ -14,7 +14,7 @@
             <div class="grid cols-3">
                 <div class="card stat">
                     <span class="label">현재 주차</span>
-                    <span class="value" th:text="${state.year} + '년 ' + ${state.month} + '월 ' + ${state.week} + '주차'">-</span>
+                    <span class="value" th:text="${@weekLabel.of(state.year, state.month, state.week)}">-</span>
                 </div>
                 <div class="card stat">
                     <span class="label">서버 시각</span>

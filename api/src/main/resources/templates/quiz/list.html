@@ -26,7 +26,7 @@
                     </thead>
                     <tbody>
                     <tr th:each="qs : ${quizSets}">
-                        <td class="num" th:text="${qs.year} + '.' + ${qs.month} + '.' + ${qs.week} + '주'">-</td>
+                        <td class="num" th:text="${@weekLabel.of(qs.year, qs.month, qs.week)}">-</td>
                         <td><span class="badge cat" th:text="${qs.category}">cat</span></td>
                         <td th:text="${qs.title}">title</td>
                         <td class="num" th:text="${qs.matchingType}">type</td>
