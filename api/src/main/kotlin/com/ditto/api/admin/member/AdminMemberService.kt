@@ -24,6 +24,10 @@ class AdminMemberService(
         return memberRepository.findByEmailOrderByIdAsc(normalized)
     }
 
+    /** 현재 ADMIN 권한 보유 회원 목록. */
+    @Transactional(readOnly = true)
+    fun listAdmins(): List<Member> = memberRepository.findByRoleOrderByIdAsc(MemberRole.ADMIN)
+
     /** 회원 권한을 변경한다. */
     fun changeRole(memberId: Long, role: MemberRole) {
         val member = memberRepository.findById(memberId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }

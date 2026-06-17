@@ -49,4 +49,13 @@ class AdminMemberServiceTest : FreeSpec({
 
         shouldThrow<WarnException> { AdminMemberService(repository).changeRole(99L, MemberRole.ADMIN) }
     }
+
+    "listAdmins 는 ADMIN 권한 회원을 조회한다" {
+        val repository = mockk<MemberRepository>()
+        every { repository.findByRoleOrderByIdAsc(MemberRole.ADMIN) } returns
+            listOf(MemberFixture.create(role = MemberRole.ADMIN, id = 1L))
+
+        AdminMemberService(repository).listAdmins() shouldHaveSize 1
+        verify { repository.findByRoleOrderByIdAsc(MemberRole.ADMIN) }
+    }
 })

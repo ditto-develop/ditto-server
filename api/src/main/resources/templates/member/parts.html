@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${email} 을 사용한다. -->
+<table th:fragment="memberTable(rows)" class="tbl">
+    <thead>
+    <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 변경</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="m : ${rows}">
+        <td class="num" th:text="${m.id}">-</td>
+        <td th:text="${m.nickname}">nick</td>
+        <td th:text="${m.email}">email</td>
+        <td class="num" th:text="${m.status}">status</td>
+        <td>
+            <span class="badge" th:classappend="${m.admin} ? 'on' : 'off'" th:text="${m.role}">role</span>
+        </td>
+        <td>
+            <form class="btn-row" style="margin:0" th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
+                  onsubmit="return confirm('이 회원의 권한을 변경할까요?');">
+                <input type="hidden" name="email" th:value="${email}"/>
+                <select name="role" style="width:auto; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit;">
+                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r.label}" th:selected="${r == m.role}"></option>
+                </select>
+                <button class="btn sm" type="submit">변경</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

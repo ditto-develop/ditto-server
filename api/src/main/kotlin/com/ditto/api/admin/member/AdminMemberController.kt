@@ -23,6 +23,7 @@ class AdminMemberController(
     fun page(@RequestParam(required = false) email: String?, model: Model): String {
         model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
+        model.addAttribute("admins", adminMemberService.listAdmins())
         model.addAttribute("searched", !email.isNullOrBlank())
         if (!email.isNullOrBlank()) {
             model.addAttribute("members", adminMemberService.searchByEmail(email))
