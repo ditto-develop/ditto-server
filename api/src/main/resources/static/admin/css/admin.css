@@ -1,12 +1,3 @@
-/* 배민 한나체 Pro (self-host) — 우아한형제들 무료 글꼴 */
-@font-face {
-    font-family: "BMHANNA";
-    src: url("/admin/fonts/BMHANNAPro.ttf") format("truetype");
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-}
-
 :root {
     --bg: #f5f6f8;
     --surface: #ffffff;
@@ -25,7 +16,7 @@
     --blue: #3a86ff;
     --radius: 12px;
     --shadow: 0 1px 4px rgba(20, 23, 40, 0.08);
-    font-family: "BMHANNA", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
 * { box-sizing: border-box; }

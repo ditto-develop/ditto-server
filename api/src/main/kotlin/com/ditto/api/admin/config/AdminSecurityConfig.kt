@@ -36,7 +36,6 @@ class AdminSecurityConfig {
                 authorize("/admin/oauth/**", permitAll)
                 authorize("/admin/css/**", permitAll)
                 authorize("/admin/js/**", permitAll)
-                authorize("/admin/fonts/**", permitAll)
                 authorize(anyRequest, hasRole("ADMIN"))
             }
             securityContext {
