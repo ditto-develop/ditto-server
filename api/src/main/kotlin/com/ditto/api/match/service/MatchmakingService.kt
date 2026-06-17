@@ -18,6 +18,7 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 /**
  * 한 퀴즈셋의 매칭 후보를 계산해 저장하는 배치 오케스트레이션.
@@ -38,6 +39,17 @@ class MatchmakingService(
     private val exclusionPolicies: List<MatchExclusionPolicy>,
     private val matchingProcessors: List<MatchingProcessor>,
 ) {
+
+    /**
+     * 마감([now] 기준)됐고 아직 후보가 없는 퀴즈셋의 매칭 후보를 일괄 생성한다(멱등).
+     * 실시간 스케줄러와 어드민 수동 실행이 공유하는 배치 진입점이다.
+     */
+    @Transactional
+    fun runScheduledMatching(now: LocalDateTime) {
+        quizSetRepository
+            .findEndedQuizSetsWithoutCandidates(now)
+            .forEach { generateMatchingCandidates(it.id) }
+    }
 
     /** 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다. */
     @Transactional

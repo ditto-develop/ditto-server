@@ -87,6 +87,23 @@ class QuizSet private constructor(
         isActive = false
     }
 
+    /** 퀴즈셋 메타 정보를 수정한다. 식별 키(year/month/week)는 변경하지 않는다. */
+    fun update(
+        category: String,
+        title: String,
+        description: String?,
+        startDate: LocalDateTime,
+        endDate: LocalDateTime,
+        matchingType: MatchingType,
+    ) {
+        this.category = category
+        this.title = title
+        this.description = description
+        this.startDate = startDate
+        this.endDate = endDate
+        this.matchingType = matchingType
+    }
+
     companion object {
         fun create(
             year: Int,

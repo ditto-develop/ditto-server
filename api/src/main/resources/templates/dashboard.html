@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('대시보드')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('dashboard')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">대시보드</h1>
+            <p class="page-desc">현재 서버 시각 기준의 시스템 상태입니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="grid cols-3">
+                <div class="card stat">
+                    <span class="label">현재 주차</span>
+                    <span class="value" th:text="${state.year} + '년 ' + ${state.month} + '월 ' + ${state.week} + '주차'">-</span>
+                </div>
+                <div class="card stat">
+                    <span class="label">서버 시각</span>
+                    <span class="value" style="font-size:18px"
+                          th:text="${#temporals.format(state.dateTime, 'yyyy-MM-dd HH:mm')}">-</span>
+                </div>
+                <div class="card stat">
+                    <span class="label">현재 기간</span>
+                    <span>
+                        <span class="badge"
+                              th:classappend="${state.period.name() == 'QUIZ_PERIOD'} ? 'quiz' : (${state.period.name() == 'MATCHING_PERIOD'} ? 'matching' : 'chatting')"
+                              th:text="${state.period}">PERIOD</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>바로가기</h2>
+                <div class="btn-row">
+                    <a class="btn" th:href="@{/admin/quiz-sets}">퀴즈셋 관리</a>
+                    <a class="btn secondary" th:href="@{/admin/time-override}">시간 조정</a>
+                    <a class="btn secondary" th:href="@{/admin/matching}">매칭 실행</a>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

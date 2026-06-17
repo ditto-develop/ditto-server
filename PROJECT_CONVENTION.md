@@ -102,6 +102,13 @@ domain → common
 { "success": false, "data": null, "error": { "statusCode": 400, "code": "0001", "message": "잘못된 요청값입니다." } }
 ```
 
+### 컨트롤러
+- **요청 경로는 각 핸들러 메서드의 매핑 애너테이션에 전체 경로로 명시** — 클래스 레벨 `@RequestMapping` 으로 prefix 를 묶지 않는다.
+  - 예: `@GetMapping("/api/v1/quiz-sets/current-week")` (O) / 클래스에 `@RequestMapping("/api/v1/quiz-sets")` 후 메서드 상대경로 (X)
+  - 한 곳만 보고 전체 URL 을 알 수 있어 `grep` · 추적이 쉽다.
+- 폼 백킹 빈(서버 렌더링)·요청 바인딩 객체의 주생성자는 **public** 으로 둔다 (스프링이 바인딩 시 인스턴스화).
+- `LocalDateTime` 파라미터는 ISO_LOCAL_DATE_TIME(`yyyy-MM-ddTHH:mm`, datetime-local 입력 포함)을 스프링 기본 변환으로 바인딩한다 — 별도 `@DateTimeFormat` 패턴 지정 불필요.
+
 ### 직렬화
 - `ObjectMapperFactory.create()`로 공통 ObjectMapper 생성
 - `JacksonConfig`에서 Spring Bean으로 등록
@@ -161,9 +168,10 @@ fun createUser() {
 > **JUnit5 테스트에서 백틱 한글 메서드명을 사용하지 말 것.** 반드시 `@DisplayName`을 사용한다.
 
 ### 테스트 커버리지
-- **Jacoco** 사용, `kotlin-convention`에서 자동 설정
-- **최소 커버리지: 50%** — `check` 태스크에서 검증, 미달 시 빌드 실패
-- CI에서 `./gradlew build check`로 커버리지 검증 포함
+- 두 가지 게이트가 있다. **둘 다 통과해야 머지 가능**:
+  1. **로컬 Jacoco (모듈별 최소 50%)** — `kotlin-convention` 의 `check` 태스크에서 검증, 미달 시 `./gradlew build check` 실패
+  2. **SonarCloud 품질 게이트 — New Code 커버리지 80%** (PR 의 `SonarCloud Code Analysis` 체크). 변경/추가된 코드 기준이므로 실질 기준은 이쪽이 더 엄격하다. ⚠️ GitHub Actions 의 `build check` 가 통과해도 이 게이트가 실패할 수 있으니 PR 체크를 함께 확인할 것.
+- CI: `./gradlew build check` (Jacoco) → `./gradlew sonarqube` (SonarCloud 업로드) → SonarCloud 게이트가 PR 상태로 게시됨
 - 커버리지 제외 대상 (sonar-convention): `config/**`, `*Application*`, `*Config*`, `*Request*`, `*Response*`, `*Dto*`
 
 ### 통합 테스트 베이스 클래스: `IntegrationTest`
@@ -328,7 +336,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 - `main`으로의 직접 push 금지
 - MR 생성 시 관련 이슈 번호 연결
 - **최소 1명의 Approve** 필수
-- CI(빌드 & 테스트 & 커버리지 50%) 통과 필수
+- CI 통과 필수: 빌드 & 테스트 & Jacoco(모듈별 50%) + **SonarCloud 품질 게이트(New Code 커버리지 80%)** — 자세한 내용은 `5. 테스트 코드 컨벤션 > 테스트 커버리지` 참고
 - **머지 방식: Squash and merge** (피처 브랜치의 커밋들을 하나로 합쳐서 main에 머지)
 - 스쿼시 머지 커밋 메시지는 커밋 메시지 컨벤션을 따름
 

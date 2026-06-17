@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('로그인')}"></head>
+<body>
+<div class="login-wrap">
+    <div class="login-card">
+        <div class="brand">Ditto<span>.</span>admin</div>
+        <p class="sub">관리자 전용 페이지입니다.</p>
+        <div class="alert error" th:if="${error}" th:text="${error}"></div>
+        <div class="alert success" th:if="${message}" th:text="${message}"></div>
+        <a th:href="@{/admin/oauth/kakao}" class="btn-kakao">카카오로 로그인</a>
+    </div>
+</div>
+</body>
+</html>

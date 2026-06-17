@@ -38,6 +38,11 @@ class Quiz private constructor(
     var displayOrder: Int = displayOrder
         protected set
 
+    fun update(question: String, displayOrder: Int) {
+        this.question = question
+        this.displayOrder = displayOrder
+    }
+
     companion object {
         fun create(
             quizSetId: Long,

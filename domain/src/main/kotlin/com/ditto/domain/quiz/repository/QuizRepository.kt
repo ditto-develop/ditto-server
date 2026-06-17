@@ -5,5 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface QuizRepository : JpaRepository<Quiz, Long> {
     fun findByQuizSetIdInOrderByDisplayOrderAsc(quizSetIds: List<Long>): List<Quiz>
+    fun findByQuizSetIdOrderByDisplayOrderAsc(quizSetId: Long): List<Quiz>
     fun countByQuizSetId(quizSetId: Long): Long
+    fun deleteByQuizSetId(quizSetId: Long)
 }

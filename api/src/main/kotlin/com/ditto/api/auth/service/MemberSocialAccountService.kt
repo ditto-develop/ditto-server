@@ -66,6 +66,16 @@ class MemberSocialAccountService(
         return newMember
     }
 
+    /**
+     * 소셜 계정에 연결된 회원을 조회한다(없으면 null). 어드민 로그인처럼 신규 가입 없이
+     * 기존 회원만 식별해야 하는 경우 사용한다.
+     */
+    @Transactional(readOnly = true)
+    fun findMemberBySocial(provider: SocialProvider, providerUserId: String): Member? {
+        val account = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId) ?: return null
+        return memberRepository.findById(account.memberId).orElse(null)
+    }
+
     private fun generateUniqueNickname(): String {
         repeat(5) {
             val nickname = NicknameGenerator.generate()
