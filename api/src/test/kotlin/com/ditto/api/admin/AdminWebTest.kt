@@ -154,6 +154,28 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("더미 생성 페이지 렌더 + 생성/삭제")
+    fun dummyPage() {
+        mockMvc.perform(get("/admin/dummy").with(authentication(admin()))).andExpect(status().isOk)
+
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
+        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A", displayOrder = 1))
+        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "B", displayOrder = 2))
+
+        mockMvc.perform(
+            post("/admin/dummy").with(authentication(admin())).with(csrf())
+                .param("quizSetId", quizSet.id.toString())
+                .param("maleCount", "2").param("femaleCount", "2")
+                .param("minAge", "20").param("maxAge", "30")
+                .param("preferredGender", "OPPOSITE"),
+        ).andExpect(status().is3xxRedirection)
+
+        mockMvc.perform(post("/admin/dummy/clear").with(authentication(admin())).with(csrf()))
+            .andExpect(status().is3xxRedirection)
+    }
+
+    @Test
     @DisplayName("회원 관리 페이지 — 검색 전/검색 결과 렌더")
     fun memberSearchPage() {
         // 검색 전 빈 상태
