@@ -48,6 +48,15 @@
             </form>
 
             <p class="muted">매칭은 ONE_TO_ONE 퀴즈셋에서만 동작합니다(GROUP은 후보가 생성되지 않습니다).</p>
+
+            <div class="card">
+                <h2>더미 정리</h2>
+                <p class="muted">현재 더미 회원 <strong th:text="${dummyCount}">0</strong> 명. 마커(<code>dummy-</code> 닉네임)로 식별된 더미와 그들의 진행·답변·매칭 후보를 모두 삭제합니다.</p>
+                <form th:action="@{/admin/dummy/clear}" method="post" class="inline-form"
+                      onsubmit="return confirm('마커로 식별된 모든 더미 회원과 관련 데이터를 삭제합니다. 계속할까요?');">
+                    <button class="btn secondary" type="submit">더미 전체 삭제</button>
+                </form>
+            </div>
         </main>
     </div>
 </div>

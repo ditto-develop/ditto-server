@@ -9,6 +9,7 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
@@ -37,6 +38,7 @@ class AdminDummyService(
     private val memberRepository: MemberRepository,
     private val quizProgressRepository: QuizProgressRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
 ) {
     /** 더미를 생성하고 생성된 인원수를 반환한다. */
     fun generate(form: DummyGenerateForm): Int {
@@ -60,6 +62,21 @@ class AdminDummyService(
             count
         }
     }
+
+    /** 마커로 식별된 모든 더미 회원과 그들의 진행·답변·매칭 후보를 삭제하고 삭제 인원수를 반환한다. */
+    fun deleteAllDummies(): Int {
+        val dummyIds = memberRepository.findByNicknameStartingWith(NICKNAME_PREFIX).map { it.id }
+        if (dummyIds.isEmpty()) return 0
+        quizAnswerRepository.deleteByMemberIdIn(dummyIds)
+        quizProgressRepository.deleteByMemberIdIn(dummyIds)
+        matchCandidateRepository.deleteByOwnerOrOtherMemberIdIn(dummyIds)
+        memberRepository.deleteAllByIdInBatch(dummyIds)
+        return dummyIds.size
+    }
+
+    /** 현재 더미 회원 수(현황 표시용). */
+    @Transactional(readOnly = true)
+    fun countDummies(): Long = memberRepository.countByNicknameStartingWith(NICKNAME_PREFIX)
 
     private fun validate(form: DummyGenerateForm) {
         if (form.maleCount < 0 || form.femaleCount < 0) {

@@ -26,6 +26,7 @@ class AdminDummyController(
     fun page(model: Model): String {
         model.addAttribute("form", DummyGenerateForm())
         model.addAttribute("quizSets", quizSetRepository.findAllByOrderByYearDescMonthDescWeekDescIdDesc())
+        model.addAttribute("dummyCount", adminDummyService.countDummies())
         model.addAttribute("active", "dummy")
         return "dummy"
     }
@@ -46,6 +47,17 @@ class AdminDummyController(
                 if (e !is WarnException) throw e
                 redirectAttributes.addFlashAttribute("error", e.message)
             }
+        return "redirect:/admin/dummy"
+    }
+
+    @PostMapping("/admin/dummy/clear")
+    fun clear(
+        @AuthenticationPrincipal admin: AdminPrincipal,
+        redirectAttributes: RedirectAttributes,
+    ): String {
+        val deleted = adminDummyService.deleteAllDummies()
+        log.info { "어드민[${admin.displayName}] 이 더미 ${deleted}명 삭제" }
+        redirectAttributes.addFlashAttribute("message", "더미 ${deleted}명을 삭제했습니다.")
         return "redirect:/admin/dummy"
     }
 
