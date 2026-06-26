@@ -31,7 +31,7 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         status: QuizProgressStatus,
     ): List<QuizProgress>
 
-    /** 여러 회원의 진행을 단일 벌크 DELETE 로 삭제 (더미 정리용) */
+    /** 여러 회원의 진행을 단일 벌크 DELETE 로 삭제 */
     @Modifying
     @Transactional
     @Query("delete from QuizProgress qp where qp.memberId in :memberIds")

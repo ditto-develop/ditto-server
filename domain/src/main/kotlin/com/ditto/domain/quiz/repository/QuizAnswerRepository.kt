@@ -15,7 +15,7 @@ interface QuizAnswerRepository : JpaRepository<QuizAnswer, Long>, QuizAnswerRepo
     /** 여러 회원의 여러 문항 답변을 한 번에 조회 (매칭 점수 계산용 벌크 로드) */
     fun findByMemberIdInAndQuizIdIn(memberIds: List<Long>, quizIds: List<Long>): List<QuizAnswer>
 
-    /** 여러 회원의 답변을 단일 벌크 DELETE 로 삭제 (더미 정리용) */
+    /** 여러 회원의 답변을 단일 벌크 DELETE 로 삭제 */
     @Modifying
     @Transactional
     @Query("delete from QuizAnswer qa where qa.memberId in :memberIds")

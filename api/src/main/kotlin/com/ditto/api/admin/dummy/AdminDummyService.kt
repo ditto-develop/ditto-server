@@ -67,6 +67,7 @@ class AdminDummyService(
     fun deleteAllDummies(): Int {
         val dummyIds = memberRepository.findByNicknameStartingWith(NICKNAME_PREFIX).map { it.id }
         if (dummyIds.isEmpty()) return 0
+        // 회원에 딸린 데이터(답변·진행·매칭후보)를 먼저 지우고 회원을 마지막에 삭제한다.
         quizAnswerRepository.deleteByMemberIdIn(dummyIds)
         quizProgressRepository.deleteByMemberIdIn(dummyIds)
         matchCandidateRepository.deleteByOwnerOrOtherMemberIdIn(dummyIds)
@@ -145,7 +146,7 @@ class AdminDummyService(
 
     companion object {
         const val NICKNAME_PREFIX = "dummy-"
-        const val EMAIL_DOMAIN = "dummy.local"
+        private const val EMAIL_DOMAIN = "dummy.local"
         private const val DUMMY_CARICATURE = "dummy"
     }
 }

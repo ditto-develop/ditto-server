@@ -18,7 +18,7 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long> {
     @Query("delete from MatchCandidate mc where mc.quizSetId = :quizSetId")
     fun deleteByQuizSetId(@Param("quizSetId") quizSetId: Long): Int
 
-    /** owner/other 어느 쪽이든 해당 회원이 포함된 후보를 단일 벌크 DELETE 로 삭제 (더미 정리용) */
+    /** owner/other 어느 쪽이든 해당 회원이 포함된 후보를 단일 벌크 DELETE 로 삭제 */
     @Modifying
     @Transactional
     @Query("delete from MatchCandidate mc where mc.ownerMemberId in :memberIds or mc.otherMemberId in :memberIds")
