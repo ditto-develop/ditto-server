@@ -44,7 +44,6 @@ Gradle wrapper를 사용한다.
 
 - 모든 API 응답은 `ApiResponse<T>`로 래핑한다. **HTTP 상태는 항상 200**, 성공/실패는 `success` 필드로 구분.
 - 예외: `WarnException`=클라이언트 잘못(4xx, WARN), `ErrorException`=서버 잘못(5xx, ERROR), 코드/메시지는 `ErrorCode` enum.
-- 컨트롤러 핸들러는 매핑에 **전체 경로를 명시**한다(클래스 레벨 `@RequestMapping` prefix 금지).
 - 생성자 주입 선호(필드 주입 금지). Kotlin nullability를 의도적으로 쓰고 Java `Optional`을 남발하지 않는다.
 - 버전 숫자를 문서에 적지 말 것 — Gradle 파일이 SSOT.
 
