@@ -55,6 +55,7 @@ Gradle wrapper를 사용한다.
 ## Security
 
 - `/api/**`는 `X-API-Key` 헤더 필수. `/health`·`/actuator/**`·`/docs/**`·`/swagger-ui/**`는 공개, 그 외 403.
+- `/api/v1/admin/**`는 어드민 미인가 시 403(`JwtAuthenticationFilter` 경로 검사). 배경: `docs/adr/0006-admin-authz-filter-path-check.md`.
 
 ## Git
 
@@ -67,3 +68,13 @@ Gradle wrapper를 사용한다.
 - 생성된 파일은 명시적 요청 없이 수정하지 않는다.
 - DB 스키마 변경은 마이그레이션(`domain/db`, `create_sql.sh`)과 관련 테스트를 동반한다.
 - 공개 API 동작이 바뀌면 문서화 테스트(REST Docs)를 갱신한다.
+
+## 문서 갱신 (작업하며 함께)
+
+이 문서 체계는 기초다 — 코드가 자라면 문서도 함께 갱신한다.
+
+- 설계 방향을 새로 정하거나 바꾸면 → `docs/adr/`에 ADR 추가(기존 형식: Context/Decision/Consequences/Links, 번호 증가).
+- 도메인 불변식·상태전이를 확정하면 → 떠나기 전에 `docs/domains/<도메인>.md`의 TODO를 그 자리에서 채운다.
+- 새 도메인을 추가하면 → `docs/domains/<d>.md` + `.claude/rules/domain-<d>.md` 쌍을 만든다.
+- 새 모듈/엔드포인트 유형이 생기면 → 해당 `docs/`와 가리키는 `.claude/rules/` stub을 추가한다.
+- 리뷰에서 같은 지적이 3회 반복되면 → rule 또는 검사기(lint/CI)로 승격한다.
