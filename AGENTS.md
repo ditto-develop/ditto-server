@@ -49,9 +49,8 @@ Gradle wrapper를 사용한다.
 
 ## Testing
 
-- 통합 테스트 우선: 단위(순수 로직)는 작게, 비즈니스 동작은 `IntegrationTest` 상속 통합 테스트로. 상세는 `docs/testing/`.
 - 머지 게이트(둘 다 통과해야 함): Jacoco 모듈별 50% + SonarCloud New Code 80%.
-- `@MockBean`/`@SpyBean` 금지(MockK 사용). 테스트 통과를 위해 단언을 약화시키지 않는다.
+- 테스트 작성/수정 시 `docs/testing/`의 **필수 규칙을 먼저 적용**한다(베이스 클래스·모킹·네이밍·문서화).
 
 ## Security
 
