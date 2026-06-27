@@ -29,8 +29,8 @@ Gradle wrapper를 사용한다.
 
 ## Modules (코드를 어디에 둘지 — 위치 안내용)
 
-새 코드를 어느 모듈에 둘지 정하는 용도다. **이 절은 규칙이 아니다** — 각 모듈의 작성 규칙은
-해당 모듈 파일을 열면 자동 로드되는 `.claude/rules/module-*.md`(핵심 규칙)와 `docs/modules/`(상세)를 따른다.
+새 코드를 어느 모듈에 둘지 정하는 용도다. **이 절은 규칙이 아니다** — 각 모듈의 작성 규칙은 `docs/modules/`에 있고,
+해당 모듈 파일을 열면 `.claude/rules/module-*.md`가 자동으로 그 문서를 가리킨다.
 
 - `api` — 실행 모듈(bootJar). 컨트롤러, 요청/응답 DTO, config.
 - `common` — 비즈니스 무관 공통(예외·ApiResponse·직렬화·`@Loggable`). 순수 Kotlin.
