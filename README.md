@@ -2,16 +2,13 @@
 
 Kotlin + Spring Boot 기반 백엔드 서버
 
+> 개발 컨벤션·모듈 규칙·테스트 가이드는 [`AGENTS.md`](AGENTS.md)와 `docs/`를 참조하세요. 이 README는 인프라·배포·운영 중심입니다.
+
 ---
 
 ## 기술 스택
 
-| 항목 | 버전 |
-|---|---|
-| Java | 21 (LTS) |
-| Kotlin | 1.9.25 |
-| Spring Boot | 3.5.11 |
-| Gradle | 8.14 |
+Kotlin + Spring Boot 멀티모듈 (Java 21). 라이브러리 버전은 `buildSrc/src/main/kotlin/DependencyVersions.kt`가 SSOT이므로 여기 표로 복붙하지 않는다.
 
 ---
 
@@ -57,6 +54,8 @@ ditto-server/
 │   └── cd.yml                   # main push: ECR → ECS 배포
 └── Dockerfile                   # API 이미지 (multi-stage)
 ```
+
+모듈별 역할·작성 규칙은 [`docs/modules/`](docs/modules/) 참조.
 
 ---
 
@@ -143,7 +142,7 @@ Internet
 
 ### API Key 인증
 
-Spring Security + API Key 헤더 방식으로 경로별 접근 제어를 적용한다.
+Spring Security + API Key 헤더 방식으로 경로별 접근 제어를 적용한다. (경로별 인증 정책의 정식 정의는 [`AGENTS.md`](AGENTS.md)·[`docs/modules/api.md`](docs/modules/api.md); 아래는 배포 관점 요약.)
 
 | 경로 | 인증 | 설명 |
 |---|---|---|
