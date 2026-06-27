@@ -26,6 +26,12 @@
 
 경로별 인증 규칙은 AGENTS.md 참조. API Key는 환경변수 `API_KEY`로 주입(로컬 기본값 `local-dev-key`, 프로덕션은 Secrets Manager).
 
+## 로깅·프로필
+
+- `RequestIdFilter`: 요청마다 MDC에 `requestId`를 주입(로그 추적용). `LoggingAspect`가 `common`의 `@Loggable`을 AOP로 적용한다.
+- Logback 프로필 분리: `local`(컬러 콘솔·requestId·Hibernate SQL DEBUG) / `prod`(JSON 구조화 로그, CloudWatch 파싱 최적화).
+- 프로필 파일: `application.yml`(공통·로컬 기본), `application-prod.yml`(프로덕션), `application-test.yml`(H2·테스트 API Key). ECS는 `SPRING_PROFILES_ACTIVE=prod`.
+
 ## 문서화
 
 - 새 API는 문서화 테스트(REST Docs)를 동반한다. 작성법은 `docs/testing/rest-docs.md`.
