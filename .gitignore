@@ -25,4 +25,6 @@ Thumbs.db
 .kotlin/
 
 ### Claude Code ###
-.claude/
+.claude/*
+!.claude/rules/
+!.claude/agents/
