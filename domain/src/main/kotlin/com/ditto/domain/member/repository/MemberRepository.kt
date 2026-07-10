@@ -12,4 +12,10 @@ interface MemberRepository : JpaRepository<Member, Long> {
 
     /** 특정 권한을 가진 회원 목록(어드민 보유자 조회 등). */
     fun findByRoleOrderByIdAsc(role: MemberRole): List<Member>
+
+    /** 닉네임 접두사로 시작하는 회원 목록. */
+    fun findByNicknameStartingWith(prefix: String): List<Member>
+
+    /** 닉네임 접두사로 시작하는 회원 수. */
+    fun countByNicknameStartingWith(prefix: String): Long
 }

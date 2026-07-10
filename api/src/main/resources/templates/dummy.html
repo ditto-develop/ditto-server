@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('더미 생성')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('dummy')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">더미 참여자 생성</h1>
+            <p class="page-desc">선택한 퀴즈셋을 랜덤하게 푼(완료) 더미 회원을 남/여 인원수만큼 생성합니다.
+                매칭 후보는 만들지 않으니, 생성 후 '매칭 실행'에서 재생성하세요.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <form class="card"
+                  th:object="${form}"
+                  th:action="@{/admin/dummy}"
+                  method="post"
+                  onsubmit="return confirm('운영 환경을 포함한 모든 환경에서 실행됩니다.\n선택한 퀴즈셋에 더미 회원을 생성할까요?');">
+                <div class="field">
+                    <label>대상 퀴즈셋</label>
+                    <select th:field="*{quizSetId}">
+                        <option th:each="qs : ${quizSets}" th:value="${qs.id}"
+                                th:text="|${@weekLabel.of(qs.year, qs.month, qs.week)} · ${qs.title} (${qs.matchingType})|">-</option>
+                    </select>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label>남자 수</label><input type="number" th:field="*{maleCount}" min="0"/></div>
+                    <div class="field"><label>여자 수</label><input type="number" th:field="*{femaleCount}" min="0"/></div>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label>최소 나이</label><input type="number" th:field="*{minAge}" min="1"/></div>
+                    <div class="field"><label>최대 나이</label><input type="number" th:field="*{maxAge}" min="1"/></div>
+                </div>
+                <div class="field">
+                    <label>매칭 성별 선호</label>
+                    <select th:field="*{preferredGender}">
+                        <option th:value="OPPOSITE">이성끼리 (OPPOSITE)</option>
+                        <option th:value="SAME">동성끼리 (SAME)</option>
+                        <option th:value="ANY">제한 없음 (ANY)</option>
+                    </select>
+                    <p class="muted">기본 OPPOSITE에선 남↔여만 매칭되므로 남·여를 함께 생성해야 페어가 만들어집니다.</p>
+                </div>
+                <hr class="sep"/>
+                <div class="btn-row">
+                    <button type="submit" class="btn">더미 생성</button>
+                </div>
+            </form>
+
+            <p class="muted">매칭은 ONE_TO_ONE 퀴즈셋에서만 동작합니다(GROUP은 후보가 생성되지 않습니다).</p>
+
+            <div class="card">
+                <h2>더미 정리</h2>
+                <p class="muted">현재 더미 회원 <strong th:text="${dummyCount}">0</strong> 명. 마커(<code>dummy-</code> 닉네임)로 식별된 더미와 그들의 진행·답변·매칭 후보를 모두 삭제합니다.</p>
+                <form th:action="@{/admin/dummy/clear}" method="post" class="inline-form"
+                      onsubmit="return confirm('마커로 식별된 모든 더미 회원과 관련 데이터를 삭제합니다. 계속할까요?');">
+                    <button class="btn secondary" type="submit">더미 전체 삭제</button>
+                </form>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

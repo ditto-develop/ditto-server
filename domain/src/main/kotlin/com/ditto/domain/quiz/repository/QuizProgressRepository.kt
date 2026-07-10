@@ -4,6 +4,10 @@ import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressRepositoryCustom
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 
 interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgressRepositoryCustom {
     fun findByMemberIdAndQuizSetId(
@@ -26,4 +30,10 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         quizSetId: Long,
         status: QuizProgressStatus,
     ): List<QuizProgress>
+
+    /** 여러 회원의 진행을 단일 벌크 DELETE 로 삭제 */
+    @Modifying
+    @Transactional
+    @Query("delete from QuizProgress qp where qp.memberId in :memberIds")
+    fun deleteByMemberIdIn(@Param("memberIds") memberIds: List<Long>): Int
 }
