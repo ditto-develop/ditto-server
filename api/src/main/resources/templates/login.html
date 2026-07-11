@@ -9,6 +9,7 @@
         <div class="alert error" th:if="${error}" th:text="${error}"></div>
         <div class="alert success" th:if="${message}" th:text="${message}"></div>
         <a th:href="@{/admin/oauth/kakao}" class="btn-kakao">카카오로 로그인</a>
+        <a th:if="${devLoginEnabled}" th:href="@{/admin/oauth/dev}" class="btn-dev">로컬 개발 로그인</a>
     </div>
 </div>
 </body>
