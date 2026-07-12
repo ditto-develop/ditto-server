@@ -1,6 +1,6 @@
 package com.ditto.api.sanction.service
 
-import com.ditto.api.sanction.dto.ActiveSanctionResponse
+import com.ditto.api.sanction.dto.EffectiveSanctionResponse
 import com.ditto.api.sanction.dto.MySanctionResponse
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.sanction.entity.Sanction
@@ -25,16 +25,16 @@ class MySanctionService(
             .maxWithOrNull(compareBy({ it.level }, { it.id }))
             ?: return MySanctionResponse(sanction = null)
 
-        return MySanctionResponse(sanction = toActiveSanctionResponse(effective))
+        return MySanctionResponse(sanction = toEffectiveSanctionResponse(effective))
     }
 
-    private fun toActiveSanctionResponse(sanction: Sanction): ActiveSanctionResponse {
+    private fun toEffectiveSanctionResponse(sanction: Sanction): EffectiveSanctionResponse {
         // 사유는 근거 신고의 카테고리만 — 직권 제재(신고 없음)는 null.
         val reason = sanction.memberReportId
             ?.let { memberReportRepository.findById(it).getOrNull() }
             ?.reason
 
-        return ActiveSanctionResponse(
+        return EffectiveSanctionResponse(
             level = sanction.level.name,
             levelDescription = sanction.level.description,
             reason = reason?.code,

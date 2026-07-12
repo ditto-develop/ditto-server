@@ -24,6 +24,7 @@ import org.hibernate.annotations.Comment
     name = "sanction",
     indexes = [
         Index(name = "sanction_index_1", columnList = "member_id, status"),
+        Index(name = "sanction_index_2", columnList = "status, ends_at"),
     ],
 )
 class Sanction private constructor(

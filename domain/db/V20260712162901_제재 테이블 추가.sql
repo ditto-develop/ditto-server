@@ -19,3 +19,5 @@ CREATE TABLE sanction
 );
 
 CREATE INDEX sanction_index_1 ON sanction (member_id, status);
+-- 만료 일괄 종결 배치 쿼리용
+CREATE INDEX sanction_index_2 ON sanction (status, ends_at);

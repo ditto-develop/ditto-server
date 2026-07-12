@@ -43,6 +43,16 @@ class MemberSanctionTest : FreeSpec(
                 member.status shouldBe MemberStatus.BANNED
                 member.suspendedUntil.shouldBeNull()
             }
+
+            "가입 미완료(PENDING) 회원은 차단할 수 없다" {
+                val member = MemberFixture.create(status = MemberStatus.PENDING)
+
+                val exception = shouldThrow<WarnException> {
+                    member.ban()
+                }
+
+                exception.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+            }
         }
 
         "reinstate" - {

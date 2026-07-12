@@ -21,7 +21,10 @@ import java.time.LocalDateTime
 @Entity
 @Table(
     name = "member",
-    indexes = [Index(name = "member_index_1", columnList = "created_at, status")],
+    indexes = [
+        Index(name = "member_index_1", columnList = "created_at, status"),
+        Index(name = "member_index_2", columnList = "status, suspended_until"),
+    ],
     uniqueConstraints = [UniqueConstraint(name = "member_unique_1", columnNames = ["nickname"])],
 )
 class Member(
@@ -152,8 +155,11 @@ class Member(
         suspendedUntil = until
     }
 
-    /** 영구 차단. 해제는 [reinstate](어드민 직권)로만 가능하다. */
+    /** 영구 차단. ACTIVE·SUSPENDED에서만 전이하며, 해제는 [reinstate](어드민 직권)로만 가능하다. */
     fun ban() {
+        if (status != MemberStatus.ACTIVE && status != MemberStatus.SUSPENDED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
         status = MemberStatus.BANNED
         suspendedUntil = null
     }
