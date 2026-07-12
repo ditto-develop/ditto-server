@@ -76,6 +76,13 @@ class Sanction private constructor(
     val note: String? = null,
 ) : BaseEntity() {
 
+    /** 주어진 시각 기준 아직 효력이 있는 제재인지 — 영구 차단(endsAt 없음)은 항상 유효하다. */
+    fun isEffectiveAt(now: LocalDateTime): Boolean {
+        if (status != SanctionStatus.ACTIVE) return false
+        val endsAt = this.endsAt ?: return true
+        return endsAt > now
+    }
+
     /** 기간 만료로 종결한다 (배치·로그인 시 원복 흐름에서 호출). */
     fun expire() {
         transitionTo(SanctionStatus.EXPIRED)

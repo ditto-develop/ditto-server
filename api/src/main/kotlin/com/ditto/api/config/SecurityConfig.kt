@@ -113,6 +113,7 @@ class SecurityConfig(
                     memberRepository,
                     serverTimeProvider,
                     pendingAllowedPaths = PENDING_ALLOWED_PATHS,
+                    suspendedAllowedPaths = SUSPENDED_ALLOWED_PATHS,
                 ),
                 ApiKeyAuthFilter::class.java,
             )
@@ -162,5 +163,8 @@ class SecurityConfig(
         //    같은 경로에 다른 method 엔드포인트(예: GET/DELETE /api/v1/users)를 추가하면
         //    PENDING 회원에게도 함께 열리므로, 그때 PENDING 노출 여부를 반드시 재검토할 것.
         private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me", "/api/v1/users")
+
+        // 제재 회원의 유일한 안내 창구 — URI-only 매칭이므로 다른 기능과 경로를 공유하지 말 것.
+        private val SUSPENDED_ALLOWED_PATHS = setOf("/api/v1/users/me/sanction")
     }
 }

@@ -53,6 +53,33 @@ class SanctionTest : FreeSpec(
             }
         }
 
+        "isEffectiveAt" - {
+            "기간 내면 유효하다" {
+                val sanction = SanctionFixture.create(startsAt = startsAt, endsAt = startsAt.plusDays(14))
+
+                sanction.isEffectiveAt(startsAt.plusDays(7)) shouldBe true
+            }
+
+            "종료 일시가 지나면 유효하지 않다" {
+                val sanction = SanctionFixture.create(startsAt = startsAt, endsAt = startsAt.plusDays(14))
+
+                sanction.isEffectiveAt(startsAt.plusDays(14)) shouldBe false
+            }
+
+            "영구 차단은 항상 유효하다" {
+                val sanction = SanctionFixture.create(level = SanctionLevel.PERMANENT_BAN, startsAt = startsAt)
+
+                sanction.isEffectiveAt(startsAt.plusYears(10)) shouldBe true
+            }
+
+            "종결된 제재는 기간과 무관하게 유효하지 않다" {
+                val sanction = SanctionFixture.create(startsAt = startsAt, endsAt = startsAt.plusDays(14))
+                sanction.lift()
+
+                sanction.isEffectiveAt(startsAt.plusDays(7)) shouldBe false
+            }
+        }
+
         "상태 전이" - {
             "expire로 기간 만료 종결한다" {
                 val sanction = SanctionFixture.create()

@@ -132,8 +132,11 @@ class Member(
      * 주어진 시각 기준 이용 정지 중인지. 해제 예정일이 지났으면 정지로 보지 않는다
      * — status 원복은 배치·로그인 시점에 일어난다 (lazy 만료, ADR 0009).
      */
-    fun isSuspendedAt(now: LocalDateTime): Boolean =
-        status == MemberStatus.SUSPENDED && (suspendedUntil?.isAfter(now) ?: true)
+    fun isSuspendedAt(now: LocalDateTime): Boolean {
+        if (status != MemberStatus.SUSPENDED) return false
+        val until = suspendedUntil ?: return true
+        return until > now
+    }
 
     /** 회원 권한을 변경한다(어드민 운영용). */
     fun changeRole(role: MemberRole) {

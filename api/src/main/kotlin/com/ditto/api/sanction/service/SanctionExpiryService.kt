@@ -37,7 +37,7 @@ class SanctionExpiryService(
         member.reinstate()
         memberRepository.save(member)
         sanctionRepository.findAllByMemberIdAndStatus(member.id, SanctionStatus.ACTIVE)
-            .filter { sanction -> sanction.endsAt?.isAfter(now) == false }
+            .filter { !it.isEffectiveAt(now) }
             .forEach { it.expire() }
     }
 }
