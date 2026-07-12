@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('신고 검토')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('report')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">신고 검토</h1>
+            <p class="page-desc">접수된 신고는 24시간 내 검토합니다. 초과 건은 붉게 표시됩니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <!-- 상태 필터 -->
+            <div class="card">
+                <div class="field-row">
+                    <a th:each="s : ${statuses}"
+                       th:href="@{/admin/reports(status=${s.name()})}"
+                       th:text="${s.description}"
+                       th:classappend="${s == selected} ? 'btn sm' : 'btn secondary sm'">상태</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>목록 <span class="badge cat" th:text="${reports.size()} + '건'">0건</span></h2>
+                <p class="muted" th:if="${reports.isEmpty()}">해당 상태의 신고가 없습니다.</p>
+                <table th:unless="${reports.isEmpty()}">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>사유</th>
+                        <th>신고자</th>
+                        <th>피신고자</th>
+                        <th>접수</th>
+                        <th>경과</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${reports}">
+                        <td th:text="${r.id}">1</td>
+                        <td>
+                            <span th:text="${r.reasonDescription}">사유</span>
+                            <span class="badge warn" th:if="${r.recommendsSuspension}">정지 권고</span>
+                        </td>
+                        <td th:text="${r.reporterNickname}">신고자</td>
+                        <td th:text="${r.reportedNickname}">피신고자</td>
+                        <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>
+                        <td>
+                            <span th:text="${r.elapsedText}"
+                                  th:style="${r.overdue} ? 'color:#c0392b;font-weight:700' : ''">경과</span>
+                            <span class="badge warn" th:if="${r.overdue}">SLA 초과</span>
+                        </td>
+                        <td><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}">검토</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

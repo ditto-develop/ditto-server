@@ -3,7 +3,10 @@ package com.ditto.api.admin
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.memberreport.MemberReportFixture
+import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
@@ -54,6 +57,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var socialAccountRepository: SocialAccountRepository
+
+    @Autowired
+    lateinit var memberReportRepository: MemberReportRepository
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
@@ -266,5 +272,18 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    @DisplayName("신고 목록·상세 페이지가 렌더링된다")
+    fun reportPages() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin()))).andExpect(status().isOk)
     }
 }

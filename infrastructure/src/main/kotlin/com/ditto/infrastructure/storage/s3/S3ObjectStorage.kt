@@ -2,9 +2,11 @@ package com.ditto.infrastructure.storage.s3
 
 import com.ditto.infrastructure.storage.ObjectStorage
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 
 class S3ObjectStorage(
@@ -27,6 +29,20 @@ class S3ObjectStorage(
             .build()
 
         return s3Presigner.presignPutObject(presignRequest).url().toExternalForm()
+    }
+
+    override fun issueViewUrl(key: String): String {
+        val getObjectRequest = GetObjectRequest.builder()
+            .bucket(properties.bucket)
+            .key(key)
+            .build()
+
+        val presignRequest = GetObjectPresignRequest.builder()
+            .signatureDuration(properties.viewUrlTtl)
+            .getObjectRequest(getObjectRequest)
+            .build()
+
+        return s3Presigner.presignGetObject(presignRequest).url().toExternalForm()
     }
 
     override fun exists(key: String): Boolean {

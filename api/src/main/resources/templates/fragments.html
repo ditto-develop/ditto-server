@@ -15,6 +15,7 @@
         <a th:href="@{/admin}" th:classappend="${active == 'dashboard'} ? 'active'"><span class="ico">🏠</span> 대시보드</a>
         <a th:href="@{/admin/quiz-sets}" th:classappend="${active == 'quiz'} ? 'active'"><span class="ico">📝</span> 퀴즈셋 관리</a>
         <a th:href="@{/admin/members}" th:classappend="${active == 'member'} ? 'active'"><span class="ico">👤</span> 회원 관리</a>
+        <a th:href="@{/admin/reports}" th:classappend="${active == 'report'} ? 'active'"><span class="ico">🚨</span> 신고 검토</a>
         <a th:href="@{/admin/time-override}" th:classappend="${active == 'time'} ? 'active'"><span class="ico">⏱️</span> 시간 조정</a>
         <a th:href="@{/admin/matching}" th:classappend="${active == 'matching'} ? 'active'"><span class="ico">💞</span> 매칭 실행</a>
         <a th:href="@{/admin/dummy}" th:classappend="${active == 'dummy'} ? 'active'"><span class="ico">🧪</span> 더미 생성</a>

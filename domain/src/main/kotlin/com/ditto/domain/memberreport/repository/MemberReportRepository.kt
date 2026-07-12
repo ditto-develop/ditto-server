@@ -19,6 +19,15 @@ interface MemberReportRepository : JpaRepository<MemberReport, Long> {
         status: MemberReportStatus,
     ): Boolean
 
+    /** 어드민 검토 목록 — 접수 오래된 순 (SLA 대기열) */
+    fun findAllByStatusOrderByCreatedAtAsc(status: MemberReportStatus): List<MemberReport>
+
+    /** 신고자 이력 통계용 — 총 신고 수 */
+    fun countByReporterId(reporterId: Long): Long
+
+    /** 신고자 이력 통계용 — 특정 종결 상태(악의 기각 등) 수 */
+    fun countByReporterIdAndStatus(reporterId: Long, status: MemberReportStatus): Long
+
     /**
      * 검토 종결 — RECEIVED일 때만 성공하는 조건부 UPDATE로 이중 검토를 방어한다 (반환 0이면 이미 검토됨).
      * 상태 전이 규칙(RECEIVED에서만, 종결 불변)은 이 WHERE 절이 강제한다.

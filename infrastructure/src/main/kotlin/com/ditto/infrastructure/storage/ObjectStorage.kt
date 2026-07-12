@@ -15,6 +15,9 @@ interface ObjectStorage {
      */
     fun issueUploadUrl(key: String, contentType: String, contentLength: Long): String
 
+    /** 열람용 URL(presigned GET)을 발급한다 — 비공개 버킷의 객체를 어드민 화면 등에서 볼 때 사용한다. */
+    fun issueViewUrl(key: String): String
+
     /** 해당 키의 객체가 업로드되어 있는지 확인한다. */
     fun exists(key: String): Boolean
 
