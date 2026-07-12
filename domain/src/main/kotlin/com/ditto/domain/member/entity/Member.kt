@@ -1,5 +1,7 @@
 package com.ditto.domain.member.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import com.ditto.domain.member.converter.InterestSetConverter
 import jakarta.persistence.Column
@@ -40,6 +42,10 @@ class Member(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     var status: MemberStatus = MemberStatus.PENDING,
+
+    @Comment("이용 정지 해제 예정 일시 (SUSPENDED일 때만 값 존재)")
+    @Column(name = "suspended_until", nullable = true)
+    var suspendedUntil: LocalDateTime? = null,
 
     @Comment("회원 권한")
     @Enumerated(EnumType.STRING)
@@ -126,6 +132,30 @@ class Member(
         this.role = role
     }
 
+    /** 기간 이용 정지. 영구 차단(BANNED)은 정지로 낮출 수 없다. */
+    fun suspendUntil(until: LocalDateTime) {
+        if (status == MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.SUSPENDED
+        suspendedUntil = until
+    }
+
+    /** 영구 차단. 해제는 [reinstate](어드민 직권)로만 가능하다. */
+    fun ban() {
+        status = MemberStatus.BANNED
+        suspendedUntil = null
+    }
+
+    /** 제재 해제 — 정지 만료·어드민 직권 해제 시 활성으로 원복한다. */
+    fun reinstate() {
+        if (status != MemberStatus.SUSPENDED && status != MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.ACTIVE
+        suspendedUntil = null
+    }
+
     fun register(
         name: String?,
         nickname: String?,
@@ -139,6 +169,10 @@ class Member(
         job: Job,
         caricature: String,
     ) {
+        // 가입 완료는 PENDING에서만 — 제재(SUSPENDED/BANNED) 회원이 이 경로로 ACTIVE가 되는 것을 봉쇄한다.
+        if (status != MemberStatus.PENDING) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
         if (name != null) this.name = name
         if (nickname != null) this.nickname = nickname
         if (phoneNumber != null) this.phoneNumber = phoneNumber

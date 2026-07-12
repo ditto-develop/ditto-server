@@ -8,6 +8,7 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.withId
+import java.time.LocalDateTime
 
 object MemberFixture {
 
@@ -15,6 +16,7 @@ object MemberFixture {
         nickname: String = "테스트유저",
         email: String = "test@example.com",
         status: MemberStatus = MemberStatus.PENDING,
+        suspendedUntil: LocalDateTime? = null,
         role: MemberRole = MemberRole.USER,
         gender: Gender? = null,
         age: Int? = null,
@@ -27,6 +29,7 @@ object MemberFixture {
         nickname = nickname,
         email = email,
         status = status,
+        suspendedUntil = suspendedUntil,
         role = role,
         gender = gender,
         age = age,
