@@ -46,6 +46,7 @@
                     피신고자: <span th:text="${report.reported.nickname}">닉네임</span>
                     <span class="badge cat" th:text="${report.reported.statusName}">상태</span>
                     <span class="badge warn" th:text="'추천 ' + ${report.reported.recommendedStrike} + '차'">추천 차수</span>
+                    <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
                 <table th:unless="${report.reported.sanctions.isEmpty()}">
@@ -70,10 +71,14 @@
 
             <!-- 신고자 -->
             <div class="card">
-                <h2>신고자: <span th:text="${report.reporter.nickname}">닉네임</span></h2>
+                <h2>
+                    신고자: <span th:text="${report.reporter.nickname}">닉네임</span>
+                    <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reporter.memberId})}">제재 관리</a>
+                </h2>
                 <p class="muted">
                     총 신고 <strong th:text="${report.reporter.totalReportCount}">0</strong>건 ·
                     악의적 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건
+                    — 허위 신고자 조치는 '제재 관리'에서 경위를 허위 신고자 제재로 선택해 진행
                 </p>
             </div>
 

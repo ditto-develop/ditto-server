@@ -304,4 +304,21 @@ class AdminWebTest {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/reports/" + report.id))
     }
+
+    @Test
+    @DisplayName("회원 제재 관리 페이지 렌더·직권 제재·해제")
+    fun memberSanctions() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "제재대상", status = MemberStatus.ACTIVE))
+
+        mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/admin/members/{id}/sanctions", member.id)
+                .with(authentication(admin())).with(csrf())
+                .param("level", "SUSPENSION").param("origin", "MANUAL").param("note", "직권"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/members/" + member.id + "/sanctions"))
+    }
 }
