@@ -19,7 +19,7 @@
                 <h2>
                     신고 내용
                     <span class="badge cat" th:text="${report.reasonDescription}">사유</span>
-                    <span class="badge warn" th:if="${report.recommendsSuspension}">정지 권고</span>
+                    <span class="badge warn" th:if="${report.isSevere}">즉시 조치 권고</span>
                 </h2>
                 <p class="muted">
                     접수 위치: <span th:text="${report.sourceDescription}">위치</span> ·

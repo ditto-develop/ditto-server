@@ -70,7 +70,7 @@ class AdminSanctionController(
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
-        runCatching { adminSanctionService.lift(id, serverTimeProvider.now()) }
+        val lifted = runCatching { adminSanctionService.lift(id, serverTimeProvider.now()) }
             .onSuccess {
                 log.info { "어드민[${admin.displayName}] 이 제재 #$id 를 직권 해제" }
                 redirectAttributes.addFlashAttribute("message", "제재 #$id 를 해제했습니다.")
@@ -79,7 +79,10 @@ class AdminSanctionController(
                 if (e !is WarnException) throw e
                 redirectAttributes.addFlashAttribute("error", e.message)
             }
-        return "redirect:/admin/members/$memberId/sanctions"
+            .getOrNull()
+
+        // 성공 시엔 서버가 조회한 실제 소속 회원으로 이동하고, 실패 시에만 폼 값(memberId)으로 돌아간다.
+        return "redirect:/admin/members/${lifted?.memberId ?: memberId}/sanctions"
     }
 
     companion object {

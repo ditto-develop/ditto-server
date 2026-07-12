@@ -91,7 +91,10 @@ class AdminSanctionService(
         val sanction = sanctionRepository.findById(sanctionId).getOrNull()
             ?: throw WarnException(ErrorCode.NOT_FOUND)
 
-        sanction.lift()
+        // 조건부 UPDATE가 이중 해제를 방어한다 — 0이면 이미 종결(만료·해제)된 제재.
+        if (sanctionRepository.liftIfActive(sanctionId, now) == 0) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
         recalculateMemberStatus(sanction.memberId, now)
         return sanction
     }

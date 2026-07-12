@@ -122,7 +122,7 @@ class AdminReportServiceTest(
 
             detail.reporter.totalReportCount shouldBe 2
             detail.reporter.abusiveRejectedCount shouldBe 1
-            detail.recommendsSuspension shouldBe true
+            detail.isSevere shouldBe true
         }
 
         "탈퇴한 회원은 대체 표기로 보여준다" {

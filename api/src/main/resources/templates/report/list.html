@@ -41,7 +41,7 @@
                         <td th:text="${r.id}">1</td>
                         <td>
                             <span th:text="${r.reasonDescription}">사유</span>
-                            <span class="badge warn" th:if="${r.recommendsSuspension}">정지 권고</span>
+                            <span class="badge warn" th:if="${r.isSevere}">즉시 조치 권고</span>
                         </td>
                         <td th:text="${r.reporterNickname}">신고자</td>
                         <td th:text="${r.reportedNickname}">피신고자</td>

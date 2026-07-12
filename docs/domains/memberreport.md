@@ -17,7 +17,9 @@
 - 자기 자신 신고 금지 (`MemberReport.receive`가 `CANNOT_REPORT_SELF`로 거부).
 - ETC(기타) 사유는 상세 설명(detail) 필수 (`REPORT_ETC_REASON_REQUIRED`).
 - detail은 `DETAIL_MAX_LENGTH`(500) 이하.
-- 검토는 신고당 1회 — 종결 상태(ACTIONED/REJECTED/REJECTED_ABUSIVE)는 불변, 전이는 RECEIVED에서만.
+- 검토는 신고당 1회 — 종결 상태(ACTIONED/REJECTED/REJECTED_ABUSIVE)는 불변, 전이는 RECEIVED에서만. 전이는 `MemberReportRepository.completeReview`의 조건부 UPDATE(WHERE status=RECEIVED)가 강제한다 — 두 관리자가 동시에 처리해도 한쪽만 성공(`REPORT_ALREADY_REVIEWED`), 제재 중복 적용 불가.
+- 검토 SLA: 접수 후 24시간 내 수동 검토 (기획) — 어드민 목록이 초과 건을 강조한다.
+- 검토자 기록은 표시명 스냅샷(`reviewer_name`) — 어드민 계정이 삭제돼도 감사 기록이 남는다.
 - 동일 (신고자, 피신고자) 쌍의 RECEIVED 신고가 있으면 재신고 불가 (`DUPLICATE_REPORT`).
 - 이미지는 신고당 최대 `MAX_COUNT`(3)장·중복 키 금지 (`MemberReportImage.attachAll`이 강제), `(member_report_id, display_order)` 유니크.
 - 이미지 키는 본인이 발급받아 업로드를 마친 `pending/user-reports/{memberId}/` 키만 접수 가능 (`INVALID_REPORT_IMAGE_KEY`), 접수 시 `user-reports/`(확정 영역)로 이동.
@@ -26,8 +28,11 @@
 ## 상태 전이
 
 ```
-RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토에서만, 후속 이슈)
+RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토 /admin/reports/{id}/action 에서만)
 ```
+
+- ACTIONED(제재 적용)는 검토 결정(경고/2주 정지/영구 차단)에 따라 같은 트랜잭션에서 sanction 생성 + 회원 전이 + refresh 회수를 수행한다 — 규칙은 `docs/domains/sanction.md`.
+- REJECTED_ABUSIVE(악의적 신고로 기각) 후 신고자 조치는 회원 제재 화면에서 직권(경위=FALSE_REPORT)으로 진행한다.
 
 ## 이미지 업로드 (presigned)
 

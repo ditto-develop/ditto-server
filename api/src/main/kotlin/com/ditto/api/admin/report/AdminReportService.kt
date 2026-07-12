@@ -40,7 +40,7 @@ class AdminReportService(
             ReportListItem(
                 id = report.id,
                 reasonDescription = report.reason.description,
-                recommendsSuspension = report.reason.recommendsSuspension,
+                isSevere = report.reason.isSevere,
                 reporterNickname = nicknames.getValue(report.reporterId),
                 reportedNickname = nicknames.getValue(report.reportedMemberId),
                 statusDescription = report.status.description,
@@ -62,7 +62,7 @@ class AdminReportService(
         return ReportDetailView(
             id = report.id,
             reasonDescription = report.reason.description,
-            recommendsSuspension = report.reason.recommendsSuspension,
+            isSevere = report.reason.isSevere,
             guideline = report.reason.guideline,
             sourceDescription = report.source.description,
             detail = report.detail,

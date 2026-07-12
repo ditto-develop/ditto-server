@@ -47,7 +47,8 @@ interface MemberReportRepository : JpaRepository<MemberReport, Long> {
     }
 
     @Transactional
-    @Modifying
+    // clearAutomatically: 같은 트랜잭션에서 이미 로드된 엔티티가 벌크 UPDATE 이후 스테일 값을 돌려주는 것을 방지
+    @Modifying(clearAutomatically = true)
     @Query(
         """
         update MemberReport r

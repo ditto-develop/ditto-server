@@ -6,6 +6,10 @@ import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.entity.SanctionStatus
 import java.time.LocalDateTime
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 
 interface SanctionRepository : JpaRepository<Sanction, Long> {
 
@@ -26,6 +30,30 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
         origin: SanctionOrigin,
         status: SanctionStatus,
     ): Long
+
+    /**
+     * 직권 해제 — ACTIVE일 때만 성공하는 조건부 UPDATE로 이중 해제를 방어한다 (반환 0이면 이미 종결됨).
+     * 신고 검토의 completeReview와 같은 관용구.
+     */
+    fun liftIfActive(id: Long, now: LocalDateTime): Int =
+        transitionStatus(id, SanctionStatus.ACTIVE, SanctionStatus.LIFTED, now)
+
+    @Transactional
+    // clearAutomatically: 같은 트랜잭션에서 이미 로드된 엔티티가 벌크 UPDATE 이후 스테일 값을 돌려주는 것을 방지
+    @Modifying(clearAutomatically = true)
+    @Query(
+        """
+        update Sanction s
+        set s.status = :result, s.updatedAt = :now
+        where s.id = :id and s.status = :expected
+        """,
+    )
+    fun transitionStatus(
+        @Param("id") id: Long,
+        @Param("expected") expected: SanctionStatus,
+        @Param("result") result: SanctionStatus,
+        @Param("now") now: LocalDateTime,
+    ): Int
 
     /** 특정 상태이면서 종료 일시가 지난 제재 목록 (만료 일괄 종결용). */
     fun findAllByStatusAndEndsAtLessThanEqual(status: SanctionStatus, endsAt: LocalDateTime): List<Sanction>

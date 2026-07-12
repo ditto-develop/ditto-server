@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 data class ReportDetailView(
     val id: Long,
     val reasonDescription: String,
-    val recommendsSuspension: Boolean,
+    val isSevere: Boolean,
     val guideline: String,
     val sourceDescription: String,
     val detail: String?,
