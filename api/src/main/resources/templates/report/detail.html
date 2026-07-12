@@ -77,6 +77,25 @@
                 </p>
             </div>
 
+            <!-- 검토 처리 (대기 건) -->
+            <div class="card" th:if="${report.received}">
+                <h2>검토 처리</h2>
+                <form th:action="@{/admin/reports/{id}/action(id=${report.id})}" method="post">
+                    <div class="field">
+                        <label>결정</label>
+                        <select name="decision">
+                            <option th:each="d : ${decisions}" th:value="${d.name()}" th:text="${d.description}">결정</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>메모 (선택, 최대 500자)</label>
+                        <textarea name="reviewNote" maxlength="500" rows="3" style="width:100%"></textarea>
+                    </div>
+                    <button class="btn" type="submit">처리</button>
+                </form>
+                <p class="muted">제재 결정(경고·정지·차단)은 즉시 발효됩니다. 악의적 신고로 기각한 경우 신고자 제재는 회원 제재 화면에서 직권으로 진행하세요.</p>
+            </div>
+
             <!-- 검토 결과 (종결 건) -->
             <div class="card" th:if="${report.review != null}">
                 <h2>검토 결과 <span class="badge cat" th:text="${report.review.statusDescription}">결과</span></h2>

@@ -286,4 +286,22 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin()))).andExpect(status().isOk)
     }
+
+    @Test
+    @DisplayName("신고 검토 처리 후 상세로 리다이렉트된다")
+    fun reviewReport() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자2", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자2", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(
+            post("/admin/reports/{id}/action", report.id)
+                .with(authentication(admin())).with(csrf())
+                .param("decision", "REJECT").param("reviewNote", "근거 부족"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/reports/" + report.id))
+    }
 }
