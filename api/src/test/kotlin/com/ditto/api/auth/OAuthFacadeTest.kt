@@ -6,6 +6,7 @@ import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
 import com.ditto.api.config.FrontProperties
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -35,6 +36,7 @@ class OAuthFacadeTest(
     private val jwtTokenProvider: JwtTokenProvider,
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
+    private val sanctionExpiryService: SanctionExpiryService,
     private val frontProperties: FrontProperties,
     dataSource: DataSource,
 ) : IntegrationTest(
@@ -56,6 +58,7 @@ class OAuthFacadeTest(
                     jwtTokenProvider = jwtTokenProvider,
                     authService = authService,
                     serverTimeProvider = serverTimeProvider,
+                    sanctionExpiryService = sanctionExpiryService,
                 )
 
                 val exception = shouldThrow<ErrorException> {
@@ -156,7 +159,7 @@ class OAuthFacadeTest(
                 result.refreshToken shouldBe null
             }
 
-            "정지 해제 예정일이 지난 회원은 정상 로그인된다" {
+            "정지 해제 예정일이 지난 회원은 정상 로그인되고 ACTIVE로 원복된다" {
                 val member =
                     memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
                 member.activate()
@@ -168,6 +171,10 @@ class OAuthFacadeTest(
                 val params = UriComponentsBuilder.fromUriString(result.redirectUrl).build().queryParams
                 params["accessToken"]?.first() shouldNotBe null
                 result.refreshToken shouldNotBe null
+
+                val reloaded = memberRepository.findById(member.id).orElseThrow()
+                reloaded.status shouldBe MemberStatus.ACTIVE
+                reloaded.suspendedUntil shouldBe null
             }
 
             "refreshToken은 redirect 쿼리 파라미터에 포함되지 않는다" {

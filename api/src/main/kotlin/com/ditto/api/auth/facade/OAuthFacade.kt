@@ -5,6 +5,7 @@ import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.member.entity.Member
@@ -18,6 +19,7 @@ class OAuthFacade(
     private val jwtTokenProvider: JwtTokenProvider,
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
+    private val sanctionExpiryService: SanctionExpiryService,
 ) {
     fun getAuthorizationUrl(provider: SocialProvider): String = oAuthService.getAuthorizationUrl(provider)
 
@@ -37,12 +39,15 @@ class OAuthFacade(
         )
 
         // 제재 회원은 토큰을 발급하지 않고 콜백으로 제재 사실만 전달한다. (해제일 경과한 정지는 통과)
+        val now = serverTimeProvider.now()
         if (member.isBanned()) {
             return sanctionLoginResult(ErrorCode.MEMBER_BANNED, member)
         }
-        if (member.isSuspendedAt(serverTimeProvider.now())) {
+        if (member.isSuspendedAt(now)) {
             return sanctionLoginResult(ErrorCode.MEMBER_SUSPENDED, member)
         }
+        // 해제일이 지난 정지는 로그인 시점에 원복한다 (lazy 만료의 개별 원복 훅 — ADR 0009).
+        sanctionExpiryService.reinstateIfExpired(member, now)
 
         val accessToken = jwtTokenProvider.generateAccessToken(member.id, member.role)
         val refreshToken = authService.createRefreshToken(member.id)
