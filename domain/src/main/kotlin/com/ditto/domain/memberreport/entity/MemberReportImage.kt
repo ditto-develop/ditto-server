@@ -1,5 +1,7 @@
 package com.ditto.domain.memberreport.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -40,14 +42,24 @@ class MemberReportImage private constructor(
     companion object {
         const val MAX_COUNT = 3
 
-        fun attach(
+        /** 신고 하나의 첨부 이미지 전체를 생성한다 — 개수 상한·중복 금지 불변식을 여기서 강제한다. */
+        fun attachAll(
             memberReportId: Long,
-            objectKey: String,
-            displayOrder: Int,
-        ): MemberReportImage = MemberReportImage(
-            memberReportId = memberReportId,
-            objectKey = objectKey,
-            displayOrder = displayOrder,
-        )
+            objectKeys: List<String>,
+        ): List<MemberReportImage> {
+            if (objectKeys.size > MAX_COUNT) {
+                throw WarnException(ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED)
+            }
+            if (objectKeys.size != objectKeys.distinct().size) {
+                throw WarnException(ErrorCode.INVALID_REPORT_IMAGE_KEY)
+            }
+            return objectKeys.mapIndexed { index, objectKey ->
+                MemberReportImage(
+                    memberReportId = memberReportId,
+                    objectKey = objectKey,
+                    displayOrder = index,
+                )
+            }
+        }
     }
 }

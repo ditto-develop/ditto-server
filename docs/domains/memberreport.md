@@ -19,8 +19,7 @@
 - detail은 `DETAIL_MAX_LENGTH`(500) 이하.
 - 검토는 신고당 1회 — 종결 상태(ACTIONED/REJECTED/REJECTED_ABUSIVE)는 불변, 전이는 RECEIVED에서만.
 - 동일 (신고자, 피신고자) 쌍의 RECEIVED 신고가 있으면 재신고 불가 (`DUPLICATE_REPORT`).
-- 회원당 하루 접수 상한 5건 (`DAILY_REPORT_LIMIT_EXCEEDED`) — 기준 시각은 `ServerTimeProvider`.
-- 이미지는 신고당 최대 `MAX_COUNT`(3)장, `(member_report_id, display_order)` 유니크.
+- 이미지는 신고당 최대 `MAX_COUNT`(3)장·중복 키 금지 (`MemberReportImage.attachAll`이 강제), `(member_report_id, display_order)` 유니크.
 - 이미지 키는 본인이 발급받아 업로드를 마친 `pending/user-reports/{memberId}/` 키만 접수 가능 (`INVALID_REPORT_IMAGE_KEY`), 접수 시 `user-reports/`(확정 영역)로 이동.
 - enum(`Reason`/`Source`)은 값 추가만 허용 — 배포된 값의 이름/`code` 변경·삭제 금지. 채팅 출시 시 `Source.CHAT_ROOM` 추가 예정.
 

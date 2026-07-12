@@ -68,17 +68,6 @@ class UserReportServiceTest(
             result.uploads.map { it.objectKey }.toSet().size shouldBe 3
         }
 
-        "최대 장수를 초과하면 발급을 거부한다" {
-            val request = IssueImageUploadUrlsRequest(
-                files = List(4) { ImageUploadFileRequest(contentType = "image/png", contentLength = 1024L) },
-            )
-
-            val exception = shouldThrow<WarnException> {
-                userReportService.issueImageUploadUrls(memberId = 1L, request = request)
-            }
-
-            exception.errorCode shouldBe ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED
-        }
     }
 
     "신고 접수" - {
@@ -199,14 +188,28 @@ class UserReportServiceTest(
             exception.errorCode shouldBe ErrorCode.DUPLICATE_REPORT
         }
 
-        "하루 접수 상한을 초과하면 거부한다" {
+        "잘못된 사유 code는 거부한다" {
             val reporter = saveActiveMember("신고자")
             val reported = saveActiveMember("피신고자")
-            repeat(5) { index ->
-                memberReportRepository.save(
-                    MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = 1000L + index),
+
+            val exception = shouldThrow<WarnException> {
+                userReportService.submitReport(
+                    reporterId = reporter.id,
+                    request = CreateUserReportRequest(
+                        reportedMemberId = reported.id,
+                        reason = "unknown-reason",
+                        source = "profile",
+                    ),
                 )
             }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "이미지가 최대 장수를 초과하면 거부한다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val imageKeys = List(4) { index -> "pending/user-reports/${reporter.id}/key-$index" }
 
             val exception = shouldThrow<WarnException> {
                 userReportService.submitReport(
@@ -215,11 +218,32 @@ class UserReportServiceTest(
                         reportedMemberId = reported.id,
                         reason = "inappropriate-behavior",
                         source = "profile",
+                        imageKeys = imageKeys,
                     ),
                 )
             }
 
-            exception.errorCode shouldBe ErrorCode.DAILY_REPORT_LIMIT_EXCEEDED
+            exception.errorCode shouldBe ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED
+        }
+
+        "같은 이미지 키를 중복 첨부하면 거부한다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val duplicatedKey = issueUploadedKeys(reporter.id, 1).first()
+
+            val exception = shouldThrow<WarnException> {
+                userReportService.submitReport(
+                    reporterId = reporter.id,
+                    request = CreateUserReportRequest(
+                        reportedMemberId = reported.id,
+                        reason = "inappropriate-behavior",
+                        source = "profile",
+                        imageKeys = listOf(duplicatedKey, duplicatedKey),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.INVALID_REPORT_IMAGE_KEY
         }
 
         "발급받지 않은 이미지 키는 거부한다" {

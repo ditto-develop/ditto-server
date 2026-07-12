@@ -1,7 +1,9 @@
 package com.ditto.api.userreport.dto
 
+import com.ditto.domain.memberreport.entity.MemberReportImage
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
+import jakarta.validation.constraints.Size
 
 /**
  * 신고 이미지 업로드 URL 발급 요청.
@@ -11,5 +13,6 @@ import jakarta.validation.constraints.NotEmpty
 data class IssueImageUploadUrlsRequest(
     @field:Valid
     @field:NotEmpty(message = "발급할 파일 정보가 없습니다.")
+    @field:Size(max = MemberReportImage.MAX_COUNT, message = "이미지 첨부는 최대 3장까지 가능합니다.")
     val files: List<ImageUploadFileRequest>,
 )

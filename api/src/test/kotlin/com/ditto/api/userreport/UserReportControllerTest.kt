@@ -83,6 +83,23 @@ class UserReportControllerTest : RestDocsTest() {
     }
 
     @Test
+    @DisplayName("업로드 URL 발급은 최대 장수를 초과하면 실패한다")
+    fun issueImageUploadUrlsOverLimit() {
+        val request = IssueImageUploadUrlsRequest(
+            files = List(4) { ImageUploadFileRequest(contentType = "image/png", contentLength = 1024L) },
+        )
+
+        mockMvc.perform(
+            post("/api/v1/user-reports/image-upload-urls")
+                .withApiKey()
+                .withBearerToken()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(jsonPath("$.success").value(false))
+    }
+
+    @Test
     @DisplayName("신고를 접수한다")
     fun createUserReport() {
         val reporter = memberRepository.save(Member(nickname = "신고자").apply { activate() })
@@ -121,8 +138,7 @@ class UserReportControllerTest : RestDocsTest() {
                             .tag("UserReports")
                             .summary("신고 접수")
                             .description(
-                                "상대 회원을 신고합니다. 자기 신고·검토 대기 중인 동일 대상 재신고는 거부되며, " +
-                                    "회원당 하루 5건까지 접수할 수 있습니다. " +
+                                "상대 회원을 신고합니다. 자기 신고·검토 대기 중인 동일 대상 재신고는 거부됩니다. " +
                                     "이미지는 업로드 URL 발급 API로 업로드를 마친 objectKey를 전달합니다.",
                             )
                             .requestFields(

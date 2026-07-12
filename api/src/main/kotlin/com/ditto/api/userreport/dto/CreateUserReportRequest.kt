@@ -1,6 +1,7 @@
 package com.ditto.api.userreport.dto
 
 import com.ditto.domain.memberreport.entity.MemberReport
+import com.ditto.domain.memberreport.entity.MemberReportImage
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
@@ -21,5 +22,6 @@ data class CreateUserReportRequest(
     @field:Size(max = MemberReport.DETAIL_MAX_LENGTH, message = "상세 설명은 최대 500자까지 가능합니다.")
     val detail: String? = null,
 
+    @field:Size(max = MemberReportImage.MAX_COUNT, message = "이미지 첨부는 최대 3장까지 가능합니다.")
     val imageKeys: List<String> = emptyList(),
 )

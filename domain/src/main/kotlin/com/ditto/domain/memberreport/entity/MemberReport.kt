@@ -26,7 +26,7 @@ import org.hibernate.annotations.Comment
     indexes = [
         Index(name = "member_report_index_1", columnList = "status, created_at"),
         Index(name = "member_report_index_2", columnList = "reported_member_id"),
-        Index(name = "member_report_index_3", columnList = "reporter_id"),
+        Index(name = "member_report_index_3", columnList = "reporter_id, reported_member_id, status"),
     ],
 )
 class MemberReport private constructor(

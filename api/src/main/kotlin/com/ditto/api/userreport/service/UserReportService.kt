@@ -1,6 +1,5 @@
 package com.ditto.api.userreport.service
 
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.userreport.dto.CreateUserReportRequest
 import com.ditto.api.userreport.dto.CreateUserReportResponse
 import com.ditto.api.userreport.dto.ImageUploadUrlResponse
@@ -17,6 +16,7 @@ import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.memberreport.repository.MemberReportImageRepository
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.infrastructure.storage.ObjectStorage
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.UUID
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,13 +27,9 @@ class UserReportService(
     private val memberReportImageRepository: MemberReportImageRepository,
     private val memberRepository: MemberRepository,
     private val objectStorage: ObjectStorage,
-    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     fun issueImageUploadUrls(memberId: Long, request: IssueImageUploadUrlsRequest): ImageUploadUrlsResponse {
-        if (request.files.size > MemberReportImage.MAX_COUNT) {
-            throw WarnException(ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED)
-        }
         val uploads = request.files.map { file ->
             val objectKey = "${pendingPrefix(memberId)}${UUID.randomUUID()}"
             ImageUploadUrlResponse(
@@ -46,25 +42,28 @@ class UserReportService(
 
     @Transactional
     fun submitReport(reporterId: Long, request: CreateUserReportRequest): CreateUserReportResponse {
-        val reason = MemberReportReason.from(request.reason)
-        val source = MemberReportSource.from(request.source)
+        // 순수 검증(사유·위치 매핑, 자기 신고, ETC 상세)을 DB 조회 전에 끝낸다.
+        val report = MemberReport.receive(
+            reporterId = reporterId,
+            reportedMemberId = request.reportedMemberId,
+            reason = MemberReportReason.from(request.reason),
+            source = MemberReportSource.from(request.source),
+            detail = request.detail,
+        )
 
         validateReportedMemberExists(request.reportedMemberId)
         validateNotDuplicated(reporterId, request.reportedMemberId)
-        validateDailyLimit(reporterId)
-        validateImageKeys(reporterId, request.imageKeys)
 
-        val report = memberReportRepository.save(
-            MemberReport.receive(
-                reporterId = reporterId,
-                reportedMemberId = request.reportedMemberId,
-                reason = reason,
-                source = source,
-                detail = request.detail,
-            ),
+        val saved = memberReportRepository.save(report)
+        val images = MemberReportImage.attachAll(
+            memberReportId = saved.id,
+            objectKeys = request.imageKeys.map { it.removePrefix(PENDING_ROOT) },
         )
-        attachImages(report.id, request.imageKeys)
-        return CreateUserReportResponse(id = report.id)
+        validateImageOwnership(reporterId, request.imageKeys)
+        memberReportImageRepository.saveAll(images)
+        // S3 이동은 모든 DB 작업이 끝난 뒤 마지막에 — 이후 실패 지점이 커밋뿐이도록 좁힌다.
+        moveToPermanent(request.imageKeys)
+        return CreateUserReportResponse(id = saved.id)
     }
 
     private fun validateReportedMemberExists(reportedMemberId: Long) {
@@ -84,21 +83,8 @@ class UserReportService(
         }
     }
 
-    private fun validateDailyLimit(reporterId: Long) {
-        val startOfToday = serverTimeProvider.now().toLocalDate().atStartOfDay()
-        val todayCount = memberReportRepository.countByReporterIdAndCreatedAtGreaterThanEqual(reporterId, startOfToday)
-        if (todayCount >= DAILY_REPORT_LIMIT) {
-            throw WarnException(ErrorCode.DAILY_REPORT_LIMIT_EXCEEDED)
-        }
-    }
-
-    private fun validateImageKeys(reporterId: Long, imageKeys: List<String>) {
-        if (imageKeys.size > MemberReportImage.MAX_COUNT) {
-            throw WarnException(ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED)
-        }
-        if (imageKeys.size != imageKeys.distinct().size) {
-            throw WarnException(ErrorCode.INVALID_REPORT_IMAGE_KEY)
-        }
+    /** 본인이 발급받아 실제 업로드를 마친 키만 접수할 수 있다. */
+    private fun validateImageOwnership(reporterId: Long, imageKeys: List<String>) {
         imageKeys.forEach { key ->
             if (!key.startsWith(pendingPrefix(reporterId)) || !objectStorage.exists(key)) {
                 throw WarnException(ErrorCode.INVALID_REPORT_IMAGE_KEY)
@@ -106,27 +92,40 @@ class UserReportService(
         }
     }
 
-    /** 검증이 끝난 이미지를 확정 영역으로 옮기고 신고에 연결한다. */
-    private fun attachImages(reportId: Long, imageKeys: List<String>) {
-        val images = imageKeys.mapIndexed { index, sourceKey ->
-            val permanentKey = sourceKey.removePrefix(PENDING_ROOT)
-            objectStorage.move(sourceKey, permanentKey)
-            MemberReportImage.attach(
-                memberReportId = reportId,
-                objectKey = permanentKey,
-                displayOrder = index,
-            )
+    /**
+     * 업로드 이미지를 확정 영역으로 옮긴다. DB 트랜잭션과 S3는 원자적으로 묶이지 않으므로,
+     * 도중 실패하면 이미 옮긴 객체를 pending으로 되돌려(best-effort) 고아 객체를 막는다.
+     */
+    private fun moveToPermanent(imageKeys: List<String>) {
+        val movedKeys = mutableListOf<String>()
+        imageKeys.forEach { sourceKey ->
+            runCatching {
+                objectStorage.move(sourceKey, sourceKey.removePrefix(PENDING_ROOT))
+            }.onFailure { exception ->
+                restoreToPending(movedKeys)
+                throw exception
+            }
+            movedKeys.add(sourceKey)
         }
-        memberReportImageRepository.saveAll(images)
+    }
+
+    private fun restoreToPending(movedKeys: List<String>) {
+        movedKeys.forEach { sourceKey ->
+            runCatching {
+                objectStorage.move(sourceKey.removePrefix(PENDING_ROOT), sourceKey)
+            }.onFailure { exception ->
+                logger.warn(exception) { "신고 이미지 보상 이동 실패 — 확정 영역에 고아 객체 잔존 가능: $sourceKey" }
+            }
+        }
     }
 
     private fun pendingPrefix(memberId: Long): String = "$PENDING_ROOT$PERMANENT_KEY_PREFIX/$memberId/"
 
     companion object {
+        private val logger = KotlinLogging.logger {}
+
         // 접수되지 않은 업로드는 S3 라이프사이클 규칙이 pending/ 접두사 기준으로 삭제한다.
         private const val PENDING_ROOT = "pending/"
         private const val PERMANENT_KEY_PREFIX = "user-reports"
-        // 어드민 검토 큐 마비·집단 신고를 완화하기 위한 회원당 일일 접수 상한
-        private const val DAILY_REPORT_LIMIT = 5
     }
 }

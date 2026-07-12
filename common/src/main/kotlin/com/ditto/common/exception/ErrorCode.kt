@@ -32,6 +32,5 @@ enum class ErrorCode(
     REPORT_ETC_REASON_REQUIRED(400, "6003", "기타 사유는 상세 설명을 입력해야 합니다."),
     REPORT_IMAGE_LIMIT_EXCEEDED(400, "6004", "이미지 첨부는 최대 3장까지 가능합니다."),
     INVALID_REPORT_IMAGE_KEY(400, "6005", "유효하지 않은 첨부 이미지입니다."),
-    DAILY_REPORT_LIMIT_EXCEEDED(429, "6006", "하루 신고 가능 횟수를 초과했습니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }

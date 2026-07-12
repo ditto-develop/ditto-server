@@ -16,7 +16,8 @@ CREATE TABLE member_report
 
 CREATE INDEX member_report_index_1 ON member_report (status, created_at);
 CREATE INDEX member_report_index_2 ON member_report (reported_member_id);
-CREATE INDEX member_report_index_3 ON member_report (reporter_id);
+-- 중복 신고 검사용
+CREATE INDEX member_report_index_3 ON member_report (reporter_id, reported_member_id, status);
 
 -- member_report_image 테이블
 -- 신고당 최대 3장의 첨부 이미지를 가진다. object_key는 S3 비공개 버킷의 객체 키.
