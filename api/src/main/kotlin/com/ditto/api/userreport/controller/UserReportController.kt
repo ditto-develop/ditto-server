@@ -1,6 +1,8 @@
 package com.ditto.api.userreport.controller
 
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.userreport.dto.CreateUserReportRequest
+import com.ditto.api.userreport.dto.CreateUserReportResponse
 import com.ditto.api.userreport.dto.ImageUploadUrlsResponse
 import com.ditto.api.userreport.dto.IssueImageUploadUrlsRequest
 import com.ditto.api.userreport.service.UserReportService
@@ -22,6 +24,15 @@ class UserReportController(
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<ImageUploadUrlsResponse> {
         val result = userReportService.issueImageUploadUrls(principal.memberId, request)
+        return ApiResponse.ok(result)
+    }
+
+    @PostMapping("/api/v1/user-reports")
+    fun createUserReport(
+        @Valid @RequestBody request: CreateUserReportRequest,
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<CreateUserReportResponse> {
+        val result = userReportService.submitReport(principal.memberId, request)
         return ApiResponse.ok(result)
     }
 }
