@@ -7,6 +7,7 @@ import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
@@ -18,6 +19,7 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.sanction.repository.SanctionRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,6 +35,7 @@ class QuizProgressService(
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizSetRepository: QuizSetRepository,
     private val quizProperties: QuizProperties,
+    private val sanctionRepository: SanctionRepository,
 ) {
     @Transactional
     fun submitAnswer(
@@ -41,6 +44,7 @@ class QuizProgressService(
         now: LocalDateTime,
     ) {
         validateAvailableDay(now)
+        validateNotQuizBlocked(memberId, now)
 
         val quiz = findQuiz(request.quizId)
 
@@ -147,6 +151,8 @@ class QuizProgressService(
         memberId: Long,
         now: LocalDateTime,
     ) {
+        validateNotQuizBlocked(memberId, now)
+
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
         if (quizSets.isEmpty()) {
@@ -179,6 +185,13 @@ class QuizProgressService(
 
         if (!quizSet.isActive || !isInPeriod) {
             throw ErrorException(ErrorCode.QUIZ_NOT_IN_ACTIVE_SET)
+        }
+    }
+
+    /** 1차 제재(경고)의 차단 구간에는 퀴즈 참여를 막는다 — 구간은 sanction이 datetime으로 보유 (ADR 0009). */
+    private fun validateNotQuizBlocked(memberId: Long, now: LocalDateTime) {
+        if (sanctionRepository.existsActiveWarningAt(memberId, now)) {
+            throw WarnException(ErrorCode.QUIZ_BLOCKED_BY_SANCTION)
         }
     }
 

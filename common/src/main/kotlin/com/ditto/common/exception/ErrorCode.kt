@@ -34,5 +34,6 @@ enum class ErrorCode(
     INVALID_REPORT_IMAGE_KEY(400, "6005", "유효하지 않은 첨부 이미지입니다."),
     MEMBER_SUSPENDED(403, "6006", "이용이 정지된 계정입니다."),
     MEMBER_BANNED(403, "6007", "영구 차단된 계정입니다."),
+    QUIZ_BLOCKED_BY_SANCTION(403, "6008", "제재로 인해 이번 주 퀴즈에 참여할 수 없습니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
