@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import java.time.LocalDateTime
 import org.hibernate.annotations.Comment
 
 /**
@@ -61,6 +62,22 @@ class MemberReport private constructor(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     val status: MemberReportStatus = MemberReportStatus.RECEIVED,
+
+    @Comment("검토자 회원 ID")
+    @Column(name = "reviewed_by")
+    val reviewedBy: Long? = null,
+
+    @Comment("검토자 표시명 스냅샷 (계정 삭제 후에도 감사 기록 보존)")
+    @Column(name = "reviewer_name", length = 50)
+    val reviewerName: String? = null,
+
+    @Comment("검토 일시")
+    @Column(name = "reviewed_at")
+    val reviewedAt: LocalDateTime? = null,
+
+    @Comment("검토 메모")
+    @Column(name = "review_note", length = 500)
+    val reviewNote: String? = null,
 ) : BaseEntity() {
 
     companion object {
