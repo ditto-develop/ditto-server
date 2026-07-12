@@ -6,6 +6,7 @@ import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
 import com.ditto.api.config.FrontProperties
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
@@ -33,6 +34,7 @@ class OAuthFacadeTest(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val jwtTokenProvider: JwtTokenProvider,
     private val authService: AuthService,
+    private val serverTimeProvider: ServerTimeProvider,
     private val frontProperties: FrontProperties,
     dataSource: DataSource,
 ) : IntegrationTest(
@@ -53,6 +55,7 @@ class OAuthFacadeTest(
                     memberSocialAccountService = memberSocialAccountService,
                     jwtTokenProvider = jwtTokenProvider,
                     authService = authService,
+                    serverTimeProvider = serverTimeProvider,
                 )
 
                 val exception = shouldThrow<ErrorException> {
@@ -118,6 +121,53 @@ class OAuthFacadeTest(
                 jwtTokenProvider.isValid(params["accessToken"]!!.first()) shouldBe true
                 result.refreshToken shouldNotBe null
                 refreshTokenRepository.count() shouldBe 1
+            }
+
+            "이용 정지 중인 회원이 로그인하면 토큰 없이 제재 콜백으로 안내한다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.suspendUntil(LocalDateTime.now().plusDays(7))
+                memberRepository.save(member)
+
+                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                val params = UriComponentsBuilder.fromUriString(result.redirectUrl).build().queryParams
+                params["sanctioned"]?.first() shouldBe "true"
+                params["sanctionCode"]?.first() shouldBe "MEMBER_SUSPENDED"
+                params["suspendedUntil"]?.first() shouldNotBe null
+                params["accessToken"] shouldBe null
+                result.refreshToken shouldBe null
+                refreshTokenRepository.count() shouldBe 0
+            }
+
+            "영구 차단 회원이 로그인하면 토큰 없이 차단 콜백으로 안내한다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.ban()
+                memberRepository.save(member)
+
+                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                val params = UriComponentsBuilder.fromUriString(result.redirectUrl).build().queryParams
+                params["sanctionCode"]?.first() shouldBe "MEMBER_BANNED"
+                params["suspendedUntil"] shouldBe null
+                result.refreshToken shouldBe null
+            }
+
+            "정지 해제 예정일이 지난 회원은 정상 로그인된다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.suspendUntil(LocalDateTime.now().minusDays(1))
+                memberRepository.save(member)
+
+                val result = oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                val params = UriComponentsBuilder.fromUriString(result.redirectUrl).build().queryParams
+                params["accessToken"]?.first() shouldNotBe null
+                result.refreshToken shouldNotBe null
             }
 
             "refreshToken은 redirect 쿼리 파라미터에 포함되지 않는다" {

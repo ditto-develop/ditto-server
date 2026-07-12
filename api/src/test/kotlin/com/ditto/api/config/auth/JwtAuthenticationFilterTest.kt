@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 
 @Import(TestExceptionController::class)
 class JwtAuthenticationFilterTest : RestDocsTest() {
@@ -164,5 +165,62 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
             .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.error.statusCode").value(401))
             .andExpect(jsonPath("$.error.code").value("0002"))
+    }
+
+    @Test
+    @DisplayName("영구 차단 회원은 보호 API 접근이 차단된다(403)")
+    fun bannedMemberForbidden() {
+        val member = memberRepository.save(Member(nickname = "차단유저").apply { activate(); ban() })
+        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+
+        mockMvc.perform(
+            get("/api/test/me")
+                .withApiKey()
+                .header("Authorization", "Bearer $token"),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("6007"))
+    }
+
+    @Test
+    @DisplayName("이용 정지 중인 회원은 보호 API 접근이 차단된다(403)")
+    fun suspendedMemberForbidden() {
+        val member = memberRepository.save(
+            Member(nickname = "정지유저").apply {
+                activate()
+                suspendUntil(LocalDateTime.now().plusDays(7))
+            },
+        )
+        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+
+        mockMvc.perform(
+            get("/api/test/me")
+                .withApiKey()
+                .header("Authorization", "Bearer $token"),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("6006"))
+    }
+
+    @Test
+    @DisplayName("정지 해제 예정일이 지난 회원은 통과한다 — 원복은 배치·로그인 몫")
+    fun expiredSuspensionPasses() {
+        val member = memberRepository.save(
+            Member(nickname = "만료정지유저").apply {
+                activate()
+                suspendUntil(LocalDateTime.now().minusDays(1))
+            },
+        )
+        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+
+        mockMvc.perform(
+            get("/api/test/me")
+                .withApiKey()
+                .header("Authorization", "Bearer $token"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
     }
 }

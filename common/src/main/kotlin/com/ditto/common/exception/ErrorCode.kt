@@ -32,5 +32,7 @@ enum class ErrorCode(
     REPORT_ETC_REASON_REQUIRED(400, "6003", "기타 사유는 상세 설명을 입력해야 합니다."),
     REPORT_IMAGE_LIMIT_EXCEEDED(400, "6004", "이미지 첨부는 최대 3장까지 가능합니다."),
     INVALID_REPORT_IMAGE_KEY(400, "6005", "유효하지 않은 첨부 이미지입니다."),
+    MEMBER_SUSPENDED(403, "6006", "이용이 정지된 계정입니다."),
+    MEMBER_BANNED(403, "6007", "영구 차단된 계정입니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }

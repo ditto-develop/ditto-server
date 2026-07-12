@@ -5,6 +5,7 @@ import com.ditto.api.config.auth.ApiKeyProperties
 import com.ditto.api.config.auth.CorsProperties
 import com.ditto.api.config.auth.JwtAuthenticationFilter
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -25,6 +26,7 @@ class SecurityConfig(
     private val jwtTokenProvider: JwtTokenProvider,
     private val corsProperties: CorsProperties,
     private val memberRepository: MemberRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     /**
@@ -106,7 +108,12 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(
-                JwtAuthenticationFilter(jwtTokenProvider, memberRepository, pendingAllowedPaths = PENDING_ALLOWED_PATHS),
+                JwtAuthenticationFilter(
+                    jwtTokenProvider,
+                    memberRepository,
+                    serverTimeProvider,
+                    pendingAllowedPaths = PENDING_ALLOWED_PATHS,
+                ),
                 ApiKeyAuthFilter::class.java,
             )
             .authorizeHttpRequests { it.anyRequest().authenticated() }
