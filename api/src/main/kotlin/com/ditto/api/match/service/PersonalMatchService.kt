@@ -1,5 +1,6 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.chat.service.ChatService
 import com.ditto.api.match.dto.PersonalMatchListResponse
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class PersonalMatchService(
     private val personalMatchRepository: PersonalMatchRepository,
+    private val chatService: ChatService,
 ) {
 
     /** 보낸/받은 1:1 매칭 요청 목록 조회 */
@@ -65,6 +67,7 @@ class PersonalMatchService(
         val match = findMatchOrThrow(matchId)
         validateReceiver(match, memberId)
         match.accept()
+        chatService.createPersonalRoom(match.id, match.memberId1, match.memberId2)
         return PersonalMatchResponse.from(match)
     }
 

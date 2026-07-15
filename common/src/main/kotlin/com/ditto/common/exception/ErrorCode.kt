@@ -27,5 +27,7 @@ enum class ErrorCode(
     ALREADY_DECLINED_GROUP(409, "5006", "이미 그룹 매칭을 거절했습니다."),
     QUIZ_NOT_COMPLETED(403, "5007", "퀴즈를 완료하지 않았습니다."),
     NOT_MATCHING_PERIOD(403, "5008", "매칭 기간이 아닙니다."),
+    CHAT_ROOM_NOT_FOUND(404, "6001", "존재하지 않는 채팅방입니다."),
+    NOT_CHAT_ROOM_MEMBER(403, "6002", "채팅방에 참여한 회원이 아닙니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }

@@ -5,6 +5,8 @@ import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
@@ -16,6 +18,7 @@ import javax.sql.DataSource
 class PersonalMatchServiceTest(
     private val personalMatchService: PersonalMatchService,
     private val personalMatchRepository: PersonalMatchRepository,
+    private val chatRoomRepository: ChatRoomRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -136,6 +139,19 @@ class PersonalMatchServiceTest(
         // then
         result.status shouldBe PersonalMatchStatus.ACCEPTED
         result.respondedAt shouldNotBe null
+    }
+
+    "수신자가 수락하면 두 회원의 1:1 채팅방이 생성된다" {
+        // given
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = 10L)
+        )
+
+        // when
+        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+
+        // then
+        chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
     }
 
     "수신자가 아닌 사용자가 수락을 시도하면 FORBIDDEN 예외가 발생한다" {
