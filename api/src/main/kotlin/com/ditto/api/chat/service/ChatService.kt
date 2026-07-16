@@ -5,6 +5,7 @@ import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -75,6 +76,22 @@ class ChatService(
         )
     }
 
+    /** 메시지 전송 — 멤버십·내용 검증 후 저장하고 저장된 메시지를 반환한다. (브로드캐스트는 STOMP 컨트롤러 책임) */
+    @Transactional
+    fun sendMessage(senderId: Long, roomId: Long, content: String): ChatMessageResponse {
+        validateRoomMember(roomId, senderId)
+
+        val trimmed = content.trim()
+        if (trimmed.isEmpty() || trimmed.length > MAX_CONTENT_LENGTH) {
+            throw WarnException(ErrorCode.BAD_REQUEST)
+        }
+
+        val message = chatMessageRepository.save(
+            ChatMessage.of(roomId = roomId, senderId = senderId, content = trimmed),
+        )
+        return ChatMessageResponse.from(message)
+    }
+
     /** 읽음 처리 — 내 last_read_message_id 를 전진시킨다. */
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
@@ -121,5 +138,6 @@ class ChatService(
 
     companion object {
         private const val MAX_PAGE_SIZE = 100
+        private const val MAX_CONTENT_LENGTH = 1000
     }
 }

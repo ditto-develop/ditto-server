@@ -114,10 +114,27 @@ class SecurityConfig(
     }
 
     /**
-     * 그 외 모든 경로 — 차단
+     * WebSocket(STOMP) 핸드셰이크 — HTTP 계층은 permitAll.
+     * 브라우저 WebSocket 은 핸드셰이크에 커스텀 헤더(X-API-Key/Authorization)를 실을 수 없으므로,
+     * 실제 인증·인가는 STOMP CONNECT/SUBSCRIBE 프레임에서 `StompAuthChannelInterceptor` 가 수행한다.
+     * 배경: ADR 0009.
      */
     @Bean
     @Order(6)
+    fun webSocketSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        return http
+            .securityMatcher("/ws/**")
+            .csrf { it.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { it.anyRequest().permitAll() }
+            .build()
+    }
+
+    /**
+     * 그 외 모든 경로 — 차단
+     */
+    @Bean
+    @Order(7)
     fun defaultSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .csrf { it.disable() }

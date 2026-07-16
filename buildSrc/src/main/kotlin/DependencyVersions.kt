@@ -24,6 +24,7 @@ object Dependencies {
     const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib"
     const val SPRING_BOOT_STARTER = "org.springframework.boot:spring-boot-starter"
     const val SPRING_BOOT_STARTER_WEB = "org.springframework.boot:spring-boot-starter-web"
+    const val SPRING_BOOT_STARTER_WEBSOCKET = "org.springframework.boot:spring-boot-starter-websocket"
     const val SPRING_BOOT_STARTER_DATA_JPA = "org.springframework.boot:spring-boot-starter-data-jpa"
     const val SPRING_BOOT_STARTER_VALIDATION = "org.springframework.boot:spring-boot-starter-validation"
     const val SPRING_BOOT_STARTER_SECURITY = "org.springframework.boot:spring-boot-starter-security"

@@ -17,6 +17,7 @@
 - 카카오 동의항목(email·생년월일)은 콜백 쿼리가 아니라 `GET /api/v1/users/me`로 전달. PENDING 허용은 `JwtAuthenticationFilter`의 `pendingAllowedPaths`로 처리. [ADR 0005](../adr/0005-kakao-consent-via-me-api.md)
 - PENDING 게이트: 회원가입 미완료 회원은 `pendingAllowedPaths` 외 보호 API 접근 시 `SIGNUP_REQUIRED`.
 - 어드민 인가는 `@PreAuthorize`가 아니라 `JwtAuthenticationFilter`의 경로 prefix 검사: `/api/v1/admin` 경로는 `member.isAdmin()` 아니면 `403 FORBIDDEN`. [ADR 0006](../adr/0006-admin-authz-filter-path-check.md)
+- WebSocket(STOMP): `/ws` 핸드셰이크는 HTTP 계층 permitAll(브라우저 WS 헤더 제약), 인증·인가는 `StompAuthChannelInterceptor`(CONNECT: `X-API-Key`+JWT, SUBSCRIBE: 방 멤버십). deny-all 체인은 `@Order(7)`. [ADR 0009](../adr/0009-websocket-stomp-auth.md)
 
 ## 어드민 표면 (코드 확인 — ADR 미반영)
 어드민은 두 표면으로 나뉜다.
@@ -30,6 +31,7 @@
 - [0004](../adr/0004-oauth-callback-redirect-and-cookie.md) OAuth 콜백 302 + refresh 쿠키
 - [0005](../adr/0005-kakao-consent-via-me-api.md) 카카오 동의항목 me API 전달
 - [0006](../adr/0006-admin-authz-filter-path-check.md) 어드민 인가 필터 경로 검사
+- [0009](../adr/0009-websocket-stomp-auth.md) WebSocket(STOMP) 인증 — 핸드셰이크 개방 + 프레임 레벨 인증·구독 인가
 
 ## 핵심 파일
 - 체인 정의: `api/src/main/kotlin/com/ditto/api/config/SecurityConfig.kt` (Order 1~6, 각 체인 KDoc)
