@@ -5,6 +5,7 @@ import com.ditto.api.config.auth.ApiKeyProperties
 import com.ditto.api.config.auth.CorsProperties
 import com.ditto.api.config.auth.JwtAuthenticationFilter
 import com.ditto.api.config.auth.JwtTokenProvider
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -25,6 +26,7 @@ class SecurityConfig(
     private val jwtTokenProvider: JwtTokenProvider,
     private val corsProperties: CorsProperties,
     private val memberRepository: MemberRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     /**
@@ -106,7 +108,13 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .addFilterBefore(ApiKeyAuthFilter(apiKeyProperties), UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(
-                JwtAuthenticationFilter(jwtTokenProvider, memberRepository, pendingAllowedPaths = PENDING_ALLOWED_PATHS),
+                JwtAuthenticationFilter(
+                    jwtTokenProvider,
+                    memberRepository,
+                    serverTimeProvider,
+                    pendingAllowedPaths = PENDING_ALLOWED_PATHS,
+                    suspendedAllowedPaths = SUSPENDED_ALLOWED_PATHS,
+                ),
                 ApiKeyAuthFilter::class.java,
             )
             .authorizeHttpRequests { it.anyRequest().authenticated() }
@@ -155,5 +163,8 @@ class SecurityConfig(
         //    같은 경로에 다른 method 엔드포인트(예: GET/DELETE /api/v1/users)를 추가하면
         //    PENDING 회원에게도 함께 열리므로, 그때 PENDING 노출 여부를 반드시 재검토할 것.
         private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me", "/api/v1/users")
+
+        // 제재 회원의 유일한 안내 창구 — URI-only 매칭이므로 다른 기능과 경로를 공유하지 말 것.
+        private val SUSPENDED_ALLOWED_PATHS = setOf("/api/v1/users/me/sanction")
     }
 }

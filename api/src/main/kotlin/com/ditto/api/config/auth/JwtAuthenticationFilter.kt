@@ -1,8 +1,10 @@
 package com.ditto.api.config.auth
 
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.response.ApiResponse
 import com.ditto.common.serialization.ObjectMapperFactory
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -15,7 +17,9 @@ import kotlin.jvm.optionals.getOrNull
 class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
+    private val serverTimeProvider: ServerTimeProvider,
     private val pendingAllowedPaths: Set<String> = emptySet(),
+    private val suspendedAllowedPaths: Set<String> = emptySet(),
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -40,6 +44,19 @@ class JwtAuthenticationFilter(
         if (member.isPending() && request.requestURI !in pendingAllowedPaths) {
             sendError(response, ErrorCode.SIGNUP_REQUIRED)
             return
+        }
+
+        // 제재 회원은 안내 창구(suspendedAllowedPaths) 외 전면 차단한다.
+        // 해제 예정일이 지난 정지는 통과만 시킨다 — 필터는 읽기 전용, status 원복은 배치·로그인이 (ADR 0009).
+        if (request.requestURI !in suspendedAllowedPaths) {
+            if (member.isBanned()) {
+                sendError(response, ErrorCode.MEMBER_BANNED)
+                return
+            }
+            if (member.status == MemberStatus.SUSPENDED && member.isSuspendedAt(serverTimeProvider.now())) {
+                sendError(response, ErrorCode.MEMBER_SUSPENDED)
+                return
+            }
         }
 
         if (request.requestURI.startsWith(ADMIN_PATH_PREFIX) && !member.isAdmin()) {

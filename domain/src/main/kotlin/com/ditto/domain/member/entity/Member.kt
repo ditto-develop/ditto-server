@@ -1,5 +1,7 @@
 package com.ditto.domain.member.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import com.ditto.domain.member.converter.InterestSetConverter
 import jakarta.persistence.Column
@@ -19,7 +21,10 @@ import java.time.LocalDateTime
 @Entity
 @Table(
     name = "member",
-    indexes = [Index(name = "member_index_1", columnList = "created_at, status")],
+    indexes = [
+        Index(name = "member_index_1", columnList = "created_at, status"),
+        Index(name = "member_index_2", columnList = "status, suspended_until"),
+    ],
     uniqueConstraints = [UniqueConstraint(name = "member_unique_1", columnNames = ["nickname"])],
 )
 class Member(
@@ -40,6 +45,10 @@ class Member(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     var status: MemberStatus = MemberStatus.PENDING,
+
+    @Comment("이용 정지 해제 예정 일시 (SUSPENDED일 때만 값 존재)")
+    @Column(name = "suspended_until", nullable = true)
+    var suspendedUntil: LocalDateTime? = null,
 
     @Comment("회원 권한")
     @Enumerated(EnumType.STRING)
@@ -120,10 +129,48 @@ class Member(
     fun isPending(): Boolean = status == MemberStatus.PENDING
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
     fun isAdmin(): Boolean = role == MemberRole.ADMIN
+    fun isBanned(): Boolean = status == MemberStatus.BANNED
+
+    /**
+     * 주어진 시각 기준 이용 정지 중인지. 해제 예정일이 지났으면 정지로 보지 않는다
+     * — status 원복은 배치·로그인 시점에 일어난다 (lazy 만료, ADR 0009).
+     */
+    fun isSuspendedAt(now: LocalDateTime): Boolean {
+        if (status != MemberStatus.SUSPENDED) return false
+        val until = suspendedUntil ?: return true
+        return until > now
+    }
 
     /** 회원 권한을 변경한다(어드민 운영용). */
     fun changeRole(role: MemberRole) {
         this.role = role
+    }
+
+    /** 기간 이용 정지. 영구 차단(BANNED)은 정지로 낮출 수 없다. */
+    fun suspendUntil(until: LocalDateTime) {
+        if (status == MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.SUSPENDED
+        suspendedUntil = until
+    }
+
+    /** 영구 차단. ACTIVE·SUSPENDED에서만 전이하며, 해제는 [reinstate](어드민 직권)로만 가능하다. */
+    fun ban() {
+        if (status != MemberStatus.ACTIVE && status != MemberStatus.SUSPENDED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.BANNED
+        suspendedUntil = null
+    }
+
+    /** 제재 해제 — 정지 만료·어드민 직권 해제 시 활성으로 원복한다. */
+    fun reinstate() {
+        if (status != MemberStatus.SUSPENDED && status != MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.ACTIVE
+        suspendedUntil = null
     }
 
     fun register(
@@ -139,6 +186,10 @@ class Member(
         job: Job,
         caricature: String,
     ) {
+        // 가입 완료는 PENDING에서만 — 제재(SUSPENDED/BANNED) 회원이 이 경로로 ACTIVE가 되는 것을 봉쇄한다.
+        if (status != MemberStatus.PENDING) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
         if (name != null) this.name = name
         if (nickname != null) this.nickname = nickname
         if (phoneNumber != null) this.phoneNumber = phoneNumber

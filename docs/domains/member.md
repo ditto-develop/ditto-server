@@ -8,11 +8,25 @@
 `Member`, `MemberStatus`(상태), `MemberRole`(역할), `Gender`/`GenderPreference`(성별·선호), `Job`, `Location`, `Interest`(관심사).
 
 ## 불변식
-- TODO: 온보딩 필수 정보·상태 전이 조건·역할 부여 규칙을 코드 확인 후 기술.
+- 가입 완료(`register`)는 PENDING에서만 가능 — 제재(SUSPENDED/BANNED) 회원이 이 경로로 ACTIVE가 될 수 없다 (`INVALID_STATUS_TRANSITION`).
+- `suspended_until`은 SUSPENDED일 때만 값이 존재한다 (`suspendUntil`이 설정, `ban`/`reinstate`가 비움).
+- BANNED는 정지(`suspendUntil`)로 낮출 수 없다. 해제는 `reinstate`(어드민 직권)로만.
+- `reinstate`는 SUSPENDED/BANNED에서만 호출 가능.
+- 온보딩 필수 정보: 관심사·사는곳·직업·캐리커쳐는 가입 완료 시 항상 채운다 (`register`).
+- TODO: 역할(Role) 부여 규칙.
 
 ## 상태 전이
-- 상태 enum: `member/entity/MemberStatus`.
-- TODO: 가입→온보딩→활성 등 전이를 서비스 로직 확인 후 명시.
+
+```
+PENDING → ACTIVE                    (register — 가입 완료)
+ACTIVE → SUSPENDED                  (suspendUntil — 기간 이용 정지, 2차 제재)
+ACTIVE|SUSPENDED → BANNED           (ban — 영구 차단, 3차·중대 위반)
+SUSPENDED|BANNED → ACTIVE           (reinstate — 정지 만료·어드민 직권 해제)
+```
+
+- 1차 제재(경고)는 status를 바꾸지 않는다 — 퀴즈 참여만 sanction 조회로 차단.
+- SUSPENDED의 만료 판정은 lazy(요청 시 `suspended_until` 경과 확인), status 원복은 매칭 배치·로그인 시. 배경: 신고·제재 계획 참조.
+- 제재 상태의 이력·차수 SSOT는 `sanction` 도메인, `Member.status`는 매 요청 집행용 반영값.
 
 ## 핵심 파일
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/member/entity/`

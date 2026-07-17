@@ -37,7 +37,7 @@ class OAuthController(
         response: HttpServletResponse,
     ): ResponseEntity<Unit> {
         val oauthLoginResult = oAuthFacade.login(provider, code)
-        refreshTokenCookieFactory.addTo(response, oauthLoginResult.refreshToken)
+        oauthLoginResult.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
 
         return ResponseEntity.status(HttpStatus.FOUND)
             .location(URI.create(oauthLoginResult.redirectUrl))

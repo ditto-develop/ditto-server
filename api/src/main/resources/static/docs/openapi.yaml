@@ -39,7 +39,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/ebde0ce4-cd5d-4b17-bb6a-911fa872f890" ]
+                    "imageKeys" : [ "pending/user-reports/1/a557e85c-2fc2-4ee9-9656-2a34db950742" ]
                   }
       responses:
         "200":
@@ -113,10 +113,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-07-12 15:22:22",
+                        "joinedAt" : "2026-07-18 00:10:43",
                         "role" : null,
-                        "createdAt" : "2026-07-12 15:22:22",
-                        "updatedAt" : "2026-07-12 15:22:22"
+                        "createdAt" : "2026-07-18 00:10:43",
+                        "updatedAt" : "2026-07-18 00:10:43"
                       },
                       "error" : null
                     }
@@ -314,7 +314,7 @@ paths:
                       "data" : {
                         "year" : 2026,
                         "month" : 7,
-                        "week" : 2,
+                        "week" : 3,
                         "quizSets" : [ {
                           "id" : 1,
                           "year" : 2026,
@@ -323,8 +323,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-07-11 15:22:22",
-                          "endDate" : "2026-07-13 15:22:22",
+                          "startDate" : "2026-07-17 00:10:43",
+                          "endDate" : "2026-07-19 00:10:43",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -341,8 +341,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-07-12 15:22:22",
-                            "updatedAt" : "2026-07-12 15:22:22"
+                            "createdAt" : "2026-07-18 00:10:43",
+                            "updatedAt" : "2026-07-18 00:10:43"
                           } ]
                         } ]
                       },
@@ -388,8 +388,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-07-12 15:22:22",
-                        "updatedAt" : "2026-07-12 15:22:22"
+                        "createdAt" : "2026-07-18 00:10:43",
+                        "updatedAt" : "2026-07-18 00:10:43"
                       },
                       "error" : null
                     }
@@ -418,7 +418,7 @@ paths:
                       "data" : {
                         "year" : 2026,
                         "month" : 7,
-                        "week" : 2,
+                        "week" : 3,
                         "period" : "CHATTING_PERIOD"
                       },
                       "error" : null
@@ -465,11 +465,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/7396f50d-7dfc-4a41-b09a-0b37ff3ff3cc",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/7396f50d-7dfc-4a41-b09a-0b37ff3ff3cc"
+                          "objectKey" : "pending/user-reports/1/7f120c52-a135-4d24-8e18-2b1d1a794d32",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/7f120c52-a135-4d24-8e18-2b1d1a794d32"
                         }, {
-                          "objectKey" : "pending/user-reports/1/0421d07f-ef2a-400d-a75a-d137a35d4bc2",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/0421d07f-ef2a-400d-a75a-d137a35d4bc2"
+                          "objectKey" : "pending/user-reports/1/12ea8fb5-09ba-4f36-8f18-b9156e20f8da",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/12ea8fb5-09ba-4f36-8f18-b9156e20f8da"
                         } ]
                       },
                       "error" : null
@@ -752,7 +752,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODM4MzczMzksImV4cCI6MTc4Mzg0MDkzOX0._c_SjAZUx05Xasz6dO59uL1EUHFl5-D-mGL9qQw9wGsPuADCcIS4Uv5CaFKQzTYj0xNkSxO_WIVeN7leyt-Qcg"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQzMDEwNDAsImV4cCI6MTc4NDMwNDY0MH0.50bNZZw74MS3e_46ofqprRz6kGuELztzXLsMShw6YS9irIRooS3BKjiqbK0g5DBsB3L8-8KmAF8Yslui28Bumg"
                       },
                       "error" : null
                     }
@@ -818,6 +818,40 @@ paths:
                           "answer" : "도전"
                         } ],
                         "completedCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/users/me/sanction:
+    get:
+      tags:
+      - Users
+      summary: 내 제재 조회
+      description: "현재 유효한 내 제재를 조회합니다. 제재가 없으면 sanction이 null입니다. 이용 정지 중에도 호출할 수\
+        \ 있는 유일한 API로, 정지 안내 화면이 사용합니다. 신고자·신고 시점·상세 내용은 노출하지 않습니다."
+      operationId: my-sanction
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-sanction-1253319913"
+              examples:
+                my-sanction:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "sanction" : {
+                          "level" : "SUSPENSION",
+                          "levelDescription" : "기간 이용 정지",
+                          "reason" : null,
+                          "reasonDescription" : null,
+                          "startsAt" : "2026-07-11 00:10:43",
+                          "endsAt" : "2026-07-25 00:10:43"
+                        }
                       },
                       "error" : null
                     }
@@ -951,8 +985,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-07-12 15:22:22",
-                        "updatedAt" : "2026-07-12 15:22:22"
+                        "createdAt" : "2026-07-18 00:10:43",
+                        "updatedAt" : "2026-07-18 00:10:43"
                       },
                       "error" : null
                     }
@@ -1654,6 +1688,40 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-me-sanction-1253319913:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            sanction:
+              required:
+              - level
+              - levelDescription
+              - startsAt
+              type: object
+              properties:
+                level:
+                  type: string
+                  description: "제재 수위. 가능한 값: WARNING(경고 — 다음 주 퀴즈 참여 불가), SUSPENSION(기\
+                    간 이용 정지), PERMANENT_BAN(영구 차단)"
+                startsAt:
+                  type: string
+                  description: 제재 시작 일시
+                endsAt:
+                  type: string
+                  description: 제재 종료 일시 (영구 차단은 null)
+                  nullable: true
+                levelDescription:
+                  type: string
+                  description: 제재 수위 설명
+              description: 유효한 제재 (없으면 null)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-request-id-accept-2011455419:
       required:
       - error
@@ -1846,6 +1914,23 @@ components:
               contentType:
                 type: string
                 description: 파일 MIME 타입 (image/* 만 허용)
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me861338172:
       required:
       - error
@@ -1876,23 +1961,6 @@ components:
             email:
               type: string
               description: 이메일 (없으면 null)
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
         success:
           type: boolean
           description: 성공 여부
