@@ -45,8 +45,8 @@ class AdminQuizService(
             category = form.category,
             title = form.title,
             description = form.description,
-            startDate = requireNotNull(form.startDate) { "시작일시는 필수입니다." },
-            endDate = requireNotNull(form.endDate) { "종료일시는 필수입니다." },
+            startDate = form.requiredStartDate(),
+            endDate = form.requiredEndDate(),
             isActive = form.isActive,
             matchingType = form.matchingType,
         )
@@ -59,8 +59,8 @@ class AdminQuizService(
             category = form.category,
             title = form.title,
             description = form.description,
-            startDate = requireNotNull(form.startDate) { "시작일시는 필수입니다." },
-            endDate = requireNotNull(form.endDate) { "종료일시는 필수입니다." },
+            startDate = form.requiredStartDate(),
+            endDate = form.requiredEndDate(),
             matchingType = form.matchingType,
         )
         if (form.isActive) quizSet.activate() else quizSet.deactivate()
