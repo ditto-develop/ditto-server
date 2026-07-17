@@ -6,6 +6,7 @@ spring:
     include:
       - oauth
       - db
+      - storage
 
 server:
   port: 8080
