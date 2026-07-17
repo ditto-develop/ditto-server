@@ -218,3 +218,19 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     cursor: pointer;
 }
 .btn-kakao:hover { filter: brightness(0.97); }
+.btn-dev {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px;
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text-sub);
+    font-weight: 700;
+    font-size: 14px;
+    border: 1px dashed var(--border);
+    cursor: pointer;
+}
+.btn-dev:hover { filter: brightness(0.97); }

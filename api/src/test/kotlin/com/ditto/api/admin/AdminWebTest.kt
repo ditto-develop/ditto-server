@@ -16,11 +16,13 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import org.hamcrest.CoreMatchers.containsString
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.mock.web.MockHttpSession
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -30,6 +32,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -236,10 +239,46 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("로컬 개발 로그인은 세션 설정 후 대시보드로 이동한다")
+    fun devLoginRedirect() {
+        mockMvc.perform(get("/admin/oauth/dev"))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin"))
+    }
+
+    @Test
+    @DisplayName("로컬 개발 로그인 세션으로 어드민 페이지에 접근할 수 있다")
+    fun devLoginSessionGrantsAccess() {
+        val session = mockMvc.perform(get("/admin/oauth/dev"))
+            .andReturn().request.session as MockHttpSession
+
+        mockMvc.perform(get("/admin").session(session)).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("local 프로파일에서 로그인 페이지에 로컬 개발 로그인 버튼이 노출된다")
+    fun loginPageShowsDevLoginButton() {
+        mockMvc.perform(get("/admin/login"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("로컬 개발 로그인")))
+    }
+
+    @Test
     @DisplayName("로그인 페이지 에러/로그아웃 메시지 분기")
     fun loginPageMessages() {
         mockMvc.perform(get("/admin/login").param("error", "")).andExpect(status().isOk)
         mockMvc.perform(get("/admin/login").param("logout", "")).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("퀴즈셋 수정 폼의 시작/종료일시가 datetime-local 형식으로 렌더링된다")
+    fun editFormRendersDateTimeLocalValues() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/edit", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("value=\"2026-04-06T00:00\"")))
+            .andExpect(content().string(containsString("value=\"2026-04-12T23:59\"")))
     }
 
     @Test
