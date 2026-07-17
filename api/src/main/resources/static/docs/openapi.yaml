@@ -39,7 +39,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/a557e85c-2fc2-4ee9-9656-2a34db950742" ]
+                    "imageKeys" : [ "pending/user-reports/1/bce43709-d5d9-4356-93e3-4904eefae2c7" ]
                   }
       responses:
         "200":
@@ -113,10 +113,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-07-18 00:10:43",
+                        "joinedAt" : "2026-07-18 00:23:14",
                         "role" : null,
-                        "createdAt" : "2026-07-18 00:10:43",
-                        "updatedAt" : "2026-07-18 00:10:43"
+                        "createdAt" : "2026-07-18 00:23:14",
+                        "updatedAt" : "2026-07-18 00:23:14"
                       },
                       "error" : null
                     }
@@ -323,8 +323,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-07-17 00:10:43",
-                          "endDate" : "2026-07-19 00:10:43",
+                          "startDate" : "2026-07-17 00:23:14",
+                          "endDate" : "2026-07-19 00:23:14",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -341,8 +341,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-07-18 00:10:43",
-                            "updatedAt" : "2026-07-18 00:10:43"
+                            "createdAt" : "2026-07-18 00:23:14",
+                            "updatedAt" : "2026-07-18 00:23:14"
                           } ]
                         } ]
                       },
@@ -388,8 +388,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-07-18 00:10:43",
-                        "updatedAt" : "2026-07-18 00:10:43"
+                        "createdAt" : "2026-07-18 00:23:14",
+                        "updatedAt" : "2026-07-18 00:23:14"
                       },
                       "error" : null
                     }
@@ -465,11 +465,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/7f120c52-a135-4d24-8e18-2b1d1a794d32",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/7f120c52-a135-4d24-8e18-2b1d1a794d32"
+                          "objectKey" : "pending/user-reports/1/670e4f8b-8fcf-418f-ad1c-73fe8472b131",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/670e4f8b-8fcf-418f-ad1c-73fe8472b131"
                         }, {
-                          "objectKey" : "pending/user-reports/1/12ea8fb5-09ba-4f36-8f18-b9156e20f8da",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/12ea8fb5-09ba-4f36-8f18-b9156e20f8da"
+                          "objectKey" : "pending/user-reports/1/3fe9a1d4-ae75-4fba-9f62-0153407e5deb",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/3fe9a1d4-ae75-4fba-9f62-0153407e5deb"
                         } ]
                       },
                       "error" : null
@@ -752,7 +752,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQzMDEwNDAsImV4cCI6MTc4NDMwNDY0MH0.50bNZZw74MS3e_46ofqprRz6kGuELztzXLsMShw6YS9irIRooS3BKjiqbK0g5DBsB3L8-8KmAF8Yslui28Bumg"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQzMDE3OTEsImV4cCI6MTc4NDMwNTM5MX0.n16wdO-Nwaj3OUTIlDfsYcvOThB061UfP2eHn9UTT8eJ6pG2IZfM4YCd7DeJHW-SYO9kZm90mD680hLgENpnDQ"
                       },
                       "error" : null
                     }
@@ -849,8 +849,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-11 00:10:43",
-                          "endsAt" : "2026-07-25 00:10:43"
+                          "startsAt" : "2026-07-11 00:23:14",
+                          "endsAt" : "2026-07-25 00:23:14"
                         }
                       },
                       "error" : null
@@ -985,8 +985,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-07-18 00:10:43",
-                        "updatedAt" : "2026-07-18 00:10:43"
+                        "createdAt" : "2026-07-18 00:23:14",
+                        "updatedAt" : "2026-07-18 00:23:14"
                       },
                       "error" : null
                     }
@@ -1914,23 +1914,6 @@ components:
               contentType:
                 type: string
                 description: 파일 MIME 타입 (image/* 만 허용)
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users-me861338172:
       required:
       - error
@@ -2084,6 +2067,23 @@ components:
                   startDate:
                     type: string
                     description: 시작일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
         success:
           type: boolean
           description: 성공 여부

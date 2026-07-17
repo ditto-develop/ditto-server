@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('신고 상세')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('report')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">신고 #<span th:text="${report.id}">0</span></h1>
+            <p class="page-desc">
+                <span th:text="${report.elapsedText}">경과</span>
+                <span class="badge warn" th:if="${report.overdue}">SLA 초과</span>
+            </p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <!-- 신고 내용 -->
+            <div class="card">
+                <h2>
+                    신고 내용
+                    <span class="badge cat" th:text="${report.reasonDescription}">사유</span>
+                    <span class="badge warn" th:if="${report.isSevere}">즉시 조치 권고</span>
+                </h2>
+                <p class="muted">
+                    접수 위치: <span th:text="${report.sourceDescription}">위치</span> ·
+                    접수 일시: <span th:text="${#temporals.format(report.createdAt, 'yyyy-MM-dd HH:mm')}">일시</span>
+                </p>
+                <p th:if="${report.detail != null}" th:text="${report.detail}" style="white-space:pre-wrap">상세</p>
+                <p class="muted" th:if="${report.detail == null}">상세 설명 없음</p>
+                <div th:if="${!report.imageUrls.isEmpty()}" class="field-row">
+                    <a th:each="url, i : ${report.imageUrls}" th:href="${url}" target="_blank" rel="noopener">
+                        <img th:src="${url}" th:alt="'첨부 ' + ${i.count}" style="max-width:180px;max-height:180px;border-radius:8px"/>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 대응 가이드라인 -->
+            <div class="card">
+                <h2>대응 가이드라인</h2>
+                <p th:text="${report.guideline}">가이드라인</p>
+            </div>
+
+            <!-- 피신고자 -->
+            <div class="card">
+                <h2>
+                    피신고자: <span th:text="${report.reported.nickname}">닉네임</span>
+                    <span class="badge cat" th:text="${report.reported.statusName}">상태</span>
+                    <span class="badge warn" th:text="'추천 ' + ${report.reported.recommendedStrike} + '차'">추천 차수</span>
+                    <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
+                </h2>
+                <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
+                <table th:unless="${report.reported.sanctions.isEmpty()}">
+                    <thead>
+                    <tr><th>수위</th><th>경위</th><th>상태</th><th>기간</th><th>조치자</th><th>메모</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="s : ${report.reported.sanctions}">
+                        <td th:text="${s.levelDescription}">수위</td>
+                        <td th:text="${s.originDescription}">경위</td>
+                        <td th:text="${s.statusDescription}">상태</td>
+                        <td>
+                            <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd')}">시작</span> ~
+                            <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd')} : '영구'">끝</span>
+                        </td>
+                        <td th:text="${s.creatorName}">조치자</td>
+                        <td th:text="${s.note ?: '-'}">메모</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 신고자 -->
+            <div class="card">
+                <h2>
+                    신고자: <span th:text="${report.reporter.nickname}">닉네임</span>
+                    <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reporter.memberId})}">제재 관리</a>
+                </h2>
+                <p class="muted">
+                    총 신고 <strong th:text="${report.reporter.totalReportCount}">0</strong>건 ·
+                    악의적 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건
+                    — 허위 신고자 조치는 '제재 관리'에서 경위를 허위 신고자 제재로 선택해 진행
+                </p>
+            </div>
+
+            <!-- 검토 처리 (대기 건) -->
+            <div class="card" th:if="${report.received}">
+                <h2>검토 처리</h2>
+                <form th:action="@{/admin/reports/{id}/action(id=${report.id})}" method="post">
+                    <div class="field">
+                        <label>결정</label>
+                        <select name="decision">
+                            <option th:each="d : ${decisions}" th:value="${d.name()}" th:text="${d.description}">결정</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>메모 (선택, 최대 500자)</label>
+                        <textarea name="reviewNote" maxlength="500" rows="3" style="width:100%"></textarea>
+                    </div>
+                    <button class="btn" type="submit">처리</button>
+                </form>
+                <p class="muted">제재 결정(경고·정지·차단)은 즉시 발효됩니다. 악의적 신고로 기각한 경우 신고자 제재는 회원 제재 화면에서 직권으로 진행하세요.</p>
+            </div>
+
+            <!-- 검토 결과 (종결 건) -->
+            <div class="card" th:if="${report.review != null}">
+                <h2>검토 결과 <span class="badge cat" th:text="${report.review.statusDescription}">결과</span></h2>
+                <p class="muted">
+                    검토자: <span th:text="${report.review.reviewerName}">이름</span> ·
+                    <span th:text="${#temporals.format(report.review.reviewedAt, 'yyyy-MM-dd HH:mm')}">일시</span>
+                </p>
+                <p th:if="${report.review.note != null}" th:text="${report.review.note}">메모</p>
+            </div>
+
+            <p><a class="btn secondary sm" th:href="@{/admin/reports}">목록으로</a></p>
+        </main>
+    </div>
+</div>
+</body>
+</html>

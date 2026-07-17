@@ -36,5 +36,6 @@ enum class ErrorCode(
     MEMBER_BANNED(403, "6007", "영구 차단된 계정입니다."),
     QUIZ_BLOCKED_BY_SANCTION(403, "6008", "제재로 인해 이번 주 퀴즈에 참여할 수 없습니다."),
     CANNOT_LEAVE_WHILE_SANCTIONED(403, "6009", "제재 중에는 탈퇴할 수 없습니다."),
+    REPORT_ALREADY_REVIEWED(409, "6010", "이미 검토가 완료된 신고입니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }

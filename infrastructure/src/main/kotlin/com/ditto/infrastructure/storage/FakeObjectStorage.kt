@@ -17,6 +17,8 @@ class FakeObjectStorage : ObjectStorage {
         return "https://fake-storage.local/$key"
     }
 
+    override fun issueViewUrl(key: String): String = "https://fake-storage.local/view/$key"
+
     override fun exists(key: String): Boolean = key in uploadedKeys
 
     override fun move(sourceKey: String, targetKey: String) {
