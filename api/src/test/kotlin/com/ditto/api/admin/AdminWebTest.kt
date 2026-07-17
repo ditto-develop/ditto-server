@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.mock.web.MockHttpSession
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -229,6 +230,31 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/oauth/kakao/callback").param("code", "test-code"))
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/login?error"))
+    }
+
+    @Test
+    @DisplayName("로컬 개발 로그인은 세션 설정 후 대시보드로 이동한다")
+    fun devLoginRedirect() {
+        mockMvc.perform(get("/admin/oauth/dev"))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin"))
+    }
+
+    @Test
+    @DisplayName("로컬 개발 로그인 세션으로 어드민 페이지에 접근할 수 있다")
+    fun devLoginSessionGrantsAccess() {
+        val session = mockMvc.perform(get("/admin/oauth/dev"))
+            .andReturn().request.session as MockHttpSession
+
+        mockMvc.perform(get("/admin").session(session)).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("local 프로파일에서 로그인 페이지에 로컬 개발 로그인 버튼이 노출된다")
+    fun loginPageShowsDevLoginButton() {
+        mockMvc.perform(get("/admin/login"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("로컬 개발 로그인")))
     }
 
     @Test
