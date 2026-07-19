@@ -73,6 +73,52 @@ class AuthServiceTest(
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
             }
+
+            "이용 정지 중인 회원은 토큰을 갱신할 수 없다 — 재시도해도 계속 거부된다" {
+                val member = memberRepository.save(
+                    Member(nickname = "정지유저").apply {
+                        activate()
+                        suspendUntil(LocalDateTime.now().plusDays(7))
+                    },
+                )
+                val refreshToken = authService.createRefreshToken(member.id)
+
+                val exception = shouldThrow<WarnException> {
+                    authService.refresh(refreshToken.token)
+                }
+                exception.errorCode shouldBe ErrorCode.MEMBER_SUSPENDED
+
+                // 롤백으로 토큰은 남지만 게이트가 사용을 계속 거부한다.
+                val retryException = shouldThrow<WarnException> {
+                    authService.refresh(refreshToken.token)
+                }
+                retryException.errorCode shouldBe ErrorCode.MEMBER_SUSPENDED
+            }
+
+            "영구 차단 회원은 토큰을 갱신할 수 없다" {
+                val member = memberRepository.save(Member(nickname = "차단유저").apply { activate(); ban() })
+                val refreshToken = authService.createRefreshToken(member.id)
+
+                val exception = shouldThrow<WarnException> {
+                    authService.refresh(refreshToken.token)
+                }
+
+                exception.errorCode shouldBe ErrorCode.MEMBER_BANNED
+            }
+
+            "정지 해제 예정일이 지난 회원은 토큰을 갱신할 수 있다" {
+                val member = memberRepository.save(
+                    Member(nickname = "만료정지유저").apply {
+                        activate()
+                        suspendUntil(LocalDateTime.now().minusDays(1))
+                    },
+                )
+                val refreshToken = authService.createRefreshToken(member.id)
+
+                val result = authService.refresh(refreshToken.token)
+
+                jwtTokenProvider.isValid(result.accessToken) shouldBe true
+            }
         }
 
         "로그아웃" - {

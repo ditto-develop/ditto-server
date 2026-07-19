@@ -13,7 +13,7 @@
 - 요청 경로는 **각 핸들러 메서드의 매핑 애너테이션에 전체 경로로 명시**한다. 클래스 레벨 `@RequestMapping`으로 prefix를 묶지 않는다 — 한 곳만 보고 전체 URL을 알 수 있어 `grep`·추적이 쉽다.
   - `@GetMapping("/api/v1/quiz-sets/current-week")` (O) / 클래스 `@RequestMapping` 후 메서드 상대경로 (X)
 - 폼 백킹 빈(서버 렌더링)·요청 바인딩 객체의 주생성자는 **public**으로 둔다 (스프링이 바인딩 시 인스턴스화).
-- `LocalDateTime` 파라미터는 `ISO_LOCAL_DATE_TIME`(`yyyy-MM-ddTHH:mm`)을 스프링 기본 변환으로 바인딩한다 — 별도 `@DateTimeFormat` 불필요.
+- `LocalDateTime` **파싱**(요청 → 객체)은 `ISO_LOCAL_DATE_TIME`(`yyyy-MM-ddTHH:mm`)이 스프링 기본 변환으로 바인딩된다. 그러나 **렌더링**(객체 → Thymeleaf `th:field` 출력)은 애너테이션이 없으면 로캘 형식(`4/6/26, 12:00 AM`)으로 찍혀 `datetime-local` 인풋이 값을 버린다 — 폼 백킹 빈의 일시 필드에는 `@field:DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")`을 붙인다(#93).
 
 ## 응답 형태 (상세)
 

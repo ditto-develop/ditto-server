@@ -3,7 +3,10 @@ package com.ditto.api.admin
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.memberreport.MemberReportFixture
+import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
@@ -13,11 +16,13 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import org.hamcrest.CoreMatchers.containsString
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.mock.web.MockHttpSession
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -27,6 +32,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -54,6 +60,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var socialAccountRepository: SocialAccountRepository
+
+    @Autowired
+    lateinit var memberReportRepository: MemberReportRepository
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
@@ -230,10 +239,46 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("로컬 개발 로그인은 세션 설정 후 대시보드로 이동한다")
+    fun devLoginRedirect() {
+        mockMvc.perform(get("/admin/oauth/dev"))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin"))
+    }
+
+    @Test
+    @DisplayName("로컬 개발 로그인 세션으로 어드민 페이지에 접근할 수 있다")
+    fun devLoginSessionGrantsAccess() {
+        val session = mockMvc.perform(get("/admin/oauth/dev"))
+            .andReturn().request.session as MockHttpSession
+
+        mockMvc.perform(get("/admin").session(session)).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("local 프로파일에서 로그인 페이지에 로컬 개발 로그인 버튼이 노출된다")
+    fun loginPageShowsDevLoginButton() {
+        mockMvc.perform(get("/admin/login"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("로컬 개발 로그인")))
+    }
+
+    @Test
     @DisplayName("로그인 페이지 에러/로그아웃 메시지 분기")
     fun loginPageMessages() {
         mockMvc.perform(get("/admin/login").param("error", "")).andExpect(status().isOk)
         mockMvc.perform(get("/admin/login").param("logout", "")).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("퀴즈셋 수정 폼의 시작/종료일시가 datetime-local 형식으로 렌더링된다")
+    fun editFormRendersDateTimeLocalValues() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/edit", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("value=\"2026-04-06T00:00\"")))
+            .andExpect(content().string(containsString("value=\"2026-04-12T23:59\"")))
     }
 
     @Test
@@ -266,5 +311,53 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    @DisplayName("신고 목록·상세 페이지가 렌더링된다")
+    fun reportPages() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin()))).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("신고 검토 처리 후 상세로 리다이렉트된다")
+    fun reviewReport() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자2", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자2", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(
+            post("/admin/reports/{id}/action", report.id)
+                .with(authentication(admin())).with(csrf())
+                .param("decision", "REJECT").param("reviewNote", "근거 부족"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/reports/" + report.id))
+    }
+
+    @Test
+    @DisplayName("회원 제재 관리 페이지 렌더·직권 제재·해제")
+    fun memberSanctions() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "제재대상", status = MemberStatus.ACTIVE))
+
+        mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/admin/members/{id}/sanctions", member.id)
+                .with(authentication(admin())).with(csrf())
+                .param("level", "SUSPENSION").param("origin", "MANUAL").param("note", "직권"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/members/" + member.id + "/sanctions"))
     }
 }

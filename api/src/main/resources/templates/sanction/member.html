@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('제재 관리')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('member')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">
+                제재 관리: <span th:text="${view.nickname}">닉네임</span>
+                <span class="badge cat" th:text="${view.statusName}">상태</span>
+            </h1>
+            <p class="page-desc">유효 제재 <strong th:text="${view.strikeCount}">0</strong>건 (허위 신고자 제재·직권 해제 제외)</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <!-- 직권 제재 -->
+            <div class="card">
+                <h2>직권 제재</h2>
+                <form th:action="@{/admin/members/{id}/sanctions(id=${view.memberId})}" method="post" class="field-row" style="align-items:flex-end">
+                    <div class="field">
+                        <label>수위</label>
+                        <select name="level">
+                            <option th:each="l : ${levels}" th:value="${l.name()}" th:text="${l.description}">수위</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>경위</label>
+                        <select name="origin">
+                            <option th:each="o : ${origins}" th:value="${o.name()}" th:text="${o.description}">경위</option>
+                        </select>
+                    </div>
+                    <div class="field" style="flex:1">
+                        <label>메모 (선택)</label>
+                        <input type="text" name="note" maxlength="500"/>
+                    </div>
+                    <div class="field"><button class="btn" type="submit">적용</button></div>
+                </form>
+                <p class="muted">허위 신고자 조치는 경위를 '허위 신고자 제재'로 선택하세요 — 피신고 차수에 산입되지 않습니다.</p>
+            </div>
+
+            <!-- 이력 -->
+            <div class="card">
+                <h2>제재 이력 <span class="badge cat" th:text="${view.sanctions.size()} + '건'">0건</span></h2>
+                <p class="muted" th:if="${view.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
+                <table th:unless="${view.sanctions.isEmpty()}">
+                    <thead>
+                    <tr><th>#</th><th>수위</th><th>경위</th><th>상태</th><th>기간</th><th>조치자</th><th>메모</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="s : ${view.sanctions}">
+                        <td th:text="${s.id}">1</td>
+                        <td th:text="${s.levelDescription}">수위</td>
+                        <td th:text="${s.originDescription}">경위</td>
+                        <td th:text="${s.statusDescription}">상태</td>
+                        <td>
+                            <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd HH:mm')}">시작</span> ~
+                            <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd HH:mm')} : '영구'">끝</span>
+                        </td>
+                        <td th:text="${s.creatorName}">조치자</td>
+                        <td th:text="${s.note ?: '-'}">메모</td>
+                        <td>
+                            <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form">
+                                <input type="hidden" name="memberId" th:value="${view.memberId}"/>
+                                <button class="btn secondary sm" type="submit">해제</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

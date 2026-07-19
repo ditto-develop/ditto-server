@@ -16,6 +16,10 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.common.exception.WarnException
+import com.ditto.domain.sanction.SanctionFixture
+import com.ditto.domain.sanction.entity.SanctionLevel
+import com.ditto.domain.sanction.repository.SanctionRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -32,6 +36,7 @@ class QuizProgressServiceTest(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizProgressRepository: QuizProgressRepository,
     private val memberRepository: MemberRepository,
+    private val sanctionRepository: SanctionRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -53,6 +58,61 @@ class QuizProgressServiceTest(
     }
 
     "퀴즈 답안 제출" - {
+        "1차 제재(경고) 차단 구간에는 답안을 제출할 수 없다" {
+            val memberId = setupMember("경고제재유저")
+            val (quizId, choiceId, _) = setupActiveQuizData()
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    memberId = memberId,
+                    level = SanctionLevel.WARNING,
+                    startsAt = now.minusDays(1),
+                    endsAt = now.plusDays(6),
+                ),
+            )
+
+            val exception = shouldThrow<WarnException> {
+                quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), now)
+            }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_BLOCKED_BY_SANCTION
+        }
+
+        "차단 구간이 지난 경고는 제출을 막지 않는다" {
+            val memberId = setupMember("만료경고유저")
+            val (quizId, choiceId, _) = setupActiveQuizData()
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    memberId = memberId,
+                    level = SanctionLevel.WARNING,
+                    startsAt = now.minusDays(14),
+                    endsAt = now.minusDays(7),
+                ),
+            )
+
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), now)
+
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, quizId) shouldNotBe null
+        }
+
+        "1차 제재(경고) 차단 구간에는 진행 초기화도 할 수 없다" {
+            val memberId = setupMember("경고초기화유저")
+            setupActiveQuizData()
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    memberId = memberId,
+                    level = SanctionLevel.WARNING,
+                    startsAt = now.minusDays(1),
+                    endsAt = now.plusDays(6),
+                ),
+            )
+
+            val exception = shouldThrow<WarnException> {
+                quizProgressService.resetProgress(memberId, now)
+            }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_BLOCKED_BY_SANCTION
+        }
+
         "정상적인 답안을 제출하면 QuizAnswer가 저장된다" {
             val memberId = setupMember()
             val (quizId, choiceId, _) = setupActiveQuizData()

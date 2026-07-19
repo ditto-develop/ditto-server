@@ -17,6 +17,7 @@ object DependencyVersions {
     const val JACKSON = "2.18.2"
     const val COROUTINES = "1.9.0"
     const val RESTDOCS_API_SPEC = "0.19.4"
+    const val AWS_SDK = "2.46.7"
 }
 
 object Dependencies {
@@ -55,4 +56,5 @@ object Dependencies {
     const val QUERYDSL_APT = "io.github.openfeign.querydsl:querydsl-apt:${DependencyVersions.QUERYDSL}:jpa"
     const val SPRING_RESTDOCS_MOCKMVC = "org.springframework.restdocs:spring-restdocs-mockmvc"
     const val RESTDOCS_API_SPEC_MOCKMVC = "com.epages:restdocs-api-spec-mockmvc:${DependencyVersions.RESTDOCS_API_SPEC}"
+    const val AWS_S3 = "software.amazon.awssdk:s3:${DependencyVersions.AWS_SDK}"
 }

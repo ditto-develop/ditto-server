@@ -4,6 +4,7 @@ import com.ditto.api.admin.config.AdminSecurityConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.core.env.Environment
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam
 class AdminOAuthController(
     private val adminLoginService: AdminLoginService,
     private val securityContextRepository: SecurityContextRepository,
+    private val environment: Environment,
 ) {
     @GetMapping("/admin/login")
     fun loginPage(
@@ -29,6 +31,7 @@ class AdminOAuthController(
     ): String {
         if (error != null) model.addAttribute("error", "로그인할 수 없습니다. 관리자 권한이 있는 계정인지 확인해 주세요.")
         if (logout != null) model.addAttribute("message", "로그아웃되었습니다.")
+        model.addAttribute("devLoginEnabled", environment.matchesProfiles("local"))
         return "login"
     }
 

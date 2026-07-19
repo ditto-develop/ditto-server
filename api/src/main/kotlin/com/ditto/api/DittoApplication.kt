@@ -2,6 +2,7 @@ package com.ditto.api
 
 import com.ditto.domain.config.DomainConfig
 import com.ditto.infrastructure.oauth.config.OAuthConfig
+import com.ditto.infrastructure.storage.config.StorageConfig
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
@@ -13,6 +14,7 @@ import java.util.TimeZone
 @Import(
     DomainConfig::class,
     OAuthConfig::class,
+    StorageConfig::class,
 )
 class DittoApplication
 
