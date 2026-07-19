@@ -111,7 +111,7 @@ class ChatServiceTest(
         chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[0].id)
 
         // then: 앞으로만 전진, 3번째 유지
-        val membership = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)!!
-        membership.lastReadMessageId shouldBe messages[2].id
+        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)!!
+        roomMember.lastReadMessageId shouldBe messages[2].id
     }
 })

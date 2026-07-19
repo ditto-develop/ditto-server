@@ -43,20 +43,20 @@ class ChatService(
 
     /** 내 채팅방 목록 (상대 회원 · 마지막 메시지 · 안읽음 수), 최근 대화순 */
     fun getMyRooms(memberId: Long): List<ChatRoomResponse> {
-        val myMemberships = chatRoomMemberRepository.findByMemberId(memberId)
-        if (myMemberships.isEmpty()) {
+        val myRoomMembers = chatRoomMemberRepository.findByMemberId(memberId)
+        if (myRoomMembers.isEmpty()) {
             return emptyList()
         }
 
-        val roomIds = myMemberships.map { it.roomId }
+        val roomIds = myRoomMembers.map { it.roomId }
         val roomsById = chatRoomRepository.findAllById(roomIds).associateBy { it.id }
         // 방별 참여자 (상대 회원 파악용). 방 수가 늘면 마지막 메시지/안읽음 집계를 일괄 조회로 최적화 대상.
         val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(roomIds).groupBy { it.roomId }
 
-        return myMemberships
-            .mapNotNull { membership ->
-                val room = roomsById[membership.roomId] ?: return@mapNotNull null
-                toRoomResponse(room, membership, membersByRoomId[room.id].orEmpty(), memberId)
+        return myRoomMembers
+            .mapNotNull { roomMember ->
+                val room = roomsById[roomMember.roomId] ?: return@mapNotNull null
+                toRoomResponse(room, roomMember, membersByRoomId[room.id].orEmpty(), memberId)
             }
             .sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
     }
@@ -78,14 +78,14 @@ class ChatService(
     /** 읽음 처리 — 내 last_read_message_id 를 전진시킨다. */
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
-        val membership = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
             ?: throw notFoundOrForbidden(roomId)
-        membership.readUpTo(lastReadMessageId)
+        roomMember.readUpTo(lastReadMessageId)
     }
 
     private fun toRoomResponse(
         room: ChatRoom,
-        myMembership: ChatRoomMember,
+        myRoomMember: ChatRoomMember,
         roomMembers: List<ChatRoomMember>,
         memberId: Long,
     ): ChatRoomResponse {
@@ -95,7 +95,7 @@ class ChatService(
             room = room,
             counterpartMemberId = counterpartId,
             lastMessage = lastMessage?.let { ChatMessageResponse.from(it) },
-            unreadCount = unreadCount(room.id, myMembership.lastReadMessageId),
+            unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
         )
     }
 
