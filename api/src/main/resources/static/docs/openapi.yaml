@@ -39,7 +39,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/e7637b8b-2b78-4f01-b403-6aba91304fb5" ]
+                    "imageKeys" : [ "pending/user-reports/1/b549bed8-50b5-4571-b5af-f10c0d9f7660" ]
                   }
       responses:
         "200":
@@ -113,10 +113,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-07-25 22:48:09",
+                        "joinedAt" : "2026-07-26 01:00:54",
                         "role" : null,
-                        "createdAt" : "2026-07-25 22:48:09",
-                        "updatedAt" : "2026-07-25 22:48:09"
+                        "createdAt" : "2026-07-26 01:00:54",
+                        "updatedAt" : "2026-07-26 01:00:54"
                       },
                       "error" : null
                     }
@@ -392,8 +392,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-07-24 22:48:09",
-                          "endDate" : "2026-07-26 22:48:09",
+                          "startDate" : "2026-07-25 01:00:54",
+                          "endDate" : "2026-07-27 01:00:54",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -410,8 +410,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-07-25 22:48:09",
-                            "updatedAt" : "2026-07-25 22:48:09"
+                            "createdAt" : "2026-07-26 01:00:54",
+                            "updatedAt" : "2026-07-26 01:00:54"
                           } ]
                         } ]
                       },
@@ -457,8 +457,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-07-25 22:48:09",
-                        "updatedAt" : "2026-07-25 22:48:09"
+                        "createdAt" : "2026-07-26 01:00:54",
+                        "updatedAt" : "2026-07-26 01:00:54"
                       },
                       "error" : null
                     }
@@ -534,11 +534,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/ad7a1698-a4b5-4575-a734-1d296a77c377",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/ad7a1698-a4b5-4575-a734-1d296a77c377"
+                          "objectKey" : "pending/user-reports/1/ec3b8552-2233-4404-91e5-01bc4660e073",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/ec3b8552-2233-4404-91e5-01bc4660e073"
                         }, {
-                          "objectKey" : "pending/user-reports/1/6622d7d3-ccb7-4c75-9ad3-360bcc264083",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/6622d7d3-ccb7-4c75-9ad3-360bcc264083"
+                          "objectKey" : "pending/user-reports/1/5bec8045-2085-4645-912f-ab4ad4ba6c6b",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/5bec8045-2085-4645-912f-ab4ad4ba6c6b"
                         } ]
                       },
                       "error" : null
@@ -821,7 +821,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQ5ODcyODYsImV4cCI6MTc4NDk5MDg4Nn0.Ds6uO3v4nEpufWcC8LrpUAVkm3pvpfqp30qlDyqdIyPrB6u46hFWCucQfYl8jEP2_fJ5giqbC4AgHL5QA-wz_w"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQ5OTUyNTEsImV4cCI6MTc4NDk5ODg1MX0.xljvK4FRMMOtvgKnKvfk3tLRjvo746P0a9YX9IkchxjbBke84Gb2v2stP351demxaWmR9Tawe_hWrxUmPX1-Og"
                       },
                       "error" : null
                     }
@@ -918,8 +918,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-18 22:48:09",
-                          "endsAt" : "2026-08-01 22:48:09"
+                          "startsAt" : "2026-07-19 01:00:54",
+                          "endsAt" : "2026-08-02 01:00:54"
                         }
                       },
                       "error" : null
@@ -1054,8 +1054,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-07-25 22:48:09",
-                        "updatedAt" : "2026-07-25 22:48:09"
+                        "createdAt" : "2026-07-26 01:00:54",
+                        "updatedAt" : "2026-07-26 01:00:54"
                       },
                       "error" : null
                     }
@@ -1944,6 +1944,19 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-social-login-provider-callback-272682272:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          description: 빈 객체 (신규 사용자)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-2041696623:
       required:
       - caricature
@@ -1996,19 +2009,6 @@ components:
           type: number
           description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
           nullable: true
-    api-v1-users-social-login-provider-callback-272682272:
-      required:
-      - data
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          description: 빈 객체 (신규 사용자)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-group-join-1969670024:
       required:
       - quizSetId
@@ -2112,6 +2112,39 @@ components:
               contentType:
                 type: string
                 description: 파일 MIME 타입 (image/* 만 허용)
+    api-v1-users-me861338172:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - birthDate
+          - email
+          - gender
+          - name
+          - phoneNumber
+          type: object
+          properties:
+            phoneNumber:
+              type: string
+              description: 전화번호 010-XXXX-XXXX (미동의 시 null)
+            gender:
+              type: string
+              description: 성별 MALE/FEMALE (미동의 시 null)
+            name:
+              type: string
+              description: 이름 (미동의 시 null)
+            birthDate:
+              type: string
+              description: 생년월일 (없거나 음력이면 null)
+            email:
+              type: string
+              description: 이메일 (없으면 null)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-quiz-sets-current-week-523790867:
       required:
       - error
@@ -2232,39 +2265,6 @@ components:
                   startDate:
                     type: string
                     description: 시작일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-me861338172:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - birthDate
-          - email
-          - gender
-          - name
-          - phoneNumber
-          type: object
-          properties:
-            phoneNumber:
-              type: string
-              description: 전화번호 010-XXXX-XXXX (미동의 시 null)
-            gender:
-              type: string
-              description: 성별 MALE/FEMALE (미동의 시 null)
-            name:
-              type: string
-              description: 이름 (미동의 시 null)
-            birthDate:
-              type: string
-              description: 생년월일 (없거나 음력이면 null)
-            email:
-              type: string
-              description: 이메일 (없으면 null)
         success:
           type: boolean
           description: 성공 여부
@@ -2726,18 +2726,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-quiz-progress-answers-1062387050:
-      required:
-      - choiceId
-      - quizId
-      type: object
-      properties:
-        choiceId:
-          type: number
-          description: 선택한 선택지 ID
-        quizId:
-          type: number
-          description: 퀴즈 ID
     api-v1-user-reports900126493:
       required:
       - error
@@ -2755,6 +2743,18 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-quiz-progress-answers-1062387050:
+      required:
+      - choiceId
+      - quizId
+      type: object
+      properties:
+        choiceId:
+          type: number
+          description: 선택한 선택지 ID
+        quizId:
+          type: number
+          description: 퀴즈 ID
     api-v1-quiz-sets-id1440540832:
       required:
       - error
