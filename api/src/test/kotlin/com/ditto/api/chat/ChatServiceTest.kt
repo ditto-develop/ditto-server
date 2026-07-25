@@ -179,4 +179,77 @@ class ChatServiceTest(
         message.messageType shouldBe ChatMessageType.IMAGE
         message.imageUrl shouldNotBe null
     }
+
+    "메시지를 보내면 저장되고 저장된 메시지를 반환한다" {
+        // given
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+
+        // when
+        val sent = chatService.sendMessage(senderId = 1L, roomId = room.id, content = "  안녕하세요  ")
+
+        // then
+        sent.senderId shouldBe 1L
+        sent.content shouldBe "안녕하세요" // trim 됨
+        chatMessageRepository.countByRoomId(room.id) shouldBe 1L
+    }
+
+    "방 참여자가 아니면 전송 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
+        // given
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+
+        // when & then
+        shouldThrow<WarnException> {
+            chatService.sendMessage(senderId = 99L, roomId = room.id, content = "안녕")
+        }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+    }
+
+    "빈 내용을 보내면 BAD_REQUEST 예외가 발생한다" {
+        // given
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+
+        // when & then
+        shouldThrow<WarnException> {
+            chatService.sendMessage(senderId = 1L, roomId = room.id, content = "   ")
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+    }
+
+    "IMAGE 전송은 내가 업로드한 key 로만 가능하고, 저장 후 imageUrl 이 해석된다" {
+        // given: 방 + 업로드 URL 발급(FakeObjectStorage 는 발급한 key 를 업로드된 것으로 간주)
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val issued = chatService.issueImageUploadUrls(
+            memberId = 1L,
+            roomId = room.id,
+            request = ChatImageUploadUrlsRequest(
+                files = listOf(ChatImageUploadFileRequest(contentType = "image/png", contentLength = 2048)),
+            ),
+        )
+        val key = issued.uploads[0].objectKey
+
+        // when
+        val sent = chatService.sendMessage(
+            senderId = 1L, roomId = room.id, content = key, messageType = ChatMessageType.IMAGE,
+        )
+
+        // then
+        sent.messageType shouldBe ChatMessageType.IMAGE
+        sent.content shouldBe key
+        sent.imageUrl shouldNotBe null
+    }
+
+    "업로드하지 않은(내 소유가 아닌) key 로 IMAGE 전송하면 INVALID_CHAT_IMAGE_KEY 예외가 발생한다" {
+        // given
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+
+        // when & then
+        shouldThrow<WarnException> {
+            chatService.sendMessage(
+                senderId = 1L, roomId = room.id, content = "chat/1/not-uploaded", messageType = ChatMessageType.IMAGE,
+            )
+        }.errorCode shouldBe ErrorCode.INVALID_CHAT_IMAGE_KEY
+    }
 })

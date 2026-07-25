@@ -107,6 +107,41 @@ class ChatService(
         )
     }
 
+    /** 메시지 전송 — 멤버십·내용 검증 후 저장하고 저장된 메시지를 반환한다. (브로드캐스트는 STOMP 컨트롤러 책임) */
+    @Transactional
+    fun sendMessage(
+        senderId: Long,
+        roomId: Long,
+        content: String,
+        messageType: ChatMessageType = ChatMessageType.TEXT,
+    ): ChatMessageResponse {
+        validateRoomMember(roomId, senderId)
+        val body = validateAndNormalizeContent(senderId, content, messageType)
+
+        val message = chatMessageRepository.save(
+            ChatMessage.of(roomId = roomId, senderId = senderId, content = body, messageType = messageType),
+        )
+        return toMessageResponse(message)
+    }
+
+    /** TEXT 는 공백·길이 검증, IMAGE 는 본인이 업로드한 key(chat/{senderId}/…)인지 검증한다. */
+    private fun validateAndNormalizeContent(senderId: Long, content: String, messageType: ChatMessageType): String =
+        when (messageType) {
+            ChatMessageType.IMAGE -> {
+                if (!content.startsWith(imageKeyPrefix(senderId)) || !objectStorage.exists(content)) {
+                    throw WarnException(ErrorCode.INVALID_CHAT_IMAGE_KEY)
+                }
+                content
+            }
+            else -> {
+                val trimmed = content.trim()
+                if (trimmed.isEmpty() || trimmed.length > MAX_CONTENT_LENGTH) {
+                    throw WarnException(ErrorCode.BAD_REQUEST)
+                }
+                trimmed
+            }
+        }
+
     /** 읽음 처리 — 내 last_read_message_id 를 전진시킨다. */
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
@@ -163,6 +198,7 @@ class ChatService(
 
     companion object {
         private const val MAX_PAGE_SIZE = 100
+        private const val MAX_CONTENT_LENGTH = 1000
         private const val MAX_IMAGE_BYTES = 10L * 1024 * 1024 // 10MB
         private const val IMAGE_CONTENT_TYPE_PREFIX = "image/"
         private const val IMAGE_KEY_ROOT = "chat"
