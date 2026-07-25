@@ -9,4 +9,5 @@ dependencies {
     implementation(project(":common"))
     implementation(project(":domain"))
     implementation("org.springframework:spring-web")
+    implementation(Dependencies.AWS_S3)
 }

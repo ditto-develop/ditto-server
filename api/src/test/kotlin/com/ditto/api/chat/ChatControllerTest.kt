@@ -1,6 +1,10 @@
 package com.ditto.api.chat
 
 import com.ditto.api.chat.controller.ChatController
+import com.ditto.api.chat.dto.ChatImageUploadFileRequest
+import com.ditto.api.chat.dto.ChatImageUploadUrlResponse
+import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
+import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
@@ -37,13 +41,14 @@ class ChatControllerTest : ControllerUnitTest() {
 
     override val controller = ChatController(chatService)
 
-    private fun sampleMessage(id: Long = 3L) = ChatMessageResponse(
+    private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
         id = id,
         roomId = 1L,
         senderId = 2L,
         messageType = ChatMessageType.TEXT,
         content = "안녕하세요",
-        createdAt = LocalDateTime.of(2026, 7, 15, 12, 0),
+        imageUrl = imageUrl,
+        createdAt = LocalDateTime.of(2026, 7, 25, 12, 0),
     )
 
     @Test
@@ -52,11 +57,11 @@ class ChatControllerTest : ControllerUnitTest() {
         every { chatService.getMyRooms(any()) } returns listOf(
             ChatRoomResponse(
                 roomId = 1L,
-                roomType = ChatRoomType.PERSONAL,
-                counterpartMemberId = 2L,
+                sourceType = ChatRoomType.PERSONAL,
+                counterpartMemberIds = listOf(2L),
                 lastMessage = sampleMessage(),
                 unreadCount = 2L,
-                createdAt = LocalDateTime.of(2026, 7, 15, 11, 0),
+                createdAt = LocalDateTime.of(2026, 7, 25, 11, 0),
             ),
         )
 
@@ -78,14 +83,15 @@ class ChatControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data[].roomId").description("채팅방 ID"),
-                                fieldWithPath("data[].roomType").description("채팅방 유형 (PERSONAL, GROUP)"),
-                                fieldWithPath("data[].counterpartMemberId").description("상대 회원 ID (그룹이면 null)").optional(),
+                                fieldWithPath("data[].sourceType").description("원본 유형 (PERSONAL, GROUP)"),
+                                fieldWithPath("data[].counterpartMemberIds[]").description("나를 제외한 참여 회원 ID 목록 (1:1이면 1명)"),
                                 fieldWithPath("data[].lastMessage").description("마지막 메시지 (없으면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.id").description("메시지 ID").optional(),
                                 fieldWithPath("data[].lastMessage.roomId").description("채팅방 ID").optional(),
                                 fieldWithPath("data[].lastMessage.senderId").description("보낸 회원 ID").optional(),
                                 fieldWithPath("data[].lastMessage.messageType").description("메시지 유형").optional(),
-                                fieldWithPath("data[].lastMessage.content").description("메시지 내용").optional(),
+                                fieldWithPath("data[].lastMessage.content").description("메시지 내용 (IMAGE 는 S3 key)").optional(),
+                                fieldWithPath("data[].lastMessage.imageUrl").description("IMAGE 열람용 presigned URL (아니면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.createdAt").description("메시지 생성일시").optional(),
                                 fieldWithPath("data[].unreadCount").description("안읽음 수"),
                                 fieldWithPath("data[].createdAt").description("채팅방 생성일시"),
@@ -142,8 +148,9 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.messages[].id").description("메시지 ID"),
                                 fieldWithPath("data.messages[].roomId").description("채팅방 ID"),
                                 fieldWithPath("data.messages[].senderId").description("보낸 회원 ID"),
-                                fieldWithPath("data.messages[].messageType").description("메시지 유형"),
-                                fieldWithPath("data.messages[].content").description("메시지 내용"),
+                                fieldWithPath("data.messages[].messageType").description("메시지 유형 (TEXT, IMAGE, SYSTEM)"),
+                                fieldWithPath("data.messages[].content").description("메시지 내용 (IMAGE 는 S3 key)"),
+                                fieldWithPath("data.messages[].imageUrl").description("IMAGE 열람용 presigned URL (아니면 null)").optional(),
                                 fieldWithPath("data.messages[].createdAt").description("메시지 생성일시"),
                                 fieldWithPath("data.nextCursor").description("다음 페이지 커서 (더 없으면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
@@ -188,6 +195,64 @@ class ChatControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("이미지 전송용 업로드 URL을 발급한다")
+    fun issueImageUploadUrls() {
+        every { chatService.issueImageUploadUrls(any(), any(), any()) } returns ChatImageUploadUrlsResponse(
+            uploads = listOf(
+                ChatImageUploadUrlResponse(
+                    objectKey = "chat/2/abc-uuid",
+                    uploadUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/chat/2/abc-uuid?sig=...",
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/chat/rooms/{roomId}/image-upload-urls", 1L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    objectMapper.writeValueAsString(
+                        ChatImageUploadUrlsRequest(
+                            files = listOf(ChatImageUploadFileRequest(contentType = "image/jpeg", contentLength = 20480)),
+                        ),
+                    ),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.uploads[0].objectKey").value("chat/2/abc-uuid"))
+            .andDo(
+                document(
+                    "chat-image-upload-urls",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("이미지 업로드 URL 발급")
+                            .description("이미지 전송용 presigned PUT URL을 발급합니다. 업로드 후 messageType=IMAGE, content=objectKey 로 전송합니다. 방 멤버만 호출 가능합니다.")
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                            )
+                            .requestFields(
+                                fieldWithPath("files[].contentType").description("이미지 MIME 타입 (image/* 만 허용)"),
+                                fieldWithPath("files[].contentLength").description("이미지 바이트 크기 (최대 10MB)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.uploads[].objectKey").description("업로드 후 메시지 content 로 전송할 S3 key"),
+                                fieldWithPath("data.uploads[].uploadUrl").description("presigned PUT 업로드 URL"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

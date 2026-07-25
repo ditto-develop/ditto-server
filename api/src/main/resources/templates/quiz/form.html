@@ -32,8 +32,8 @@
                 <div class="field"><label>제목</label><input type="text" th:field="*{title}" placeholder="예: 이번 주 1:1 매칭"/></div>
                 <div class="field"><label>설명</label><textarea rows="2" th:field="*{description}"></textarea></div>
                 <div class="field-row">
-                    <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}"/></div>
-                    <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}"/></div>
+                    <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}" required/></div>
+                    <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}" required/></div>
                 </div>
                 <div class="field check">
                     <input type="checkbox" id="isActive" th:field="*{isActive}"/>

@@ -27,7 +27,7 @@ class ChatStompController(
         principal: Principal,
     ) {
         val memberId = memberIdOf(principal)
-        val message = chatService.sendMessage(memberId, roomId, request.content)
+        val message = chatService.sendMessage(memberId, roomId, request.content, request.messageType)
         messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), message)
     }
 

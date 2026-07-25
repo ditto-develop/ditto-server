@@ -16,6 +16,8 @@
 - OAuth 콜백은 FE로 302 리다이렉트, refreshToken은 HttpOnly·Secure·SameSite 쿠키로만 전달(URL·로그·히스토리 노출 차단). [ADR 0004](../adr/0004-oauth-callback-redirect-and-cookie.md)
 - 카카오 동의항목(email·생년월일)은 콜백 쿼리가 아니라 `GET /api/v1/users/me`로 전달. PENDING 허용은 `JwtAuthenticationFilter`의 `pendingAllowedPaths`로 처리. [ADR 0005](../adr/0005-kakao-consent-via-me-api.md)
 - PENDING 게이트: 회원가입 미완료 회원은 `pendingAllowedPaths` 외 보호 API 접근 시 `SIGNUP_REQUIRED`.
+- 제재 게이트: SUSPENDED(해제 전)/BANNED 회원은 `suspendedAllowedPaths` 외 보호 API 접근 시 `MEMBER_SUSPENDED`/`MEMBER_BANNED`(403). 해제 예정일 경과한 정지는 통과만(원복은 배치·로그인 — [ADR 0009](../adr/0009-sanction-ssot-and-lazy-expiry.md)). 우회 경로 봉쇄: `AuthService.refresh`(필터 미경유)도 동일 거부, 로그인은 아래 콜백 계약으로 안내.
+- 제재 로그인 콜백 계약(FE): 제재 회원 로그인 시 토큰 없이 `?sanctioned=true&sanctionCode=MEMBER_SUSPENDED|MEMBER_BANNED&suspendedUntil=<ISO-8601, 정지만>`으로 리다이렉트. (`OAuthService.getSanctionCallbackUrl`)
 - 어드민 인가는 `@PreAuthorize`가 아니라 `JwtAuthenticationFilter`의 경로 prefix 검사: `/api/v1/admin` 경로는 `member.isAdmin()` 아니면 `403 FORBIDDEN`. [ADR 0006](../adr/0006-admin-authz-filter-path-check.md)
 - WebSocket(STOMP): `/ws` 핸드셰이크는 HTTP 계층 permitAll(브라우저 WS 헤더 제약), 인증·인가는 `StompAuthChannelInterceptor`(CONNECT: `X-API-Key`+JWT, SUBSCRIBE: 방 멤버십). deny-all 체인은 `@Order(7)`. [ADR 0009](../adr/0009-websocket-stomp-auth.md)
 

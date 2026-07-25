@@ -34,14 +34,15 @@ class ChatStompControllerTest {
             senderId = 2L,
             messageType = ChatMessageType.TEXT,
             content = "안녕",
+            imageUrl = null,
             createdAt = LocalDateTime.of(2026, 7, 16, 12, 0),
         )
-        every { chatService.sendMessage(2L, 1L, "안녕") } returns response
+        every { chatService.sendMessage(2L, 1L, "안녕", ChatMessageType.TEXT) } returns response
         val principal = UsernamePasswordAuthenticationToken(MemberPrincipal(2L), null, emptyList())
 
         controller.sendMessage(roomId = 1L, request = ChatSendRequest("안녕"), principal = principal)
 
-        verify { chatService.sendMessage(2L, 1L, "안녕") }
+        verify { chatService.sendMessage(2L, 1L, "안녕", ChatMessageType.TEXT) }
         verify { messagingTemplate.convertAndSend("/sub/chat/rooms/1", response) }
     }
 

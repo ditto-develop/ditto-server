@@ -18,6 +18,48 @@ servers:
 - url: ""
 tags: []
 paths:
+  /api/v1/user-reports:
+    post:
+      tags:
+      - UserReports
+      summary: 신고 접수
+      description: 상대 회원을 신고합니다. 자기 신고·검토 대기 중인 동일 대상 재신고는 거부됩니다. 이미지는 업로드 URL 발급
+        API로 업로드를 마친 objectKey를 전달합니다.
+      operationId: user-report-create
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-user-reports1863970767"
+            examples:
+              user-report-create:
+                value: |-
+                  {
+                    "reportedMemberId" : 2,
+                    "reason" : "inappropriate-behavior",
+                    "source" : "profile",
+                    "detail" : "대화 중 폭언을 반복했습니다.",
+                    "imageKeys" : [ "pending/user-reports/1/e7637b8b-2b78-4f01-b403-6aba91304fb5" ]
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-user-reports900126493"
+              examples:
+                user-report-create:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "id" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users:
     post:
       tags:
@@ -71,10 +113,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-07-15 15:46:53",
+                        "joinedAt" : "2026-07-25 22:48:09",
                         "role" : null,
-                        "createdAt" : "2026-07-15 15:46:53",
-                        "updatedAt" : "2026-07-15 15:46:53"
+                        "createdAt" : "2026-07-25 22:48:09",
+                        "updatedAt" : "2026-07-25 22:48:09"
                       },
                       "error" : null
                     }
@@ -93,7 +135,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-chat-rooms-264019917"
+                $ref: "#/components/schemas/api-v1-chat-rooms-683444364"
               examples:
                 chat-rooms:
                   value: |-
@@ -101,18 +143,19 @@ paths:
                       "success" : true,
                       "data" : [ {
                         "roomId" : 1,
-                        "roomType" : "PERSONAL",
-                        "counterpartMemberId" : 2,
+                        "sourceType" : "PERSONAL",
+                        "counterpartMemberIds" : [ 2 ],
                         "lastMessage" : {
                           "id" : 3,
                           "roomId" : 1,
                           "senderId" : 2,
                           "messageType" : "TEXT",
                           "content" : "안녕하세요",
-                          "createdAt" : "2026-07-15 12:00:00"
+                          "imageUrl" : null,
+                          "createdAt" : "2026-07-25 12:00:00"
                         },
                         "unreadCount" : 2,
-                        "createdAt" : "2026-07-15 11:00:00"
+                        "createdAt" : "2026-07-25 11:00:00"
                       } ],
                       "error" : null
                     }
@@ -340,7 +383,7 @@ paths:
                       "data" : {
                         "year" : 2026,
                         "month" : 7,
-                        "week" : 3,
+                        "week" : 4,
                         "quizSets" : [ {
                           "id" : 1,
                           "year" : 2026,
@@ -349,8 +392,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-07-14 15:46:53",
-                          "endDate" : "2026-07-16 15:46:53",
+                          "startDate" : "2026-07-24 22:48:09",
+                          "endDate" : "2026-07-26 22:48:09",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -367,8 +410,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-07-15 15:46:53",
-                            "updatedAt" : "2026-07-15 15:46:53"
+                            "createdAt" : "2026-07-25 22:48:09",
+                            "updatedAt" : "2026-07-25 22:48:09"
                           } ]
                         } ]
                       },
@@ -414,8 +457,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-07-15 15:46:53",
-                        "updatedAt" : "2026-07-15 15:46:53"
+                        "createdAt" : "2026-07-25 22:48:09",
+                        "updatedAt" : "2026-07-25 22:48:09"
                       },
                       "error" : null
                     }
@@ -444,8 +487,59 @@ paths:
                       "data" : {
                         "year" : 2026,
                         "month" : 7,
-                        "week" : 3,
-                        "period" : "QUIZ_PERIOD"
+                        "week" : 4,
+                        "period" : "CHATTING_PERIOD"
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/user-reports/image-upload-urls:
+    post:
+      tags:
+      - UserReports
+      summary: 신고 이미지 업로드 URL 발급
+      description: "신고에 첨부할 이미지의 업로드 URL(presigned PUT)을 발급합니다. 최대 3장, 파일당 5MB 이하\
+        . 발급받은 uploadUrl로 파일을 PUT 업로드한 뒤 신고 접수 시 objectKey를 전달합니다. URL은 발급 후 10분간\
+        \ 유효합니다."
+      operationId: user-report-image-upload-urls
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-user-reports-image-upload-urls-295231345"
+            examples:
+              user-report-image-upload-urls:
+                value: |-
+                  {
+                    "files" : [ {
+                      "contentType" : "image/png",
+                      "contentLength" : 1024
+                    }, {
+                      "contentType" : "image/jpeg",
+                      "contentLength" : 2048
+                    } ]
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-user-reports-image-upload-urls-641010299"
+              examples:
+                user-report-image-upload-urls:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "uploads" : [ {
+                          "objectKey" : "pending/user-reports/1/ad7a1698-a4b5-4575-a734-1d296a77c377",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/ad7a1698-a4b5-4575-a734-1d296a77c377"
+                        }, {
+                          "objectKey" : "pending/user-reports/1/6622d7d3-ccb7-4c75-9ad3-360bcc264083",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/6622d7d3-ccb7-4c75-9ad3-360bcc264083"
+                        } ]
                       },
                       "error" : null
                     }
@@ -727,7 +821,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQwOTgwMTAsImV4cCI6MTc4NDEwMTYxMH0.6Sn8nFMym06CuU3-uIAl3VYloaflPipxUQ0U_-RCQ-149LVXgoP5PCjEiySpmo1YpCcc8xBi2s9NE_CR6FjUtw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODQ5ODcyODYsImV4cCI6MTc4NDk5MDg4Nn0.Ds6uO3v4nEpufWcC8LrpUAVkm3pvpfqp30qlDyqdIyPrB6u46hFWCucQfYl8jEP2_fJ5giqbC4AgHL5QA-wz_w"
                       },
                       "error" : null
                     }
@@ -793,6 +887,40 @@ paths:
                           "answer" : "도전"
                         } ],
                         "completedCount" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/users/me/sanction:
+    get:
+      tags:
+      - Users
+      summary: 내 제재 조회
+      description: "현재 유효한 내 제재를 조회합니다. 제재가 없으면 sanction이 null입니다. 이용 정지 중에도 호출할 수\
+        \ 있는 유일한 API로, 정지 안내 화면이 사용합니다. 신고자·신고 시점·상세 내용은 노출하지 않습니다."
+      operationId: my-sanction
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-sanction-1253319913"
+              examples:
+                my-sanction:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "sanction" : {
+                          "level" : "SUSPENSION",
+                          "levelDescription" : "기간 이용 정지",
+                          "reason" : null,
+                          "reasonDescription" : null,
+                          "startsAt" : "2026-07-18 22:48:09",
+                          "endsAt" : "2026-08-01 22:48:09"
+                        }
                       },
                       "error" : null
                     }
@@ -926,8 +1054,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-07-15 15:46:54",
-                        "updatedAt" : "2026-07-15 15:46:54"
+                        "createdAt" : "2026-07-25 22:48:09",
+                        "updatedAt" : "2026-07-25 22:48:09"
                       },
                       "error" : null
                     }
@@ -978,6 +1106,55 @@ paths:
                     }
       security:
       - bearerAuthJWT: []
+  /api/v1/chat/rooms/{roomId}/image-upload-urls:
+    post:
+      tags:
+      - Chat
+      summary: 이미지 업로드 URL 발급
+      description: "이미지 전송용 presigned PUT URL을 발급합니다. 업로드 후 messageType=IMAGE, content=objectKey\
+        \ 로 전송합니다. 방 멤버만 호출 가능합니다."
+      operationId: chat-image-upload-urls
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api-v1-chat-rooms-roomId-image-upload-urls1777271249"
+            examples:
+              chat-image-upload-urls:
+                value: |-
+                  {
+                    "files" : [ {
+                      "contentType" : "image/jpeg",
+                      "contentLength" : 20480
+                    } ]
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-image-upload-urls-1366152212"
+              examples:
+                chat-image-upload-urls:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "uploads" : [ {
+                          "objectKey" : "chat/2/abc-uuid",
+                          "uploadUrl" : "https://bucket.s3.ap-northeast-2.amazonaws.com/chat/2/abc-uuid?sig=..."
+                        } ]
+                      },
+                      "error" : null
+                    }
   /api/v1/chat/rooms/{roomId}/messages:
     get:
       tags:
@@ -1011,7 +1188,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-messages-741322350"
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-messages-1177664575"
               examples:
                 chat-messages:
                   value: |-
@@ -1024,14 +1201,16 @@ paths:
                           "senderId" : 2,
                           "messageType" : "TEXT",
                           "content" : "안녕하세요",
-                          "createdAt" : "2026-07-15 12:00:00"
+                          "imageUrl" : null,
+                          "createdAt" : "2026-07-25 12:00:00"
                         }, {
                           "id" : 2,
                           "roomId" : 1,
                           "senderId" : 2,
                           "messageType" : "TEXT",
                           "content" : "안녕하세요",
-                          "createdAt" : "2026-07-15 12:00:00"
+                          "imageUrl" : null,
+                          "createdAt" : "2026-07-25 12:00:00"
                         } ],
                         "nextCursor" : 2
                       },
@@ -1340,52 +1519,6 @@ paths:
                     }
 components:
   schemas:
-    api-v1-chat-rooms-roomId-messages-741322350:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            nextCursor:
-              type: number
-              description: 다음 페이지 커서 (더 없으면 null)
-              nullable: true
-            messages:
-              type: array
-              items:
-                required:
-                - content
-                - createdAt
-                - id
-                - messageType
-                - roomId
-                - senderId
-                type: object
-                properties:
-                  createdAt:
-                    type: string
-                    description: 메시지 생성일시
-                  senderId:
-                    type: number
-                    description: 보낸 회원 ID
-                  messageType:
-                    type: string
-                    description: 메시지 유형
-                  id:
-                    type: number
-                    description: 메시지 ID
-                  content:
-                    type: string
-                    description: 메시지 내용
-                  roomId:
-                    type: number
-                    description: 채팅방 ID
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-request-1327932902:
       required:
       - error
@@ -1528,6 +1661,78 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-user-reports-image-upload-urls-641010299:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 대상 객체 키 (신고 접수 시 전달)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-roomId-messages-1177664575:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            nextCursor:
+              type: number
+              description: 다음 페이지 커서 (더 없으면 null)
+              nullable: true
+            messages:
+              type: array
+              items:
+                required:
+                - content
+                - createdAt
+                - id
+                - messageType
+                - roomId
+                - senderId
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 메시지 생성일시
+                  senderId:
+                    type: number
+                    description: 보낸 회원 ID
+                  messageType:
+                    type: string
+                    description: "메시지 유형 (TEXT, IMAGE, SYSTEM)"
+                  id:
+                    type: number
+                    description: 메시지 ID
+                  content:
+                    type: string
+                    description: 메시지 내용 (IMAGE 는 S3 key)
+                  roomId:
+                    type: number
+                    description: 채팅방 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-system-state583099728:
       required:
       - success
@@ -1625,6 +1830,39 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-user-reports1863970767:
+      required:
+      - reason
+      - reportedMemberId
+      - source
+      type: object
+      properties:
+        reason:
+          type: string
+          description: "신고 사유 code. 가능한 값: inappropriate-behavior(부적절한 행동 (성희롱·폭언·\
+            협박 등)), money-demand(금전 요구 (돈을 요구하거나 상업적 홍보)), false-information(허위 정보\
+            \ (프로필 정보가 거짓이거나 사진 도용)), underage(미성년자 (19세 미만으로 의심)), etc(기타)"
+        imageKeys:
+          type: array
+          description: "첨부 이미지 objectKey 목록 (선택, 최대 3개)"
+          nullable: true
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        detail:
+          type: string
+          description: "상세 설명 (선택, 최대 500자 — etc 사유는 필수)"
+          nullable: true
+        source:
+          type: string
+          description: "신고 접수 위치 code. 가능한 값: profile(프로필 화면), match-result(매칭 결과\
+            \ 화면)"
+        reportedMemberId:
+          type: number
+          description: 피신고자 회원 ID
     api-v1-users-auth-logout-1831456372:
       required:
       - data
@@ -1632,6 +1870,40 @@ components:
       - success
       type: object
       properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-me-sanction-1253319913:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            sanction:
+              required:
+              - level
+              - levelDescription
+              - startsAt
+              type: object
+              properties:
+                level:
+                  type: string
+                  description: "제재 수위. 가능한 값: WARNING(경고 — 다음 주 퀴즈 참여 불가), SUSPENSION(기\
+                    간 이용 정지), PERMANENT_BAN(영구 차단)"
+                startsAt:
+                  type: string
+                  description: 제재 시작 일시
+                endsAt:
+                  type: string
+                  description: 제재 종료 일시 (영구 차단은 null)
+                  nullable: true
+                levelDescription:
+                  type: string
+                  description: 제재 수위 설명
+              description: 유효한 제재 (없으면 null)
         success:
           type: boolean
           description: 성공 여부
@@ -1669,19 +1941,6 @@ components:
             status:
               type: string
               description: 변경된 매칭 상태 (ACCEPTED)
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-social-login-provider-callback-272682272:
-      required:
-      - data
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          description: 빈 객체 (신규 사용자)
         success:
           type: boolean
           description: 성공 여부
@@ -1737,6 +1996,19 @@ components:
           type: number
           description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
           nullable: true
+    api-v1-users-social-login-provider-callback-272682272:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          description: 빈 객체 (신규 사용자)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-group-join-1969670024:
       required:
       - quizSetId
@@ -1823,56 +2095,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-me861338172:
-      required:
-      - error
-      - success
+    api-v1-user-reports-image-upload-urls-295231345:
       type: object
       properties:
-        data:
-          required:
-          - birthDate
-          - email
-          - gender
-          - name
-          - phoneNumber
-          type: object
-          properties:
-            phoneNumber:
-              type: string
-              description: 전화번호 010-XXXX-XXXX (미동의 시 null)
-            gender:
-              type: string
-              description: 성별 MALE/FEMALE (미동의 시 null)
-            name:
-              type: string
-              description: 이름 (미동의 시 null)
-            birthDate:
-              type: string
-              description: 생년월일 (없거나 음력이면 null)
-            email:
-              type: string
-              description: 이메일 (없으면 null)
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-auth-refresh1774976609:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - accessToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새 JWT 액세스 토큰
-        success:
-          type: boolean
-          description: 성공 여부
+        files:
+          type: array
+          items:
+            required:
+            - contentLength
+            - contentType
+            type: object
+            properties:
+              contentLength:
+                type: number
+                description: "파일 크기 (바이트, 최대 5MB)"
+              contentType:
+                type: string
+                description: 파일 MIME 타입 (image/* 만 허용)
     api-v1-quiz-sets-current-week-523790867:
       required:
       - error
@@ -1996,6 +2235,56 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-me861338172:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - birthDate
+          - email
+          - gender
+          - name
+          - phoneNumber
+          type: object
+          properties:
+            phoneNumber:
+              type: string
+              description: 전화번호 010-XXXX-XXXX (미동의 시 null)
+            gender:
+              type: string
+              description: 성별 MALE/FEMALE (미동의 시 null)
+            name:
+              type: string
+              description: 이름 (미동의 시 null)
+            birthDate:
+              type: string
+              description: 생년월일 (없거나 음력이면 null)
+            email:
+              type: string
+              description: 이메일 (없으면 null)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-auth-refresh1774976609:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - accessToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새 JWT 액세스 토큰
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-request-793255208:
       required:
       - quizSetId
@@ -2014,69 +2303,6 @@ components:
       - success
       type: object
       properties:
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-chat-rooms-264019917:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            required:
-            - createdAt
-            - roomId
-            - roomType
-            - unreadCount
-            type: object
-            properties:
-              createdAt:
-                type: string
-                description: 채팅방 생성일시
-              counterpartMemberId:
-                type: number
-                description: 상대 회원 ID (그룹이면 null)
-                nullable: true
-              lastMessage:
-                type: object
-                properties:
-                  createdAt:
-                    type: string
-                    description: 메시지 생성일시
-                    nullable: true
-                  senderId:
-                    type: number
-                    description: 보낸 회원 ID
-                    nullable: true
-                  messageType:
-                    type: string
-                    description: 메시지 유형
-                    nullable: true
-                  id:
-                    type: number
-                    description: 메시지 ID
-                    nullable: true
-                  content:
-                    type: string
-                    description: 메시지 내용
-                    nullable: true
-                  roomId:
-                    type: number
-                    description: 채팅방 ID
-                    nullable: true
-                description: 마지막 메시지 (없으면 null)
-              unreadCount:
-                type: number
-                description: 안읽음 수
-              roomType:
-                type: string
-                description: "채팅방 유형 (PERSONAL, GROUP)"
-              roomId:
-                type: number
-                description: 채팅방 ID
         success:
           type: boolean
           description: 성공 여부
@@ -2180,6 +2406,75 @@ components:
           type: object
           description: 응답 데이터 (없음)
           nullable: true
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-683444364:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            required:
+            - counterpartMemberIds
+            - createdAt
+            - roomId
+            - sourceType
+            - unreadCount
+            type: object
+            properties:
+              createdAt:
+                type: string
+                description: 채팅방 생성일시
+              sourceType:
+                type: string
+                description: "원본 유형 (PERSONAL, GROUP)"
+              lastMessage:
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 메시지 생성일시
+                    nullable: true
+                  senderId:
+                    type: number
+                    description: 보낸 회원 ID
+                    nullable: true
+                  messageType:
+                    type: string
+                    description: 메시지 유형
+                    nullable: true
+                  id:
+                    type: number
+                    description: 메시지 ID
+                    nullable: true
+                  content:
+                    type: string
+                    description: 메시지 내용 (IMAGE 는 S3 key)
+                    nullable: true
+                  roomId:
+                    type: number
+                    description: 채팅방 ID
+                    nullable: true
+                description: 마지막 메시지 (없으면 null)
+              unreadCount:
+                type: number
+                description: 안읽음 수
+              counterpartMemberIds:
+                type: array
+                description: 나를 제외한 참여 회원 ID 목록 (1:1이면 1명)
+                items:
+                  oneOf:
+                  - type: object
+                  - type: boolean
+                  - type: string
+                  - type: number
+              roomId:
+                type: number
+                description: 채팅방 ID
         success:
           type: boolean
           description: 성공 여부
@@ -2443,6 +2738,23 @@ components:
         quizId:
           type: number
           description: 퀴즈 ID
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-quiz-sets-id1440540832:
       required:
       - error
@@ -2505,6 +2817,49 @@ components:
             updatedAt:
               type: string
               description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls1777271249:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            required:
+            - contentLength
+            - contentType
+            type: object
+            properties:
+              contentLength:
+                type: number
+                description: 이미지 바이트 크기 (최대 10MB)
+              contentType:
+                type: string
+                description: 이미지 MIME 타입 (image/* 만 허용)
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부

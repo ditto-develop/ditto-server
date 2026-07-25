@@ -151,7 +151,7 @@ class PersonalMatchServiceTest(
         personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
-        chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
     }
 
     "수신자가 아닌 사용자가 수락을 시도하면 FORBIDDEN 예외가 발생한다" {

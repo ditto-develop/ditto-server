@@ -45,6 +45,14 @@ class StompAuthChannelInterceptorTest {
         return MessageBuilder.createMessage(ByteArray(0), accessor.messageHeaders)
     }
 
+    private fun sendFrame(destination: String, memberId: Long = 1L): Message<*> {
+        val accessor = StompHeaderAccessor.create(StompCommand.SEND)
+        accessor.setLeaveMutable(true)
+        accessor.destination = destination
+        accessor.user = UsernamePasswordAuthenticationToken(MemberPrincipal(memberId), null, emptyList())
+        return MessageBuilder.createMessage(ByteArray(0), accessor.messageHeaders)
+    }
+
     @Test
     @DisplayName("CONNECT: 유효한 API Key + JWT 면 principal 이 세팅된다")
     fun connectSuccess() {
@@ -104,6 +112,24 @@ class StompAuthChannelInterceptorTest {
     @DisplayName("SUBSCRIBE: 방 토픽이 아닌 destination 은 FORBIDDEN 으로 거부한다")
     fun subscribeInvalidDestination() {
         val message = subscribeMessage(destination = "/sub/other", memberId = 1L)
+
+        shouldThrow<WarnException> {
+            interceptor.preSend(message, channel)
+        }.errorCode shouldBe ErrorCode.FORBIDDEN
+    }
+
+    @Test
+    @DisplayName("SEND: 애플리케이션 목적지(/pub/**)로는 통과한다")
+    fun sendToApp() {
+        val message = sendFrame(destination = "/pub/chat/rooms/1")
+
+        interceptor.preSend(message, channel) // 예외 없이 통과
+    }
+
+    @Test
+    @DisplayName("SEND: 브로커 목적지(/sub/**)로 직접 보내면 FORBIDDEN — 컨트롤러/멤버십 우회 차단")
+    fun sendToBrokerDestinationBlocked() {
+        val message = sendFrame(destination = "/sub/chat/rooms/1")
 
         shouldThrow<WarnException> {
             interceptor.preSend(message, channel)

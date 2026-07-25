@@ -4,6 +4,7 @@ import com.ditto.api.match.exclusion.MatchExclusionPolicy
 import com.ditto.api.match.matching.MatchParticipant
 import com.ditto.api.match.matching.MatchingProcessor
 import com.ditto.api.match.matching.ScoredDuo
+import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.MatchCandidate
@@ -38,6 +39,7 @@ class MatchmakingService(
     private val memberRepository: MemberRepository,
     private val exclusionPolicies: List<MatchExclusionPolicy>,
     private val matchingProcessors: List<MatchingProcessor>,
+    private val sanctionExpiryService: SanctionExpiryService,
 ) {
 
     /**
@@ -46,6 +48,9 @@ class MatchmakingService(
      */
     @Transactional
     fun runScheduledMatching(now: LocalDateTime) {
+        // 만료 정지 원복을 후보 생성보다 먼저 — 원복된 회원이 이번 매칭 대상에 포함되게 한다 (ADR 0009).
+        sanctionExpiryService.expireDue(now)
+
         quizSetRepository
             .findEndedQuizSetsWithoutCandidates(now)
             .forEach { generateMatchingCandidates(it.id) }

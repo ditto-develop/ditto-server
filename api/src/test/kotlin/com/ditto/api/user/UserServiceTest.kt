@@ -348,6 +348,46 @@ class UserServiceTest(
                 exception.errorCode shouldBe ErrorCode.NOT_FOUND
             }
 
+            "이용 정지 중인 회원은 탈퇴할 수 없다" {
+                val member = memberRepository.save(
+                    Member(nickname = "정지탈퇴유저").apply {
+                        activate()
+                        suspendUntil(java.time.LocalDateTime.now().plusDays(7))
+                    },
+                )
+
+                val exception = shouldThrow<WarnException> {
+                    userService.leaveUser(id = member.id, memberId = member.id)
+                }
+                exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED
+            }
+
+            "영구 차단 회원은 탈퇴할 수 없다 — 재가입 차단 근거(SocialAccount) 보존" {
+                val member = memberRepository.save(Member(nickname = "차단탈퇴유저").apply { activate(); ban() })
+                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "banned-user"))
+
+                val exception = shouldThrow<WarnException> {
+                    userService.leaveUser(id = member.id, memberId = member.id)
+                }
+
+                exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED
+                socialAccountRepository.findByMemberId(member.id) shouldNotBe null
+            }
+
+            "정지 해제 예정일이 지난 회원은 탈퇴할 수 있다" {
+                val member = memberRepository.save(
+                    Member(nickname = "만료정지탈퇴").apply {
+                        activate()
+                        suspendUntil(java.time.LocalDateTime.now().minusDays(1))
+                    },
+                )
+                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "expired-user"))
+
+                userService.leaveUser(id = member.id, memberId = member.id)
+
+                memberRepository.findById(member.id).isEmpty shouldBe true
+            }
+
             "다른 회원의 ID로 탈퇴 요청하면 예외가 발생한다" {
                 val memberA = memberRepository.save(Member(nickname = "멤버A"))
                 val memberB = memberRepository.save(Member(nickname = "멤버B"))

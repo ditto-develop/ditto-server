@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component
  * (브라우저 WebSocket 은 커스텀 헤더를 못 실음) 실제 인증은 여기서 한다. 배경: ADR 0009.
  * - CONNECT: X-API-Key + Bearer JWT 검증 → MemberPrincipal 세팅. 실패 시 연결 거부.
  * - SUBSCRIBE: `/sub/chat/rooms/{id}` 방 멤버십 인가 (남의 방 구독=도청 차단).
+ * - SEND: 앱 목적지(/pub 하위)로만 허용 — /sub 하위로 직접 SEND 시 컨트롤러·멤버십 우회(위조 주입) 차단.
  */
 @Component
 class StompAuthChannelInterceptor(
@@ -36,6 +37,7 @@ class StompAuthChannelInterceptor(
         when (accessor.command) {
             StompCommand.CONNECT -> authenticate(accessor)
             StompCommand.SUBSCRIBE -> authorizeSubscribe(accessor)
+            StompCommand.SEND -> authorizeSend(accessor)
             else -> Unit
         }
         return message
@@ -64,6 +66,19 @@ class StompAuthChannelInterceptor(
 
         if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
+        }
+    }
+
+    /**
+     * SEND 는 반드시 애플리케이션 목적지(/pub 하위)로만 허용한다.
+     * SimpleBroker 는 브로커 목적지(/sub 하위)로 온 SEND 도 구독자에게 그대로 방송하므로,
+     * 이를 막지 않으면 인증 회원이 `SEND /sub/chat/rooms/{id}` 로 컨트롤러(@MessageMapping)와
+     * 멤버십 검증·DB 저장을 우회해 위조 메시지를 주입할 수 있다.
+     */
+    private fun authorizeSend(accessor: StompHeaderAccessor) {
+        val destination = accessor.destination
+        if (destination == null || !destination.startsWith("${ChatStompDestinations.APP_PREFIX}/")) {
+            throw WarnException(ErrorCode.FORBIDDEN)
         }
     }
 

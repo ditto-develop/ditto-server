@@ -1,6 +1,7 @@
 package com.ditto.api.user.service
 
 import com.ditto.api.match.MatchAccessChecker
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.api.user.dto.LeaveResponse
@@ -31,6 +32,7 @@ class UserService(
     private val matchAccessChecker: MatchAccessChecker,
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     @Transactional
@@ -122,6 +124,12 @@ class UserService(
 
         if (memberId != id) {
             throw WarnException(ErrorCode.FORBIDDEN)
+        }
+
+        // 제재 중 탈퇴를 거부한다 — hard delete가 제재 이력·재가입 차단 근거(SocialAccount)를 지워
+        // 차단 우회 수단이 되는 것을 막는다. 탈퇴 부분 보존 전환(후속) 시 이 가드는 제거한다.
+        if (member.isBanned() || member.isSuspendedAt(serverTimeProvider.now())) {
+            throw WarnException(ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED)
         }
 
         val response = member.toLeaveResponse()

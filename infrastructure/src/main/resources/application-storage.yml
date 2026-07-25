@@ -1,0 +1,30 @@
+spring:
+  config:
+    activate:
+      on-profile: local,test
+
+ditto:
+  storage:
+    s3:
+      bucket: ditto-local-bucket
+      region: ap-northeast-2
+      put-url-ttl: 10m
+
+---
+spring:
+  config:
+    activate:
+      on-profile: develop
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+ditto:
+  storage:
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${AWS_REGION:ap-northeast-2}
+      put-url-ttl: 10m

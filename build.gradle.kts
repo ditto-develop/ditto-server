@@ -1,11 +1,33 @@
 plugins {
     id("sonar-convention")
+    jacoco
 }
 
 allprojects {
     repositories {
         mavenCentral()
     }
+}
+
+// Sonar가 읽는 커버리지 소스(sonar-convention의 xmlReportPaths)를 실제로 생성한다.
+// 모듈별 리포트는 자기 모듈 클래스만 담아, 모듈 경계를 넘는 커버리지(예: api 통합 테스트가
+// 실행한 domain 클래스)가 누락된다 — 전 모듈 실행 데이터·클래스를 단일 XML로 집계해 해결.
+tasks.register<JacocoReport>("jacocoRootReport") {
+    group = "verification"
+    description = "전 모듈 Jacoco 커버리지를 단일 XML로 집계한다 (SonarCloud 입력)"
+    dependsOn(subprojects.map { "${it.path}:test" })
+    executionData(fileTree(rootDir) { include("*/build/jacoco/test.exec") })
+    sourceDirectories.from(files(subprojects.map { it.file("src/main/kotlin") }))
+    classDirectories.from(files(subprojects.map { it.fileTree("build/classes/kotlin/main") }))
+    reports {
+        xml.required.set(true)
+        html.required.set(false)
+    }
+}
+
+// CI의 `./gradlew sonarqube`가 집계 리포트를 먼저 만들도록 보장한다.
+tasks.matching { it.name == "sonar" || it.name == "sonarqube" }.configureEach {
+    dependsOn("jacocoRootReport")
 }
 
 // 문서로만 강제하던 must-do 중 기계 판정 가능한 것을 빌드에서 확정 강제한다(낡음 방지).
