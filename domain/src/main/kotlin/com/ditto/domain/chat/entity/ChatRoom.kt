@@ -16,10 +16,10 @@ import org.hibernate.annotations.Comment
 @Table(
     name = "chat_room",
     uniqueConstraints = [
-        // 하나의 매칭(원본)에는 채팅방이 하나만 존재한다
+        // 하나의 원본(매칭)에는 채팅방이 하나만 존재한다. (source_type, source_id) = 원본을 가리키는 다형 FK
         UniqueConstraint(
             name = "chat_room_uk_1",
-            columnNames = ["room_type", "source_id"],
+            columnNames = ["source_type", "source_id"],
         ),
     ],
 )
@@ -28,10 +28,10 @@ class ChatRoom private constructor(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    @Comment("채팅방 유형 (PERSONAL, GROUP)")
+    @Comment("원본 유형 (PERSONAL, GROUP)")
     @Enumerated(EnumType.STRING)
-    @Column(name = "room_type", nullable = false, length = 20)
-    val roomType: ChatRoomType,
+    @Column(name = "source_type", nullable = false, length = 20)
+    val sourceType: ChatRoomType,
 
     @Comment("원본 매칭 ID (personal_match 또는 group_match 의 ID)")
     @Column(name = "source_id", nullable = false)
@@ -40,9 +40,9 @@ class ChatRoom private constructor(
 
     companion object {
         fun personal(sourceId: Long): ChatRoom =
-            ChatRoom(roomType = ChatRoomType.PERSONAL, sourceId = sourceId)
+            ChatRoom(sourceType = ChatRoomType.PERSONAL, sourceId = sourceId)
 
         fun group(sourceId: Long): ChatRoom =
-            ChatRoom(roomType = ChatRoomType.GROUP, sourceId = sourceId)
+            ChatRoom(sourceType = ChatRoomType.GROUP, sourceId = sourceId)
     }
 }

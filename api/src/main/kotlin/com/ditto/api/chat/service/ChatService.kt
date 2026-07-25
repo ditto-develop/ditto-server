@@ -1,18 +1,25 @@
 package com.ditto.api.chat.service
 
+import com.ditto.api.chat.dto.ChatImageUploadUrlResponse
+import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
+import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatMessage
+import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.infrastructure.storage.ObjectStorage
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 @Transactional(readOnly = true)
@@ -20,6 +27,7 @@ class ChatService(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
+    private val objectStorage: ObjectStorage,
 ) {
 
     /**
@@ -28,7 +36,7 @@ class ChatService(
      */
     @Transactional
     fun createPersonalRoom(personalMatchId: Long, memberAId: Long, memberBId: Long) {
-        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
             return
         }
 
@@ -41,7 +49,31 @@ class ChatService(
         )
     }
 
-    /** 내 채팅방 목록 (상대 회원 · 마지막 메시지 · 안읽음 수), 최근 대화순 */
+    /**
+     * 이미지 업로드용 presigned PUT URL 발급. 방 멤버만 발급 가능하며, 크기·타입 검증 후 발급한다.
+     * 발급받은 key(`chat/{memberId}/{uuid}`)로 업로드한 뒤 messageType=IMAGE, content=key 로 전송한다.
+     */
+    fun issueImageUploadUrls(
+        memberId: Long,
+        roomId: Long,
+        request: ChatImageUploadUrlsRequest,
+    ): ChatImageUploadUrlsResponse {
+        validateRoomMember(roomId, memberId)
+
+        val uploads = request.files.map { file ->
+            if (file.contentLength > MAX_IMAGE_BYTES || !file.contentType.startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
+                throw WarnException(ErrorCode.BAD_REQUEST)
+            }
+            val objectKey = imageKeyPrefix(memberId) + UUID.randomUUID()
+            ChatImageUploadUrlResponse(
+                objectKey = objectKey,
+                uploadUrl = objectStorage.issueUploadUrl(objectKey, file.contentType, file.contentLength),
+            )
+        }
+        return ChatImageUploadUrlsResponse(uploads = uploads)
+    }
+
+    /** 내 채팅방 목록 (상대 회원들 · 마지막 메시지 · 안읽음 수), 최근 대화순 */
     fun getMyRooms(memberId: Long): List<ChatRoomResponse> {
         val myRoomMembers = chatRoomMemberRepository.findByMemberId(memberId)
         if (myRoomMembers.isEmpty()) {
@@ -70,7 +102,7 @@ class ChatService(
         val nextCursor = if (messages.size == pageSize) messages.last().id else null
 
         return ChatMessagesResponse(
-            messages = messages.map { ChatMessageResponse.from(it) },
+            messages = messages.map { toMessageResponse(it) },
             nextCursor = nextCursor,
         )
     }
@@ -83,18 +115,28 @@ class ChatService(
         roomMember.readUpTo(lastReadMessageId)
     }
 
+    /** 저장된 메시지를 응답으로. IMAGE 는 content(S3 key)를 presigned GET URL 로 해석해 imageUrl 에 담는다. */
+    fun toMessageResponse(message: ChatMessage): ChatMessageResponse {
+        val imageUrl = if (message.messageType == ChatMessageType.IMAGE) {
+            objectStorage.issueViewUrl(message.content)
+        } else {
+            null
+        }
+        return ChatMessageResponse.of(message, imageUrl)
+    }
+
     private fun toRoomResponse(
         room: ChatRoom,
         myRoomMember: ChatRoomMember,
         roomMembers: List<ChatRoomMember>,
         memberId: Long,
     ): ChatRoomResponse {
-        val counterpartId = roomMembers.firstOrNull { it.memberId != memberId }?.memberId
+        val counterpartMemberIds = roomMembers.filter { it.memberId != memberId }.map { it.memberId }
         val lastMessage = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(room.id)
         return ChatRoomResponse.of(
             room = room,
-            counterpartMemberId = counterpartId,
-            lastMessage = lastMessage?.let { ChatMessageResponse.from(it) },
+            counterpartMemberIds = counterpartMemberIds,
+            lastMessage = lastMessage?.let { toMessageResponse(it) },
             unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
         )
     }
@@ -121,5 +163,11 @@ class ChatService(
 
     companion object {
         private const val MAX_PAGE_SIZE = 100
+        private const val MAX_IMAGE_BYTES = 10L * 1024 * 1024 // 10MB
+        private const val IMAGE_CONTENT_TYPE_PREFIX = "image/"
+        private const val IMAGE_KEY_ROOT = "chat"
+
+        /** 이미지 key 접두사 — 소유 검증(본인이 발급받은 key만 전송 가능)에 쓰인다. */
+        fun imageKeyPrefix(memberId: Long): String = "$IMAGE_KEY_ROOT/$memberId/"
     }
 }

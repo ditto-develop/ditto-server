@@ -1,11 +1,14 @@
 package com.ditto.api.chat.controller
 
+import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
+import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.response.ApiResponse
+import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -43,4 +46,13 @@ class ChatController(
         chatService.markAsRead(principal.memberId, roomId, request.lastReadMessageId)
         return ApiResponse.ok(Unit)
     }
+
+    /** 이미지 전송용 presigned PUT URL 발급 (방 멤버만). 업로드 후 messageType=IMAGE, content=objectKey 로 전송. */
+    @PostMapping("/api/v1/chat/rooms/{roomId}/image-upload-urls")
+    fun issueImageUploadUrls(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+        @Valid @RequestBody request: ChatImageUploadUrlsRequest,
+    ): ApiResponse<ChatImageUploadUrlsResponse> =
+        ApiResponse.ok(chatService.issueImageUploadUrls(principal.memberId, roomId, request))
 }
