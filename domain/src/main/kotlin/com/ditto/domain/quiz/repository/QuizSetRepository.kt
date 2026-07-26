@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface QuizSetRepository :
     JpaRepository<QuizSet, Long>,
     QuizSetRepositoryCustom {
-    /** 어드민 목록용 — 최신 주차부터 정렬해 전체 조회. */
-    fun findAllByOrderByYearDescMonthDescWeekDescIdDesc(): List<QuizSet>
+    /** 어드민 목록용 — 최신 운영 주부터 정렬해 전체 조회. */
+    fun findAllByOrderByWeekStartedOnDescIdDesc(): List<QuizSet>
 }

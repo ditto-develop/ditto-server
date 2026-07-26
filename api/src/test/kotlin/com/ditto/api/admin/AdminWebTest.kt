@@ -99,7 +99,6 @@ class AdminWebTest {
         mockMvc.perform(
             post("/admin/quiz-sets")
                 .with(authentication(admin())).with(csrf())
-                .param("year", "2026").param("month", "6").param("week", "3")
                 .param("category", "성격").param("title", "테스트 퀴즈셋")
                 .param("description", "설명")
                 .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
@@ -291,7 +290,6 @@ class AdminWebTest {
             .andExpect(status().isOk)
         mockMvc.perform(
             post("/admin/quiz-sets/{id}", id).with(authentication(admin())).with(csrf())
-                .param("year", "2026").param("month", "6").param("week", "3")
                 .param("category", "수정").param("title", "수정 제목").param("description", "d")
                 .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
                 .param("matchingType", "ONE_TO_ONE").param("isActive", "false"),

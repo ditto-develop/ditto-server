@@ -25,7 +25,7 @@ class AdminDummyController(
     @GetMapping("/admin/dummy")
     fun page(model: Model): String {
         model.addAttribute("form", DummyGenerateForm())
-        model.addAttribute("quizSets", quizSetRepository.findAllByOrderByYearDescMonthDescWeekDescIdDesc())
+        model.addAttribute("quizSets", quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc())
         model.addAttribute("dummyCount", adminDummyService.countDummies())
         model.addAttribute("active", "dummy")
         return "dummy"

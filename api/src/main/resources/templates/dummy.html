@@ -21,7 +21,7 @@
                     <label>대상 퀴즈셋</label>
                     <select th:field="*{quizSetId}">
                         <option th:each="qs : ${quizSets}" th:value="${qs.id}"
-                                th:text="|${@weekLabel.of(qs.year, qs.month, qs.week)} · ${qs.title} (${qs.matchingType})|">-</option>
+                                th:text="|${@weekLabel.of(qs.weekStartedOn)} · ${qs.title} (${qs.matchingType})|">-</option>
                     </select>
                 </div>
                 <div class="field-row">
