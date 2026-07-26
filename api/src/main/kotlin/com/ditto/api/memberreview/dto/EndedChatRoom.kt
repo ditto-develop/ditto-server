@@ -19,4 +19,11 @@ data class EndedChatRoom(
     val weekStartedOn: LocalDate,
     val participantIds: List<Long>,
     val endedAt: LocalDateTime,
-)
+) {
+    /** 중복을 제거한 참여자 명단. 같은 회원이 두 번 실려 와도 평가는 한 번만 열린다. */
+    val reviewerIds: List<Long>
+        get() = participantIds.distinct()
+
+    /** [reviewerId]가 평가할 대상들 — 자기 자신은 평가하지 않는다. */
+    fun targetIdsFor(reviewerId: Long): List<Long> = reviewerIds.filter { it != reviewerId }
+}

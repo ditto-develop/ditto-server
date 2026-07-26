@@ -27,6 +27,6 @@ enum class MeetingStatus(
     companion object {
         fun from(code: String): MeetingStatus =
             entries.firstOrNull { it.code == code }
-                ?: throw WarnException(ErrorCode.INVALID_REVIEW_ANSWER)
+                ?: throw WarnException(ErrorCode.INVALID_REVIEW_ANSWER, "지원하지 않는 만남 상태 코드입니다: $code")
     }
 }

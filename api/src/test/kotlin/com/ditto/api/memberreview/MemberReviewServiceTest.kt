@@ -10,6 +10,7 @@ import com.ditto.domain.memberreview.entity.ReviewProgressStatus
 import com.ditto.domain.memberreview.repository.MemberReviewRepository
 import com.ditto.domain.memberreview.repository.ReviewAnswerRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
@@ -121,17 +122,25 @@ class MemberReviewServiceTest(
     }
 
     "참여자 명단 검증" - {
-        "참여자가 한 명뿐이면 평가를 열 수 없다" {
-            val exception = shouldThrow<WarnException> {
-                memberReviewService.createReviews(endedChatRoom(participantIds = listOf(1L)))
-            }
+        "평가할 상대가 없으면(참여자 한 명) 아무것도 만들지 않는다" {
+            val created = memberReviewService.createReviews(endedChatRoom(participantIds = listOf(1L)))
 
-            exception.errorCode shouldBe ErrorCode.INVALID_REVIEW_TARGET
+            created.shouldBeEmpty()
+            memberReviewRepository.findAllByChatRoomId(100L).shouldBeEmpty()
         }
 
         "중복된 참여자는 한 번만 센다" {
+            val created = memberReviewService.createReviews(endedChatRoom(participantIds = listOf(1L, 1L, 2L)))
+
+            created.size shouldBe 2
+            val review = memberReviewRepository.findByChatRoomIdAndAuthorMemberId(100L, 1L)!!
+            reviewAnswerRepository.findAllByMemberReviewIdOrderByIdAsc(review.id)
+                .map { it.reviewedMemberId } shouldContainExactly listOf(2L)
+        }
+
+        "참여자가 아예 없으면 잘못된 입력으로 거부한다" {
             val exception = shouldThrow<WarnException> {
-                memberReviewService.createReviews(endedChatRoom(participantIds = listOf(1L, 1L)))
+                memberReviewService.createReviews(endedChatRoom(participantIds = emptyList()))
             }
 
             exception.errorCode shouldBe ErrorCode.INVALID_REVIEW_TARGET

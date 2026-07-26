@@ -87,9 +87,13 @@ class ReviewAnswer private constructor(
         if (isAnswered) {
             throw WarnException(ErrorCode.REVIEW_ALREADY_ANSWERED)
         }
+        // 검증을 모두 마친 뒤 대입한다 — 중간에 예외가 나면 일부 필드만 바뀐 채로 남는다.
+        val validatedRating = validRating(rating)
+        val validatedComment = normalizedComment(comment)
+
         this.meetingStatus = meetingStatus
-        this.rating = validRating(rating)
-        this.comment = normalizedComment(comment)
+        this.rating = validatedRating
+        this.comment = validatedComment
         this.answeredAt = answeredAt
     }
 

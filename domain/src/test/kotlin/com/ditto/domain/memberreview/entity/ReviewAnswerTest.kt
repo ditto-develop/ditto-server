@@ -43,6 +43,19 @@ class ReviewAnswerTest(
             found.isAnswered shouldBe true
         }
 
+        "검증에 실패하면 어떤 필드도 바뀌지 않는다" {
+            val answer = ReviewAnswerFixture.pending()
+
+            shouldThrow<WarnException> {
+                answer.answer(MeetingStatus.NO_SHOW, rating = 0, comment = "남으면 안 됨", answeredAt = answeredAt)
+            }
+
+            answer.meetingStatus shouldBe null
+            answer.rating shouldBe null
+            answer.comment shouldBe null
+            answer.isAnswered shouldBe false
+        }
+
         "이미 확정한 대상에 재제출하면 거부한다" {
             val answer = ReviewAnswerFixture.pending()
             answer.answer(MeetingStatus.MET, rating = 4, comment = null, answeredAt = answeredAt)

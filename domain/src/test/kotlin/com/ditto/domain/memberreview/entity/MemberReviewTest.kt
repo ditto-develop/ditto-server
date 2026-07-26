@@ -1,5 +1,7 @@
 package com.ditto.domain.memberreview.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.memberreview.MemberReviewFixture
 import com.ditto.domain.memberreview.repository.MemberReviewRepository
@@ -105,6 +107,29 @@ class MemberReviewTest(
             val review = MemberReviewFixture.create()
 
             review.recordAnswer(hasRemainingTarget = false, answeredAt = answeredAt)
+
+            review.status shouldBe ReviewProgressStatus.COMPLETED
+        }
+
+        "완료된 평가는 더 갱신하지 않는다" {
+            val review = MemberReviewFixture.create()
+            review.recordAnswer(hasRemainingTarget = false, answeredAt = answeredAt)
+
+            val exception = shouldThrow<WarnException> {
+                review.recordAnswer(hasRemainingTarget = false, answeredAt = answeredAt.plusHours(1))
+            }
+
+            exception.errorCode shouldBe ErrorCode.REVIEW_ALREADY_ANSWERED
+            review.completedAt shouldBe answeredAt
+        }
+
+        "완료 후에는 진행 중으로 되돌아가지 않는다" {
+            val review = MemberReviewFixture.create()
+            review.recordAnswer(hasRemainingTarget = false, answeredAt = answeredAt)
+
+            shouldThrow<WarnException> {
+                review.recordAnswer(hasRemainingTarget = true, answeredAt = answeredAt)
+            }
 
             review.status shouldBe ReviewProgressStatus.COMPLETED
         }

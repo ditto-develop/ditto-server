@@ -8,8 +8,8 @@ CREATE TABLE member_review
 (
     id               BIGINT      NOT NULL AUTO_INCREMENT,
     author_member_id BIGINT      NOT NULL COMMENT '리뷰 작성자 회원 ID',
-    match_type       VARCHAR(20) NOT NULL COMMENT '매칭 유형 (PERSONAL, GROUP, GROUP_REMATCH)',
-    match_id         BIGINT      NOT NULL COMMENT '매칭 ID (personal_match, group_match 또는 group_rematch_pair 의 ID)',
+    match_type       VARCHAR(20) NOT NULL COMMENT '매칭 유형 (PERSONAL, GROUP)',
+    match_id         BIGINT      NOT NULL COMMENT '매칭 ID (personal_match 또는 group_match 의 ID)',
     chat_room_id     BIGINT      NOT NULL COMMENT '평가 문맥이 된 채팅방 ID',
     quiz_set_id      BIGINT      NOT NULL COMMENT '원본 퀴즈셋 ID',
     week_started_on  DATE        NOT NULL COMMENT '운영 주 시작일 (해당 주 월요일)',

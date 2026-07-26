@@ -1,5 +1,7 @@
 package com.ditto.domain.memberreview.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import com.ditto.domain.chat.entity.ChatRoomType
 import jakarta.persistence.Column
@@ -47,12 +49,12 @@ class MemberReview private constructor(
     @Column(name = "author_member_id", nullable = false)
     val authorMemberId: Long,
 
-    @Comment("매칭 유형 (PERSONAL, GROUP, GROUP_REMATCH)")
+    @Comment("매칭 유형 (PERSONAL, GROUP)")
     @Enumerated(EnumType.STRING)
     @Column(name = "match_type", nullable = false, length = 20)
     val matchType: ChatRoomType,
 
-    @Comment("매칭 ID (personal_match, group_match 또는 group_rematch_pair 의 ID)")
+    @Comment("매칭 ID (personal_match 또는 group_match 의 ID)")
     @Column(name = "match_id", nullable = false)
     val matchId: Long,
 
@@ -87,8 +89,14 @@ class MemberReview private constructor(
     /**
      * 대상 하나가 확정될 때마다 진행 상태를 갱신한다.
      * 마지막 미응답 대상이 확정되면 별도 완료 요청 없이 [ReviewProgressStatus.COMPLETED]로 전이한다.
+     *
+     * 완료된 평가는 더 갱신하지 않는다 — 자식([ReviewAnswer])의 재제출 거부는 다른 행에 있는 가드라
+     * 부모를 보호하지 못하므로, `completedAt != null` ⟺ `COMPLETED` 불변식을 여기서 직접 지킨다.
      */
     fun recordAnswer(hasRemainingTarget: Boolean, answeredAt: LocalDateTime) {
+        if (status == ReviewProgressStatus.COMPLETED) {
+            throw WarnException(ErrorCode.REVIEW_ALREADY_ANSWERED, "이미 완료된 평가입니다.")
+        }
         if (hasRemainingTarget) {
             status = ReviewProgressStatus.IN_PROGRESS
             return
