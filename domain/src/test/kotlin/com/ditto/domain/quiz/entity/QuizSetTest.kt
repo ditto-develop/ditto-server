@@ -19,9 +19,6 @@ class QuizSetTest(
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
 
             quizSet.id shouldNotBe 0L
-            quizSet.year shouldBe 2026
-            quizSet.month shouldBe 4
-            quizSet.week shouldBe 2
             quizSet.category shouldBe "성격"
             quizSet.title shouldBe "이번 주 1:1 매칭"
             quizSet.weekStartedOn shouldBe LocalDate.of(2026, 4, 6)

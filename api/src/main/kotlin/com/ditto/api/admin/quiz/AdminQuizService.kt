@@ -9,7 +9,6 @@ import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -39,11 +38,7 @@ class AdminQuizService(
         quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizId)
 
     fun createQuizSet(form: QuizSetForm): QuizSet {
-        val operationWeek = OperationWeek.containing(form.requiredStartDate().toLocalDate())
         val quizSet = QuizSet.create(
-            year = operationWeek.year,
-            month = operationWeek.month,
-            week = operationWeek.weekOfMonth,
             category = form.category,
             title = form.title,
             description = form.description,
