@@ -10,14 +10,13 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 class RematchTest(
-    private val groupRematchPairRepository: RematchRepository,
+    private val rematchRepository: RematchRepository,
     transactionManager: PlatformTransactionManager,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
@@ -28,7 +27,7 @@ class RematchTest(
         "given: memberIdA=5, memberIdB=2 처럼 앞 회원이 더 클 때" - {
             "when: 저장하면" - {
                 "then: memberId1=min(2), memberId2=max(5) 로 정규화되어 저장된다" {
-                    val pair = groupRematchPairRepository.save(
+                    val pair = rematchRepository.save(
                         RematchFixture.create(memberIdA = 5L, memberIdB = 2L),
                     )
 
@@ -54,14 +53,13 @@ class RematchTest(
             }
         }
 
-        "given: 월요일이 아닌 weekStartedOn 으로" - {
-            "when: 쌍을 만들면" - {
-                "then: 주간 키 규칙 위반이라 거부된다" {
-                    val exception = shouldThrow<WarnException> {
-                        RematchFixture.create(weekStartedOn = LocalDate.of(2026, 7, 21))
-                    }
+        "given: 주간 키는 OperationWeek 가 월요일을 강제하므로" - {
+            "when: 쌍을 저장하면" - {
+                "then: weekStartedOn 과 operationWeek 가 같은 주를 가리킨다" {
+                    val pair = rematchRepository.save(RematchFixture.create())
 
-                    exception.errorCode shouldBe ErrorCode.INVALID_REMATCH_WEEK
+                    pair.weekStartedOn shouldBe RematchFixture.WEEK.startedOn
+                    pair.operationWeek shouldBe RematchFixture.WEEK
                 }
             }
         }
@@ -71,12 +69,12 @@ class RematchTest(
         "given: 소스 그룹 1의 (1,2) 쌍이 이미 있을 때" - {
             "when: 순서만 바꾼 (2,1) 쌍을 같은 소스 그룹에 저장하면" - {
                 "then: 동일한 UK (sourceGroupMatchId, memberId1, memberId2) 충돌로 예외가 발생한다" {
-                    groupRematchPairRepository.save(
+                    rematchRepository.save(
                         RematchFixture.create(sourceGroupMatchId = 1L, memberIdA = 1L, memberIdB = 2L),
                     )
 
                     shouldThrow<Exception> {
-                        groupRematchPairRepository.saveAndFlush(
+                        rematchRepository.saveAndFlush(
                             RematchFixture.create(sourceGroupMatchId = 1L, memberIdA = 2L, memberIdB = 1L),
                         )
                     }
@@ -85,11 +83,11 @@ class RematchTest(
 
             "when: 같은 weekStartedOn 의 같은 쌍을 다른 소스 그룹에 저장하면" - {
                 "then: 소스 그룹별로 각각 생성된다" {
-                    groupRematchPairRepository.save(
+                    rematchRepository.save(
                         RematchFixture.create(sourceGroupMatchId = 1L, memberIdA = 1L, memberIdB = 2L),
                     )
 
-                    val saved = groupRematchPairRepository.saveAndFlush(
+                    val saved = rematchRepository.saveAndFlush(
                         RematchFixture.create(sourceGroupMatchId = 2L, memberIdA = 1L, memberIdB = 2L),
                     )
 
@@ -183,7 +181,7 @@ class RematchTest(
         "given: 양쪽 회원이 같은 쌍에" - {
             "when: 동시에 true 를 제출하면" - {
                 "then: 행 잠금이 판정을 직렬화해 상호 선택을 놓치지 않고 MATCHED 로 수렴한다" {
-                    val pair = groupRematchPairRepository.save(
+                    val pair = rematchRepository.save(
                         RematchFixture.create(memberIdA = 1L, memberIdB = 2L),
                     )
                     val transactionTemplate = TransactionTemplate(transactionManager)
@@ -194,7 +192,7 @@ class RematchTest(
                         executor.submit {
                             startLatch.await()
                             transactionTemplate.execute {
-                                val locked = groupRematchPairRepository.findWithLockById(pair.id)
+                                val locked = rematchRepository.findWithLockById(pair.id)
                                     ?: throw IllegalStateException("쌍이 존재해야 한다")
                                 locked.submitWants(memberId, true, now)
                             }
@@ -204,7 +202,7 @@ class RematchTest(
                     submissions.forEach { it.get() }
                     executor.shutdown()
 
-                    val settled = groupRematchPairRepository.findById(pair.id).orElseThrow()
+                    val settled = rematchRepository.findById(pair.id).orElseThrow()
                     settled.status shouldBe RematchStatus.MATCHED
                     settled.matchedAt shouldNotBe null
                 }
