@@ -3,6 +3,7 @@ package com.ditto.domain.rematch.entity
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.system.OperationWeek
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -13,7 +14,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -80,6 +80,10 @@ class Rematch private constructor(
     var matchedAt: LocalDateTime? = null
         protected set
 
+    /** 이 재매칭이 속한 운영 주. */
+    val operationWeek: OperationWeek
+        get() = OperationWeek(weekStartedOn)
+
     /** memberId 기준 페어의 상대방 ID */
     fun counterpartOf(memberId: Long): Long {
         requirePairMember(memberId)
@@ -126,18 +130,17 @@ class Rematch private constructor(
             sourceGroupMatchId: Long,
             sourceChatRoomId: Long,
             quizSetId: Long,
-            weekStartedOn: LocalDate,
+            week: OperationWeek,
             memberIdA: Long,
             memberIdB: Long,
         ): Rematch {
             if (memberIdA == memberIdB) throw WarnException(ErrorCode.SELF_REMATCH_NOT_ALLOWED)
-            if (weekStartedOn.dayOfWeek != DayOfWeek.MONDAY) throw WarnException(ErrorCode.INVALID_REMATCH_WEEK)
 
             return Rematch(
                 sourceGroupMatchId = sourceGroupMatchId,
                 sourceChatRoomId = sourceChatRoomId,
                 quizSetId = quizSetId,
-                weekStartedOn = weekStartedOn,
+                weekStartedOn = week.startedOn,
                 memberId1 = minOf(memberIdA, memberIdB),
                 memberId2 = maxOf(memberIdA, memberIdB),
             )
