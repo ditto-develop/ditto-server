@@ -160,16 +160,36 @@ class RematchTest(
             }
         }
 
-        "given: 이미 CANCELLED 로 확정된 쌍에" - {
-            "when: 다시 제출하면" - {
-                "then: 성사 여부가 확정된 쌍이라 거부된다" {
-                    val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
-                    pair.submitWants(1L, false, now)
-                    pair.submitWants(2L, true, now)
+        // 제출 실패 응답으로 상대 상태를 읽어내지 못해야 한다 — 쌍이 아직 WAITING이든 이미 확정됐든
+        // 재제출자는 같은 오류를 받아야, 오류 코드 차이로 상대의 제출 시각을 특정할 수 없다.
+        "given: 이미 제출한 회원이 상대 응답 전후로" - {
+            "when: 각각 재제출하면" - {
+                "then: 두 경우 모두 같은 오류를 받아 상대 상태가 드러나지 않는다" {
+                    val beforeCounterpart = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    beforeCounterpart.submitWants(1L, true, now)
 
-                    val exception = shouldThrow<WarnException> { pair.submitWants(2L, true, now) }
+                    val afterCounterpart = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    afterCounterpart.submitWants(1L, true, now)
+                    afterCounterpart.submitWants(2L, false, now)
+                    afterCounterpart.status shouldBe RematchStatus.CANCELLED
 
-                    exception.errorCode shouldBe ErrorCode.REMATCH_PAIR_ALREADY_SETTLED
+                    val beforeError = shouldThrow<WarnException> { beforeCounterpart.submitWants(1L, true, now) }
+                    val afterError = shouldThrow<WarnException> { afterCounterpart.submitWants(1L, true, now) }
+
+                    beforeError.errorCode shouldBe ErrorCode.REMATCH_ALREADY_SUBMITTED
+                    afterError.errorCode shouldBe beforeError.errorCode
+                }
+            }
+
+            "when: 쌍에 속하지 않은 회원이 확정된 쌍에 제출하면" - {
+                "then: 쌍 상태와 무관하게 인가 실패만 알려준다" {
+                    val settled = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    settled.submitWants(1L, false, now)
+                    settled.submitWants(2L, true, now)
+
+                    val exception = shouldThrow<WarnException> { settled.submitWants(99L, true, now) }
+
+                    exception.errorCode shouldBe ErrorCode.NOT_REMATCH_PAIR_MEMBER
                 }
             }
         }

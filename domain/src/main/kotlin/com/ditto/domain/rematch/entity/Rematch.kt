@@ -59,15 +59,15 @@ class Rematch private constructor(
     val memberId2: Long,
 ) : BaseEntity() {
 
+    // 두 선택은 public 접근자를 두지 않는다. 게터가 열려 있으면 엔티티를 그대로 응답에 매핑하거나
+    // 로깅하는 것만으로 상대 선택이 새기 때문에, 외부 조회는 본인 값만 주는 wantsOf()로 강제한다.
     @Comment("memberId1의 재매칭 선택 (NULL=미응답)")
     @Column(name = "member_1_wants", nullable = true)
-    var member1Wants: Boolean? = null
-        protected set
+    private var member1Wants: Boolean? = null
 
     @Comment("memberId2의 재매칭 선택 (NULL=미응답)")
     @Column(name = "member_2_wants", nullable = true)
-    var member2Wants: Boolean? = null
-        protected set
+    private var member2Wants: Boolean? = null
 
     @Comment("쌍 상태")
     @Enumerated(EnumType.STRING)
@@ -102,18 +102,23 @@ class Rematch private constructor(
      * 호출 전 반드시 pair 행을 PESSIMISTIC_WRITE로 잠가야 동시 제출에서 상대 선택을 놓치지 않는다 (ADR 0011).
      */
     fun submitWants(memberId: Long, wants: Boolean, now: LocalDateTime) {
-        if (status != RematchStatus.WAITING) throw WarnException(ErrorCode.REMATCH_PAIR_ALREADY_SETTLED)
+        // 검사 순서가 곧 비공개 계약이다. 쌍 상태를 먼저 보면 실패 응답의 오류 코드 차이만으로
+        // 상대가 언제 제출했는지가 드러나므로, 인가와 본인 상태를 항상 먼저 확인한다.
+        requirePairMember(memberId)
         if (wantsOf(memberId) != null) throw WarnException(ErrorCode.REMATCH_ALREADY_SUBMITTED)
+        // 양쪽이 모두 제출해야 WAITING을 벗어나므로 위 가드를 지난 시점에는 항상 WAITING이다.
+        // 주간 제한(R2)·탈퇴(D1)가 외부에서 취소를 걸기 시작하면 그 경로를 막는 가드가 된다.
+        if (status != RematchStatus.WAITING) throw WarnException(ErrorCode.REMATCH_PAIR_ALREADY_SETTLED)
 
         if (memberId == memberId1) member1Wants = wants else member2Wants = wants
         settleIfBothSubmitted(now)
     }
 
     private fun settleIfBothSubmitted(now: LocalDateTime) {
-        val member1Wants = member1Wants ?: return
-        val member2Wants = member2Wants ?: return
+        val firstWants = member1Wants ?: return
+        val secondWants = member2Wants ?: return
 
-        if (member1Wants && member2Wants) {
+        if (firstWants && secondWants) {
             status = RematchStatus.MATCHED
             matchedAt = now
             return
