@@ -15,7 +15,7 @@
 - 쌍 정규화: `memberId1`=min, `memberId2`=max ([ADR 0008](../adr/0008-matching-entity-uniqueness-modeling.md) 패턴). UK(`source_group_match_id`, `member_id_1`, `member_id_2`)로 같은 소스 그룹의 방향 무관 중복 금지. 자기 자신과의 쌍 금지.
 - 단방향 선택은 비공개: 상대의 제출 여부·값·시각을 어떤 경로로도 노출하지 않는다. `wantsOf()`는 본인 값만 반환한다.
 - 선택 제출은 최종: `NULL`(미응답) → `true`/`false` 한 번만. 재제출 거부.
-- `weekStartedOn`은 `Asia/Seoul` 기준 월요일만 허용 (주간 제한 키 — [ADR 0010](../adr/0010-week-identifier-week-started-on.md) 예정, PR #107).
+- 주간 제한 키는 `OperationWeek`로 받는다. "월요일만 허용"은 그 값 객체가 강제하므로 재매칭 쪽에서 다시 검증하지 않고, `QuizSet`처럼 컬럼은 `weekStartedOn: LocalDate`로 저장하고 `operationWeek` 접근자로 되돌린다([ADR 0010](../adr/0010-week-identifier-week-started-on.md)).
 - 제출 경로는 pair 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 판정한다 — 동시 제출의 성사 누락 방지 ([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)의 안전 규칙 준수).
 - 주간 1회 제한은 이 테이블 UK에 섞지 않는다 — 별도 `rematch_weekly_slot`(후속 R2)에서 성사 시점에만 원자적으로 소비한다.
 
