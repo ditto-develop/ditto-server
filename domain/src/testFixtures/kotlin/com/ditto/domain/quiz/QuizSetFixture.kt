@@ -8,9 +8,6 @@ import java.time.LocalDateTime
 object QuizSetFixture {
 
     fun create(
-        year: Int = 2026,
-        month: Int = 4,
-        week: Int = 2,
         category: String = "성격",
         title: String = "이번 주 1:1 매칭",
         description: String? = "테스트 퀴즈 세트 설명",
@@ -20,9 +17,6 @@ object QuizSetFixture {
         matchingType: MatchingType = MatchingType.ONE_TO_ONE,
         id: Long = 0L,
     ): QuizSet = QuizSet.create(
-        year = year,
-        month = month,
-        week = week,
         category = category,
         title = title,
         description = description,

@@ -1,6 +1,7 @@
 package com.ditto.domain.quiz.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.system.OperationWeek
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -11,13 +12,14 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.Comment
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
 @Table(
     name = "quiz_set",
     indexes = [
-        Index(name = "quiz_set_index_1", columnList = "year_no, month_no, week_no"),
+        Index(name = "quiz_set_index_1", columnList = "week_started_on"),
         Index(name = "quiz_set_index_2", columnList = "start_date, end_date, is_active"),
     ],
 )
@@ -25,15 +27,7 @@ class QuizSet private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
-    @Comment("년도")
-    @Column(name = "year_no", nullable = false)
-    val year: Int,
-    @Comment("월")
-    @Column(name = "month_no", nullable = false)
-    val month: Int,
-    @Comment("주차")
-    @Column(name = "week_no", nullable = false)
-    val week: Int,
+    weekStartedOn: LocalDate,
     category: String,
     title: String,
     description: String? = null,
@@ -42,6 +36,15 @@ class QuizSet private constructor(
     isActive: Boolean = false,
     matchingType: MatchingType = MatchingType.ONE_TO_ONE,
 ) : BaseEntity() {
+
+    @Comment("운영 주 시작일 (해당 주 월요일)")
+    @Column(name = "week_started_on", nullable = false)
+    var weekStartedOn: LocalDate = weekStartedOn
+        protected set
+
+    /** 이 퀴즈셋이 속한 운영 주. */
+    val operationWeek: OperationWeek
+        get() = OperationWeek(weekStartedOn)
 
     @Comment("카테고리")
     @Column(nullable = false, length = 50)
@@ -87,7 +90,7 @@ class QuizSet private constructor(
         isActive = false
     }
 
-    /** 퀴즈셋 메타 정보를 수정한다. 식별 키(year/month/week)는 변경하지 않는다. */
+    /** 퀴즈셋 메타 정보를 수정한다. 주간 식별자(weekStartedOn)는 변경된 startDate가 속한 주로 재파생된다. */
     fun update(
         category: String,
         title: String,
@@ -101,14 +104,12 @@ class QuizSet private constructor(
         this.description = description
         this.startDate = startDate
         this.endDate = endDate
+        this.weekStartedOn = OperationWeek.containing(startDate.toLocalDate()).startedOn
         this.matchingType = matchingType
     }
 
     companion object {
         fun create(
-            year: Int,
-            month: Int,
-            week: Int,
             category: String,
             title: String,
             description: String? = null,
@@ -117,9 +118,7 @@ class QuizSet private constructor(
             isActive: Boolean = false,
             matchingType: MatchingType = MatchingType.ONE_TO_ONE,
         ): QuizSet = QuizSet(
-            year = year,
-            month = month,
-            week = week,
+            weekStartedOn = OperationWeek.containing(startDate.toLocalDate()).startedOn,
             category = category,
             title = title,
             description = description,

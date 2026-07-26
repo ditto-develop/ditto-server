@@ -11,12 +11,10 @@ import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.DayOfWeek
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.temporal.WeekFields
 
 @Service
 @Transactional(readOnly = true)
@@ -27,17 +25,12 @@ class QuizSetService(
 ) {
     fun getCurrentWeekQuizSets(now: LocalDateTime): CurrentWeekQuizSetsResponse {
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
-        val (year, month, week) = currentWeekInfo(now.toLocalDate())
+        val currentWeek = OperationWeek.containing(now.toLocalDate())
 
         if (quizSets.isEmpty()) {
-            return CurrentWeekQuizSetsResponse.empty(year, month, week)
+            return CurrentWeekQuizSetsResponse.empty(currentWeek)
         }
-        return toCurrentWeekResponse(year, month, week, quizSets)
-    }
-
-    private fun currentWeekInfo(today: LocalDate): Triple<Int, Int, Int> {
-        val weekFields = WeekFields.of(DayOfWeek.MONDAY, 1)
-        return Triple(today.year, today.monthValue, today.get(weekFields.weekOfMonth()))
+        return toCurrentWeekResponse(currentWeek, quizSets)
     }
 
     fun getQuizSet(id: Long): QuizSetResponse {
@@ -50,19 +43,15 @@ class QuizSetService(
     }
 
     private fun toCurrentWeekResponse(
-        year: Int,
-        month: Int,
-        week: Int,
+        currentWeek: OperationWeek,
         quizSets: List<QuizSet>,
     ): CurrentWeekQuizSetsResponse {
         val quizzesByQuizSetId = findQuizzesByQuizSetId(quizSets.map { it.id })
         val allQuizIds = quizzesByQuizSetId.values.flatten().map { it.id }
         val choicesByQuizId = findChoicesByQuizId(allQuizIds)
 
-        return CurrentWeekQuizSetsResponse(
-            year = year,
-            month = month,
-            week = week,
+        return CurrentWeekQuizSetsResponse.of(
+            currentWeek = currentWeek,
             quizSets =
                 quizSets.map { quizSet ->
                     CurrentWeekQuizSetResponse.from(

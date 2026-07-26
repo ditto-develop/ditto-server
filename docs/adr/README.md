@@ -13,6 +13,7 @@
 - [0007 — 1:1 매칭을 순수 컴포넌트 파이프라인으로 분해 (대칭 하드필터 + 동점 무작위)](0007-matching-pure-pipeline.md)
 - [0008 — 매칭 엔티티 유니크 모델링: 1:1 페어 정규화 + 그룹 참여/거절 테이블 분리](0008-matching-entity-uniqueness-modeling.md)
 - [0009 — WebSocket(STOMP) 인증: 핸드셰이크 개방 + 프레임 레벨 인증·구독 인가](0009-websocket-stomp-auth.md)
+- [0010 — 주간 식별자 SSOT를 weekStartedOn(그 주 월요일 날짜)으로 정규화](0010-week-identifier-week-started-on.md)
 
 ## 언제 ADR을 쓰는가
 

@@ -2,10 +2,12 @@ package com.ditto.api.quiz.dto
 
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 data class QuizSetResponse(
     val id: Long,
+    val weekStartedOn: LocalDate,
     val year: Int,
     val month: Int,
     val week: Int,
@@ -20,20 +22,24 @@ data class QuizSetResponse(
     val updatedAt: LocalDateTime,
 ) {
     companion object {
-        fun from(quizSet: QuizSet) = QuizSetResponse(
-            id = quizSet.id,
-            year = quizSet.year,
-            month = quizSet.month,
-            week = quizSet.week,
-            category = quizSet.category,
-            title = quizSet.title,
-            description = quizSet.description,
-            startDate = quizSet.startDate,
-            endDate = quizSet.endDate,
-            isActive = quizSet.isActive,
-            matchingType = quizSet.matchingType,
-            createdAt = quizSet.createdAt,
-            updatedAt = quizSet.updatedAt,
-        )
+        fun from(quizSet: QuizSet): QuizSetResponse {
+            val operationWeek = quizSet.operationWeek
+            return QuizSetResponse(
+                id = quizSet.id,
+                weekStartedOn = operationWeek.startedOn,
+                year = operationWeek.year,
+                month = operationWeek.month,
+                week = operationWeek.weekOfMonth,
+                category = quizSet.category,
+                title = quizSet.title,
+                description = quizSet.description,
+                startDate = quizSet.startDate,
+                endDate = quizSet.endDate,
+                isActive = quizSet.isActive,
+                matchingType = quizSet.matchingType,
+                createdAt = quizSet.createdAt,
+                updatedAt = quizSet.updatedAt,
+            )
+        }
     }
 }

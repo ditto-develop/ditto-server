@@ -22,7 +22,7 @@ class AdminMatchController(
 ) {
     @GetMapping("/admin/matching")
     fun page(model: Model): String {
-        model.addAttribute("quizSets", quizSetRepository.findAllByOrderByYearDescMonthDescWeekDescIdDesc())
+        model.addAttribute("quizSets", quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc())
         model.addAttribute("currentTime", serverTimeProvider.now())
         model.addAttribute("active", "matching")
         return "matching"

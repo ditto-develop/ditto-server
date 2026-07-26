@@ -8,17 +8,12 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title" th:text="${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정'">퀴즈셋</h1>
-            <p class="page-desc">주차(연/월/주)는 식별 키입니다. 수정 시에는 변경되지 않습니다.</p>
+            <p class="page-desc">주차는 시작일시가 속한 주(월요일 시작)로 자동 결정됩니다. 수정 시에는 변경되지 않습니다.</p>
 
             <form class="card"
                   th:object="${form}"
                   th:action="${mode} == 'create' ? @{/admin/quiz-sets} : @{/admin/quiz-sets/{id}(id=${quizSetId})}"
                   method="post">
-                <div class="field-row">
-                    <div class="field"><label>연도</label><input type="number" th:field="*{year}"/></div>
-                    <div class="field"><label>월</label><input type="number" th:field="*{month}"/></div>
-                    <div class="field"><label>주차</label><input type="number" th:field="*{week}"/></div>
-                </div>
                 <div class="field-row">
                     <div class="field"><label>카테고리</label><input type="text" th:field="*{category}" placeholder="예: 성격"/></div>
                     <div class="field">

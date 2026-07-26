@@ -13,9 +13,6 @@ import java.time.LocalDateTime
  * 로캘 형식으로 출력돼 브라우저가 값을 버리고 빈 칸으로 표시된다(#93).
  */
 class QuizSetForm(
-    var year: Int = 0,
-    var month: Int = 1,
-    var week: Int = 1,
     var category: String = "",
     var title: String = "",
     var description: String? = null,
@@ -34,9 +31,6 @@ class QuizSetForm(
 
     companion object {
         fun from(quizSet: QuizSet) = QuizSetForm(
-            year = quizSet.year,
-            month = quizSet.month,
-            week = quizSet.week,
             category = quizSet.category,
             title = quizSet.title,
             description = quizSet.description,

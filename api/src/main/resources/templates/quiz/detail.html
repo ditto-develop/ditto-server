@@ -10,7 +10,7 @@
             <a class="muted" th:href="@{/admin/quiz-sets}">← 목록</a>
             <h1 class="page-title" style="margin-top:8px" th:text="${quizSet.title}">제목</h1>
             <p class="page-desc">
-                <span th:text="${@weekLabel.of(quizSet.year, quizSet.month, quizSet.week)}">-</span> ·
+                <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
                 <span class="badge cat" th:text="${quizSet.category}">cat</span>
                 <span class="badge on" th:if="${quizSet.isActive}">활성</span>
                 <span class="badge off" th:unless="${quizSet.isActive}">비활성</span>

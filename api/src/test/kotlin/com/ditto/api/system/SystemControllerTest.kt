@@ -26,6 +26,7 @@ class SystemControllerTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.weekStartedOn").isString)
             .andExpect(jsonPath("$.data.year").isNumber)
             .andExpect(jsonPath("$.data.month").isNumber)
             .andExpect(jsonPath("$.data.week").isNumber)
@@ -42,9 +43,10 @@ class SystemControllerTest : RestDocsTest() {
                             .description("현재 서버 시각 기준의 연/월/주차/기간(QUIZ_PERIOD, MATCHING_PERIOD, CHATTING_PERIOD)을 조회합니다. 어드민 시각 오버라이드가 반영됩니다.")
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.year").description("년도"),
-                                fieldWithPath("data.month").description("월"),
-                                fieldWithPath("data.week").description("주차"),
+                                fieldWithPath("data.weekStartedOn").description("운영 주 시작일 (해당 주 월요일, 주간 식별자)"),
+                                fieldWithPath("data.year").description("년도 (weekStartedOn 파생 표시값, FE 전환 후 제거 예정)"),
+                                fieldWithPath("data.month").description("월 (weekStartedOn 파생 표시값, FE 전환 후 제거 예정)"),
+                                fieldWithPath("data.week").description("주차 (weekStartedOn 파생 표시값, FE 전환 후 제거 예정)"),
                                 fieldWithPath("data.period").description("기간 상태 (QUIZ_PERIOD, MATCHING_PERIOD, CHATTING_PERIOD)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)").optional(),
                             )
