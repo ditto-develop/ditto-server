@@ -1,6 +1,7 @@
 package com.ditto.domain.quiz.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.system.OperationWeek
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -11,6 +12,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.Comment
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
@@ -34,6 +36,9 @@ class QuizSet private constructor(
     @Comment("주차")
     @Column(name = "week_no", nullable = false)
     val week: Int,
+    @Comment("운영 주 시작일 (해당 주 월요일)")
+    @Column(name = "week_started_on", nullable = false)
+    val weekStartedOn: LocalDate,
     category: String,
     title: String,
     description: String? = null,
@@ -120,6 +125,7 @@ class QuizSet private constructor(
             year = year,
             month = month,
             week = week,
+            weekStartedOn = OperationWeek.containing(startDate.toLocalDate()).startedOn,
             category = category,
             title = title,
             description = description,

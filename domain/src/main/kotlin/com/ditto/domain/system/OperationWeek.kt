@@ -28,7 +28,7 @@ value class OperationWeek(val startedOn: LocalDate) {
     companion object {
         private val WEEK_FIELDS = WeekFields.of(DayOfWeek.MONDAY, 1)
 
-        fun including(date: LocalDate): OperationWeek = OperationWeek(mondayOf(date))
+        fun containing(date: LocalDate): OperationWeek = OperationWeek(mondayOf(date))
 
         private fun mondayOf(date: LocalDate): LocalDate =
             date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
