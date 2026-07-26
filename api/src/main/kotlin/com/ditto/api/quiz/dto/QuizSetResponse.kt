@@ -2,7 +2,6 @@ package com.ditto.api.quiz.dto
 
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
-import com.ditto.domain.system.OperationWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -24,13 +23,13 @@ data class QuizSetResponse(
 ) {
     companion object {
         fun from(quizSet: QuizSet): QuizSetResponse {
-            val week = OperationWeek(quizSet.weekStartedOn)
+            val operationWeek = quizSet.operationWeek
             return QuizSetResponse(
                 id = quizSet.id,
-                weekStartedOn = week.startedOn,
-                year = week.year,
-                month = week.month,
-                week = week.weekOfMonth,
+                weekStartedOn = operationWeek.startedOn,
+                year = operationWeek.year,
+                month = operationWeek.month,
+                week = operationWeek.weekOfMonth,
                 category = quizSet.category,
                 title = quizSet.title,
                 description = quizSet.description,
