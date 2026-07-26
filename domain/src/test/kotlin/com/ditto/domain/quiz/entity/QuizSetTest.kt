@@ -44,6 +44,15 @@ class QuizSetTest(
             quizSet.weekStartedOn shouldBe LocalDate.of(2026, 4, 6)
         }
 
+        "operationWeek는 weekStartedOn이 가리키는 운영 주를 반환한다" {
+            val quizSet = QuizSetFixture.create()
+
+            quizSet.operationWeek.startedOn shouldBe LocalDate.of(2026, 4, 6)
+            quizSet.operationWeek.year shouldBe 2026
+            quizSet.operationWeek.month shouldBe 4
+            quizSet.operationWeek.weekOfMonth shouldBe 2
+        }
+
         "월 경계 주의 시작일도 그 주 월요일로 파생된다 (2026-08-01 → 2026-07-27)" {
             val quizSet = QuizSetFixture.create(startDate = LocalDateTime.of(2026, 8, 1, 0, 0))
 
