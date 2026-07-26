@@ -36,7 +36,7 @@
 ## Links
 
 - issue #108
-- `domain/src/main/kotlin/com/ditto/domain/memberreview/entity/`(MemberReview, ReviewAnswer)
-- `api/src/main/kotlin/com/ditto/api/memberreview/`(EndedChatRoom, MemberReviewService)
+- `domain/src/main/kotlin/com/ditto/domain/review/entity/`(MemberReview, ReviewAnswer)
+- `api/src/main/kotlin/com/ditto/api/review/`(EndedChatRoom, MemberReviewService)
 - `domain/db/V20260726221757_리뷰 테이블 추가.sql`
 - [ADR 0008](0008-matching-entity-uniqueness-modeling.md)(유일키로 중복을 막는 같은 접근)

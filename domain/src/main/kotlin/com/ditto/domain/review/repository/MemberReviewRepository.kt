@@ -1,6 +1,6 @@
-package com.ditto.domain.memberreview.repository
+package com.ditto.domain.review.repository
 
-import com.ditto.domain.memberreview.entity.MemberReview
+import com.ditto.domain.review.entity.MemberReview
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface MemberReviewRepository : JpaRepository<MemberReview, Long> {

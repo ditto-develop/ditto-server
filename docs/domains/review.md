@@ -1,4 +1,4 @@
-# member-review 도메인
+# review 도메인
 
 평가(사용자 화면 용어) / review(코드·DB·API 용어). 채팅이 끝나면 참여자별로 열리고, 대상 회원 한 명씩 답변을 확정한다.
 현재 범위는 데이터 모델과 생성까지 — 조회·제출 API, 채팅 종료 연동, 신뢰도·노쇼·공개 집계는 후속 이슈다.
@@ -7,7 +7,7 @@
 
 - `MemberReview`(진행 단위 — 한 회원 × 한 채팅 종료 건), `ReviewAnswer`(그 안의 평가 대상 한 명에 대한 응답).
 - `ReviewProgressStatus`(진행 상태 — `NOT_STARTED`/`IN_PROGRESS`/`COMPLETED`), `MeetingStatus`(오프라인 만남 성사 여부 enum — `code` kebab-case 식별자).
-- `EndedChatRoom`(채팅 종료 트랙이 넘기는 입력 계약 — `api/memberreview/dto/`).
+- `EndedChatRoom`(채팅 종료 트랙이 넘기는 입력 계약 — `api/review/dto/`).
 
 ## 명명 예약 규칙
 
@@ -40,8 +40,8 @@ NOT_STARTED → IN_PROGRESS → COMPLETED   (대상 응답이 확정될 때마�
 
 ## 핵심 파일
 
-- 엔티티: `domain/src/main/kotlin/com/ditto/domain/memberreview/entity/`
-- 리포지토리: `domain/src/main/kotlin/com/ditto/domain/memberreview/repository/`
-- API·서비스: `api/src/main/kotlin/com/ditto/api/memberreview/`
+- 엔티티: `domain/src/main/kotlin/com/ditto/domain/review/entity/`
+- 리포지토리: `domain/src/main/kotlin/com/ditto/domain/review/repository/`
+- API·서비스: `api/src/main/kotlin/com/ditto/api/review/`
 - 마이그레이션: `domain/db/V20260726221757_리뷰 테이블 추가.sql`
 - 설계 배경: [ADR 0011](../adr/0011-review-progress-and-answer-split.md)

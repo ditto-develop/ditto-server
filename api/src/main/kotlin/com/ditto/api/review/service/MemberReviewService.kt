@@ -1,12 +1,12 @@
-package com.ditto.api.memberreview.service
+package com.ditto.api.review.service
 
-import com.ditto.api.memberreview.dto.EndedChatRoom
+import com.ditto.api.review.dto.EndedChatRoom
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.memberreview.entity.MemberReview
-import com.ditto.domain.memberreview.entity.ReviewAnswer
-import com.ditto.domain.memberreview.repository.MemberReviewRepository
-import com.ditto.domain.memberreview.repository.ReviewAnswerRepository
+import com.ditto.domain.review.entity.MemberReview
+import com.ditto.domain.review.entity.ReviewAnswer
+import com.ditto.domain.review.repository.MemberReviewRepository
+import com.ditto.domain.review.repository.ReviewAnswerRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

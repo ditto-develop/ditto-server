@@ -1,4 +1,4 @@
-package com.ditto.api.memberreview.dto
+package com.ditto.api.review.dto
 
 import com.ditto.domain.chat.entity.ChatRoomType
 import java.time.LocalDate

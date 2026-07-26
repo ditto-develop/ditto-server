@@ -1,4 +1,4 @@
-package com.ditto.domain.memberreview.entity
+package com.ditto.domain.review.entity
 
 /**
  * 한 회원이 진행하는 평가의 진행 상태. 대상별 응답이 하나라도 확정되면 [IN_PROGRESS],

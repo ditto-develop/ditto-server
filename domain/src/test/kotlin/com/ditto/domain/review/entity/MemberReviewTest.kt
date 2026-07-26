@@ -1,10 +1,10 @@
-package com.ditto.domain.memberreview.entity
+package com.ditto.domain.review.entity
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
-import com.ditto.domain.memberreview.MemberReviewFixture
-import com.ditto.domain.memberreview.repository.MemberReviewRepository
+import com.ditto.domain.review.MemberReviewFixture
+import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe

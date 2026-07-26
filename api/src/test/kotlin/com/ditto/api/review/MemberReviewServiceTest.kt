@@ -1,14 +1,14 @@
-package com.ditto.api.memberreview
+package com.ditto.api.review
 
-import com.ditto.api.memberreview.dto.EndedChatRoom
-import com.ditto.api.memberreview.service.MemberReviewService
+import com.ditto.api.review.dto.EndedChatRoom
+import com.ditto.api.review.service.MemberReviewService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
-import com.ditto.domain.memberreview.entity.ReviewProgressStatus
-import com.ditto.domain.memberreview.repository.MemberReviewRepository
-import com.ditto.domain.memberreview.repository.ReviewAnswerRepository
+import com.ditto.domain.review.entity.ReviewProgressStatus
+import com.ditto.domain.review.repository.MemberReviewRepository
+import com.ditto.domain.review.repository.ReviewAnswerRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly

@@ -1,4 +1,4 @@
-package com.ditto.domain.memberreview.entity
+package com.ditto.domain.review.entity
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException

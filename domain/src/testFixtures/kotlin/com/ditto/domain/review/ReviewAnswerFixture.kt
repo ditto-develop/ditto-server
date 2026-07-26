@@ -1,6 +1,6 @@
-package com.ditto.domain.memberreview
+package com.ditto.domain.review
 
-import com.ditto.domain.memberreview.entity.ReviewAnswer
+import com.ditto.domain.review.entity.ReviewAnswer
 import com.ditto.domain.withId
 
 object ReviewAnswerFixture {

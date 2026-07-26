@@ -1,7 +1,7 @@
-package com.ditto.domain.memberreview
+package com.ditto.domain.review
 
 import com.ditto.domain.chat.entity.ChatRoomType
-import com.ditto.domain.memberreview.entity.MemberReview
+import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.withId
 import java.time.LocalDate
 import java.time.LocalDateTime

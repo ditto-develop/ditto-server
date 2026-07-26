@@ -1,9 +1,9 @@
-package com.ditto.domain.memberreview.entity
+package com.ditto.domain.review.entity
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.memberreview.ReviewAnswerFixture
-import com.ditto.domain.memberreview.repository.ReviewAnswerRepository
+import com.ditto.domain.review.ReviewAnswerFixture
+import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
