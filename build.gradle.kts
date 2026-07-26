@@ -49,8 +49,13 @@ tasks.register("verifyConventions") {
         val springBootTest = Regex("""^\s*@SpringBootTest""", RegexOption.MULTILINE)
         val violations = mutableListOf<String>()
 
+        // 중첩 git 워크트리(.claude/worktrees/**)는 저장소의 완전한 체크아웃이라 같은 테스트 파일이 다시 걸린다.
+        // 허용 목록이 루트 기준 상대 경로라 워크트리 안 경로는 매칭되지 않아 베이스 클래스가 전부 오탐이 된다.
+        val excludedPaths = listOf("/build/", "/.claude/")
+
         rootDir.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && "/src/test/" in it.path && "/build/" !in it.path }
+            .filter { it.isFile && it.extension == "kt" && "/src/test/" in it.path }
+            .filterNot { file -> excludedPaths.any { it in file.path } }
             .forEach { file ->
                 val text = file.readText()
                 val rel = file.relativeTo(rootDir).path.replace('\\', '/')
