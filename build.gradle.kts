@@ -51,14 +51,16 @@ tasks.register("verifyConventions") {
 
         // 중첩 git 워크트리(.claude/worktrees/**)는 저장소의 완전한 체크아웃이라 같은 테스트 파일이 다시 걸린다.
         // 허용 목록이 루트 기준 상대 경로라 워크트리 안 경로는 매칭되지 않아 베이스 클래스가 전부 오탐이 된다.
-        val excludedPaths = listOf("/build/", "/.claude/")
+        // 판정은 반드시 rootDir 기준 상대 경로로 한다 — 절대 경로로 거르면 워크트리 '안에서' 빌드할 때
+        // rootDir 자체가 .claude 를 포함해 그 안의 모든 파일이 검사에서 빠진다(검사기가 조용히 무력화됨).
+        val excludedDirs = listOf("build", ".claude")
 
         rootDir.walkTopDown()
             .filter { it.isFile && it.extension == "kt" && "/src/test/" in it.path }
-            .filterNot { file -> excludedPaths.any { it in file.path } }
-            .forEach { file ->
+            .map { it to it.relativeTo(rootDir).path.replace('\\', '/') }
+            .filterNot { (_, rel) -> excludedDirs.any { rel.startsWith("$it/") || "/$it/" in rel } }
+            .forEach { (file, rel) ->
                 val text = file.readText()
-                val rel = file.relativeTo(rootDir).path.replace('\\', '/')
                 if (mockBean.containsMatchIn(text)) {
                     violations += "$rel — @MockBean/@SpyBean 금지(MockK 사용). docs/testing/integration.md"
                 }
