@@ -12,6 +12,7 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -71,6 +72,24 @@ class QuizSetServiceTest(
 
             result.quizSets[0].quizzes[0].question shouldBe "첫번째"
             result.quizSets[0].quizzes[1].question shouldBe "두번째"
+        }
+
+        "월 경계 주에도 응답 최상위와 퀴즈셋의 주간 식별자가 일치한다" {
+            val monthBoundaryNow = LocalDateTime.of(2026, 8, 1, 10, 0)
+            quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
+                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59, 59),
+                ),
+            )
+
+            val result = quizSetService.getCurrentWeekQuizSets(monthBoundaryNow)
+
+            result.weekStartedOn shouldBe LocalDate.of(2026, 7, 27)
+            result.quizSets[0].weekStartedOn shouldBe result.weekStartedOn
+            result.year shouldBe 2026
+            result.month shouldBe 7
+            result.week shouldBe 5
         }
 
         "현재 시간 범위 밖의 퀴즈 세트는 조회되지 않는다" {
