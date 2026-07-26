@@ -9,6 +9,7 @@
 
 ## 불변식
 - 1차 제재(경고) 차단 구간에는 답안 제출·진행 초기화 불가 (`QUIZ_BLOCKED_BY_SANCTION`) — 구간은 `sanction`(WARNING·ACTIVE)의 starts/ends datetime, 판정 시각은 컨트롤러가 주입하는 `ServerTimeProvider.now()`. 배경: `docs/domains/sanction.md`.
+- `QuizSet.weekStartedOn`(주간 식별자)은 `startDate`가 속한 주의 월요일로 `create()`에서 자동 파생되며 생성 후 불변 — `update()`가 `startDate`를 바꿔도 유지된다. 유일 제약 없음(한 주 복수 퀴즈셋 허용). `year/month/week`는 저장하지 않고 `OperationWeek` 파생 표시값으로만 제공. 배경: [ADR 0010](../adr/0010-week-identifier-week-started-on.md).
 - TODO: 퀴즈셋 구성·중복 응답 방지·진행 완료 조건을 코드 확인 후 기술.
 
 ## 상태 전이
