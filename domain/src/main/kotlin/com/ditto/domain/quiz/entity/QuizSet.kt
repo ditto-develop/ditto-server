@@ -27,9 +27,7 @@ class QuizSet private constructor(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
-    @Comment("운영 주 시작일 (해당 주 월요일)")
-    @Column(name = "week_started_on", nullable = false)
-    val weekStartedOn: LocalDate,
+    weekStartedOn: LocalDate,
     category: String,
     title: String,
     description: String? = null,
@@ -38,6 +36,15 @@ class QuizSet private constructor(
     isActive: Boolean = false,
     matchingType: MatchingType = MatchingType.ONE_TO_ONE,
 ) : BaseEntity() {
+
+    @Comment("운영 주 시작일 (해당 주 월요일)")
+    @Column(name = "week_started_on", nullable = false)
+    var weekStartedOn: LocalDate = weekStartedOn
+        protected set
+
+    /** 이 퀴즈셋이 속한 운영 주. */
+    val operationWeek: OperationWeek
+        get() = OperationWeek(weekStartedOn)
 
     @Comment("카테고리")
     @Column(nullable = false, length = 50)
@@ -83,7 +90,7 @@ class QuizSet private constructor(
         isActive = false
     }
 
-    /** 퀴즈셋 메타 정보를 수정한다. 주간 식별자(weekStartedOn)는 변경하지 않는다. */
+    /** 퀴즈셋 메타 정보를 수정한다. 주간 식별자(weekStartedOn)는 변경된 startDate가 속한 주로 재파생된다. */
     fun update(
         category: String,
         title: String,
@@ -97,6 +104,7 @@ class QuizSet private constructor(
         this.description = description
         this.startDate = startDate
         this.endDate = endDate
+        this.weekStartedOn = OperationWeek.containing(startDate.toLocalDate()).startedOn
         this.matchingType = matchingType
     }
 

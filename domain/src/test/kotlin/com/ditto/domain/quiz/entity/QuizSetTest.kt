@@ -58,6 +58,21 @@ class QuizSetTest(
             second.weekStartedOn shouldBe LocalDate.of(2026, 7, 27)
         }
 
+        "startDate를 다른 주로 수정하면 weekStartedOn도 그 주 월요일로 재파생된다" {
+            val quizSet = QuizSetFixture.create()
+
+            quizSet.update(
+                category = quizSet.category,
+                title = quizSet.title,
+                description = quizSet.description,
+                startDate = LocalDateTime.of(2026, 6, 17, 0, 0),
+                endDate = LocalDateTime.of(2026, 6, 21, 23, 59, 59),
+                matchingType = quizSet.matchingType,
+            )
+
+            quizSet.weekStartedOn shouldBe LocalDate.of(2026, 6, 15)
+        }
+
         "다른 주의 퀴즈셋은 다른 weekStartedOn을 가진다" {
             val thisWeek = QuizSetFixture.create(startDate = LocalDateTime.of(2026, 7, 27, 0, 0))
             val nextWeek = QuizSetFixture.create(startDate = LocalDateTime.of(2026, 8, 3, 0, 0))

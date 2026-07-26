@@ -39,7 +39,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/bd3a2674-a82f-4c04-90e9-3e33ccf664d9" ]
+                    "imageKeys" : [ "pending/user-reports/1/51bb63a3-c8a5-4308-bea1-65cb896f93c8" ]
                   }
       responses:
         "200":
@@ -113,10 +113,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-07-26 20:48:40",
+                        "joinedAt" : "2026-07-26 21:04:34",
                         "role" : null,
-                        "createdAt" : "2026-07-26 20:48:40",
-                        "updatedAt" : "2026-07-26 20:48:40"
+                        "createdAt" : "2026-07-26 21:04:34",
+                        "updatedAt" : "2026-07-26 21:04:34"
                       },
                       "error" : null
                     }
@@ -362,8 +362,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-07-25 20:48:40",
-                          "endDate" : "2026-07-27 20:48:40",
+                          "startDate" : "2026-07-25 21:04:34",
+                          "endDate" : "2026-07-27 21:04:34",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -380,8 +380,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-07-26 20:48:40",
-                            "updatedAt" : "2026-07-26 20:48:40"
+                            "createdAt" : "2026-07-26 21:04:34",
+                            "updatedAt" : "2026-07-26 21:04:34"
                           } ]
                         } ]
                       },
@@ -428,8 +428,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-07-26 20:48:40",
-                        "updatedAt" : "2026-07-26 20:48:40"
+                        "createdAt" : "2026-07-26 21:04:34",
+                        "updatedAt" : "2026-07-26 21:04:34"
                       },
                       "error" : null
                     }
@@ -506,11 +506,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/83d92c2e-26ab-4b3b-836d-f2c9c133b115",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/83d92c2e-26ab-4b3b-836d-f2c9c133b115"
+                          "objectKey" : "pending/user-reports/1/d5e21454-b553-427a-8329-890a31bbb7f1",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/d5e21454-b553-427a-8329-890a31bbb7f1"
                         }, {
-                          "objectKey" : "pending/user-reports/1/98eb4828-9cab-46dd-b5e2-d91bcaa4288e",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/98eb4828-9cab-46dd-b5e2-d91bcaa4288e"
+                          "objectKey" : "pending/user-reports/1/7ebec3ad-7fac-4134-bc39-7811de9894e2",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/7ebec3ad-7fac-4134-bc39-7811de9894e2"
                         } ]
                       },
                       "error" : null
@@ -793,7 +793,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODUwNjY1MTYsImV4cCI6MTc4NTA3MDExNn0.oodxgGNPYwSG_tm4IC2e1HNqMRJHcWBUbSnZg3YKtZrwMxVyWEuIbpAU1f8w58btix4wadkp_H2dJjbvW2U9tw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODUwNjc0NzAsImV4cCI6MTc4NTA3MTA3MH0.rhJ-3zDx9rp8hU22YvIetc-TKV5IRNdBS3DjSC30ZmzazkeR1OzikzSusziLsRib4D1Tg-CjviAdws5-aI4G2A"
                       },
                       "error" : null
                     }
@@ -890,8 +890,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-19 20:48:40",
-                          "endsAt" : "2026-08-02 20:48:40"
+                          "startsAt" : "2026-07-19 21:04:34",
+                          "endsAt" : "2026-08-02 21:04:34"
                         }
                       },
                       "error" : null
@@ -1026,8 +1026,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-07-26 20:48:40",
-                        "updatedAt" : "2026-07-26 20:48:40"
+                        "createdAt" : "2026-07-26 21:04:34",
+                        "updatedAt" : "2026-07-26 21:04:34"
                       },
                       "error" : null
                     }
@@ -1652,99 +1652,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-matches-1on1-1115011008:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - algorithmVersion
-          - candidates
-          - matchingType
-          - quizSetId
-          type: object
-          properties:
-            candidates:
-              type: array
-              description: 추천 후보 목록 (매칭 점수 내림차순)
-              items:
-                required:
-                - location
-                - matchRate
-                - nickname
-                - profileImageUrl
-                - scoreBreakdown
-                - userId
-                type: object
-                properties:
-                  scoreBreakdown:
-                    required:
-                    - matchedQuestions
-                    - quizMatchRate
-                    - reasons
-                    - totalQuestions
-                    type: object
-                    properties:
-                      totalQuestions:
-                        type: number
-                        description: 전체 비교 문항 수
-                      reasons:
-                        type: array
-                        description: 매칭 사유 문구
-                        items:
-                          oneOf:
-                          - type: object
-                          - type: boolean
-                          - type: string
-                          - type: number
-                      quizMatchRate:
-                        type: number
-                        description: 퀴즈 답변 일치율 (0~100)
-                      matchedQuestions:
-                        type: number
-                        description: 일치한 문항 수
-                    description: 매칭 점수 상세
-                  gender:
-                    type: string
-                    description: "성별 (MALE / FEMALE, 없으면 null)"
-                    nullable: true
-                  nickname:
-                    type: string
-                    description: 닉네임
-                  location:
-                    type: string
-                    description: 사는 곳 코드
-                  matchRate:
-                    type: number
-                    description: 매칭 점수 (0~100)
-                  profileImageUrl:
-                    type: string
-                    description: 프로필 이미지 (캐리커쳐)
-                  userId:
-                    type: number
-                    description: 후보 회원 ID
-                  introduction:
-                    type: string
-                    description: "자기소개 (소개노트 한 단어, 없으면 null)"
-                    nullable: true
-                  age:
-                    type: number
-                    description: 나이 (없으면 null)
-                    nullable: true
-            algorithmVersion:
-              type: string
-              description: 매칭 알고리즘 버전
-            quizSetId:
-              type: number
-              description: 후보가 속한 퀴즈 세트 ID
-            matchingType:
-              type: string
-              description: 매칭 타입 (ONE_TO_ONE / GROUP)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-quiz-sets-current-week838676343:
       required:
       - error
@@ -1873,6 +1780,99 @@ components:
                   startDate:
                     type: string
                     description: 시작일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-matches-1on1-1115011008:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - algorithmVersion
+          - candidates
+          - matchingType
+          - quizSetId
+          type: object
+          properties:
+            candidates:
+              type: array
+              description: 추천 후보 목록 (매칭 점수 내림차순)
+              items:
+                required:
+                - location
+                - matchRate
+                - nickname
+                - profileImageUrl
+                - scoreBreakdown
+                - userId
+                type: object
+                properties:
+                  scoreBreakdown:
+                    required:
+                    - matchedQuestions
+                    - quizMatchRate
+                    - reasons
+                    - totalQuestions
+                    type: object
+                    properties:
+                      totalQuestions:
+                        type: number
+                        description: 전체 비교 문항 수
+                      reasons:
+                        type: array
+                        description: 매칭 사유 문구
+                        items:
+                          oneOf:
+                          - type: object
+                          - type: boolean
+                          - type: string
+                          - type: number
+                      quizMatchRate:
+                        type: number
+                        description: 퀴즈 답변 일치율 (0~100)
+                      matchedQuestions:
+                        type: number
+                        description: 일치한 문항 수
+                    description: 매칭 점수 상세
+                  gender:
+                    type: string
+                    description: "성별 (MALE / FEMALE, 없으면 null)"
+                    nullable: true
+                  nickname:
+                    type: string
+                    description: 닉네임
+                  location:
+                    type: string
+                    description: 사는 곳 코드
+                  matchRate:
+                    type: number
+                    description: 매칭 점수 (0~100)
+                  profileImageUrl:
+                    type: string
+                    description: 프로필 이미지 (캐리커쳐)
+                  userId:
+                    type: number
+                    description: 후보 회원 ID
+                  introduction:
+                    type: string
+                    description: "자기소개 (소개노트 한 단어, 없으면 null)"
+                    nullable: true
+                  age:
+                    type: number
+                    description: 나이 (없으면 null)
+                    nullable: true
+            algorithmVersion:
+              type: string
+              description: 매칭 알고리즘 버전
+            quizSetId:
+              type: number
+              description: 후보가 속한 퀴즈 세트 ID
+            matchingType:
+              type: string
+              description: 매칭 타입 (ONE_TO_ONE / GROUP)
         success:
           type: boolean
           description: 성공 여부

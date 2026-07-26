@@ -13,7 +13,7 @@
 
 `OperationWeek` 값 객체(`domain/system`)를 주차 계산의 단일 책임으로 둔다 — `containing(date)`가 어떤 날짜든 그 주 월요일로 스냅하고, 월요일 불변식은 `init require`로 강제하며, `year/month/weekOfMonth`는 표시용 파생값으로만 제공한다.
 
-`quiz_set.week_started_on DATE`를 저장한다. 값은 `QuizSet.create()`가 `startDate`에서 파생하므로(생성자 private) 호출자가 기간과 어긋난 주를 넣을 수 없고, 생성 후 불변이다(`update()`가 `startDate`를 바꿔도 유지 — 기존 `year/month/week` 의미론 보존). 유일 제약은 두지 않아 한 주 복수 퀴즈셋을 허용한다.
+`quiz_set.week_started_on DATE`를 저장한다. 값은 항상 `startDate`에서 파생된다 — `QuizSet.create()`(생성자 private)에서 파생하고, `update()`로 `startDate`가 다른 주로 바뀌면 재파생한다(별도 입력값이던 옛 `year/month/week`와 달리 파생값이므로 보존할 독립 정보가 없다). 유일 제약은 두지 않아 한 주 복수 퀴즈셋을 허용한다. 기간이 두 운영 주에 걸치면 주간 식별자와 실제 기간이 어긋나므로 어드민 유입 지점(`AdminQuizService`)에서 거부한다 — 엔티티 레벨로 강제하지 않는 이유는 테스트 픽스처가 조회 로직 검증용 임의 기간을 자유롭게 쓰기 때문.
 
 기존 `year_no/month_no/week_no` 컬럼·엔티티 필드는 제거했다(정식 오픈 전이라 2단계 배포 부담을 수용). API 응답의 `year/month/week` 필드는 FE가 표시에 사용 중이므로 `weekStartedOn` 파생 표시값으로 유지하고, FE 전환 후 별도 PR에서 제거한다(REST Docs에 명시).
 
@@ -22,7 +22,7 @@
 ## Consequences
 
 - 얻음: 월·연 경계와 무관한 안정적 주간 키, 주차 계산 단일화(중복 3곳 제거), 한 주 복수 퀴즈셋 허용, 재매칭 주간 정책 키 확보, 어드민 주차 수동 입력 제거(시작일에서 자동 파생).
-- 비용: `year/month/week` API 필드가 FE 전환까지 파생값으로 이중 표현 유지, DROP 마이그레이션(`V20260726204352`)은 신버전 배포와 동시에 적용해야 함(구버전 코드가 제거된 컬럼을 조회).
+- 비용: `year/month/week` API 필드가 FE 전환까지 파생값으로 이중 표현 유지, 마이그레이션 2단계 적용 필요 — 추가(`V20260726202324`, NULL 허용+백필)는 언제든 안전하고, NOT NULL 승격+제거(`V20260726204352`)는 신버전 배포 완료 후에만 적용(구버전은 제거 컬럼을 조회·기록하고 새 컬럼을 채우지 않음).
 
 ## Links
 

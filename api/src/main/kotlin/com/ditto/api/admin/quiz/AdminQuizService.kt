@@ -9,6 +9,7 @@ import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -38,6 +39,7 @@ class AdminQuizService(
         quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizId)
 
     fun createQuizSet(form: QuizSetForm): QuizSet {
+        validatePeriodWithinOneWeek(form)
         val quizSet = QuizSet.create(
             category = form.category,
             title = form.title,
@@ -51,6 +53,7 @@ class AdminQuizService(
     }
 
     fun updateQuizSet(id: Long, form: QuizSetForm) {
+        validatePeriodWithinOneWeek(form)
         val quizSet = getQuizSet(id)
         quizSet.update(
             category = form.category,
@@ -61,6 +64,15 @@ class AdminQuizService(
             matchingType = form.matchingType,
         )
         if (form.isActive) quizSet.activate() else quizSet.deactivate()
+    }
+
+    /** 기간이 두 운영 주에 걸치면 주간 식별자(weekStartedOn)와 실제 기간이 어긋나므로 유입 시점에 막는다. */
+    private fun validatePeriodWithinOneWeek(form: QuizSetForm) {
+        val startWeek = OperationWeek.containing(form.requiredStartDate().toLocalDate())
+        val endWeek = OperationWeek.containing(form.requiredEndDate().toLocalDate())
+        if (startWeek != endWeek) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "퀴즈셋 기간은 한 운영 주(월~일) 안에 있어야 합니다.")
+        }
     }
 
     fun activate(id: Long) {
