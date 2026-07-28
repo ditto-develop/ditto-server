@@ -43,5 +43,10 @@ enum class ErrorCode(
     INVALID_REVIEW_TARGET(400, "8001", "평가할 수 없는 대상입니다."),
     INVALID_REVIEW_ANSWER(400, "8002", "평가 응답값이 올바르지 않습니다."),
     REVIEW_ALREADY_ANSWERED(409, "8003", "이미 평가를 확정한 대상입니다."),
+    // 80xx는 리뷰(평가), 81xx는 재매칭 대역이다.
+    SELF_REMATCH_NOT_ALLOWED(400, "8101", "자기 자신과의 재매칭 쌍은 만들 수 없습니다."),
+    NOT_REMATCH_PAIR_MEMBER(403, "8102", "재매칭 쌍에 속한 회원이 아닙니다."),
+    REMATCH_ALREADY_SUBMITTED(409, "8103", "이미 재매칭 의사를 확정했습니다."),
+    REMATCH_PAIR_ALREADY_SETTLED(409, "8104", "이미 성사 여부가 확정된 재매칭입니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
