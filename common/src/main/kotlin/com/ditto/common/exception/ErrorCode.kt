@@ -40,5 +40,8 @@ enum class ErrorCode(
     CHAT_ROOM_NOT_FOUND(404, "7001", "존재하지 않는 채팅방입니다."),
     NOT_CHAT_ROOM_MEMBER(403, "7002", "채팅방에 참여한 회원이 아닙니다."),
     INVALID_CHAT_IMAGE_KEY(400, "7003", "유효하지 않은 채팅 이미지입니다."),
+    INVALID_REVIEW_TARGET(400, "8001", "평가할 수 없는 대상입니다."),
+    INVALID_REVIEW_ANSWER(400, "8002", "평가 응답값이 올바르지 않습니다."),
+    REVIEW_ALREADY_ANSWERED(409, "8003", "이미 평가를 확정한 대상입니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
