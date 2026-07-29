@@ -19,4 +19,16 @@ interface RematchRepository : JpaRepository<Rematch, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Transactional(propagation = Propagation.MANDATORY)
     fun findWithLockById(id: Long): Rematch?
+
+    /**
+     * 소스 그룹의 정규화된 쌍으로 잠금 조회 — 리뷰 제출은 재매칭 ID를 모르고 "누구를 평가하는지"만 안다.
+     * 유일키 `(source_group_match_id, member_id_1, member_id_2)` 단건 조회이므로 잠금 범위가 한 행이다 (ADR 0011).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findWithLockBySourceGroupMatchIdAndMemberId1AndMemberId2(
+        sourceGroupMatchId: Long,
+        memberId1: Long,
+        memberId2: Long,
+    ): Rematch?
 }
