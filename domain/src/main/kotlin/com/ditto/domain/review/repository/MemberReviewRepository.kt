@@ -1,9 +1,10 @@
 package com.ditto.domain.review.repository
 
 import com.ditto.domain.review.entity.MemberReview
+import com.ditto.domain.review.repository.querydsl.MemberReviewRepositoryCustom
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface MemberReviewRepository : JpaRepository<MemberReview, Long> {
+interface MemberReviewRepository : JpaRepository<MemberReview, Long>, MemberReviewRepositoryCustom {
     /** 동일 종료 이벤트 재처리 시 기존 진행 단위를 찾아 멱등 처리한다. */
     fun findByChatRoomIdAndAuthorMemberId(chatRoomId: Long, authorMemberId: Long): MemberReview?
 

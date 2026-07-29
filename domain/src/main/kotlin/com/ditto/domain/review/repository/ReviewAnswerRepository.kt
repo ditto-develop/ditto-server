@@ -9,4 +9,7 @@ interface ReviewAnswerRepository : JpaRepository<ReviewAnswer, Long> {
 
     /** 남은 미응답 대상 수 — 마지막 대상 제출 여부 판정에 쓴다. */
     fun countByMemberReviewIdAndAnsweredAtIsNull(memberReviewId: Long): Long
+
+    /** 여러 평가의 대상을 한 번에 읽는다. 반환 순서는 단건 조회와 동일(생성 순). */
+    fun findAllByMemberReviewIdInOrderByIdAsc(memberReviewIds: Collection<Long>): List<ReviewAnswer>
 }
