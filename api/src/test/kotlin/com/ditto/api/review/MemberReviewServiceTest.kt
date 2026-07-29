@@ -11,6 +11,7 @@ import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.review.entity.MeetingStatus
+import com.ditto.domain.review.entity.ReviewAnswerContent
 import com.ditto.domain.review.entity.ReviewProgressStatus
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
@@ -266,7 +267,7 @@ class MemberReviewServiceTest(
             val counterpartReview = memberReviewRepository.findByChatRoomIdAndAuthorMemberId(100L, 2L)!!
             val counterpartAnswer =
                 reviewAnswerRepository.findAllByMemberReviewIdOrderByIdAsc(counterpartReview.id).single()
-            counterpartAnswer.answer(MeetingStatus.MET, 5, "좋았어요", endedAt)
+            counterpartAnswer.answer(ReviewAnswerContent.of(MeetingStatus.MET, 5, "좋았어요"), endedAt)
             reviewAnswerRepository.save(counterpartAnswer)
 
             val myTarget = memberReviewService.getMyPendingReviews(1L).single().targets.single()
