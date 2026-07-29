@@ -62,7 +62,7 @@ class ReviewAnswer private constructor(
         protected set
 
     @Comment("한줄 코멘트 (선택)")
-    @Column(length = COMMENT_MAX_LENGTH)
+    @Column(length = ReviewAnswerContent.COMMENT_MAX_LENGTH)
     var comment: String? = null
         protected set
 
@@ -76,32 +76,26 @@ class ReviewAnswer private constructor(
 
     /**
      * 이 대상에 대한 답변을 확정한다. 대상별 제출은 최종이라 한 번만 성공하며, 이후 재제출은 거부한다.
-     * 같은 본문 재전송의 멱등 처리는 서비스가 확정 여부를 먼저 확인해 수행한다.
+     * 같은 내용 재전송의 멱등 처리는 서비스가 [content]를 비교해 수행한다.
      */
-    fun answer(
-        meetingStatus: MeetingStatus,
-        rating: Int,
-        comment: String?,
-        answeredAt: LocalDateTime,
-    ) {
+    fun answer(content: ReviewAnswerContent, answeredAt: LocalDateTime) {
         if (isAnswered) {
             throw WarnException(ErrorCode.REVIEW_ALREADY_ANSWERED)
         }
-        // 검증을 모두 마친 뒤 대입한다 — 중간에 예외가 나면 일부 필드만 바뀐 채로 남는다.
-        val validatedRating = validRating(rating)
-        val validatedComment = normalizedComment(comment)
-
-        this.meetingStatus = meetingStatus
-        this.rating = validatedRating
-        this.comment = validatedComment
+        this.meetingStatus = content.meetingStatus
+        this.rating = content.rating
+        this.comment = content.comment
         this.answeredAt = answeredAt
     }
 
-    companion object {
-        const val COMMENT_MAX_LENGTH = 50
-        const val RATING_MIN = 1
-        const val RATING_MAX = 5
+    /** 확정된 답변 내용. 미응답이면 `null`이다. */
+    fun content(): ReviewAnswerContent? {
+        val meetingStatus = meetingStatus ?: return null
+        val rating = rating ?: return null
+        return ReviewAnswerContent(meetingStatus, rating, comment)
+    }
 
+    companion object {
         fun pending(
             memberReviewId: Long,
             reviewedMemberId: Long,
@@ -109,22 +103,5 @@ class ReviewAnswer private constructor(
             memberReviewId = memberReviewId,
             reviewedMemberId = reviewedMemberId,
         )
-
-        private fun validRating(rating: Int): Int {
-            if (rating !in RATING_MIN..RATING_MAX) {
-                throw WarnException(ErrorCode.INVALID_REVIEW_ANSWER, "별점은 $RATING_MIN~$RATING_MAX 사이여야 합니다.")
-            }
-            return rating
-        }
-
-        /** 공백만 입력한 코멘트는 미입력과 같으므로 `null`로 정규화한다. */
-        private fun normalizedComment(comment: String?): String? {
-            val trimmed = comment?.trim()
-            if (trimmed.isNullOrEmpty()) return null
-            if (trimmed.length > COMMENT_MAX_LENGTH) {
-                throw WarnException(ErrorCode.INVALID_REVIEW_ANSWER, "코멘트는 최대 ${COMMENT_MAX_LENGTH}자입니다.")
-            }
-            return trimmed
-        }
     }
 }

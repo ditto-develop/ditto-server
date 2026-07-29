@@ -86,6 +86,21 @@ class MemberReview private constructor(
     var completedAt: LocalDateTime? = null
         protected set
 
+    fun isAuthor(memberId: Long): Boolean = authorMemberId == memberId
+
+    /** 재매칭 의사를 받는 평가인지. 재매칭은 그룹에서 만난 사람과만 신청할 수 있다. */
+    fun canRematch(): Boolean = matchType == ChatRoomType.GROUP
+
+    /**
+     * 이 평가에 재매칭 의사를 실을 수 있는지 확인한다 — 받지 않는 평가(1:1)에 값이 오면 거부한다.
+     * 반대 방향(재매칭을 받는데 의사가 없음)은 값을 실제로 쓰는 `RematchSubmitter`가 검증한다.
+     */
+    fun validateRematchAnswerAllowed(wantsOneToOneRematch: Boolean?) {
+        if (!canRematch() && wantsOneToOneRematch != null) {
+            throw WarnException(ErrorCode.INVALID_REVIEW_ANSWER, "1:1 평가에는 재매칭 의사를 보낼 수 없습니다.")
+        }
+    }
+
     /**
      * 대상 하나가 확정될 때마다 진행 상태를 갱신한다.
      * 마지막 미응답 대상이 확정되면 별도 완료 요청 없이 [ReviewProgressStatus.COMPLETED]로 전이한다.

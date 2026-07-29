@@ -40,10 +40,12 @@ enum class ErrorCode(
     CHAT_ROOM_NOT_FOUND(404, "7001", "존재하지 않는 채팅방입니다."),
     NOT_CHAT_ROOM_MEMBER(403, "7002", "채팅방에 참여한 회원이 아닙니다."),
     INVALID_CHAT_IMAGE_KEY(400, "7003", "유효하지 않은 채팅 이미지입니다."),
+    // 80xx는 리뷰(평가), 81xx는 재매칭 대역이다.
     INVALID_REVIEW_TARGET(400, "8001", "평가할 수 없는 대상입니다."),
     INVALID_REVIEW_ANSWER(400, "8002", "평가 응답값이 올바르지 않습니다."),
     REVIEW_ALREADY_ANSWERED(409, "8003", "이미 평가를 확정한 대상입니다."),
-    // 80xx는 리뷰(평가), 81xx는 재매칭 대역이다.
+    REVIEW_NOT_FOUND(404, "8004", "존재하지 않는 평가입니다."),
+    REVIEW_ANSWER_NOT_MODIFIABLE(409, "8005", "확정한 답변은 수정할 수 없습니다."),
     SELF_REMATCH_NOT_ALLOWED(400, "8101", "자기 자신과의 재매칭 쌍은 만들 수 없습니다."),
     NOT_REMATCH_PAIR_MEMBER(403, "8102", "재매칭 쌍에 속한 회원이 아닙니다."),
     REMATCH_ALREADY_SUBMITTED(409, "8103", "이미 재매칭 의사를 확정했습니다."),

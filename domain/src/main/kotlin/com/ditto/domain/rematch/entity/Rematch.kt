@@ -75,24 +75,30 @@ class Rematch private constructor(
     var status: RematchStatus = RematchStatus.WAITING
         protected set
 
+    // status 와 함께만 의미를 갖는 값이라 직접 노출하지 않는다 — 조회는 matchedAt() 으로 한다.
     @Comment("상호 선택 성사 일시")
     @Column(name = "matched_at", nullable = true)
-    var matchedAt: LocalDateTime? = null
-        protected set
+    private var matchedAt: LocalDateTime? = null
 
     /** 이 재매칭이 속한 운영 주. */
     val operationWeek: OperationWeek
         get() = OperationWeek(weekStartedOn)
 
+    /** 상호 성사된 시각. 성사되지 않았으면 `null` — 성사 상태와 시각이 함께 움직인다는 불변식을 여기서 지킨다. */
+    fun matchedAt(): LocalDateTime? = matchedAt.takeIf { status == RematchStatus.MATCHED }
+
     /** memberId 기준 페어의 상대방 ID */
     fun counterpartOf(memberId: Long): Long {
-        requirePairMember(memberId)
+        validatePairMember(memberId)
         return if (memberId == memberId1) memberId2 else memberId1
     }
 
+    /** memberId 본인이 확정한 선택이 주어진 값과 같은지. 재제출이 기존 확정과 일치하는지 판정할 때 쓴다. */
+    fun hasSameWants(memberId: Long, wants: Boolean): Boolean = wantsOf(memberId) == wants
+
     /** memberId 본인의 확정 선택(미응답이면 null). 상대 선택은 성사 전 노출 금지라 본인 값 조회만 제공한다 */
     fun wantsOf(memberId: Long): Boolean? {
-        requirePairMember(memberId)
+        validatePairMember(memberId)
         return if (memberId == memberId1) member1Wants else member2Wants
     }
 
@@ -104,7 +110,7 @@ class Rematch private constructor(
     fun submitWants(memberId: Long, wants: Boolean, now: LocalDateTime) {
         // 검사 순서가 곧 비공개 계약이다. 쌍 상태를 먼저 보면 실패 응답의 오류 코드 차이만으로
         // 상대가 언제 제출했는지가 드러나므로, 인가와 본인 상태를 항상 먼저 확인한다.
-        requirePairMember(memberId)
+        validatePairMember(memberId)
         if (wantsOf(memberId) != null) throw WarnException(ErrorCode.REMATCH_ALREADY_SUBMITTED)
         // 양쪽이 모두 제출해야 WAITING을 벗어나므로 위 가드를 지난 시점에는 항상 WAITING이다.
         // 주간 제한(R2)·탈퇴(D1)가 외부에서 취소를 걸기 시작하면 그 경로를 막는 가드가 된다.
@@ -126,7 +132,7 @@ class Rematch private constructor(
         status = RematchStatus.CANCELLED
     }
 
-    private fun requirePairMember(memberId: Long) {
+    private fun validatePairMember(memberId: Long) {
         if (memberId != memberId1 && memberId != memberId2) throw WarnException(ErrorCode.NOT_REMATCH_PAIR_MEMBER)
     }
 
