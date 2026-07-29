@@ -9,7 +9,7 @@ import java.time.LocalDateTime
  * `answeredAt`이 `null`이면 아직 제출하지 않은 대상이다.
  *
  * 탈퇴 등으로 회원이 사라져도 대상 행은 남으므로 프로필 필드는 모두 nullable이다.
- * `location`·`meetingStatus`는 FE와 공유하는 `code`로 반환한다(`gender`는 enum 이름).
+ * `location`은 FE와 공유하는 `code`로, `gender`·`meetingStatus`는 enum 이름으로 반환한다.
  */
 data class ReviewTargetResponse(
     val memberId: Long,
@@ -31,7 +31,7 @@ data class ReviewTargetResponse(
             age = member?.age,
             location = member?.location?.code,
             profileImageUrl = member?.caricature,
-            meetingStatus = answer.meetingStatus?.code,
+            meetingStatus = answer.meetingStatus?.name,
             rating = answer.rating,
             comment = answer.comment,
             answeredAt = answer.answeredAt,
