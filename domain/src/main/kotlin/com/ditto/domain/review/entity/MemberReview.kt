@@ -21,7 +21,7 @@ import org.hibernate.annotations.Comment
 /**
  * 한 회원이 한 채팅 종료 건에 대해 진행하는 평가. 안에 평가 대상 수만큼 [ReviewAnswer]를 가진다.
  *
- * [matchType]·[matchId]는 `chat_room`의 `(source_type, source_id)`와 같은 값이다. 조회 때마다 채팅방을
+ * [matchType]·[matchId]는 `chat_room`의 `(room_type, source_id)`와 같은 값이다. 조회 때마다 채팅방을
  * 조인하지 않으려고 복사해 두며, 양쪽 다 생성 후 불변이라 어긋나지 않는다.
  * 타입으로 [ChatRoomType]을 재사용하는 이유는 값·의미가 동일해 별도 enum을 두면 동기화 비용만 생기기 때문이다.
  */

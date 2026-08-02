@@ -18,7 +18,7 @@ class ChatRoomTest(
                 val room = chatRoomRepository.save(ChatRoom.personal(sourceId = 10L))
 
                 room.id shouldNotBe 0L
-                room.sourceType shouldBe ChatRoomType.PERSONAL
+                room.roomType shouldBe ChatRoomType.PERSONAL
                 room.sourceId shouldBe 10L
             }
         }
@@ -27,7 +27,7 @@ class ChatRoomTest(
             "then: GROUP 타입으로 저장된다" {
                 val room = chatRoomRepository.save(ChatRoom.group(sourceId = 20L))
 
-                room.sourceType shouldBe ChatRoomType.GROUP
+                room.roomType shouldBe ChatRoomType.GROUP
                 room.sourceId shouldBe 20L
             }
         }

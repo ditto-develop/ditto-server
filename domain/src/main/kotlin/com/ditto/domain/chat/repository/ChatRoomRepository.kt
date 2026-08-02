@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
 
-    fun findBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): ChatRoom?
+    fun findByRoomTypeAndSourceId(roomType: ChatRoomType, sourceId: Long): ChatRoom?
 
-    fun existsBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): Boolean
+    fun existsByRoomTypeAndSourceId(roomType: ChatRoomType, sourceId: Long): Boolean
 }
