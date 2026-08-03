@@ -6,10 +6,23 @@
 - `ChatRoom` — 채팅방. `room_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
 - `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서).
 - `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키.
+- `ChatPeriod` — 채팅이 열려 있는 주말 구간(금 00:00 ~ 월 00:00). 값 객체.
+- `ChatRoomStatus`(SCHEDULED/ACTIVE/ENDED), `ChatEndReason`(EXPIRED/USER_ENDED).
 - destination — 전송 `/pub/chat/rooms/{roomId}`, 구독 `/sub/chat/rooms/{roomId}`.
 
+## 생명주기
+```text
+SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자 종료──> ENDED
+```
+- **채팅 기간은 금요일 00:00 개방 ~ 월요일 00:00 종료, 72시간이다.** 일반 매칭 채팅과 재매칭 채팅이 같은 창을 쓰므로 계산은 `ChatPeriod` 한 곳에만 둔다 — 두 곳에서 각자 계산하면 "그 주말이 언제인가"의 정의가 갈라진다.
+- 주말이 시작된 뒤 만들어진 방은 다음 주로 미루지 않고 진행 중인 주말에 합류한다(생성 즉시 `ACTIVE`).
+- `expires_at`은 **불변이 아니다** — 상호 동의 연장(#121)으로 뒤로 밀린다. 다만 값이 없는 방은 허용하지 않는다(NULL이면 만료 스케줄러가 못 잡아 영영 끝나지 않고, 그러면 평가도 열리지 않는다).
+- `ACTIVE → ENDED`는 **한 번만 성공한다.** `ChatRoom.end()`가 이미 끝난 방에 `false`를 돌려주므로, 만료 스케줄러와 사용자 종료가 겹쳐도 종료 기록과 후속 처리(평가 생성)가 하나로 수렴한다.
+- `end_reason`은 실제로 구분해서 쓰는 값만 둔다. 상대 차단을 동반한 종료(Figma `강제 종료` 버튼 = 상대 차단)와 그룹 인원 미달 자동 해체는 각 기능을 만들 때 값을 추가한다.
+- **"누가 나갔는지"는 `chat_room`에 두지 않는다.** 나갈 때 남기는 `SYSTEM` 메시지의 `sender_id`가 그 사실을 들고 있고, 조회자가 자기 ID와 비교해 "상대방이 채팅을 종료했습니다"를 렌더링한다. 조회자에 따라 값이 달라지는 표현(`SELF_LEFT`/`PARTNER_LEFT`)을 저장하지 않으면서, 그룹의 멤버 이탈도 같은 메커니즘으로 커버된다.
+
 ## 핵심 규칙·불변식
-- 방 생성: `PersonalMatch` 수락(ACCEPT) 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op). (그룹은 후속)
+- 방 생성: `PersonalMatch` 수락(ACCEPT) 시, 그룹은 `GroupMatch` 활성화 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op).
 - 페이징: `id` 커서(`id < cursor` DESC), OFFSET 금지. 응답 `nextCursor` = 반환된 가장 과거 메시지 id(페이지가 가득 찼을 때만, 아니면 null).
 - 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 안읽음 수 = `id > last_read` 카운트.
 - 인가: 방 멤버만 조회·구독·전송 가능. STOMP 구독 인가는 `StompAuthChannelInterceptor`. WS 인증 배경: [ADR 0009](../adr/0009-websocket-stomp-auth.md).
@@ -20,5 +33,5 @@
 - 스케일아웃(2번째 레플리카) 시 SimpleBroker → 외부 STOMP relay(RabbitMQ 등). 인메모리 브로커는 레플리카를 못 넘는다(구독자·발행자가 서로 못 봄).
 
 ## 핵심 파일
-- 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`), `repository`(+`querydsl` 커서 페이징). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`.
+- 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`·`ChatPeriod`), `repository`(+`querydsl` 커서 페이징). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`, 생명주기 컬럼은 `V20260803223317_채팅 종료 생명주기 컬럼 추가.sql`.
 - API: `api/.../chat/controller`(REST 조회), `service/ChatService`(방 생성·목록·메시지 페이징·읽음·전송), `websocket`(`WebSocketConfig`·`StompAuthChannelInterceptor`·`ChatStompController`).

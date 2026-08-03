@@ -6,10 +6,12 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatMessageType
+import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -28,6 +30,7 @@ class ChatService(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val objectStorage: ObjectStorage,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     /**
@@ -40,7 +43,10 @@ class ChatService(
             return
         }
 
-        val room = chatRoomRepository.save(ChatRoom.personal(personalMatchId))
+        val now = serverTimeProvider.now()
+        val room = chatRoomRepository.save(
+            ChatRoom.personal(personalMatchId, ChatPeriod.weekendOf(now), now),
+        )
         chatRoomMemberRepository.saveAll(
             listOf(
                 ChatRoomMember.of(roomId = room.id, memberId = memberAId),
@@ -59,7 +65,10 @@ class ChatService(
             return
         }
 
-        val room = chatRoomRepository.save(ChatRoom.group(groupMatchId))
+        val now = serverTimeProvider.now()
+        val room = chatRoomRepository.save(
+            ChatRoom.group(groupMatchId, ChatPeriod.weekendOf(now), now),
+        )
         chatRoomMemberRepository.saveAll(
             memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
         )
