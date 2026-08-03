@@ -108,7 +108,7 @@ class RematchTest(
                     pair.status shouldBe RematchStatus.WAITING
                     pair.wantsOf(1L) shouldBe true
                     pair.wantsOf(2L) shouldBe null
-                    pair.matchedAt shouldBe null
+                    pair.matchedAt() shouldBe null
                 }
             }
 
@@ -120,7 +120,7 @@ class RematchTest(
                     pair.submitWants(2L, true, now)
 
                     pair.status shouldBe RematchStatus.MATCHED
-                    pair.matchedAt shouldBe now
+                    pair.matchedAt() shouldBe now
                 }
             }
 
@@ -132,7 +132,7 @@ class RematchTest(
                     pair.submitWants(2L, false, now)
 
                     pair.status shouldBe RematchStatus.CANCELLED
-                    pair.matchedAt shouldBe null
+                    pair.matchedAt() shouldBe null
                 }
             }
 
@@ -224,7 +224,7 @@ class RematchTest(
 
                     val settled = rematchRepository.findById(pair.id).orElseThrow()
                     settled.status shouldBe RematchStatus.MATCHED
-                    settled.matchedAt shouldNotBe null
+                    settled.matchedAt() shouldNotBe null
                 }
             }
         }
