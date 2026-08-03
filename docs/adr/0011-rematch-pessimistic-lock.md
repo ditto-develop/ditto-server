@@ -9,7 +9,7 @@
 
 기존 레포의 동시성 방어는 두 패턴뿐이고 비관적 잠금 선례는 없었다.
 
-1. DB 유일키 + exists 선체크 (`ChatRoom (room_type, source_id)` 등)
+1. DB 유일키 + exists 선체크 (`ChatRoom (source_type, source_id)` 등)
 2. 조건부 UPDATE — `MemberReportRepository.transitionReview`의 `where ... and status = :expected` + 반환 행 수로 승패 판정
 
 조건부 UPDATE로도 정확성은 확보할 수 있으나, "내 값 기록 → 성사 전이 시도 → 행 수 판별 → 재조회"의 다단계가 되고 전이 UPDATE의 행 수 0이 오류가 아니라 세 가지 정상 경로(상대 미응답·상대 false·상대가 이미 성사시킴)로 갈라진다. 신고 검토의 "행 수 0 = 이미 처리됨 오류"라는 단순함이 여기서는 성립하지 않는다.

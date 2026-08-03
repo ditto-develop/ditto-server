@@ -94,7 +94,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/820f7e21-f2e9-43f1-bde5-80cee851f6a6" ]
+                    "imageKeys" : [ "pending/user-reports/1/f0bd55ad-43d3-42a1-a637-04732e3b2654" ]
                   }
       responses:
         "200":
@@ -168,10 +168,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-08-04 00:33:01",
+                        "joinedAt" : "2026-08-04 00:43:16",
                         "role" : null,
-                        "createdAt" : "2026-08-04 00:33:01",
-                        "updatedAt" : "2026-08-04 00:33:01"
+                        "createdAt" : "2026-08-04 00:43:16",
+                        "updatedAt" : "2026-08-04 00:43:16"
                       },
                       "error" : null
                     }
@@ -190,7 +190,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-chat-rooms1655951464"
+                $ref: "#/components/schemas/api-v1-chat-rooms1291226728"
               examples:
                 chat-rooms:
                   value: |-
@@ -198,7 +198,7 @@ paths:
                       "success" : true,
                       "data" : [ {
                         "roomId" : 1,
-                        "roomType" : "PERSONAL",
+                        "sourceType" : "PERSONAL",
                         "counterpartMemberIds" : [ 2 ],
                         "lastMessage" : {
                           "id" : 3,
@@ -422,8 +422,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-03 00:33:01",
-                          "endDate" : "2026-08-05 00:33:01",
+                          "startDate" : "2026-08-03 00:43:16",
+                          "endDate" : "2026-08-05 00:43:16",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -440,8 +440,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-04 00:33:01",
-                            "updatedAt" : "2026-08-04 00:33:01"
+                            "createdAt" : "2026-08-04 00:43:16",
+                            "updatedAt" : "2026-08-04 00:43:16"
                           } ]
                         } ]
                       },
@@ -488,8 +488,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-04 00:33:01",
-                        "updatedAt" : "2026-08-04 00:33:01"
+                        "createdAt" : "2026-08-04 00:43:16",
+                        "updatedAt" : "2026-08-04 00:43:16"
                       },
                       "error" : null
                     }
@@ -566,11 +566,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/7d04a0bc-a177-4759-b92f-7eed475e4b72",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/7d04a0bc-a177-4759-b92f-7eed475e4b72"
+                          "objectKey" : "pending/user-reports/1/28126161-b635-4df5-aa66-b73006723647",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/28126161-b635-4df5-aa66-b73006723647"
                         }, {
-                          "objectKey" : "pending/user-reports/1/6bcc6a68-89a1-485a-9afd-b50e4e0b9c9e",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/6bcc6a68-89a1-485a-9afd-b50e4e0b9c9e"
+                          "objectKey" : "pending/user-reports/1/f982028d-ea2d-48fe-b1e3-2f4063dc456f",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/f982028d-ea2d-48fe-b1e3-2f4063dc456f"
                         } ]
                       },
                       "error" : null
@@ -853,7 +853,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU3NzExNzcsImV4cCI6MTc4NTc3NDc3N30.WJcaTXd2BS2Jnkf_vdlhJYz_tabeG_gJTlfRRag1gjuHn_d5jWM-pAU-LaTEq_zZfIN3wWtJogqca8LtQeN5Sg"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU3NzE3OTIsImV4cCI6MTc4NTc3NTM5Mn0.xVB1yJVQq9SXL5r_EGrf2gIH7f3LqWBb_TpO6YY8pKQMiSW1g-P4Mzj0Z696zCt9tXXWnEWUXqSPK59qzBcpVw"
                       },
                       "error" : null
                     }
@@ -950,8 +950,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-28 00:33:01",
-                          "endsAt" : "2026-08-11 00:33:01"
+                          "startsAt" : "2026-07-28 00:43:16",
+                          "endsAt" : "2026-08-11 00:43:16"
                         }
                       },
                       "error" : null
@@ -1086,8 +1086,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-04 00:33:02",
-                        "updatedAt" : "2026-08-04 00:33:02"
+                        "createdAt" : "2026-08-04 00:43:16",
+                        "updatedAt" : "2026-08-04 00:43:16"
                       },
                       "error" : null
                     }
@@ -2276,87 +2276,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-chat-rooms1655951464:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            required:
-            - counterpartMemberIds
-            - createdAt
-            - expiresAt
-            - isEnded
-            - opensAt
-            - roomId
-            - roomType
-            - unreadCount
-            type: object
-            properties:
-              createdAt:
-                type: string
-                description: 채팅방 생성일시
-              lastMessage:
-                type: object
-                properties:
-                  createdAt:
-                    type: string
-                    description: 메시지 생성일시
-                    nullable: true
-                  senderId:
-                    type: number
-                    description: 보낸 회원 ID
-                    nullable: true
-                  messageType:
-                    type: string
-                    description: 메시지 유형
-                    nullable: true
-                  id:
-                    type: number
-                    description: 메시지 ID
-                    nullable: true
-                  content:
-                    type: string
-                    description: 메시지 내용 (IMAGE 는 S3 key)
-                    nullable: true
-                  roomId:
-                    type: number
-                    description: 채팅방 ID
-                    nullable: true
-                description: 마지막 메시지 (없으면 null)
-              opensAt:
-                type: string
-                description: 채팅 개방 시각 (금요일 00:00)
-              unreadCount:
-                type: number
-                description: 안읽음 수
-              isEnded:
-                type: boolean
-                description: 종료 여부. true 면 전송·구독이 막히고 조회만 가능
-              expiresAt:
-                type: string
-                description: 자동 종료 예정 시각 (월요일 00:00). 남은 시간 카운트다운 기준
-              counterpartMemberIds:
-                type: array
-                description: 나를 제외한 참여 회원 ID 목록 (1:1이면 1명)
-                items:
-                  oneOf:
-                  - type: object
-                  - type: boolean
-                  - type: string
-                  - type: number
-              roomType:
-                type: string
-                description: "채팅방 유형 (PERSONAL, GROUP)"
-              roomId:
-                type: number
-                description: 채팅방 ID
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users-me-sanction-1253319913:
       required:
       - error
@@ -2425,6 +2344,87 @@ components:
             status:
               type: string
               description: 변경된 매칭 상태 (ACCEPTED)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms1291226728:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            required:
+            - counterpartMemberIds
+            - createdAt
+            - expiresAt
+            - isEnded
+            - opensAt
+            - roomId
+            - sourceType
+            - unreadCount
+            type: object
+            properties:
+              createdAt:
+                type: string
+                description: 채팅방 생성일시
+              sourceType:
+                type: string
+                description: "채팅방 유형 (PERSONAL, GROUP)"
+              lastMessage:
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 메시지 생성일시
+                    nullable: true
+                  senderId:
+                    type: number
+                    description: 보낸 회원 ID
+                    nullable: true
+                  messageType:
+                    type: string
+                    description: 메시지 유형
+                    nullable: true
+                  id:
+                    type: number
+                    description: 메시지 ID
+                    nullable: true
+                  content:
+                    type: string
+                    description: 메시지 내용 (IMAGE 는 S3 key)
+                    nullable: true
+                  roomId:
+                    type: number
+                    description: 채팅방 ID
+                    nullable: true
+                description: 마지막 메시지 (없으면 null)
+              opensAt:
+                type: string
+                description: 채팅 개방 시각 (금요일 00:00)
+              unreadCount:
+                type: number
+                description: 안읽음 수
+              isEnded:
+                type: boolean
+                description: 종료 여부. true 면 전송·구독이 막히고 조회만 가능
+              expiresAt:
+                type: string
+                description: 자동 종료 예정 시각 (월요일 00:00). 남은 시간 카운트다운 기준
+              counterpartMemberIds:
+                type: array
+                description: 나를 제외한 참여 회원 ID 목록 (1:1이면 1명)
+                items:
+                  oneOf:
+                  - type: object
+                  - type: boolean
+                  - type: string
+                  - type: number
+              roomId:
+                type: number
+                description: 채팅방 ID
         success:
           type: boolean
           description: 성공 여부
@@ -2942,18 +2942,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-quiz-progress-answers-1062387050:
-      required:
-      - choiceId
-      - quizId
-      type: object
-      properties:
-        choiceId:
-          type: number
-          description: 선택한 선택지 ID
-        quizId:
-          type: number
-          description: 퀴즈 ID
     api-v1-user-reports900126493:
       required:
       - error
@@ -2971,6 +2959,18 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-quiz-progress-answers-1062387050:
+      required:
+      - choiceId
+      - quizId
+      type: object
+      properties:
+        choiceId:
+          type: number
+          description: 선택한 선택지 ID
+        quizId:
+          type: number
+          description: 퀴즈 ID
     api-v1-chat-rooms-roomId-image-upload-urls1777271249:
       type: object
       properties:
@@ -3011,43 +3011,6 @@ components:
                   objectKey:
                     type: string
                     description: 업로드 후 메시지 content 로 전송할 S3 key
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-id-leave-1444522536:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - joinedAt
-          - name
-          - nickname
-          - phoneNumber
-          - role
-          - updatedAt
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 생성일시
-            nickname:
-              type: string
-              description: 닉네임
-            id:
-              type: number
-              description: 사용자 ID
-            updatedAt:
-              type: string
-              description: 수정일시
         success:
           type: boolean
           description: 성공 여부
@@ -3114,6 +3077,43 @@ components:
             startDate:
               type: string
               description: 시작일시
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-id-leave-1444522536:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - role
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
             updatedAt:
               type: string
               description: 수정일시

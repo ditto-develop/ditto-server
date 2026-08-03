@@ -7,7 +7,7 @@ import java.time.LocalDateTime
 
 data class ChatRoomResponse(
     val roomId: Long,
-    val roomType: ChatRoomType,
+    val sourceType: ChatRoomType,
     // 나를 제외한 방 참여자들. 1:1이면 1명, 그룹이면 여러 명.
     val counterpartMemberIds: List<Long>,
     val lastMessage: ChatMessageResponse?,
@@ -29,7 +29,7 @@ data class ChatRoomResponse(
             unreadCount: Long,
         ): ChatRoomResponse = ChatRoomResponse(
             roomId = room.id,
-            roomType = room.roomType,
+            sourceType = room.sourceType,
             counterpartMemberIds = counterpartMemberIds,
             lastMessage = lastMessage,
             unreadCount = unreadCount,

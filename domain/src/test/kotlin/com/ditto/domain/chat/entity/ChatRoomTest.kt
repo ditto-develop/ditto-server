@@ -20,7 +20,7 @@ class ChatRoomTest(
                 val room = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 10L))
 
                 room.id shouldNotBe 0L
-                room.roomType shouldBe ChatRoomType.PERSONAL
+                room.sourceType shouldBe ChatRoomType.PERSONAL
                 room.sourceId shouldBe 10L
             }
         }
@@ -29,12 +29,12 @@ class ChatRoomTest(
             "then: GROUP 타입으로 저장된다" {
                 val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 20L))
 
-                room.roomType shouldBe ChatRoomType.GROUP
+                room.sourceType shouldBe ChatRoomType.GROUP
                 room.sourceId shouldBe 20L
             }
         }
 
-        "given: 같은 (room_type, source_id) 방이 이미 있을 때" - {
+        "given: 같은 (source_type, source_id) 방이 이미 있을 때" - {
             "when: 동일 조합으로 다시 저장하면" - {
                 "then: 유니크 제약(chat_room_uk_1) 충돌로 예외가 발생한다" {
                     chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 10L))

@@ -77,7 +77,7 @@ class GroupMatchServiceTest(
         val result = groupMatchService.joinGroupMatch(3L, GroupMatchJoinRequest(quizSetId))
 
         // then
-        val chatRoom = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.GROUP, result.roomId)
+        val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, result.roomId)
         chatRoom shouldNotBe null
         chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom!!.id))
             .map { it.memberId }.toSet() shouldBe setOf(1L, 2L, 3L)
@@ -91,7 +91,7 @@ class GroupMatchServiceTest(
         val result = groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
 
         // then
-        chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.GROUP, result.roomId) shouldBe null
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, result.roomId) shouldBe null
     }
 
     "활성화된 방만 있으면 새 방이 생성된다" {

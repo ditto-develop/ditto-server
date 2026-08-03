@@ -76,7 +76,7 @@ class ChatRoomEndService(
         val room = chatRoomRepository.findWithLockById(roomId)
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
-        if (room.roomType != ChatRoomType.PERSONAL) {
+        if (room.sourceType != ChatRoomType.PERSONAL) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "그룹 채팅은 이 경로로 종료할 수 없습니다.")
         }
         if (room.isEnded) {

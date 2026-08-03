@@ -3,7 +3,7 @@
 1:1(→그룹 확장 예정) 채팅. 매칭 성사 시 방 생성 → REST 조회(과거 페이징) + STOMP 실시간 송수신.
 
 ## 용어
-- `ChatRoom` — 채팅방. `room_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
+- `ChatRoom` — 채팅방. `source_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
 - `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서).
 - `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키.
 - `ChatPeriod` — 채팅이 열려 있는 주말 구간(금 00:00 ~ 월 00:00). 값 객체.

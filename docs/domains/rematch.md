@@ -30,7 +30,7 @@ WAITING (생성 시)
 
 - 전이는 나중에 도착한 `submitWants()` 호출이 같은 트랜잭션에서 수행한다. 별도 판정 API·배치는 없다.
 - 취소 사유 컬럼은 두지 않는다. `CANCELLED`가 곧 "상호 선택이 아님"이고 `member1Wants`/`member2Wants`로 확인되므로 저장할 정보가 없다. 중복은 성사를 취소하지 않으므로([ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)) 사유가 갈리지 않는다 — 정지·탈퇴처럼 값으로 구분해야 하는 사유가 생기는 `D1`에서 컬럼과 enum을 함께 도입한다.
-- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(room_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`).
+- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(source_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`).
 - 제출 호출자는 리뷰 제출 API(A2)다 — `RematchSubmitter`가 평가 제출에 실린 의사를 반영한다([review 도메인](review.md)). 생성 호출자는 아직 없어(그룹 종료 어댑터 I1G가 연결한다) 제출 시 행을 찾지 못하면 `INVALID_REVIEW_TARGET`으로 거부된다.
 
 ## 핵심 파일

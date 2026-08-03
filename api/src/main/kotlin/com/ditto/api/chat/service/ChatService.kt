@@ -40,7 +40,7 @@ class ChatService(
      */
     @Transactional
     fun createPersonalRoom(personalMatchId: Long, memberAId: Long, memberBId: Long) {
-        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
             return
         }
 
@@ -62,7 +62,7 @@ class ChatService(
      */
     @Transactional
     fun createGroupRoom(groupMatchId: Long, memberIds: List<Long>) {
-        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
             return
         }
 

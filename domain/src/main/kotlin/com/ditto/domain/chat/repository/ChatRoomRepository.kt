@@ -11,9 +11,9 @@ import org.springframework.transaction.annotation.Transactional
 
 interface ChatRoomRepository : JpaRepository<ChatRoom, Long>, ChatRoomRepositoryCustom {
 
-    fun findByRoomTypeAndSourceId(roomType: ChatRoomType, sourceId: Long): ChatRoom?
+    fun findBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): ChatRoom?
 
-    fun existsByRoomTypeAndSourceId(roomType: ChatRoomType, sourceId: Long): Boolean
+    fun existsBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): Boolean
 
     /**
      * 종료 판정을 위한 단건 잠금 조회. 겹친 종료 요청과 만료 스케줄러가 서로의 커밋 전 상태를 보고

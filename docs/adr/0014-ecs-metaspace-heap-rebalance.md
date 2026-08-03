@@ -13,7 +13,7 @@
 
 느린 WebSocket 구독자로 인한 다이렉트 메모리 무한 증가를 막으려는 백프레셔 하드닝의 일부였다. 이 값들은 측정 없이 정해졌고, Fargate task 메모리(1024MB) 안에서 힙 45% + Metaspace 128m + Direct 96m = 최대 684MB로 예산을 나눴다.
 
-같은 커밋에 `ChatRoom.roomType → sourceType` 컬럼명 변경도 포함됐는데(별도로 원복 처리, [ADR 미작성 — 오기재 정정으로 처리]), 이 스키마 불일치 때문에 배포된 서버가 부팅 시 `EntityManagerFactory` 초기화에 매번 실패해 7/26~7/29 동안 크래시 루프 상태였다. 이 기간 동안 `-XX:MaxMetaspaceSize=128m` 캡은 한 번도 "정상 가동 + 트래픽" 조합으로 시험대에 오르지 못했다.
+같은 커밋에 `ChatRoom.roomType → sourceType` 컬럼명 변경도 포함됐는데(이름이 오간 전말과 최종 결정은 [ADR 0015](0015-chat-room-source-type-naming.md)), 이 스키마 불일치 때문에 배포된 서버가 부팅 시 `EntityManagerFactory` 초기화에 매번 실패해 7/26~7/29 동안 크래시 루프 상태였다. 이 기간 동안 `-XX:MaxMetaspaceSize=128m` 캡은 한 번도 "정상 가동 + 트래픽" 조합으로 시험대에 오르지 못했다.
 
 2026-08-02, `source_type` 버그를 고쳐 서버가 처음으로 안정적으로 기동했다. 부팅(14:29) 후 37분간 무요청 상태였다가, 15:06:42에 첫 요청이 `/docs/openapi.yaml`(Swagger 문서)을 호출했다. springdoc-openapi는 스펙을 부팅 시 미리 만들지 않고 최초 호출 시점에 지연 생성하는데, 이 생성 과정이 컨트롤러 28개 + 그 안의 모든 DTO(제네릭 `ApiResponse<T>`, Kotlin data class 다수)를 리플렉션으로 한 번에 훑는다. `Init duration for springdoc-openapi is: 8890 ms`로 이례적으로 오래 걸렸고, 45초 뒤(15:07:27) `OutOfMemoryError: Metaspace`가 발생해 이후 거의 모든 요청 스레드가 연쇄로 실패했다(ECS가 15:12경 태스크를 자동 교체해 복구).
 

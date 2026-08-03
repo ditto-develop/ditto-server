@@ -61,7 +61,7 @@ class ChatControllerTest : ControllerUnitTest() {
         every { chatService.getMyRooms(any()) } returns listOf(
             ChatRoomResponse(
                 roomId = 1L,
-                roomType = ChatRoomType.PERSONAL,
+                sourceType = ChatRoomType.PERSONAL,
                 counterpartMemberIds = listOf(2L),
                 lastMessage = sampleMessage(),
                 unreadCount = 2L,
@@ -92,7 +92,7 @@ class ChatControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data[].roomId").description("채팅방 ID"),
-                                fieldWithPath("data[].roomType").description("채팅방 유형 (PERSONAL, GROUP)"),
+                                fieldWithPath("data[].sourceType").description("채팅방 유형 (PERSONAL, GROUP)"),
                                 fieldWithPath("data[].counterpartMemberIds[]").description("나를 제외한 참여 회원 ID 목록 (1:1이면 1명)"),
                                 fieldWithPath("data[].lastMessage").description("마지막 메시지 (없으면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.id").description("메시지 ID").optional(),

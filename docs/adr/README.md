@@ -16,6 +16,7 @@
 - [0010 — 주간 식별자 SSOT를 weekStartedOn(그 주 월요일 날짜)으로 정규화](0010-week-identifier-week-started-on.md)
 - [0011 — 평가 데이터 모델: 진행 단위/응답 분리와 상태 표현 최소화](0011-review-progress-and-answer-split.md)
 - [0014 — ECS 태스크 메모리 예산 재배분: Metaspace 128m→256m, 힙 비율 45%→35%](0014-ecs-metaspace-heap-rebalance.md)
+- [0015 — chat_room의 원본 식별자는 (source_type, source_id)로 접두어를 맞춘다](0015-chat-room-source-type-naming.md)
 
 ## 언제 ADR을 쓰는가
 
