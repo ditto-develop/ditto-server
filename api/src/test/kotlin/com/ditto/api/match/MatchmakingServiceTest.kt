@@ -10,6 +10,8 @@ import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.GenderPreference
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.entity.MemberBlock
+import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizFixture
@@ -33,6 +35,7 @@ class MatchmakingServiceTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val memberBlockRepository: MemberBlockRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -106,6 +109,36 @@ class MatchmakingServiceTest(
                 val abCandidate = matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId).first()
                 abCandidate.matchedQuestionCount shouldBe 2
                 abCandidate.totalQuestionCount shouldBe 2
+            }
+
+            "차단 관계인 두 사람은 후보 페어가 되지 않는다" {
+                val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
+                val a = saveMember("차단회원A")
+                val b = saveMember("차단회원B")
+                // 두 문항 모두 일치해 원래라면 반드시 페어가 되는 조합이다.
+                saveAnswers(a, quizId1 to 1L, quizId2 to 1L)
+                saveAnswers(b, quizId1 to 1L, quizId2 to 1L)
+                listOf(a, b).forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+                memberBlockRepository.save(MemberBlock.create(blockerId = a, blockedMemberId = b))
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId) shouldHaveSize 0
+                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(b, quizSetId) shouldHaveSize 0
+            }
+
+            "차단이 없으면 같은 조합이 후보가 된다 (위 케이스의 대조군)" {
+                val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
+                val a = saveMember("정상회원A")
+                val b = saveMember("정상회원B")
+                saveAnswers(a, quizId1 to 1L, quizId2 to 1L)
+                saveAnswers(b, quizId1 to 1L, quizId2 to 1L)
+                listOf(a, b).forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId)
+                    .map { it.otherMemberId } shouldBe listOf(b)
             }
 
             "완료한 참여자가 없으면 후보를 만들지 않는다" {

@@ -18,6 +18,7 @@ data class MatchParticipant(
     val gender: Gender,
     val age: Int,
     val preferredGender: GenderPreference = GenderPreference.ANY,
+    val blockedMemberIds: Set<Long> = emptySet(),
 ) {
     /** 이 참여자가 [other]의 성별을 매칭 대상으로 받아들이는가. */
     fun accepts(other: MatchParticipant): Boolean =
@@ -26,6 +27,14 @@ data class MatchParticipant(
     /** 두 참여자가 서로의 성별 선호를 모두 충족하는가(상호 호환). 1:1 매칭 페어 성립 조건. */
     fun isMutuallyCompatibleWith(other: MatchParticipant): Boolean =
         accepts(other) && other.accepts(this)
+
+    /**
+     * 둘 사이에 차단이 있는가. 차단은 방향과 무관하게 페어를 깨야 해서 양쪽을 모두 본다
+     * ([blockedMemberIds]가 이미 양방향으로 채워지지만, 대칭 판정을 이 함수 안에 두어
+     * 채우는 쪽 실수에 의존하지 않게 한다).
+     */
+    fun isBlockedWith(other: MatchParticipant): Boolean =
+        other.memberId in blockedMemberIds || memberId in other.blockedMemberIds
 }
 
 /**

@@ -44,9 +44,14 @@ class OneToOneMatchingProcessor : MatchingProcessor {
             }
         }
 
-    /** 매칭 자격: 성별 상호호환 + 나이차 [MAX_AGE_GAP] 이내. 둘 다 대칭이라 양방향 원칙을 깨지 않는다. */
+    /**
+     * 매칭 자격: 성별 상호호환 + 나이차 [MAX_AGE_GAP] 이내 + 차단 없음.
+     * 세 조건 모두 대칭이라 양방향 원칙을 깨지 않는다.
+     */
     private fun isValidPair(a: MatchParticipant, b: MatchParticipant): Boolean =
-        a.isMutuallyCompatibleWith(b) && abs(a.age - b.age) <= MAX_AGE_GAP
+        a.isMutuallyCompatibleWith(b) &&
+            abs(a.age - b.age) <= MAX_AGE_GAP &&
+            !a.isBlockedWith(b)
 
     companion object {
         private const val TOP_RATIO = 0.2 // 상위 20% 선발
