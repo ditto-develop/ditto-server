@@ -11,7 +11,7 @@
 
 초기 계획서 스키마는 여기에 상태 컬럼을 여럿 두고 있었다 — 진행 단위의 `status`, 응답의 `status`(`PENDING`/`ANSWERED`), 운영 무효화용 `validity_status`, 그리고 화면 순서용 `display_order`. 검토해 보니 뒤의 셋은 각각 `answered_at`, `invalidated_at`, `id`가 이미 말하고 있는 사실이었다.
 
-원본 매칭 식별도 문제였다. 계획서는 리뷰 전용 `PERSONAL_MATCH / GROUP_MATCH / GROUP_REMATCH` enum을 상정했는데, `chat_room`이 이미 `(source_type, source_id)`로 같은 값을 담고 있다. `ChatRoom.sourceId`가 그대로 `PersonalMatch.id`이므로 값도 의미도 동일하다.
+원본 매칭 식별도 문제였다. 계획서는 리뷰 전용 `PERSONAL_MATCH / GROUP_MATCH / GROUP_REMATCH` enum을 상정했는데, `chat_room`이 이미 `(room_type, source_id)`로 같은 값을 담고 있다. `ChatRoom.sourceId`가 그대로 `PersonalMatch.id`이므로 값도 의미도 동일하다.
 
 ## Decision
 
