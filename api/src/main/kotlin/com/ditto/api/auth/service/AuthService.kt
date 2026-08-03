@@ -54,6 +54,9 @@ class AuthService(
         // 제재 회원의 재발급 우회 봉쇄 — refresh 경로는 JWT 필터를 지나지 않는다.
         // 예외 시 트랜잭션 롤백으로 위 회전 삭제도 되돌아가 토큰은 남지만, 남아 있어도 이 게이트가 사용을 계속 거부한다.
         // (세션 전량 회수는 제재 적용 트랜잭션의 몫)
+        if (member.isLeft()) {
+            throw WarnException(ErrorCode.MEMBER_LEFT)
+        }
         if (member.isBanned()) {
             throw WarnException(ErrorCode.MEMBER_BANNED)
         }

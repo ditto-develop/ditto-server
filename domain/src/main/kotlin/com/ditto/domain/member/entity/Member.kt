@@ -98,6 +98,14 @@ class Member(
     @Comment("프로필 캐리커쳐 (FE에서 받은 문자열 그대로 저장)")
     @Column(nullable = true, length = 100)
     var caricature: String? = null,
+
+    @Comment("탈퇴 일시 (LEFT일 때만 값 존재)")
+    @Column(name = "left_at", nullable = true)
+    var leftAt: LocalDateTime? = null,
+
+    @Comment("탈퇴 사유 code (탈퇴 화면 선택값)")
+    @Column(name = "leave_reason", nullable = true, length = 50)
+    var leaveReason: String? = null,
 ) : BaseEntity() {
 
     fun activate() {
@@ -124,6 +132,45 @@ class Member(
         if (name != null) this.name = name
         if (phoneNumber != null) this.phoneNumber = phoneNumber
         if (gender != null) this.gender = gender
+    }
+
+    fun isLeft(): Boolean = status == MemberStatus.LEFT
+
+    /**
+     * 탈퇴 처리(소프트 삭제). 데이터는 지우지 않고 상태만 [MemberStatus.LEFT]로 바꾼다 —
+     * 30일 안에 재가입하면 [restore]로 되돌리고, 그 뒤에 배치가 완전 삭제한다.
+     *
+     * 제재 중에도 탈퇴할 수 있다. hard delete 시절에는 제재 이력과 재가입 식별 근거(SocialAccount)가
+     * 함께 사라져 차단 우회 수단이 됐지만, 소프트 삭제는 둘을 모두 보존하므로 막을 이유가 없다.
+     */
+    fun leave(reason: String?, now: LocalDateTime) {
+        if (status == MemberStatus.LEFT) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 탈퇴한 회원입니다.")
+        }
+        status = MemberStatus.LEFT
+        leftAt = now
+        leaveReason = reason
+    }
+
+    /**
+     * 탈퇴 복구. 재가입(소셜 로그인) 시 [leftAt]이 보존 기간 안이면 호출된다.
+     *
+     * 탈퇴 이전 상태를 따로 저장하지 않으므로 ACTIVE로 되돌린다 — 제재 상태는 `sanction` 도메인이
+     * SSOT이고 로그인·배치가 다시 반영하므로 여기서 복원할 필요가 없다.
+     */
+    fun restore() {
+        if (status != MemberStatus.LEFT) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        }
+        status = MemberStatus.ACTIVE
+        leftAt = null
+        leaveReason = null
+    }
+
+    /** 탈퇴 후 [retentionDays]일이 지났는지 — 완전 삭제 대상 판정. */
+    fun isRetentionExpiredAt(now: LocalDateTime, retentionDays: Long): Boolean {
+        val leftAt = leftAt ?: return false
+        return leftAt.plusDays(retentionDays) <= now
     }
 
     fun isPending(): Boolean = status == MemberStatus.PENDING

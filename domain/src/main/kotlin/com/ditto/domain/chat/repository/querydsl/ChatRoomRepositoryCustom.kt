@@ -17,4 +17,10 @@ interface ChatRoomRepositoryCustom {
 
     /** [at] 시점에 개방 시각이 됐는데 아직 열리지 않은 방 — 개방 후보. */
     fun findAllIdsDueToOpen(at: LocalDateTime): List<Long>
+
+    /**
+     * 회원이 참여한 방 중 아직 끝나지 않은(SCHEDULED·ACTIVE) 방이 있는지 — 탈퇴 가드용.
+     * "진행 중"의 판정 근거가 방 상태라서 `chat_room_member`를 조인해 확인한다.
+     */
+    fun existsUnendedRoomOfMember(memberId: Long): Boolean
 }

@@ -46,6 +46,12 @@ class JwtAuthenticationFilter(
             return
         }
 
+        // 탈퇴 회원은 어떤 보호 API도 쓸 수 없다. 재가입(소셜 로그인)만이 복구 경로다.
+        if (member.isLeft()) {
+            sendError(response, ErrorCode.MEMBER_LEFT)
+            return
+        }
+
         // 제재 회원은 안내 창구(suspendedAllowedPaths) 외 전면 차단한다.
         // 해제 예정일이 지난 정지는 통과만 시킨다 — 필터는 읽기 전용, status 원복은 배치·로그인이 (ADR 0009).
         if (request.requestURI !in suspendedAllowedPaths) {

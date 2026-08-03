@@ -1,6 +1,7 @@
 package com.ditto.api.user
 
 import com.ditto.api.support.RestDocsTest
+import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.dto.CreateUserRequest
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
@@ -296,7 +297,9 @@ class UserControllerTest : RestDocsTest() {
         mockMvc.perform(
             post("/api/v1/users/{id}/leave", member.id)
                 .withApiKey()
-                .withBearerToken(member.id),
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(LeaveRequest(reason = "not-useful"))),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
@@ -310,9 +313,16 @@ class UserControllerTest : RestDocsTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Users")
                             .summary("회원 탈퇴")
-                            .description("회원을 탈퇴 처리합니다.")
+                            .description(
+                                "회원을 탈퇴 처리합니다(소프트 삭제). 계정은 즉시 사용 불가가 되지만 데이터는 남으며, " +
+                                    "30일 이내 같은 소셜 계정으로 재로그인하면 복구됩니다. 30일이 지나면 배치가 완전 삭제합니다. " +
+                                    "진행 중인 매칭이나 채팅이 있으면 거부합니다.",
+                            )
                             .pathParameters(
                                 parameterWithName("id").description("사용자 ID"),
+                            )
+                            .requestFields(
+                                fieldWithPath("reason").description("탈퇴 사유 code (선택, 최대 50자)").optional(),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

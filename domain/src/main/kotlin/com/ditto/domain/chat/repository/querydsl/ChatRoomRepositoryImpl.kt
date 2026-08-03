@@ -2,6 +2,7 @@ package com.ditto.domain.chat.repository.querydsl
 
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
+import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.querydsl.jpa.impl.JPAQueryFactory
 import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
@@ -30,4 +31,15 @@ class ChatRoomRepositoryImpl(
                 chatRoom.opensAt.loe(at),
             )
             .fetch()
+
+    override fun existsUnendedRoomOfMember(memberId: Long): Boolean =
+        queryFactory
+            .selectOne()
+            .from(chatRoom)
+            .join(chatRoomMember).on(chatRoomMember.roomId.eq(chatRoom.id))
+            .where(
+                chatRoomMember.memberId.eq(memberId),
+                chatRoom.status.ne(ChatRoomStatus.ENDED),
+            )
+            .fetchFirst() != null
 }

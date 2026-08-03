@@ -5,4 +5,5 @@ enum class MemberStatus(private val description: String) {
     ACTIVE("회원가입 완료"),
     SUSPENDED("이용 정지 (suspended_until까지)"),
     BANNED("영구 차단"),
+    LEFT("탈퇴 (30일 내 재가입 시 복구 가능)"),
 }

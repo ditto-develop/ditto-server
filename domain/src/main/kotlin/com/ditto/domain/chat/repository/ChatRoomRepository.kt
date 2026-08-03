@@ -25,4 +25,5 @@ interface ChatRoomRepository : JpaRepository<ChatRoom, Long>, ChatRoomRepository
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Transactional(propagation = Propagation.MANDATORY)
     fun findWithLockById(id: Long): ChatRoom?
+
 }
