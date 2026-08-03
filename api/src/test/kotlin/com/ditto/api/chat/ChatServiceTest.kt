@@ -30,7 +30,7 @@ class ChatServiceTest(
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
 
         // then
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)
         room shouldNotBe null
         chatRoomMemberRepository.findByRoomIdIn(listOf(room!!.id))
             .map { it.memberId }.toSet() shouldBe setOf(1L, 2L)
@@ -48,7 +48,7 @@ class ChatServiceTest(
     "내 채팅방 목록은 상대 회원·마지막 메시지·안읽음 수를 담아 반환한다" {
         // given: 방 + 나(1)/상대(2), 메시지 3개, 첫 메시지까지 읽음
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val first = chatMessageRepository.save(ChatMessage.of(room.id, 2L, "첫 메시지"))
         chatMessageRepository.save(ChatMessage.of(room.id, 2L, "둘째 메시지"))
         val last = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "셋째 메시지"))
@@ -68,7 +68,7 @@ class ChatServiceTest(
     "메시지 조회는 최신순으로 size 만큼 반환하고 다음 커서를 준다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val saved = (1..5).map { chatMessageRepository.save(ChatMessage.of(room.id, 1L, "메시지 $it")) }
 
         // when: 최신 2개
@@ -88,7 +88,7 @@ class ChatServiceTest(
     "방 참여자가 아니면 메시지 조회 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
 
         // when & then
         shouldThrow<WarnException> {
@@ -106,7 +106,7 @@ class ChatServiceTest(
     "읽음 처리는 last_read_message_id 를 전진시키고 뒤로 가지 않는다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val messages = (1..3).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
 
         // when: 3번째까지 읽고, 다시 1번째로 되돌리려 시도
@@ -121,7 +121,7 @@ class ChatServiceTest(
     "이미지 업로드 URL은 방 멤버에게 내 소유 접두사(chat/{memberId}/) 키로 발급된다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val request = ChatImageUploadUrlsRequest(
             files = listOf(ChatImageUploadFileRequest(contentType = "image/jpeg", contentLength = 1024)),
         )
@@ -138,7 +138,7 @@ class ChatServiceTest(
     "방 참여자가 아니면 이미지 업로드 URL 발급 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val request = ChatImageUploadUrlsRequest(
             files = listOf(ChatImageUploadFileRequest(contentType = "image/jpeg", contentLength = 1024)),
         )
@@ -152,7 +152,7 @@ class ChatServiceTest(
     "이미지가 아닌 contentType 이면 BAD_REQUEST 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val request = ChatImageUploadUrlsRequest(
             files = listOf(ChatImageUploadFileRequest(contentType = "application/pdf", contentLength = 1024)),
         )
@@ -166,7 +166,7 @@ class ChatServiceTest(
     "IMAGE 메시지는 조회 시 content(키)가 presigned GET URL 로 해석되어 imageUrl 에 담긴다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         chatMessageRepository.save(
             ChatMessage.of(room.id, 1L, "chat/1/img-key", ChatMessageType.IMAGE),
         )
@@ -183,7 +183,7 @@ class ChatServiceTest(
     "메시지를 보내면 저장되고 저장된 메시지를 반환한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
 
         // when
         val sent = chatService.sendMessage(senderId = 1L, roomId = room.id, content = "  안녕하세요  ")
@@ -197,7 +197,7 @@ class ChatServiceTest(
     "방 참여자가 아니면 전송 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
 
         // when & then
         shouldThrow<WarnException> {
@@ -208,7 +208,7 @@ class ChatServiceTest(
     "빈 내용을 보내면 BAD_REQUEST 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
 
         // when & then
         shouldThrow<WarnException> {
@@ -219,7 +219,7 @@ class ChatServiceTest(
     "IMAGE 전송은 내가 업로드한 key 로만 가능하고, 저장 후 imageUrl 이 해석된다" {
         // given: 방 + 업로드 URL 발급(FakeObjectStorage 는 발급한 key 를 업로드된 것으로 간주)
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
         val issued = chatService.issueImageUploadUrls(
             memberId = 1L,
             roomId = room.id,
@@ -243,7 +243,7 @@ class ChatServiceTest(
     "업로드하지 않은(내 소유가 아닌) key 로 IMAGE 전송하면 INVALID_CHAT_IMAGE_KEY 예외가 발생한다" {
         // given
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
-        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
 
         // when & then
         shouldThrow<WarnException> {

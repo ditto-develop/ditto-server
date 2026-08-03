@@ -1,6 +1,6 @@
 -- 평가(리뷰) 기반 테이블 2종.
 -- member_review: 한 회원이 한 채팅 종료 건에 대해 진행하는 평가.
---                match_type + match_id 는 chat_room 의 (source_type, source_id) 와 같은 값을 조인 없이 읽으려고 복사해 둔다.
+--                match_type + match_id 는 chat_room 의 (room_type, source_id) 와 같은 값을 조인 없이 읽으려고 복사해 둔다.
 --                양쪽 다 생성 후 불변이라 어긋나지 않는다.
 -- review_answer: 그 안의 평가 대상별 응답. 진행 단위 생성 시 빈 행으로 만들어지고 이후 답변이 채워진다.
 --                화면 노출 순서는 생성 순서와 같아 별도 순서 컬럼 없이 id 정렬로 처리한다.
