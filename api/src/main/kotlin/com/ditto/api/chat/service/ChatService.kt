@@ -50,6 +50,22 @@ class ChatService(
     }
 
     /**
+     * 그룹 매칭이 활성화(참가자 임계값 도달)될 때 참가자 전원의 채팅방을 생성한다.
+     * 이미 있으면 아무 것도 하지 않는다(멱등). 그룹 참여 트랜잭션 안에서 호출된다.
+     */
+    @Transactional
+    fun createGroupRoom(groupMatchId: Long, memberIds: List<Long>) {
+        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
+            return
+        }
+
+        val room = chatRoomRepository.save(ChatRoom.group(groupMatchId))
+        chatRoomMemberRepository.saveAll(
+            memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+        )
+    }
+
+    /**
      * 이미지 업로드용 presigned PUT URL 발급. 방 멤버만 발급 가능하며, 크기·타입 검증 후 발급한다.
      * 발급받은 key(`chat/{memberId}/{uuid}`)로 업로드한 뒤 messageType=IMAGE, content=key 로 전송한다.
      */

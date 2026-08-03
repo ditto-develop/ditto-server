@@ -45,6 +45,26 @@ class ChatServiceTest(
         chatRoomRepository.findAll().count { it.sourceId == 100L } shouldBe 1
     }
 
+    "그룹 방을 생성하면 참가자 전원의 멤버 레코드가 GROUP 방에 생성된다" {
+        // when
+        chatService.createGroupRoom(groupMatchId = 200L, memberIds = listOf(1L, 2L, 3L))
+
+        // then
+        val room = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.GROUP, 200L)
+        room shouldNotBe null
+        chatRoomMemberRepository.findByRoomIdIn(listOf(room!!.id))
+            .map { it.memberId }.toSet() shouldBe setOf(1L, 2L, 3L)
+    }
+
+    "이미 그룹 방이 있으면 다시 생성해도 방이 하나만 유지된다(멱등)" {
+        // when
+        chatService.createGroupRoom(groupMatchId = 200L, memberIds = listOf(1L, 2L, 3L))
+        chatService.createGroupRoom(groupMatchId = 200L, memberIds = listOf(1L, 2L, 3L))
+
+        // then
+        chatRoomRepository.findAll().count { it.sourceId == 200L } shouldBe 1
+    }
+
     "내 채팅방 목록은 상대 회원·마지막 메시지·안읽음 수를 담아 반환한다" {
         // given: 방 + 나(1)/상대(2), 메시지 3개, 첫 메시지까지 읽음
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)

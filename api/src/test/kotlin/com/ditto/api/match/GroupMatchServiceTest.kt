@@ -6,6 +6,9 @@ import com.ditto.api.match.service.GroupMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.entity.GroupMatchDecline
 import com.ditto.domain.match.repository.GroupMatchDeclineRepository
@@ -21,6 +24,8 @@ class GroupMatchServiceTest(
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -61,6 +66,32 @@ class GroupMatchServiceTest(
         // then
         result.isActive shouldBe true
         result.participantCount shouldBe 3
+    }
+
+    "3번째 참여로 방이 활성화되면 참가자 전원의 채팅방이 생성된다" {
+        // given
+        groupMatchService.joinGroupMatch(1L, GroupMatchJoinRequest(quizSetId))
+        groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
+
+        // when
+        val result = groupMatchService.joinGroupMatch(3L, GroupMatchJoinRequest(quizSetId))
+
+        // then
+        val chatRoom = chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.GROUP, result.roomId)
+        chatRoom shouldNotBe null
+        chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom!!.id))
+            .map { it.memberId }.toSet() shouldBe setOf(1L, 2L, 3L)
+    }
+
+    "3명 미만이면 채팅방이 생성되지 않는다" {
+        // given
+        groupMatchService.joinGroupMatch(1L, GroupMatchJoinRequest(quizSetId))
+
+        // when
+        val result = groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
+
+        // then
+        chatRoomRepository.findByRoomTypeAndSourceId(ChatRoomType.GROUP, result.roomId) shouldBe null
     }
 
     "활성화된 방만 있으면 새 방이 생성된다" {
