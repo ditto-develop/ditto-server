@@ -84,7 +84,7 @@ class ChatService(
         roomId: Long,
         request: ChatImageUploadUrlsRequest,
     ): ChatImageUploadUrlsResponse {
-        validateRoomMember(roomId, memberId)
+        chatRoomAccessChecker.validateActiveMember(roomId, memberId)
 
         val uploads = request.files.map { file ->
             if (file.contentLength > MAX_IMAGE_BYTES || !file.contentType.startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
@@ -141,7 +141,7 @@ class ChatService(
         content: String,
         messageType: ChatMessageType = ChatMessageType.TEXT,
     ): ChatMessageResponse {
-        validateRoomMember(roomId, senderId)
+        chatRoomAccessChecker.validateActiveMember(roomId, senderId)
         val body = validateAndNormalizeContent(senderId, content, messageType)
 
         val message = chatMessageRepository.save(

@@ -6,6 +6,7 @@ import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.simp.stomp.StompCommand
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component
  * STOMP 프레임 레벨 인증·인가. `/ws` 핸드셰이크는 HTTP 계층에서 permitAll 이므로
  * (브라우저 WebSocket 은 커스텀 헤더를 못 실음) 실제 인증은 여기서 한다. 배경: ADR 0009.
  * - CONNECT: X-API-Key + Bearer JWT 검증 → MemberPrincipal 세팅. 실패 시 연결 거부.
- * - SUBSCRIBE: `/sub/chat/rooms/{id}` 방 멤버십 인가 (남의 방 구독=도청 차단).
+ * - SUBSCRIBE: `/sub/chat/rooms/{id}` 방 멤버십 인가 (남의 방 구독=도청 차단) + 종료된 방 구독 차단.
  * - SEND: 앱 목적지(/pub 하위)로만 허용 — /sub 하위로 직접 SEND 시 컨트롤러·멤버십 우회(위조 주입) 차단.
  */
 @Component
@@ -28,6 +29,7 @@ class StompAuthChannelInterceptor(
     private val apiKeyProperties: ApiKeyProperties,
     private val jwtTokenProvider: JwtTokenProvider,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val chatRoomRepository: ChatRoomRepository,
 ) : ChannelInterceptor {
 
     override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
@@ -66,6 +68,11 @@ class StompAuthChannelInterceptor(
 
         if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
+        }
+        // 끝난 방에는 새 메시지가 오지 않으므로 구독을 붙들고 있을 이유가 없다. 지난 대화는 REST 조회로 읽는다.
+        val room = chatRoomRepository.findById(roomId).orElseThrow { WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND) }
+        if (room.isEnded) {
+            throw WarnException(ErrorCode.CHAT_ROOM_ENDED)
         }
     }
 

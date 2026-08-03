@@ -5,7 +5,9 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -14,6 +16,8 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import java.time.LocalDateTime
+import java.util.Optional
 import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.MessageBuilder
@@ -26,7 +30,18 @@ class StompAuthChannelInterceptorTest {
     private val apiKeyProperties = ApiKeyProperties(apiKey = "test-key")
     private val jwtTokenProvider = mockk<JwtTokenProvider>()
     private val chatRoomMemberRepository = mockk<ChatRoomMemberRepository>()
-    private val interceptor = StompAuthChannelInterceptor(apiKeyProperties, jwtTokenProvider, chatRoomMemberRepository)
+    private val chatRoomRepository = mockk<ChatRoomRepository>()
+    private val interceptor =
+        StompAuthChannelInterceptor(apiKeyProperties, jwtTokenProvider, chatRoomMemberRepository, chatRoomRepository)
+
+    /** 구독 인가는 멤버십 통과 후 방 상태를 본다. 종료 여부만 다르게 준비한다. */
+    private fun givenRoom(ended: Boolean) {
+        val room = ChatRoomFixture.personal(sourceId = 5L, id = 5L)
+        if (ended) {
+            room.endByUser(LocalDateTime.of(2026, 3, 14, 10, 0))
+        }
+        every { chatRoomRepository.findById(5L) } returns Optional.of(room)
+    }
     private val channel = mockk<MessageChannel>()
 
     private fun connectMessage(apiKey: String?, authorization: String?): Message<*> {
@@ -92,9 +107,22 @@ class StompAuthChannelInterceptorTest {
     @DisplayName("SUBSCRIBE: 방 멤버면 통과한다")
     fun subscribeMember() {
         every { chatRoomMemberRepository.existsByRoomIdAndMemberId(5L, 1L) } returns true
+        givenRoom(ended = false)
         val message = subscribeMessage(destination = "/sub/chat/rooms/5", memberId = 1L)
 
         interceptor.preSend(message, channel) // 예외 없이 통과
+    }
+
+    @Test
+    @DisplayName("SUBSCRIBE: 종료된 방은 CHAT_ROOM_ENDED 로 거부한다")
+    fun subscribeEndedRoom() {
+        every { chatRoomMemberRepository.existsByRoomIdAndMemberId(5L, 1L) } returns true
+        givenRoom(ended = true)
+        val message = subscribeMessage(destination = "/sub/chat/rooms/5", memberId = 1L)
+
+        shouldThrow<WarnException> {
+            interceptor.preSend(message, channel)
+        }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
     }
 
     @Test

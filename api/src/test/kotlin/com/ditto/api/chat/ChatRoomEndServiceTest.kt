@@ -1,6 +1,9 @@
 package com.ditto.api.chat
 
+import com.ditto.api.chat.dto.ChatImageUploadFileRequest
+import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -25,6 +28,7 @@ private val AFTER_EXPIRY = LocalDateTime.of(2026, 3, 16, 0, 0)
 
 class ChatRoomEndServiceTest(
     private val chatRoomEndService: ChatRoomEndService,
+    private val chatService: ChatService,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
@@ -136,6 +140,43 @@ class ChatRoomEndServiceTest(
             shouldThrow<WarnException> {
                 chatRoomEndService.endByUser(roomId = 9999L, memberId = 1L, now = FRIDAY)
             }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_FOUND
+        }
+    }
+
+    "종료 후 차단" - {
+        "종료된 방에는 메시지를 보낼 수 없다" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+
+            shouldThrow<WarnException> {
+                chatService.sendMessage(senderId = 2L, roomId = room.id, content = "아직 할 말이 남았어요")
+            }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
+        }
+
+        "종료된 방에는 이미지 업로드 URL 을 발급하지 않는다" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+
+            shouldThrow<WarnException> {
+                chatService.issueImageUploadUrls(
+                    memberId = 2L,
+                    roomId = room.id,
+                    request = ChatImageUploadUrlsRequest(
+                        files = listOf(ChatImageUploadFileRequest(contentType = "image/png", contentLength = 1024L)),
+                    ),
+                )
+            }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
+        }
+
+        "종료된 방도 지난 대화는 읽을 수 있다" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+            chatService.sendMessage(senderId = 1L, roomId = room.id, content = "반가워요")
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+
+            val messages = chatService.getMessages(memberId = 2L, roomId = room.id, cursor = null, size = 30)
+
+            // 보낸 메시지 + 종료 시스템 메시지
+            messages.messages.size shouldBe 2
         }
     }
 

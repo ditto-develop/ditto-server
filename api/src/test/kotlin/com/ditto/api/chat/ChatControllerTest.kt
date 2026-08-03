@@ -68,6 +68,11 @@ class ChatControllerTest : ControllerUnitTest() {
                 lastMessage = sampleMessage(),
                 unreadCount = 2L,
                 createdAt = LocalDateTime.of(2026, 7, 25, 11, 0),
+                opensAt = LocalDateTime.of(2026, 7, 24, 0, 0),
+                expiresAt = LocalDateTime.of(2026, 7, 27, 0, 0),
+                isEnded = false,
+                endedAt = null,
+                endedReason = null,
             ),
         )
 
@@ -101,6 +106,13 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].lastMessage.createdAt").description("메시지 생성일시").optional(),
                                 fieldWithPath("data[].unreadCount").description("안읽음 수"),
                                 fieldWithPath("data[].createdAt").description("채팅방 생성일시"),
+                                fieldWithPath("data[].opensAt").description("채팅 개방 시각 (금요일 00:00)"),
+                                fieldWithPath("data[].expiresAt").description("자동 종료 예정 시각 (월요일 00:00). 남은 시간 카운트다운 기준"),
+                                fieldWithPath("data[].isEnded").description("종료 여부. true 면 전송·구독이 막히고 조회만 가능"),
+                                fieldWithPath("data[].endedAt").description("실제 종료 시각 (종료 전 null)").optional(),
+                                fieldWithPath("data[].endedReason")
+                                    .description("종료 사유 EXPIRED(기한 만료) / USER_ENDED(참여자 종료). 종료 전 null. 누가 종료했는지는 대화의 SYSTEM 메시지(content=USER_LEFT) senderId 로 확인")
+                                    .optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
