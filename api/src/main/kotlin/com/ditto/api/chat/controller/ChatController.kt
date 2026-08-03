@@ -5,8 +5,11 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.system.ServerTimeProvider
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class ChatController(
     private val chatService: ChatService,
+    private val chatRoomEndService: ChatRoomEndService,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -44,6 +49,17 @@ class ChatController(
         @RequestBody request: ChatReadRequest,
     ): ApiResponse<Unit> {
         chatService.markAsRead(principal.memberId, roomId, request.lastReadMessageId)
+        return ApiResponse.ok(Unit)
+    }
+
+    /** 1:1 채팅 종료. 이미 끝난 방에 다시 요청해도 성공으로 답한다(더블 탭·재시도 대비). */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/end")
+    fun end(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        chatRoomEndService.endByUser(roomId, principal.memberId, serverTimeProvider.now())
         return ApiResponse.ok(Unit)
     }
 

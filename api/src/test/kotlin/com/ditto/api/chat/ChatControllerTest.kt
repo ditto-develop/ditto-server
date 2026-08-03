@@ -9,8 +9,10 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -38,8 +40,12 @@ import java.time.LocalDateTime
 class ChatControllerTest : ControllerUnitTest() {
 
     private val chatService: ChatService = mockk()
+    private val chatRoomEndService: ChatRoomEndService = mockk()
+    private val serverTimeProvider: ServerTimeProvider = mockk {
+        every { now() } returns LocalDateTime.of(2026, 3, 14, 10, 0)
+    }
 
-    override val controller = ChatController(chatService)
+    override val controller = ChatController(chatService, chatRoomEndService, serverTimeProvider)
 
     private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
         id = id,
@@ -191,6 +197,45 @@ class ChatControllerTest : ControllerUnitTest() {
                             )
                             .requestFields(
                                 fieldWithPath("lastReadMessageId").description("마지막으로 읽은 메시지 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("1:1 채팅을 종료한다")
+    fun end() {
+        every { chatRoomEndService.endByUser(any(), any(), any()) } returns mockk()
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/end", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-end",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅 종료")
+                            .description(
+                                "1:1 채팅을 종료합니다. 종료되면 전송·구독이 막히고 평가가 열립니다. " +
+                                    "이미 종료된 방에 다시 요청해도 성공으로 답합니다(재시도 대비). " +
+                                    "누가 종료했는지는 대화에 남는 SYSTEM 메시지(content=USER_LEFT)의 senderId 로 확인합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

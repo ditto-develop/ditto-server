@@ -15,6 +15,8 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 private val FRIDAY = LocalDateTime.of(2026, 3, 13, 12, 0)
@@ -134,6 +136,32 @@ class ChatRoomEndServiceTest(
             shouldThrow<WarnException> {
                 chatRoomEndService.endByUser(roomId = 9999L, memberId = 1L, now = FRIDAY)
             }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_FOUND
+        }
+    }
+
+    // 방 행 잠금이 겹친 종료를 직렬화하는지 확인한다. isEnded 판정만으로는 부족한 지점 —
+    // 겹친 요청은 서로의 커밋 전 상태를 보므로 둘 다 "아직 안 끝났다"로 판단해 종료 기록이 덮인다.
+    // 더블 탭·클라이언트 재시도가 실제로 겹치는 경로다.
+    // 이 테스트의 DB 는 H2 라 잠금 계약 위반은 잡지만 InnoDB 시맨틱까지 보장하지는 않는다.
+    "동시 종료" - {
+        "양쪽이 동시에 종료해도 종료 기록이 하나로 수렴한다" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+            val startLatch = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(2)
+
+            val requests = listOf(1L, 2L).map { memberId ->
+                executor.submit {
+                    startLatch.await()
+                    chatRoomEndService.endByUser(room.id, memberId, FRIDAY)
+                }
+            }
+            startLatch.countDown()
+            requests.forEach { it.get() }
+            executor.shutdown()
+
+            chatRoomRepository.findAll().first().isEnded shouldBe true
+            // 먼저 잠근 쪽만 실제로 끝내므로 종료 메시지도 하나뿐이다
+            chatMessageRepository.findAll().size shouldBe 1
         }
     }
 })

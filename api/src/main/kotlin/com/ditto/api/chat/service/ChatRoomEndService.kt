@@ -60,13 +60,15 @@ class ChatRoomEndService(
      * 조회자가 `senderId`를 보고 "상대방이 종료했다"를 판별할 수 있게 한다.
      *
      * 이미 끝난 방에 다시 요청하면 아무 일도 하지 않는다(더블 탭·재시도 대비) — 종료 메시지도 한 번만 남는다.
+     * 겹친 요청은 서로의 커밋 전 상태를 보므로 이 판정만으로는 부족해 **방 행을 잠근 뒤** 진행한다.
+     *
      * 그룹은 한 명이 나가도 방이 끝나지 않아 이 경로를 쓰지 않는다(멤버 이탈은 별도 트랙).
      */
     @Transactional
     fun endByUser(roomId: Long, memberId: Long, now: LocalDateTime): ChatRoom {
         chatRoomAccessChecker.validateMember(roomId, memberId)
-        val room = chatRoomRepository.findById(roomId)
-            .orElseThrow { chatRoomAccessChecker.notFoundOrForbidden(roomId) }
+        val room = chatRoomRepository.findWithLockById(roomId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
         if (room.roomType != ChatRoomType.PERSONAL) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "그룹 채팅은 이 경로로 종료할 수 없습니다.")
