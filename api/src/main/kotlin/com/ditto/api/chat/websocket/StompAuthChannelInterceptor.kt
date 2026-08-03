@@ -1,12 +1,11 @@
 package com.ditto.api.chat.websocket
 
+import com.ditto.api.chat.service.ChatRoomAccessChecker
 import com.ditto.api.config.auth.ApiKeyProperties
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.chat.repository.ChatRoomMemberRepository
-import com.ditto.domain.chat.repository.ChatRoomRepository
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.simp.stomp.StompCommand
@@ -28,8 +27,7 @@ import org.springframework.stereotype.Component
 class StompAuthChannelInterceptor(
     private val apiKeyProperties: ApiKeyProperties,
     private val jwtTokenProvider: JwtTokenProvider,
-    private val chatRoomMemberRepository: ChatRoomMemberRepository,
-    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) : ChannelInterceptor {
 
     override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
@@ -66,14 +64,9 @@ class StompAuthChannelInterceptor(
         val memberId = currentMemberId(accessor)
             ?: throw WarnException(ErrorCode.UNAUTHORIZED_ERROR)
 
-        if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
-            throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
-        }
         // 끝난 방에는 새 메시지가 오지 않으므로 구독을 붙들고 있을 이유가 없다. 지난 대화는 REST 조회로 읽는다.
-        val room = chatRoomRepository.findById(roomId).orElseThrow { WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND) }
-        if (room.isEnded) {
-            throw WarnException(ErrorCode.CHAT_ROOM_ENDED)
-        }
+        // 판정 규칙은 REST 전송 경로와 같아야 하므로 ChatRoomAccessChecker 를 그대로 쓴다.
+        chatRoomAccessChecker.validateActiveMember(roomId, memberId)
     }
 
     /**

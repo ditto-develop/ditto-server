@@ -6,7 +6,6 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatRoomResponse
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
@@ -21,6 +20,8 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.infrastructure.storage.ObjectStorage
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Service
@@ -30,7 +31,6 @@ class ChatService(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val objectStorage: ObjectStorage,
-    private val serverTimeProvider: ServerTimeProvider,
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) {
 
@@ -44,7 +44,7 @@ class ChatService(
             return
         }
 
-        val now = serverTimeProvider.now()
+        val now = realNow()
         val room = chatRoomRepository.save(
             ChatRoom.personal(personalMatchId, ChatPeriod.weekendOf(now), now),
         )
@@ -66,7 +66,7 @@ class ChatService(
             return
         }
 
-        val now = serverTimeProvider.now()
+        val now = realNow()
         val room = chatRoomRepository.save(
             ChatRoom.group(groupMatchId, ChatPeriod.weekendOf(now), now),
         )
@@ -121,7 +121,7 @@ class ChatService(
 
     /** 방의 과거 메시지 커서 페이징 (최신순). cursor 미만(더 과거)으로 size 개. */
     fun getMessages(memberId: Long, roomId: Long, cursor: Long?, size: Int): ChatMessagesResponse {
-        validateRoomMember(roomId, memberId)
+        chatRoomAccessChecker.validateMember(roomId, memberId)
 
         val pageSize = size.coerceIn(1, MAX_PAGE_SIZE)
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor, pageSize)
@@ -150,6 +150,15 @@ class ChatService(
         return toMessageResponse(message)
     }
 
+    /**
+     * 채팅 생명주기 시각은 어드민 시각 오버라이드를 따르지 않는다.
+     *
+     * opens_at·expires_at 은 **저장되는 값**이고, 이를 판정하는 만료 스케줄러는 실제 시각으로 돈다.
+     * 생성만 가짜 시각을 쓰면 오버라이드가 과거 주일 때 방이 만들어지자마자 만료되고,
+     * 미래 주면 며칠간 열리지 않는다 — 오버라이드를 꺼도 그 방은 망가진 채 남는다.
+     */
+    private fun realNow(): LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
+
     /** TEXT 는 공백·길이 검증, IMAGE 는 본인이 업로드한 key(chat/{senderId}/…)인지 검증한다. */
     private fun validateAndNormalizeContent(senderId: Long, content: String, messageType: ChatMessageType): String =
         when (messageType) {
@@ -172,7 +181,7 @@ class ChatService(
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
-            ?: throw notFoundOrForbidden(roomId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
         roomMember.readUpTo(lastReadMessageId)
     }
 
@@ -208,12 +217,6 @@ class ChatService(
         } else {
             chatMessageRepository.countByRoomIdAndIdGreaterThan(roomId, lastReadMessageId)
         }
-
-    private fun validateRoomMember(roomId: Long, memberId: Long) =
-        chatRoomAccessChecker.validateMember(roomId, memberId)
-
-    private fun notFoundOrForbidden(roomId: Long): WarnException =
-        chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
     companion object {
         private const val MAX_PAGE_SIZE = 100

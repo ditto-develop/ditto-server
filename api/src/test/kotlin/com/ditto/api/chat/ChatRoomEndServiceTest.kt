@@ -91,6 +91,24 @@ class ChatRoomEndServiceTest(
             chatRoomEndService.openDue(LocalDateTime.of(2026, 3, 12, 23, 59)).size shouldBe 0
             chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.SCHEDULED
         }
+
+        // 개방 후보 조회가 종료된 방을 걸러내는지 확인한다. 되살아나면 SCHEDULED→ACTIVE→ENDED 단방향
+        // 불변식이 깨지고 나간 사람의 상대가 계속 메시지를 보낼 수 있게 된다.
+        //
+        // 다만 이 테스트가 덮는 것은 "조회 필터"까지다. 후보 조회와 잠금 사이의 경합 구간(그 사이에
+        // 사용자가 끝내는 경우)은 순차 실행으로 창을 만들 수 없어 여기서 재현되지 않는다 —
+        // 그 구간은 findWithLockById 이후의 상태 재확인이 막는다.
+        "종료된 방은 개방 후보에서 빠진다" {
+            val room = saveRoomWithMembers(WEDNESDAY, 1L, 2L)
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = WEDNESDAY)
+
+            chatRoomEndService.openDue(FRIDAY).size shouldBe 0
+
+            val reloaded = chatRoomRepository.findAll().first()
+            reloaded.status shouldBe ChatRoomStatus.ENDED
+            reloaded.endReason shouldBe ChatEndReason.USER_ENDED
+            reloaded.endedAt shouldBe WEDNESDAY
+        }
     }
 
     "사용자 종료" - {

@@ -12,7 +12,6 @@ import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.ControllerUnitTest
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -24,6 +23,7 @@ import io.mockk.mockk
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
@@ -41,11 +41,9 @@ class ChatControllerTest : ControllerUnitTest() {
 
     private val chatService: ChatService = mockk()
     private val chatRoomEndService: ChatRoomEndService = mockk()
-    private val serverTimeProvider: ServerTimeProvider = mockk {
-        every { now() } returns LocalDateTime.of(2026, 3, 14, 10, 0)
-    }
+    private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
 
-    override val controller = ChatController(chatService, chatRoomEndService, serverTimeProvider)
+    override val controller = ChatController(chatService, chatRoomEndService, messagingTemplate)
 
     private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
         id = id,
@@ -224,7 +222,7 @@ class ChatControllerTest : ControllerUnitTest() {
     @Test
     @DisplayName("1:1 채팅을 종료한다")
     fun end() {
-        every { chatRoomEndService.endByUser(any(), any(), any()) } returns mockk()
+        every { chatRoomEndService.endByUser(any(), any(), any()) } returns sampleMessage()
 
         mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/end", 1L))
             .andExpect(status().isOk)
