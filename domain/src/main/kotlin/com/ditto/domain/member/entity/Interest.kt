@@ -18,6 +18,8 @@ enum class Interest(
 ) {
     WORKOUT("workout", "운동"),
     MOVIE_DRAMA("movie-drama", "영화/드라마"),
+    // 프로필 수정 화면(피그마 6.1.1)에만 있던 칩. 온보딩 목록에는 없어 뒤늦게 추가됐다.
+    EXHIBITION("exhibition", "전시"),
     PERFORMANCE("performance", "공연"),
     PHOTOGRAPHY("photography", "사진"),
     READING("reading", "독서"),

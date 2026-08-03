@@ -173,6 +173,25 @@ class Member(
         return leftAt.plusDays(retentionDays) <= now
     }
 
+    /**
+     * 마이프로필에서 수정 가능한 항목만 갱신한다 — 캐리커쳐·관심사.
+     * 닉네임·성별·나이·사는곳·직업은 화면에서 비활성이라 여기서 받지 않는다.
+     *
+     * null이 온 항목은 변경 없음으로 둔다. 관심사는 온보딩 필수 정보이므로
+     * 빈 집합으로 지울 수 없다 — 이 불변식은 `register`가 세운 것을 그대로 유지한다.
+     */
+    fun updateProfile(caricature: String?, interests: Set<Interest>?) {
+        if (interests != null) {
+            if (interests.isEmpty()) {
+                throw WarnException(ErrorCode.BAD_REQUEST, "관심사는 최소 1개 이상이어야 합니다.")
+            }
+            this.interests = interests
+        }
+        if (caricature != null) {
+            this.caricature = caricature
+        }
+    }
+
     fun isPending(): Boolean = status == MemberStatus.PENDING
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
     fun isAdmin(): Boolean = role == MemberRole.ADMIN
