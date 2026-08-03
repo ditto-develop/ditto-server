@@ -73,14 +73,13 @@ class ChatRoomTest(
     }
 
     "종료" - {
-        "when: 종료하면" - {
+        "when: 사용자가 종료하면" - {
             "then: 상태·시각·사유가 함께 기록된다" {
                 val room = chatRoomRepository.save(ChatRoomFixture.personal())
                 val endedAt = LocalDateTime.of(2026, 3, 14, 10, 0)
 
-                val ended = room.end(ChatEndReason.USER_ENDED, endedAt)
+                room.endByUser(endedAt)
 
-                ended shouldBe true
                 room.isEnded shouldBe true
                 room.status shouldBe ChatRoomStatus.ENDED
                 room.endedAt shouldBe endedAt
@@ -88,16 +87,27 @@ class ChatRoomTest(
             }
         }
 
+        "when: 만료로 마감하면" - {
+            "then: 사유가 EXPIRED 로 기록된다" {
+                val room = chatRoomRepository.save(ChatRoomFixture.personal())
+
+                room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
+
+                room.endReason shouldBe ChatEndReason.EXPIRED
+            }
+        }
+
         "given: 이미 종료된 방일 때" - {
             "when: 다시 종료를 시도하면" - {
-                "then: false 를 돌려주고 최초 종료 기록이 유지된다" {
+                "then: 예외로 막고 최초 종료 기록을 지킨다" {
                     val room = chatRoomRepository.save(ChatRoomFixture.personal())
                     val firstEndedAt = LocalDateTime.of(2026, 3, 14, 10, 0)
-                    room.end(ChatEndReason.USER_ENDED, firstEndedAt)
+                    room.endByUser(firstEndedAt)
 
-                    val endedAgain = room.end(ChatEndReason.EXPIRED, LocalDateTime.of(2026, 3, 15, 10, 0))
+                    shouldThrow<IllegalStateException> {
+                        room.expire(LocalDateTime.of(2026, 3, 15, 10, 0))
+                    }
 
-                    endedAgain shouldBe false
                     room.endedAt shouldBe firstEndedAt
                     room.endReason shouldBe ChatEndReason.USER_ENDED
                 }
@@ -113,22 +123,22 @@ class ChatRoomTest(
                         ChatRoomFixture.personal(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
                     )
 
-                    val opened = room.openIfDue(LocalDateTime.of(2026, 3, 13, 0, 0))
+                    room.open(LocalDateTime.of(2026, 3, 13, 0, 0))
 
-                    opened shouldBe true
                     room.status shouldBe ChatRoomStatus.ACTIVE
                 }
             }
 
             "when: 아직 개방 시각 전이면" - {
-                "then: 예약 상태를 유지한다" {
+                "then: 예외로 막는다" {
                     val room = chatRoomRepository.save(
                         ChatRoomFixture.personal(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
                     )
 
-                    val opened = room.openIfDue(LocalDateTime.of(2026, 3, 12, 23, 59))
+                    shouldThrow<IllegalStateException> {
+                        room.open(LocalDateTime.of(2026, 3, 12, 23, 59))
+                    }
 
-                    opened shouldBe false
                     room.status shouldBe ChatRoomStatus.SCHEDULED
                 }
             }
@@ -136,13 +146,14 @@ class ChatRoomTest(
 
         "given: 이미 종료된 방일 때" - {
             "when: 개방을 시도하면" - {
-                "then: 다시 열리지 않는다" {
+                "then: 예외로 막아 상태를 거꾸로 돌리지 않는다" {
                     val room = chatRoomRepository.save(ChatRoomFixture.personal())
-                    room.end(ChatEndReason.EXPIRED, LocalDateTime.of(2026, 3, 16, 0, 0))
+                    room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
 
-                    val opened = room.openIfDue(LocalDateTime.of(2026, 3, 16, 1, 0))
+                    shouldThrow<IllegalStateException> {
+                        room.open(LocalDateTime.of(2026, 3, 16, 1, 0))
+                    }
 
-                    opened shouldBe false
                     room.status shouldBe ChatRoomStatus.ENDED
                 }
             }

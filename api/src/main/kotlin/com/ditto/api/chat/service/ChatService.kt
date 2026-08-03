@@ -31,6 +31,7 @@ class ChatService(
     private val chatMessageRepository: ChatMessageRepository,
     private val objectStorage: ObjectStorage,
     private val serverTimeProvider: ServerTimeProvider,
+    private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) {
 
     /**
@@ -208,18 +209,11 @@ class ChatService(
             chatMessageRepository.countByRoomIdAndIdGreaterThan(roomId, lastReadMessageId)
         }
 
-    private fun validateRoomMember(roomId: Long, memberId: Long) {
-        if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
-            throw notFoundOrForbidden(roomId)
-        }
-    }
+    private fun validateRoomMember(roomId: Long, memberId: Long) =
+        chatRoomAccessChecker.validateMember(roomId, memberId)
 
     private fun notFoundOrForbidden(roomId: Long): WarnException =
-        if (chatRoomRepository.existsById(roomId)) {
-            WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
-        } else {
-            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
-        }
+        chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
     companion object {
         private const val MAX_PAGE_SIZE = 100

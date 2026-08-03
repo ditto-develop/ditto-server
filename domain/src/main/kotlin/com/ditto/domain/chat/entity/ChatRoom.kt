@@ -77,31 +77,39 @@ class ChatRoom private constructor(
     val isEnded: Boolean
         get() = status == ChatRoomStatus.ENDED
 
+    /** 기한이 지나 마감한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다. */
+    fun expire(at: LocalDateTime) = end(ChatEndReason.EXPIRED, at)
+
     /**
-     * 방을 종료한다. 이미 끝난 방이면 아무것도 하지 않고 `false`를 돌려준다 —
-     * 만료 스케줄러·사용자·어드민이 동시에 종료를 시도해도 종료 결과가 하나로 수렴해야 하기 때문이다.
-     * 호출자는 반환값으로 "이번 호출이 실제로 끝냈는지"를 판별해 후속 처리(평가 생성)를 한 번만 수행한다.
+     * 참여자가 직접 종료한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다.
      *
      * 누가 끝냈는지는 여기 저장하지 않는다 — 나갈 때 남기는 SYSTEM 메시지의 `senderId`가 그 사실을 들고 있고,
      * 조회자는 그 값으로 "상대방이 종료했다"를 판별한다.
      */
-    fun end(reason: ChatEndReason, endedAt: LocalDateTime): Boolean {
-        if (isEnded) {
-            return false
-        }
+    fun endByUser(at: LocalDateTime) = end(ChatEndReason.USER_ENDED, at)
+
+    /**
+     * 사유를 밖에서 받지 않는 이유: 종료 경로와 사유가 어긋나는 조합을 만들 수 없게 하려는 것이다.
+     * 사유가 늘면(상대 차단 종료·그룹 인원 미달 해체) 이름 있는 메서드를 하나 더 둔다.
+     *
+     * 이미 끝난 방을 다시 끝내려는 것은 호출자가 [isEnded] 확인을 빠뜨린 것이므로 조용히 넘기지 않는다.
+     * 그대로 두면 최초 종료 시각·사유가 덮여 "언제 왜 끝났는지"가 사라진다.
+     */
+    private fun end(reason: ChatEndReason, at: LocalDateTime) {
+        check(!isEnded) { "이미 종료된 채팅방입니다: id=$id, endedAt=$endedAt" }
         status = ChatRoomStatus.ENDED
-        this.endedAt = endedAt
-        this.endReason = reason
-        return true
+        endedAt = at
+        endReason = reason
     }
 
-    /** 개방 시각이 지난 예약 방을 연다. 이미 열렸거나 끝난 방은 그대로 둔다. */
-    fun openIfDue(at: LocalDateTime): Boolean {
-        if (status != ChatRoomStatus.SCHEDULED || at < opensAt) {
-            return false
-        }
+    /**
+     * 예약된 방을 연다. 개방 대상인지는 호출 전에 가려야 한다 — 조건에 맞지 않으면 조용히 넘기지 않는다.
+     * 이미 열렸거나 끝난 방을 다시 여는 것은 상태를 거꾸로 돌리는 일이라 버그로 드러내는 편이 낫다.
+     */
+    fun open(at: LocalDateTime) {
+        check(status == ChatRoomStatus.SCHEDULED) { "예약 상태가 아닌 채팅방입니다: id=$id, status=$status" }
+        check(at >= opensAt) { "개방 시각 전입니다: id=$id, opensAt=$opensAt, at=$at" }
         status = ChatRoomStatus.ACTIVE
-        return true
     }
 
     companion object {
