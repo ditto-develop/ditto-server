@@ -8,7 +8,7 @@ interface ChatRoomMemberRepository : JpaRepository<ChatRoomMember, Long> {
     /** 내가 참여한 채팅방 멤버 레코드 목록 */
     fun findByMemberId(memberId: Long): List<ChatRoomMember>
 
-    /** 내가 참여한 채팅방 수 — 탈퇴 가드(진행 중 채팅 판정)에 쓴다. */
+    /** 내가 참여한 채팅방 수 — 프로필 통계의 "매칭 성사"(= 채팅방 개설 횟수)용 */
     fun countByMemberId(memberId: Long): Long
 
     fun findByRoomIdIn(roomIds: Collection<Long>): List<ChatRoomMember>

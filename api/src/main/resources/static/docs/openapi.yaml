@@ -94,7 +94,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/8ad984e5-7603-49ed-94f3-adacccaa200e" ]
+                    "imageKeys" : [ "pending/user-reports/1/db2933d6-3141-400e-be23-95fa920f1251" ]
                   }
       responses:
         "200":
@@ -126,7 +126,7 @@ paths:
         content:
           application/json;charset=UTF-8:
             schema:
-              $ref: "#/components/schemas/api-v1-users-2041696623"
+              $ref: "#/components/schemas/api-v1-users1822882528"
             examples:
               user-register:
                 value: |-
@@ -168,10 +168,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-08-04 11:30:18",
+                        "joinedAt" : "2026-08-05 00:11:25",
                         "role" : null,
-                        "createdAt" : "2026-08-04 11:30:18",
-                        "updatedAt" : "2026-08-04 11:30:18"
+                        "createdAt" : "2026-08-05 00:11:25",
+                        "updatedAt" : "2026-08-05 00:11:25"
                       },
                       "error" : null
                     }
@@ -454,8 +454,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-03 11:30:18",
-                          "endDate" : "2026-08-05 11:30:18",
+                          "startDate" : "2026-08-04 00:11:25",
+                          "endDate" : "2026-08-06 00:11:25",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -472,8 +472,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-04 11:30:18",
-                            "updatedAt" : "2026-08-04 11:30:18"
+                            "createdAt" : "2026-08-05 00:11:25",
+                            "updatedAt" : "2026-08-05 00:11:25"
                           } ]
                         } ]
                       },
@@ -520,8 +520,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-04 11:30:18",
-                        "updatedAt" : "2026-08-04 11:30:18"
+                        "createdAt" : "2026-08-05 00:11:25",
+                        "updatedAt" : "2026-08-05 00:11:25"
                       },
                       "error" : null
                     }
@@ -598,11 +598,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/6652e3e9-a628-4996-a9e1-9d099ee7ff80",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/6652e3e9-a628-4996-a9e1-9d099ee7ff80"
+                          "objectKey" : "pending/user-reports/1/827a6cad-cee9-4857-8a3c-65e01550cee3",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/827a6cad-cee9-4857-8a3c-65e01550cee3"
                         }, {
-                          "objectKey" : "pending/user-reports/1/c1b96e5f-8f77-40bd-92be-808b8faca8df",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/c1b96e5f-8f77-40bd-92be-808b8faca8df"
+                          "objectKey" : "pending/user-reports/1/2569fddf-d61b-4075-9a33-49197cff1878",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/2569fddf-d61b-4075-9a33-49197cff1878"
                         } ]
                       },
                       "error" : null
@@ -885,7 +885,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU4MTA2MTUsImV4cCI6MTc4NTgxNDIxNX0.sC5_X9wl-nGre52u5Y0uEmG0XUnFPHmCjtfP4SPgVJ6A4dNC8vcxZt-WHaytVXBhSNtaIPV8Y7gIeiRmSdjTJw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU4NTYyODEsImV4cCI6MTc4NTg1OTg4MX0.rposjPujZbs13aaJsLSzvMw96EnbNnnfXcX4-IXPZ2aqYUEscv0BWB0ov4xuk86MwPdKiiWrf0qYV5lAGtW3WQ"
                       },
                       "error" : null
                     }
@@ -1211,13 +1211,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-04 11:07:27"
+                          "createdAt" : "2026-08-05 00:11:25"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-04 11:07:27"
+                          "createdAt" : "2026-08-05 00:11:25"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-04 11:07:27"
+                          "createdAt" : "2026-08-05 00:11:25"
                         } ]
                       },
                       "error" : null
@@ -1250,8 +1250,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-28 11:30:18",
-                          "endsAt" : "2026-08-11 11:30:18"
+                          "startsAt" : "2026-07-29 00:11:25",
+                          "endsAt" : "2026-08-12 00:11:25"
                         }
                       },
                       "error" : null
@@ -1427,8 +1427,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-04 11:30:18",
-                        "updatedAt" : "2026-08-04 11:30:18"
+                        "createdAt" : "2026-08-05 00:11:25",
+                        "updatedAt" : "2026-08-05 00:11:25"
                       },
                       "error" : null
                     }
@@ -1455,7 +1455,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-users-id-profile-829103765"
+                $ref: "#/components/schemas/api-v1-users-id-profile58842976"
               examples:
                 user-public-profile:
                   value: |-
@@ -3023,6 +3023,58 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users1822882528:
+      required:
+      - caricature
+      - interests
+      - job
+      - location
+      type: object
+      properties:
+        caricature:
+          type: string
+          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE)"
+          nullable: true
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        location:
+          type: string
+          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
+            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
+            \ jeonnam, gyeongbuk, gyeongnam, jeju"
+        job:
+          type: string
+          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
+            \ education, medical, finance, legal, manufacturing, distribution, service,\
+            \ construction, arts-media, research, public-admin, student, etc"
+        interests:
+          type: array
+          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, exhibition,\
+            \ performance, photography, reading, music, cooking, travel, gaming, finance,\
+            \ self-improvement, pets, etc"
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        age:
+          type: number
+          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
+          nullable: true
     api-v1-matching-status-quizSetId414593137:
       required:
       - error
@@ -3421,58 +3473,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-2041696623:
-      required:
-      - caricature
-      - interests
-      - job
-      - location
-      type: object
-      properties:
-        caricature:
-          type: string
-          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"
-        phoneNumber:
-          type: string
-          description: 전화번호 (010-0000-0000)
-          nullable: true
-        gender:
-          type: string
-          description: "성별 (MALE, FEMALE)"
-          nullable: true
-        nickname:
-          type: string
-          description: "닉네임 (2~10자, 한글·영문·숫자)"
-          nullable: true
-        name:
-          type: string
-          description: 이름
-          nullable: true
-        location:
-          type: string
-          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
-            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
-            \ jeonnam, gyeongbuk, gyeongnam, jeju"
-        job:
-          type: string
-          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
-            \ education, medical, finance, legal, manufacturing, distribution, service,\
-            \ construction, arts-media, research, public-admin, student, etc"
-        interests:
-          type: array
-          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, performance,\
-            \ photography, reading, music, cooking, travel, gaming, finance, self-improvement,\
-            \ pets, etc"
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        age:
-          type: number
-          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
-          nullable: true
     api-v1-matches-group-join-1969670024:
       required:
       - quizSetId
@@ -3481,6 +3481,68 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
+    api-v1-users-id-profile58842976:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - nickname
+          - userId
+          type: object
+          properties:
+            occupation:
+              type: string
+              description: "직업 code. 가능한 값: it-tech, management, marketing, design,\
+                \ education, medical, finance, legal, manufacturing, distribution,\
+                \ service, construction, arts-media, research, public-admin, student,\
+                \ etc"
+              nullable: true
+            gender:
+              type: string
+              description: "성별 (MALE, FEMALE)"
+              nullable: true
+            nickname:
+              type: string
+              description: 닉네임
+            location:
+              type: string
+              description: "지역 code. 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
+                \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
+                \ jeonnam, gyeongbuk, gyeongnam, jeju"
+              nullable: true
+            interests:
+              type: array
+              description: "관심사 code 목록. 가능한 값: workout, movie-drama, exhibition,\
+                \ performance, photography, reading, music, cooking, travel, gaming,\
+                \ finance, self-improvement, pets, etc"
+              nullable: true
+              items:
+                oneOf:
+                - type: object
+                - type: boolean
+                - type: string
+                - type: number
+            profileImageUrl:
+              type: string
+              description: 프로필 이미지 경로
+              nullable: true
+            userId:
+              type: number
+              description: 대상 사용자 ID
+            introduction:
+              type: string
+              description: "자기소개 (소개노트 one-word 답변, 없으면 null)"
+              nullable: true
+            age:
+              type: number
+              description: 나이
+              nullable: true
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me-intro-notes-questionCode974133747:
       required:
       - answer
@@ -3813,68 +3875,6 @@ components:
             introduction:
               type: string
               description: "한 줄 소개 (소개노트 one-word 답변, 미작성이면 null)"
-              nullable: true
-            age:
-              type: number
-              description: 나이
-              nullable: true
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-users-id-profile-829103765:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - nickname
-          - userId
-          type: object
-          properties:
-            occupation:
-              type: string
-              description: "직업 code. 가능한 값: it-tech, management, marketing, design,\
-                \ education, medical, finance, legal, manufacturing, distribution,\
-                \ service, construction, arts-media, research, public-admin, student,\
-                \ etc"
-              nullable: true
-            gender:
-              type: string
-              description: "성별 (MALE, FEMALE)"
-              nullable: true
-            nickname:
-              type: string
-              description: 닉네임
-            location:
-              type: string
-              description: "지역 code. 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
-                \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
-                \ jeonnam, gyeongbuk, gyeongnam, jeju"
-              nullable: true
-            interests:
-              type: array
-              description: "관심사 code 목록. 가능한 값: workout, movie-drama, performance,\
-                \ photography, reading, music, cooking, travel, gaming, finance, self-improvement,\
-                \ pets, etc"
-              nullable: true
-              items:
-                oneOf:
-                - type: object
-                - type: boolean
-                - type: string
-                - type: number
-            profileImageUrl:
-              type: string
-              description: 프로필 이미지 경로
-              nullable: true
-            userId:
-              type: number
-              description: 대상 사용자 ID
-            introduction:
-              type: string
-              description: "자기소개 (소개노트 one-word 답변, 없으면 null)"
               nullable: true
             age:
               type: number

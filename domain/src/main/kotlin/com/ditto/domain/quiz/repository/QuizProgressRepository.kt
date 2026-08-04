@@ -31,6 +31,15 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         status: QuizProgressStatus,
     ): List<QuizProgress>
 
+    /**
+     * 회원이 특정 상태로 남긴 진행 수 — 프로필 통계의 "참여 주차"용.
+     * 진행은 (회원, 퀴즈셋) 단위로 하나뿐이라 COMPLETED 개수가 곧 완주한 주차 수다.
+     */
+    fun countByMemberIdAndStatus(
+        memberId: Long,
+        status: QuizProgressStatus,
+    ): Long
+
     /** 여러 회원의 진행을 단일 벌크 DELETE 로 삭제 */
     @Modifying
     @Transactional
