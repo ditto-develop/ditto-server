@@ -56,19 +56,28 @@ class EndedChatRoomLoader(
     /**
      * 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 없는 방은 map 에 담기지 않는다.
      *
-     * [MemberReview.REVIEWABLE_MATCH_TYPES]로 걸러진 뒤라 유형은 `PERSONAL`·`GROUP` 둘뿐이다.
+     * 유형별로 한 번씩만 조회하며, 어느 테이블을 볼지는 `when`으로 정한다 — **유형이 늘면 컴파일 에러로
+     * 결정을 강제한다.** 유형 비교로 두 갈래를 나누면(`partition`) 새 유형이 조용히 한쪽으로 흡수돼
+     * 엉뚱한 테이블에서 원본을 찾다 실패한다.
      */
     private fun findQuizSetIdByRoomId(rooms: List<ChatRoom>): Map<Long, Long> {
-        val (personalRooms, groupRooms) = rooms.partition { it.sourceType == ChatRoomType.PERSONAL }
-        val personalQuizSetIdByMatchId = personalMatchRepository.findAllById(personalRooms.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
-        val groupQuizSetIdByMatchId = groupMatchRepository.findAllById(groupRooms.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
+        val quizSetIdByMatchId = rooms.groupBy { it.sourceType }
+            .mapValues { (sourceType, sameTypeRooms) -> findQuizSetIdByMatchId(sourceType, sameTypeRooms) }
 
-        return (
-            personalRooms.mapNotNull { room -> personalQuizSetIdByMatchId[room.sourceId]?.let { room.id to it } } +
-                groupRooms.mapNotNull { room -> groupQuizSetIdByMatchId[room.sourceId]?.let { room.id to it } }
-            ).toMap()
+        return rooms.mapNotNull { room ->
+            quizSetIdByMatchId[room.sourceType]?.get(room.sourceId)?.let { room.id to it }
+        }.toMap()
+    }
+
+    private fun findQuizSetIdByMatchId(sourceType: ChatRoomType, rooms: List<ChatRoom>): Map<Long, Long> {
+        val matchIds = rooms.map { it.sourceId }
+        return when (sourceType) {
+            ChatRoomType.PERSONAL -> personalMatchRepository.findAllById(matchIds).associate { it.id to it.quizSetId }
+            ChatRoomType.GROUP -> groupMatchRepository.findAllById(matchIds).associate { it.id to it.quizSetId }
+            // 평가를 열지 않는 유형이라 [load]가 이미 걸러낸다. 그 필터가 무너져도 여기서 배치를 깨뜨리지
+            // 않도록 빈 map 을 돌려준다 — 그 방은 [toEndedChatRoom]이 WARN 과 함께 건너뛴다.
+            ChatRoomType.REMATCH -> emptyMap()
+        }
     }
 
     private fun findWeekStartedOnByQuizSetId(quizSetIds: Collection<Long>): Map<Long, LocalDate> =

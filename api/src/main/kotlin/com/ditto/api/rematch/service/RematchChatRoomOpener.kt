@@ -1,6 +1,7 @@
 package com.ditto.api.rematch.service
 
 import com.ditto.api.chat.service.ChatService
+import com.ditto.common.exception.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -18,9 +19,10 @@ import org.springframework.stereotype.Component
  * 성사 직후 즉시 만드는 경로는 두지 않는다. 재매칭 방은 금요일에 열려 즉시 만들 이유가 없고,
  * 늦어도 스케줄러 한 주기 안에 예약된다.
  *
- * 성사된 쌍마다 방을 하나씩 만들며 "같은 쌍의 방이 이미 있는지"는 보지 않는다(ADR 0016) —
- * 한 회원은 퀴즈셋당 그룹 하나에만 참여하므로(`GroupMatchService`) 같은 쌍이 한 주에 두 번
- * 성사될 경로가 없다. 같은 `rematch` 하나에 방이 둘 생기는 것은 `chat_room_uk_1`이 막는다.
+ * 성사된 쌍마다 방을 하나씩 만들며 **"같은 쌍의 방이 이미 있는지"는 보지 않는다**(ADR 0016).
+ * 같은 두 사람이 서로 다른 주의 그룹에서 각각 성사되고 두 제출이 같은 주에 몰리면 방이 둘 열린다 —
+ * 막지 않는 쪽을 택했고, 막으면 건너뛴 쌍에 처리 기록이 남지 않아 예약 조회에 영구 잔류한다.
+ * 같은 `rematch` 하나에 방이 둘 생기는 것은 `chat_room_uk_1`이 막는다.
  */
 @Component
 class RematchChatRoomOpener(
@@ -73,13 +75,6 @@ class RematchChatRoomOpener(
             weekend = ChatPeriod.upcomingWeekendFrom(maxOf(matchedAt, now)),
         )
     }
-
-    /**
-     * [runCatching]과 같지만 [Error]는 삼키지 않는다 — `OutOfMemoryError` 같은 치명 오류가 WARN 한 줄로
-     * 묻히고, 이미 불안정한 JVM 에서 다음 쌍 처리를 계속 시도하게 되는 것을 막는다.
-     */
-    private inline fun runCatchingExceptions(block: () -> Unit): Result<Unit> =
-        runCatching(block).onFailure { if (it !is Exception) throw it }
 
     companion object {
         private val logger = KotlinLogging.logger {}

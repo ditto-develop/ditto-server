@@ -24,9 +24,8 @@ interface MemberReviewRepositoryCustom {
      *
      * 대신 [limit]으로 한 번에 처리할 양을 끊는다 — 장애 후 밀린 방이 많을 때 한 호출이 전부 떠안지 않게 한다.
      *
-     * 평가를 여는 유형만 본다([MemberReview.REVIEWABLE_MATCH_TYPES]) — 그러지 않으면 평가가 열리지 않는
-     * 방이 영원히 "평가 없음"으로 남아 종료 시각 오름차순의 앞자리를 영구 점유하고, 그 뒤에 끝난 방이
-     * 복구 대상에 들어오지 못한다. 정상 동작이 매주 복구를 막는 셈이라 판정을 그 상수 한 곳에 모았다.
+     * 평가를 여는 유형만 본다 — 왜 이 조회와 조립하는 쪽이 같은 값을 봐야 하는지는
+     * [MemberReview.REVIEWABLE_MATCH_TYPES]에 적어 뒀다.
      */
     fun findEndedChatRoomIdsWithoutReview(limit: Int): List<Long>
 }

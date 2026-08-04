@@ -1,6 +1,7 @@
 package com.ditto.api.review.service
 
 import com.ditto.api.review.dto.EndedChatRoom
+import com.ditto.common.exception.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
@@ -92,16 +93,6 @@ class EndedChatReviewOpener(
         rematchPairCreator.createPairsFor(endedChatRoom)
         memberReviewService.createReviews(endedChatRoom)
     }
-
-    /**
-     * [runCatching]과 같지만 [Error]는 삼키지 않는다.
-     *
-     * 이 어댑터는 한 방의 실패를 흡수하고 다음 방으로 넘어가야 해서 실패를 값으로 받는 편이 읽기 좋다.
-     * 다만 `runCatching`은 [Throwable]을 잡으므로 `OutOfMemoryError` 같은 치명 오류까지 WARN 한 줄로
-     * 묻히고, 이미 불안정한 JVM 에서 다음 방 처리를 계속 시도하게 된다. 그건 통과시킨다.
-     */
-    private inline fun runCatchingExceptions(block: () -> Unit): Result<Unit> =
-        runCatching(block).onFailure { if (it !is Exception) throw it }
 
     companion object {
         private val logger = KotlinLogging.logger {}

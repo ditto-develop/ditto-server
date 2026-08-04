@@ -18,7 +18,7 @@
 - 소속 운영 주는 `OperationWeek`로 받는다. "월요일만 허용"은 그 값 객체가 강제하므로 재매칭 쪽에서 다시 검증하지 않고, `QuizSet`처럼 컬럼은 `weekStartedOn: LocalDate`로 저장하고 `operationWeek` 접근자로 되돌린다([ADR 0010](../adr/0010-week-identifier-week-started-on.md)). 이 컬럼은 원본 추적용이지 제한 키가 아니다.
 - 제출 경로는 pair 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 판정한다 — 동시 제출의 성사 누락 방지 ([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)의 안전 규칙 준수).
 - 횟수 제한은 없다(2026-07-27 기획 확인) — 한 주에 여러 명과 성사 가능하고, 같은 상대와 다른 주말에 다시 성사되는 것도 허용한다.
-- 같은 두 사람이 한 주에 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 되고 **채팅방도 둘 열린다** — 중복을 막지 않는다([ADR 0016](../adr/0016-rematch-duplicate-room-allowed.md)이 [ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)을 대체). 현재 구조에서는 그 상황이 만들어지지 않는다: `GroupMatchService`가 `existsByMemberIdAndQuizSetId`로 막아 한 회원은 퀴즈셋당 그룹 하나에만 참여하고, 한 주에 그룹 퀴즈셋이 하나뿐이라 그 주의 그룹도 하나다. **주당 퀴즈셋을 여러 개로 늘리면 이 결정을 다시 봐야 한다.**
+- 같은 두 사람이 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 되고, 두 성사가 같은 주말로 향하면 **채팅방도 둘 열린다** — 중복을 막지 않는다([ADR 0016](../adr/0016-rematch-duplicate-room-allowed.md)이 [ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)을 대체). `GroupMatchService`의 `existsByMemberIdAndQuizSetId`는 **퀴즈셋 단위** 가드라 주가 다른 두 그룹은 막지 않고, 방이 열릴 주말은 그룹의 주가 아니라 **성사 시각**이 정한다 — 평가 제출에 기한이 없어 두 평가를 같은 주에 몰아 제출하면 두 성사가 같은 금요일로 향한다. 조건이 좁아 감수하며, 막으려면 건너뛴 쌍이 예약 조회에 영구 잔류하는 문제를 떠안는다(근거는 ADR 0016).
 
 ## 상태 전이
 

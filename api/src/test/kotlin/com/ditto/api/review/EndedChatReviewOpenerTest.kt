@@ -220,9 +220,7 @@ class EndedChatReviewOpenerTest(
     "재매칭 방은 평가를 열지 않는다" - {
         // 관측 지점은 "평가가 0건"이 아니라 **복구 배치 슬롯을 차지하지 않는가**다.
         // 평가 0건은 필터가 없어도 성립해(원본이 group_match 가 아니라 조립이 실패한다) 아무것도 증명하지 못한다.
-        //
-        // 이 조회에서 빠지지 않으면 재매칭 방이 "끝났는데 평가 0건"으로 영원히 남아 매 주기 다시 잡히고,
-        // 종료 시각 오름차순의 앞자리를 점유해 그 뒤에 끝난 방이 복구 대상에 들어오지 못한다.
+        // 슬롯을 차지하면 무슨 일이 생기는지는 MemberReview.REVIEWABLE_MATCH_TYPES KDoc 참조.
         "누락 복구 조회에서 빠진다 — 정상 방만 남는다" {
             val personalRoomId = saveEndedPersonalChat()
             val rematchRoom = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 500L, now = FRIDAY))
