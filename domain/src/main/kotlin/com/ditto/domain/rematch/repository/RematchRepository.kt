@@ -10,6 +10,17 @@ import org.springframework.transaction.annotation.Transactional
 interface RematchRepository : JpaRepository<Rematch, Long> {
 
     /**
+     * 소스 그룹에 이미 만들어진 쌍. 그룹 채팅 종료 시 쌍을 멱등하게 만들려고 기존 것을 먼저 읽는다 —
+     * `saveAll`은 쌍 여럿을 한 번에 넣으므로 그중 하나만 유일키를 위반해도 호출 전체가 실패해
+     * 정상 쌍까지 들어가지 못한다. 쌍 생성이 평가보다 앞서므로 그 방의 평가도 열리지 않는다.
+     *
+     * 먼저 읽어 막는 것은 **재실행**(종료 이벤트 재전달·누락 복구 재시도)이다. 동시 실행은 이 경로에
+     * 조회와 저장을 묶는 트랜잭션이 없어 막지 못하고, `rematch_uk_1`이 최종 방어선이 된다 —
+     * 진 호출만 실패하고 이긴 호출이 평가까지 열므로 중복 쌍도 지연도 생기지 않는다.
+     */
+    fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
+
+    /**
      * 제출 트랜잭션 전용 잠금 조회 — 동시 제출의 상호 선택 판정을 행 잠금으로 직렬화한다.
      * PK 단건 조회로만 잠근다 (비인덱스 조건 잠금 금지 — ADR 0011).
      *

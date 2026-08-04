@@ -1,6 +1,7 @@
 package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.review.service.EndedChatReviewOpener
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -13,16 +14,23 @@ import org.springframework.stereotype.Component
  *
  * 개방을 먼저 하고 마감을 나중에 한다. 순서를 뒤집으면 개방과 동시에 기한이 지난 방이
  * 다음 주기까지 열린 채로 남는다. 둘 다 멱등이라 주기가 겹치거나 건너뛰어도 결과가 같다.
+ *
+ * 마감한 방의 평가는 곧바로 열고, 그와 별개로 놓친 방을 매 주기 복구한다 — 채팅 종료와 평가 생성을
+ * 한 트랜잭션으로 묶지 않기 때문에(계획서 ⑤-1) 종료만 되고 평가가 안 열린 방이 남을 수 있다.
  */
 @Component
 class ChatRoomLifecycleScheduler(
     private val chatRoomEndService: ChatRoomEndService,
+    private val endedChatReviewOpener: EndedChatReviewOpener,
 ) {
 
     @Scheduled(cron = "\${chat.lifecycle.scheduler.cron:0 * * * * *}")
     fun sweep() {
         val now = LocalDateTime.now()
         chatRoomEndService.openDue(now)
-        chatRoomEndService.endExpired(now)
+
+        val ended = chatRoomEndService.endExpired(now)
+        endedChatReviewOpener.openFor(ended.map { it.id })
+        endedChatReviewOpener.openMissing()
     }
 }

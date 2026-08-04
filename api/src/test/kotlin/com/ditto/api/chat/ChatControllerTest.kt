@@ -11,6 +11,7 @@ import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -42,8 +43,10 @@ class ChatControllerTest : ControllerUnitTest() {
     private val chatService: ChatService = mockk()
     private val chatRoomEndService: ChatRoomEndService = mockk()
     private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
+    private val endedChatReviewOpener: EndedChatReviewOpener = mockk(relaxed = true)
 
-    override val controller = ChatController(chatService, chatRoomEndService, messagingTemplate)
+    override val controller =
+        ChatController(chatService, chatRoomEndService, messagingTemplate, endedChatReviewOpener)
 
     private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
         id = id,
