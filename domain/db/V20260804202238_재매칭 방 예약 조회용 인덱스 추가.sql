@@ -1,0 +1,11 @@
+-- 방 예약 스케줄러가 매 주기 도는 조회 경로:
+--   WHERE status = 'MATCHED' AND NOT EXISTS(chat_room WHERE source_type='REMATCH' AND source_id = rematch.id)
+--   ORDER BY matched_at, id LIMIT N
+--
+-- rematch 에는 PK 와 rematch_uk_1(source_group_match_id, member_id_1, member_id_2) 뿐이라 이 조회를 받을
+-- 인덱스가 없다. 성사된 쌍은 지워지지 않고 계속 쌓이므로, 인덱스가 없으면 주기마다 재매칭 이력 전체를
+-- 훑고 filesort 까지 하게 된다. 스케줄러 풀이 1스레드라 방 개방·마감까지 밀린다.
+--
+-- 컬럼 순서는 조회 조건 그대로다 — 등치(status) 먼저, 정렬(matched_at) 다음.
+-- NOT EXISTS 쪽은 chat_room_uk_1(source_type, source_id)이 받는다.
+CREATE INDEX rematch_index_1 ON rematch (status, matched_at);

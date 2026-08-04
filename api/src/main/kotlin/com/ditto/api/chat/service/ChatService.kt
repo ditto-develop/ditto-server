@@ -76,6 +76,29 @@ class ChatService(
     }
 
     /**
+     * 성사된 재매칭의 채팅방을 예약한다. 이미 있으면 아무 것도 하지 않는다(멱등).
+     * 방 예약 스케줄러가 쌍마다 부르며, 방과 참여자가 한 트랜잭션이어야 한다 —
+     * 방만 남고 참여자가 없으면 아무도 들어갈 수 없는데, 예약 조회는 방 존재로 완료를 판정해
+     * 다음 주기가 그 방을 고치지 않는다.
+     *
+     * 개방 시각은 [matchedAt]이 속한 주의 금요일이다. 성사가 이미 주말 도중이면 진행 중인 주말을
+     * 돌려받아 방이 곧바로 `ACTIVE`가 된다(계획서 ⑧-1 "이미 시작된 그 주말에 합류").
+     */
+    @Transactional
+    fun createRematchRoom(rematchId: Long, memberIds: List<Long>, matchedAt: LocalDateTime) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.REMATCH, rematchId)) {
+            return
+        }
+
+        val room = chatRoomRepository.save(
+            ChatRoom.rematch(rematchId, ChatPeriod.weekendOf(matchedAt), realNow()),
+        )
+        chatRoomMemberRepository.saveAll(
+            memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+        )
+    }
+
+    /**
      * 이미지 업로드용 presigned PUT URL 발급. 방 멤버만 발급 가능하며, 크기·타입 검증 후 발급한다.
      * 발급받은 key(`chat/{memberId}/{uuid}`)로 업로드한 뒤 messageType=IMAGE, content=key 로 전송한다.
      */
