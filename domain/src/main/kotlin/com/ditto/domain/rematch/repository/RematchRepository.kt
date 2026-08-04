@@ -10,6 +10,13 @@ import org.springframework.transaction.annotation.Transactional
 interface RematchRepository : JpaRepository<Rematch, Long> {
 
     /**
+     * 소스 그룹에 이미 만들어진 쌍. 그룹 채팅 종료 시 쌍을 멱등하게 만들려고 기존 것을 먼저 읽는다 —
+     * 유일키 위반을 예외로 받아 처리하면 참여 트랜잭션이 롤백 전용으로 마킹돼 같은 트랜잭션의
+     * 다른 작업까지 커밋되지 못한다(ADR 0013 의 대안 ① 검토와 같은 이유).
+     */
+    fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
+
+    /**
      * 제출 트랜잭션 전용 잠금 조회 — 동시 제출의 상호 선택 판정을 행 잠금으로 직렬화한다.
      * PK 단건 조회로만 잠근다 (비인덱스 조건 잠금 금지 — ADR 0011).
      *

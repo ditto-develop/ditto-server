@@ -1,6 +1,5 @@
 package com.ditto.domain.review.repository.querydsl
 
-import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.review.entity.MemberReview
 
 interface MemberReviewRepositoryCustom {
@@ -25,5 +24,5 @@ interface MemberReviewRepositoryCustom {
      *
      * 대신 [limit]으로 한 번에 처리할 양을 끊는다 — 장애 후 밀린 방이 많을 때 한 호출이 전부 떠안지 않게 한다.
      */
-    fun findEndedChatRoomIdsWithoutReview(sourceType: ChatRoomType, limit: Int): List<Long>
+    fun findEndedChatRoomIdsWithoutReview(limit: Int): List<Long>
 }

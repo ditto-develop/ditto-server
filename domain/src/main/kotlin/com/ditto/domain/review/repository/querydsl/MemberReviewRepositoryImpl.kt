@@ -1,7 +1,6 @@
 package com.ditto.domain.review.repository.querydsl
 
 import com.ditto.domain.chat.entity.ChatRoomStatus
-import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
@@ -24,12 +23,11 @@ class MemberReviewRepositoryImpl(
             .orderBy(memberReview.availableAt.asc(), memberReview.id.asc())
             .fetch()
 
-    override fun findEndedChatRoomIdsWithoutReview(sourceType: ChatRoomType, limit: Int): List<Long> =
+    override fun findEndedChatRoomIdsWithoutReview(limit: Int): List<Long> =
         queryFactory
             .select(chatRoom.id)
             .from(chatRoom)
             .where(
-                chatRoom.sourceType.eq(sourceType),
                 chatRoom.status.eq(ChatRoomStatus.ENDED),
                 queryFactory.selectOne()
                     .from(memberReview)

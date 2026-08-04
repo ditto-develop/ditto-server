@@ -1,17 +1,23 @@
 package com.ditto.api.review
 
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.review.dto.ReviewAnswerSubmitRequest
 import com.ditto.api.review.service.EndedChatReviewOpener
+import com.ditto.api.review.service.MemberReviewService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.repository.MemberReviewRepository
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
@@ -21,6 +27,7 @@ private val FRIDAY = LocalDateTime.of(2026, 3, 13, 12, 0)
 private val AFTER_EXPIRY = LocalDateTime.of(2026, 3, 16, 0, 0)
 private const val MEMBER_A = 1L
 private const val MEMBER_B = 2L
+private const val MEMBER_C = 3L
 
 class EndedChatReviewOpenerTest(
     private val endedChatReviewOpener: EndedChatReviewOpener,
@@ -30,6 +37,9 @@ class EndedChatReviewOpenerTest(
     private val personalMatchRepository: PersonalMatchRepository,
     private val quizSetRepository: QuizSetRepository,
     private val memberReviewRepository: MemberReviewRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val rematchRepository: RematchRepository,
+    private val memberReviewService: MemberReviewService,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -51,6 +61,18 @@ class EndedChatReviewOpenerTest(
                 ChatRoomMember.of(roomId = room.id, memberId = MEMBER_B),
             ),
         )
+        chatRoomEndService.endExpired(AFTER_EXPIRY)
+        return room.id
+    }
+
+    /** 3명 그룹 채팅 → GroupMatch → QuizSet 사슬을 갖춘 종료된 방. */
+    fun saveEndedGroupChat(vararg memberIds: Long): Long {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val match = groupMatchRepository.save(
+            GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = memberIds.size),
+        )
+        val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
+        chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) })
         chatRoomEndService.endExpired(AFTER_EXPIRY)
         return room.id
     }
@@ -127,22 +149,71 @@ class EndedChatReviewOpenerTest(
         }
     }
 
-    "그룹 방은 건너뛴다" - {
-        // 그룹은 멤버십 동결·재매칭 pair 가 얽혀 별도 트랙(I1G)이다.
-        "종료된 그룹 방으로는 평가를 열지 않는다" {
-            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 500L, now = FRIDAY))
-            chatRoomMemberRepository.saveAll(
-                listOf(
-                    ChatRoomMember.of(roomId = room.id, memberId = MEMBER_A),
-                    ChatRoomMember.of(roomId = room.id, memberId = MEMBER_B),
+    "종료된 그룹 채팅으로 평가와 재매칭 쌍을 함께 만든다" - {
+        "참여자마다 평가가 열린다" {
+            saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
+
+            endedChatReviewOpener.openMissing() shouldBe 1
+
+            memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe
+                setOf(MEMBER_A, MEMBER_B, MEMBER_C)
+        }
+
+        // 쌍이 없으면 RematchSubmitter 가 제출을 INVALID_REVIEW_TARGET 으로 거부한다.
+        // 3명이면 3×2÷2 = 3쌍이고, 항상 (작은 ID, 큰 ID) 로 정규화된다.
+        "참여자 전원의 비순서 쌍이 만들어진다" {
+            saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
+
+            endedChatReviewOpener.openMissing()
+
+            val pairs = rematchRepository.findAll()
+            pairs.size shouldBe 3
+            pairs.map { it.memberId1 to it.memberId2 }.toSet() shouldBe
+                setOf(MEMBER_A to MEMBER_B, MEMBER_A to MEMBER_C, MEMBER_B to MEMBER_C)
+        }
+
+        "다시 열어도 쌍이 늘지 않는다(멱등)" {
+            val roomId = saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
+
+            endedChatReviewOpener.openFor(listOf(roomId))
+            endedChatReviewOpener.openFor(listOf(roomId))
+
+            rematchRepository.findAll().size shouldBe 3
+            memberReviewRepository.findAll().size shouldBe 3
+        }
+
+        // 쌍 생성이 왜 필요한지를 인과로 고정한다 — 쌍 개수만 세면 "그래서 뭐가 되는가"가 빠진다.
+        // 그룹 평가는 재매칭 의사를 필수로 받고, RematchSubmitter 가 쌍을 못 찾으면 제출을 거부한다.
+        "열린 평가를 곧바로 제출할 수 있다" {
+            saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
+            endedChatReviewOpener.openMissing()
+
+            val myReview = memberReviewRepository.findAll().first { it.authorMemberId == MEMBER_A }
+
+            // 쌍이 없으면 여기서 INVALID_REVIEW_TARGET 으로 거부된다
+            memberReviewService.submitAnswer(
+                memberId = MEMBER_A,
+                reviewId = myReview.id,
+                reviewedMemberId = MEMBER_B,
+                request = ReviewAnswerSubmitRequest(
+                    meetingStatus = MeetingStatus.MET,
+                    rating = 5,
+                    wantsOneToOneRematch = true,
                 ),
             )
-            chatRoomEndService.endExpired(AFTER_EXPIRY)
 
-            endedChatReviewOpener.openFor(listOf(room.id))
-            endedChatReviewOpener.openMissing() shouldBe 0
+            rematchRepository.findAll()
+                .first { it.memberId1 == MEMBER_A && it.memberId2 == MEMBER_B }
+                .wantsOf(MEMBER_A) shouldBe true
+        }
 
-            memberReviewRepository.findAll().size shouldBe 0
+        "1:1 방에는 쌍을 만들지 않는다" {
+            val roomId = saveEndedPersonalChat()
+
+            endedChatReviewOpener.openFor(listOf(roomId))
+
+            rematchRepository.findAll().size shouldBe 0
+            memberReviewRepository.findAll().size shouldBe 2
         }
     }
 

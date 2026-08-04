@@ -5,7 +5,7 @@ import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.match.entity.PersonalMatch
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
@@ -14,7 +14,7 @@ import java.time.LocalDate
 import org.springframework.stereotype.Component
 
 /**
- * 끝난 1:1 채팅으로 평가를 연다 — 채팅 종료 트랙과 평가 트랙을 잇는 어댑터.
+ * 끝난 채팅으로 평가를 연다 — 채팅 종료 트랙과 평가 트랙을 잇는 어댑터.
  *
  * 채팅 쪽은 평가를 알지 않는다(`ChatRoomEndService`). 이 어댑터가 종료 결과를 [EndedChatRoom]으로
  * 조립해 [MemberReviewService.createReviews]에 넘긴다.
@@ -23,15 +23,20 @@ import org.springframework.stereotype.Component
  * 사용자가 나가기를 눌렀는데 실패하기 때문이다. 대신 계약을 at-least-once 로 두고, 놓친 방은
  * [openMissing]이 줍는다. `createReviews`가 멱등이라 중복 생성은 일어나지 않는다.
  *
- * 그룹은 범위 밖이다 — 멤버십 동결·재매칭 pair 생성이 얽혀 별도 트랙(`I1G`)이다.
+ * **그룹은 평가보다 재매칭 쌍을 먼저 만든다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가
+ * 쌍을 찾지 못하면 제출을 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다.
+ * 중간에 실패해 "쌍만 있고 평가 없음"으로 남는 것은 무해하다 — 쌍은 평가 없이는 쓰이지 않고,
+ * 다음 복구 주기가 평가를 열면서 이미 있는 쌍을 건너뛴다.
  */
 @Component
 class EndedChatReviewOpener(
     private val memberReviewService: MemberReviewService,
+    private val rematchPairCreator: RematchPairCreator,
     private val memberReviewRepository: MemberReviewRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val personalMatchRepository: PersonalMatchRepository,
+    private val groupMatchRepository: GroupMatchRepository,
     private val quizSetRepository: QuizSetRepository,
 ) {
     /**
@@ -57,10 +62,7 @@ class EndedChatReviewOpener(
      * 얼마나 오래 밀렸든 복구되어야 하기 때문이다(근거는 리포지토리 메서드 KDoc).
      */
     fun openMissing(): Int {
-        val roomIds = memberReviewRepository.findEndedChatRoomIdsWithoutReview(
-            sourceType = ChatRoomType.PERSONAL,
-            limit = RECOVERY_BATCH_SIZE,
-        )
+        val roomIds = memberReviewRepository.findEndedChatRoomIdsWithoutReview(RECOVERY_BATCH_SIZE)
         if (roomIds.isEmpty()) {
             return 0
         }
@@ -84,12 +86,18 @@ class EndedChatReviewOpener(
      * @return 평가가 실제로 열린 방 수
      */
     private fun openEach(rooms: List<ChatRoom>): Int =
-        loadEndedChatRooms(rooms.filter { it.sourceType == ChatRoomType.PERSONAL })
+        loadEndedChatRooms(rooms)
             .count { endedChatRoom ->
-                runCatchingExceptions { memberReviewService.createReviews(endedChatRoom) }
+                runCatchingExceptions { openOne(endedChatRoom) }
                     .onFailure { logger.warn(it) { "평가 열기 실패 — 다음 복구 주기로 넘긴다: roomId=${endedChatRoom.chatRoomId}" } }
                     .isSuccess
             }
+
+    /** 그룹이면 재매칭 쌍을 먼저 만든 뒤 평가를 연다. 1:1 은 쌍 생성이 no-op 이다. */
+    private fun openOne(endedChatRoom: EndedChatRoom) {
+        rematchPairCreator.createPairsFor(endedChatRoom)
+        memberReviewService.createReviews(endedChatRoom)
+    }
 
     /**
      * 방마다 평가 입력 계약([EndedChatRoom])을 만든다. `chat_room`에 없는 값을 원본 매칭에서 읽어 채우므로
@@ -103,26 +111,43 @@ class EndedChatReviewOpener(
             return emptyList()
         }
 
-        val matchesById = findMatchesBySourceId(rooms)
-        val weekStartedOnByQuizSetId = findWeekStartedOnByQuizSetId(matchesById.values)
+        val quizSetIdByRoomId = findQuizSetIdByRoomId(rooms)
+        val weekStartedOnByQuizSetId = findWeekStartedOnByQuizSetId(quizSetIdByRoomId.values)
         val participantIdsByRoomId = findParticipantIdsByRoomId(rooms)
 
         return rooms.mapNotNull { room ->
             toEndedChatRoom(
                 room = room,
-                match = matchesById[room.sourceId],
+                quizSetId = quizSetIdByRoomId[room.id],
                 weekStartedOnByQuizSetId = weekStartedOnByQuizSetId,
                 participantIds = participantIdsByRoomId[room.id].orEmpty(),
             )
         }
     }
 
-    /** 방의 `sourceId`가 곧 `PersonalMatch.id`다. */
-    private fun findMatchesBySourceId(rooms: List<ChatRoom>): Map<Long, PersonalMatch> =
-        personalMatchRepository.findAllById(rooms.map { it.sourceId }).associateBy { it.id }
+    /**
+     * 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 유형별로 다른 테이블이라
+     * (`PERSONAL`은 `personal_match`, `GROUP`은 `group_match`) 여기서 흡수하고,
+     * 이후 조립은 유형을 신경 쓰지 않는다. 원본이 없는 방은 map 에 담기지 않는다.
+     */
+    private fun findQuizSetIdByRoomId(rooms: List<ChatRoom>): Map<Long, Long> {
+        val (personalRooms, groupRooms) = rooms.partition { it.sourceType == ChatRoomType.PERSONAL }
+        val personalQuizSetIdByMatchId = personalMatchRepository.findAllById(personalRooms.map { it.sourceId })
+            .associate { it.id to it.quizSetId }
+        val groupQuizSetIdByMatchId = groupMatchRepository.findAllById(groupRooms.map { it.sourceId })
+            .associate { it.id to it.quizSetId }
 
-    private fun findWeekStartedOnByQuizSetId(matches: Collection<PersonalMatch>): Map<Long, LocalDate> =
-        quizSetRepository.findAllById(matches.map { it.quizSetId }).associate { it.id to it.weekStartedOn }
+        return rooms.mapNotNull { room ->
+            val quizSetId = when (room.sourceType) {
+                ChatRoomType.PERSONAL -> personalQuizSetIdByMatchId[room.sourceId]
+                ChatRoomType.GROUP -> groupQuizSetIdByMatchId[room.sourceId]
+            }
+            quizSetId?.let { room.id to it }
+        }.toMap()
+    }
+
+    private fun findWeekStartedOnByQuizSetId(quizSetIds: Collection<Long>): Map<Long, LocalDate> =
+        quizSetRepository.findAllById(quizSetIds).associate { it.id to it.weekStartedOn }
 
     private fun findParticipantIdsByRoomId(rooms: List<ChatRoom>): Map<Long, List<Long>> =
         chatRoomMemberRepository.findByRoomIdIn(rooms.map { it.id }).groupBy({ it.roomId }, { it.memberId })
@@ -135,17 +160,18 @@ class EndedChatReviewOpener(
      */
     private fun toEndedChatRoom(
         room: ChatRoom,
-        match: PersonalMatch?,
+        quizSetId: Long?,
         weekStartedOnByQuizSetId: Map<Long, LocalDate>,
         participantIds: List<Long>,
     ): EndedChatRoom? {
-        val weekStartedOn = match?.let { weekStartedOnByQuizSetId[it.quizSetId] }
+        val weekStartedOn = quizSetId?.let { weekStartedOnByQuizSetId[it] }
         val endedAt = room.endedAt
 
-        if (match == null || weekStartedOn == null || endedAt == null) {
+        if (quizSetId == null || weekStartedOn == null || endedAt == null) {
             logger.warn {
-                "평가를 열 수 없어 건너뜀: roomId=${room.id}, sourceId=${room.sourceId}, " +
-                    "match=${match != null}, weekStartedOn=${weekStartedOn != null}, endedAt=$endedAt"
+                "평가를 열 수 없어 건너뜀: roomId=${room.id}, sourceType=${room.sourceType}, " +
+                    "sourceId=${room.sourceId}, quizSetId=$quizSetId, " +
+                    "weekStartedOn=${weekStartedOn != null}, endedAt=$endedAt"
             }
             return null
         }
@@ -154,7 +180,7 @@ class EndedChatReviewOpener(
             chatRoomId = room.id,
             matchType = room.sourceType,
             matchId = room.sourceId,
-            quizSetId = match.quizSetId,
+            quizSetId = quizSetId,
             weekStartedOn = weekStartedOn,
             participantIds = participantIds,
             endedAt = endedAt,

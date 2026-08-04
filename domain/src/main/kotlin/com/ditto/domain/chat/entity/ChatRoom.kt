@@ -28,7 +28,7 @@ import org.hibernate.annotations.Comment
         // 만료 스케줄러가 끝낼 방을 찾는 경로
         Index(name = "chat_room_index_1", columnList = "status, expires_at"),
         // 평가 누락 복구가 "끝났는데 평가 없는 방"을 찾는 경로
-        Index(name = "chat_room_index_2", columnList = "source_type, status, ended_at"),
+        Index(name = "chat_room_index_2", columnList = "status, ended_at"),
     ],
 )
 class ChatRoom private constructor(

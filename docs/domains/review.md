@@ -1,14 +1,15 @@
 # review 도메인
 
 평가(사용자 화면 용어) / review(코드·DB·API 용어). 채팅이 끝나면 참여자별로 열리고, 대상 회원 한 명씩 답변을 확정한다.
-현재 범위는 데이터 모델·생성, 미완료 목록 조회·대상별 제출, **1:1 채팅 종료 연동**까지 — 그룹 종료 연동·신뢰도·노쇼·공개 집계는 후속 이슈다.
+현재 범위는 데이터 모델·생성, 미완료 목록 조회·대상별 제출, **채팅 종료 연동(1:1·그룹)**까지 — 신뢰도·노쇼·공개 집계는 후속 이슈다.
 
 ## 용어
 
 - `MemberReview`(진행 단위 — 한 회원 × 한 채팅 종료 건), `ReviewAnswer`(그 안의 평가 대상 한 명에 대한 응답).
 - `ReviewProgressStatus`(진행 상태 — `NOT_STARTED`/`IN_PROGRESS`/`COMPLETED`), `MeetingStatus`(오프라인 만남 성사 여부 enum — `Gender`처럼 enum 이름을 그대로 주고받는다).
 - `EndedChatRoom`(채팅 종료 트랙이 넘기는 입력 계약 — `api/review/dto/`).
-- `EndedChatReviewOpener`(끝난 1:1 채팅으로 평가를 여는 어댑터 — `api/review/service/`).
+- `EndedChatReviewOpener`(끝난 채팅으로 평가를 여는 어댑터 — `api/review/service/`).
+- `RematchPairCreator`(그룹 종료 시 참여자 쌍을 만드는 협력자 — 같은 패키지).
 
 ## 명명 예약 규칙
 
@@ -49,7 +50,9 @@
   - **복구**: `openMissing`이 "끝났는데 평가가 없는 방"을 anti-join 으로 찾아 매 주기 줍는다. 즉시 생성이 실패했거나 그 사이 앱이 죽은 경우를 위한 것이며, `createReviews`가 멱등이라 중복 생성은 없다. 한 번에 처리할 양은 끊는다(장애 후 밀린 물량이 한 호출을 오래 잡지 않게).
 - `quizSetId`·`weekStartedOn`은 `chat_room`에 없어 **원본 매칭을 타고 채운다** — `chat_room.source_id` → `PersonalMatch.quizSetId` → `QuizSet.weekStartedOn`. 방이 여럿이면 일괄 조회해 N+1을 피한다.
 - 원본 매칭이 사라졌거나 종료 시각이 없는 방은 **건너뛰고 로그만 남긴다.** 거기서 터뜨리면 같은 배치의 정상 방까지 막힌다. 원본이 사라지는 경로(탈퇴 hard delete)는 `D1`에서 다룬다.
-- 그룹은 이 어댑터가 건너뛴다 — 멤버십 동결·재매칭 pair 생성이 얽혀 별도 트랙(`I1G`)이다.
+- **그룹은 평가보다 재매칭 쌍을 먼저 만든다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가 쌍을 찾지 못하면 제출을 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다. 중간에 실패해 "쌍만 있고 평가 없음"으로 남는 것은 무해하다 — 쌍은 평가 없이 쓰이지 않고, 다음 복구 주기가 평가를 열면서 이미 있는 쌍을 건너뛴다.
+- 쌍은 참여자 전원의 비순서 조합(`N`명이면 `N(N-1)/2`)이며 기존 쌍을 먼저 읽어 비교해 멱등하게 만든다. 유일키 위반을 예외로 받으면 참여 트랜잭션이 롤백 전용으로 마킹돼 같은 트랜잭션의 다른 작업까지 커밋되지 못한다.
+- `quizSetId`의 출처가 유형별로 갈린다(`PERSONAL`→`personal_match`, `GROUP`→`group_match`). 그 차이는 `findQuizSetIdByRoomId`가 흡수하고, 이후 조립은 유형을 신경 쓰지 않는다.
 
 ## 상태 전이
 
