@@ -36,6 +36,8 @@ enum class ErrorCode(
     MEMBER_BANNED(403, "6007", "영구 차단된 계정입니다."),
     QUIZ_BLOCKED_BY_SANCTION(403, "6008", "제재로 인해 이번 주 퀴즈에 참여할 수 없습니다."),
     CANNOT_LEAVE_WHILE_SANCTIONED(403, "6009", "제재 중에는 탈퇴할 수 없습니다."),
+    CANNOT_LEAVE_WHILE_IN_PROGRESS(403, "6011", "진행 중인 매칭이나 채팅이 있어 탈퇴할 수 없습니다."),
+    MEMBER_LEFT(403, "6012", "탈퇴한 계정입니다."),
     REPORT_ALREADY_REVIEWED(409, "6010", "이미 검토가 완료된 신고입니다."),
     CHAT_ROOM_NOT_FOUND(404, "7001", "존재하지 않는 채팅방입니다."),
     NOT_CHAT_ROOM_MEMBER(403, "7002", "채팅방에 참여한 회원이 아닙니다."),

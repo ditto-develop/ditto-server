@@ -4,6 +4,7 @@ import com.ditto.api.match.MatchAccessChecker
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.dto.LeaveResponse
 import com.ditto.api.user.dto.MeResponse
 import com.ditto.api.user.dto.PublicProfileResponse
@@ -33,6 +34,7 @@ class UserService(
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val serverTimeProvider: ServerTimeProvider,
+    private val leaveProgressChecker: LeaveProgressChecker,
 ) {
 
     @Transactional
@@ -116,8 +118,16 @@ class UserService(
         return CheckNicknameResponse(available = true)
     }
 
+    /**
+     * 탈퇴(소프트 삭제). 데이터를 지우지 않고 상태만 LEFT로 바꾼다 —
+     * 화면이 "30일 이내 재가입하면 계정을 복구할 수 있습니다"를 안내하므로 즉시 삭제할 수 없다.
+     * 실제 삭제는 [LeftMemberPurgeService]가 보존 기간 경과 후 수행한다.
+     *
+     * 제재 중 탈퇴를 더는 막지 않는다 — hard delete 시절에는 제재 이력과 재가입 식별 근거가
+     * 함께 사라져 차단 우회 수단이 됐지만, 소프트 삭제는 둘을 모두 보존한다.
+     */
     @Transactional
-    fun leaveUser(id: Long, memberId: Long): LeaveResponse {
+    fun leaveUser(id: Long, memberId: Long, request: LeaveRequest): LeaveResponse {
         val member = memberRepository.findById(id).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
         }
@@ -126,18 +136,16 @@ class UserService(
             throw WarnException(ErrorCode.FORBIDDEN)
         }
 
-        // 제재 중 탈퇴를 거부한다 — hard delete가 제재 이력·재가입 차단 근거(SocialAccount)를 지워
-        // 차단 우회 수단이 되는 것을 막는다. 탈퇴 부분 보존 전환(후속) 시 이 가드는 제거한다.
-        if (member.isBanned() || member.isSuspendedAt(serverTimeProvider.now())) {
-            throw WarnException(ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED)
+        // "진행 중인 매칭이나 채팅이 있으면 탈퇴가 제한됩니다" — 상대가 기다리는 상태를 남기지 않는다.
+        if (leaveProgressChecker.hasInProgress(id)) {
+            throw WarnException(ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS)
         }
 
-        val response = member.toLeaveResponse()
+        member.leave(reason = request.reason, now = serverTimeProvider.now())
 
+        // 세션은 즉시 끊는다. SocialAccount는 복구·재가입 식별 근거이므로 남긴다.
         refreshTokenRepository.deleteAllByMemberId(id)
-        socialAccountRepository.findByMemberId(id)?.let { socialAccountRepository.delete(it) }
-        memberRepository.delete(member)
 
-        return response
+        return member.toLeaveResponse()
     }
 }

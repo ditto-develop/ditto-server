@@ -3,6 +3,7 @@ package com.ditto.api.user
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.service.UserService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
@@ -308,23 +309,28 @@ class UserServiceTest(
             }
         }
 
-        "회원 탈퇴" - {
-            "탈퇴 시 회원이 삭제된다" {
-                val member = memberRepository.save(Member(nickname = "탈퇴유저"))
+        "회원 탈퇴 (소프트 삭제)" - {
+            "탈퇴 시 회원이 삭제되지 않고 LEFT 상태가 된다" {
+                val member = memberRepository.save(Member(nickname = "탈퇴유저").apply { activate() })
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "leave-user"))
                 authService.createRefreshToken(member.id)
 
                 val result = userService.leaveUser(
                     id = member.id,
                     memberId = member.id,
+                    request = LeaveRequest(reason = "not-useful"),
                 )
 
                 result.id shouldBe member.id
-                memberRepository.findById(member.id).isEmpty shouldBe true
+                val left = memberRepository.findById(member.id).orElseThrow()
+                left.status shouldBe MemberStatus.LEFT
+                left.leaveReason shouldBe "not-useful"
+                // 재가입 복구·제재 회피 방지 근거이므로 소셜 계정은 남긴다.
+                socialAccountRepository.findByMemberId(member.id) shouldNotBe null
             }
 
             "탈퇴 시 해당 회원의 모든 리프레시 토큰이 삭제된다" {
-                val member = memberRepository.save(Member(nickname = "탈퇴유저"))
+                val member = memberRepository.save(Member(nickname = "탈퇴유저").apply { activate() })
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "leave-user-2"))
                 val token1 = authService.createRefreshToken(member.id)
                 val token2 = authService.createRefreshToken(member.id)
@@ -332,6 +338,7 @@ class UserServiceTest(
                 userService.leaveUser(
                     id = member.id,
                     memberId = member.id,
+                    request = LeaveRequest(),
                 )
 
                 refreshTokenRepository.findByToken(token1.token) shouldBe null
@@ -343,12 +350,13 @@ class UserServiceTest(
                     userService.leaveUser(
                         id = 99999L,
                         memberId = 1L,
+                        request = LeaveRequest(),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.NOT_FOUND
             }
 
-            "이용 정지 중인 회원은 탈퇴할 수 없다" {
+            "이용 정지 중인 회원도 탈퇴할 수 있다 — 소프트 삭제는 제재 이력을 보존한다" {
                 val member = memberRepository.save(
                     Member(nickname = "정지탈퇴유저").apply {
                         activate()
@@ -356,36 +364,19 @@ class UserServiceTest(
                     },
                 )
 
-                val exception = shouldThrow<WarnException> {
-                    userService.leaveUser(id = member.id, memberId = member.id)
-                }
-                exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED
+                userService.leaveUser(id = member.id, memberId = member.id, request = LeaveRequest())
+
+                memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
             }
 
-            "영구 차단 회원은 탈퇴할 수 없다 — 재가입 차단 근거(SocialAccount) 보존" {
+            "영구 차단 회원도 탈퇴할 수 있고 재가입 차단 근거(SocialAccount)는 보존된다" {
                 val member = memberRepository.save(Member(nickname = "차단탈퇴유저").apply { activate(); ban() })
                 socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "banned-user"))
 
-                val exception = shouldThrow<WarnException> {
-                    userService.leaveUser(id = member.id, memberId = member.id)
-                }
+                userService.leaveUser(id = member.id, memberId = member.id, request = LeaveRequest())
 
-                exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_SANCTIONED
+                memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
                 socialAccountRepository.findByMemberId(member.id) shouldNotBe null
-            }
-
-            "정지 해제 예정일이 지난 회원은 탈퇴할 수 있다" {
-                val member = memberRepository.save(
-                    Member(nickname = "만료정지탈퇴").apply {
-                        activate()
-                        suspendUntil(java.time.LocalDateTime.now().minusDays(1))
-                    },
-                )
-                socialAccountRepository.save(SocialAccount.create(member.id, SocialProvider.KAKAO, "expired-user"))
-
-                userService.leaveUser(id = member.id, memberId = member.id)
-
-                memberRepository.findById(member.id).isEmpty shouldBe true
             }
 
             "다른 회원의 ID로 탈퇴 요청하면 예외가 발생한다" {
@@ -396,6 +387,7 @@ class UserServiceTest(
                     userService.leaveUser(
                         id = memberB.id,
                         memberId = memberA.id,
+                        request = LeaveRequest(),
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.FORBIDDEN

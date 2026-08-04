@@ -3,6 +3,7 @@ package com.ditto.api.user.controller
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.user.dto.CheckNicknameResponse
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.dto.LeaveResponse
 import com.ditto.api.user.dto.MeResponse
 import com.ditto.api.user.dto.PublicProfileResponse
@@ -55,9 +56,10 @@ class UserController(
     @PostMapping("/api/v1/users/{id}/leave")
     fun leaveUser(
         @PathVariable id: Long,
+        @Valid @RequestBody(required = false) request: LeaveRequest?,
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<LeaveResponse> {
-        val result = userService.leaveUser(id, principal.memberId)
+        val result = userService.leaveUser(id, principal.memberId, request ?: LeaveRequest())
         return ApiResponse.ok(result)
     }
 }

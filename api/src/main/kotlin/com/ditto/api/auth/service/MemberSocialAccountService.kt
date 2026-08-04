@@ -13,11 +13,13 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import org.springframework.beans.factory.annotation.Value
 
 @Service
 class MemberSocialAccountService(
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
+    @Value("\${ditto.member.purge.retention-days:30}") private val retentionDays: Long,
 ) {
     @Transactional
     fun findOrCreateMember(
@@ -43,6 +45,7 @@ class MemberSocialAccountService(
                 member.updateEmail(email)
             }
             member.updateOAuthInfo(name = name, phoneNumber = phoneNumber, gender = gender)
+            restoreIfWithinRetention(member)
             return member
         }
 
@@ -64,6 +67,23 @@ class MemberSocialAccountService(
             ),
         )
         return newMember
+    }
+
+    /**
+     * 탈퇴한 회원이 보존 기간 안에 재가입하면 계정을 복구한다 —
+     * "탈퇴 후 30일 이내 재가입하면 계정을 복구할 수 있습니다"(피그마 6.2.4).
+     *
+     * 보존 기간이 지났는데 삭제 배치가 아직 돌지 않아 행이 남아 있는 경우는 복구하지 않는다.
+     * 이때는 LEFT 상태가 유지되므로 인증 게이트가 막고, 배치가 정리한 뒤 새 회원으로 가입하게 된다.
+     */
+    private fun restoreIfWithinRetention(member: Member) {
+        if (!member.isLeft()) return
+        if (member.isRetentionExpiredAt(LocalDateTime.now(), retentionDays)) {
+            log.info { "보존 기간이 지난 탈퇴 회원(id=${member.id})의 재로그인 — 복구하지 않는다" }
+            return
+        }
+        log.info { "탈퇴 회원(id=${member.id}) 복구 (leftAt=${member.leftAt})" }
+        member.restore()
     }
 
     /**
