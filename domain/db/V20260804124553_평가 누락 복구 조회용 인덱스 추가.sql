@@ -1,0 +1,10 @@
+-- 평가 누락 복구(anti-join)가 매 주기 도는 조회 경로:
+--   WHERE source_type = ? AND status = 'ENDED' AND ended_at > ? ORDER BY ended_at, id LIMIT 100
+--
+-- 기존 인덱스로는 이 조회를 못 받는다 — chat_room_uk_1(source_type, source_id)은 status·ended_at 을 모르고,
+-- chat_room_index_1(status, expires_at)은 만료 스케줄러용이라 ended_at 정렬을 못 준다.
+-- 모든 채팅은 72시간 안에 끝나므로 status='ENDED' 행은 단조 증가한다. 인덱스가 없으면 주기마다
+-- 종료 이력 전체를 훑고 filesort 까지 하게 되고, 스케줄러 풀이 1스레드라 방 개방·마감까지 밀린다.
+--
+-- 컬럼 순서는 조회 조건 그대로다 — 등치(source_type, status) 먼저, 범위·정렬(ended_at) 마지막.
+CREATE INDEX chat_room_index_2 ON chat_room (source_type, status, ended_at);

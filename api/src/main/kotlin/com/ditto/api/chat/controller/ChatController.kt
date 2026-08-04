@@ -9,6 +9,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
@@ -27,6 +28,7 @@ class ChatController(
     private val chatService: ChatService,
     private val chatRoomEndService: ChatRoomEndService,
     private val messagingTemplate: SimpMessagingTemplate,
+    private val endedChatReviewOpener: EndedChatReviewOpener,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -57,9 +59,12 @@ class ChatController(
     /**
      * 1:1 채팅 종료. 이미 끝난 방에 다시 요청해도 성공으로 답한다(더블 탭·재시도 대비).
      *
-     * 이번 요청이 실제로 끝냈을 때만 종료 SYSTEM 메시지를 구독자에게 발행한다 — 상대 화면이
+     * 이번 요청이 실제로 끝냈을 때만 종료 SYSTEM 메시지를 발행하고 평가를 연다 — 상대 화면이
      * 그때 바로 "상대방이 채팅을 종료했습니다"로 바뀌어야 하는데, 종료된 방은 재구독이 막혀
-     * 나중에 따라잡을 수 없기 때문이다. 발행은 서비스 트랜잭션이 커밋된 뒤에 일어난다.
+     * 나중에 따라잡을 수 없기 때문이다. 둘 다 서비스 트랜잭션이 커밋된 뒤에 일어난다.
+     *
+     * 평가 열기가 실패해도 이 요청은 성공으로 답한다 — 종료는 이미 확정됐고, 놓친 평가는
+     * 스케줄러의 누락 복구가 줍는다(계획서 ⑤-1의 at-least-once 계약).
      */
     @Loggable
     @PostMapping("/api/v1/chat/rooms/{roomId}/end")
@@ -68,7 +73,10 @@ class ChatController(
         @PathVariable roomId: Long,
     ): ApiResponse<Unit> {
         chatRoomEndService.endByUser(roomId, principal.memberId, LocalDateTime.now())
-            ?.let { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it) }
+            ?.let {
+                messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
+                endedChatReviewOpener.openFor(listOf(roomId))
+            }
         return ApiResponse.ok(Unit)
     }
 

@@ -1,13 +1,14 @@
 # review 도메인
 
 평가(사용자 화면 용어) / review(코드·DB·API 용어). 채팅이 끝나면 참여자별로 열리고, 대상 회원 한 명씩 답변을 확정한다.
-현재 범위는 데이터 모델·생성과 **미완료 목록 조회·대상별 제출**까지 — 채팅 종료 연동, 신뢰도·노쇼·공개 집계는 후속 이슈다.
+현재 범위는 데이터 모델·생성, 미완료 목록 조회·대상별 제출, **1:1 채팅 종료 연동**까지 — 그룹 종료 연동·신뢰도·노쇼·공개 집계는 후속 이슈다.
 
 ## 용어
 
 - `MemberReview`(진행 단위 — 한 회원 × 한 채팅 종료 건), `ReviewAnswer`(그 안의 평가 대상 한 명에 대한 응답).
 - `ReviewProgressStatus`(진행 상태 — `NOT_STARTED`/`IN_PROGRESS`/`COMPLETED`), `MeetingStatus`(오프라인 만남 성사 여부 enum — `Gender`처럼 enum 이름을 그대로 주고받는다).
 - `EndedChatRoom`(채팅 종료 트랙이 넘기는 입력 계약 — `api/review/dto/`).
+- `EndedChatReviewOpener`(끝난 1:1 채팅으로 평가를 여는 어댑터 — `api/review/service/`).
 
 ## 명명 예약 규칙
 
@@ -40,6 +41,16 @@
 - "미완료"는 `COMPLETED가 아님`이며, 이 판정은 조회 쿼리(`findPendingByAuthorOldestFirst`) 한 곳에만 둔다 — 서비스나 호출부에서 상태를 나열하지 않는다.
 - `MeetingStatus.NO_SHOW`는 노쇼 **신호**로만 보존한다 — 이 값 하나로 제재를 집행하지 않고, 운영자가 확정한 사건만 누적 대상이 된다.
 
+## 채팅 종료 연동
+
+- 채팅 쪽은 평가를 알지 않는다(`ChatRoomEndService`). `EndedChatReviewOpener`가 종료 결과를 `EndedChatRoom`으로 조립해 `createReviews`에 넘긴다.
+- **채팅 종료와 평가 생성을 한 트랜잭션으로 묶지 않는다.** 평가 생성 실패가 채팅 종료를 되돌리면 사용자가 나가기를 눌렀는데 실패한다. 계약은 **at-least-once** — 종료는 확정되고 평가는 곧 열린다.
+  - **즉시**: 만료 마감·사용자 종료 직후 `openFor`가 연다. Figma가 "시간 만료: 자동 마감, 평가 화면으로 이동"이라 종료하자마자 평가가 보여야 한다.
+  - **복구**: `openMissing`이 "끝났는데 평가가 없는 방"을 anti-join 으로 찾아 매 주기 줍는다. 즉시 생성이 실패했거나 그 사이 앱이 죽은 경우를 위한 것이며, `createReviews`가 멱등이라 중복 생성은 없다. 한 번에 처리할 양은 끊는다(장애 후 밀린 물량이 한 호출을 오래 잡지 않게).
+- `quizSetId`·`weekStartedOn`은 `chat_room`에 없어 **원본 매칭을 타고 채운다** — `chat_room.source_id` → `PersonalMatch.quizSetId` → `QuizSet.weekStartedOn`. 방이 여럿이면 일괄 조회해 N+1을 피한다.
+- 원본 매칭이 사라졌거나 종료 시각이 없는 방은 **건너뛰고 로그만 남긴다.** 거기서 터뜨리면 같은 배치의 정상 방까지 막힌다. 원본이 사라지는 경로(탈퇴 hard delete)는 `D1`에서 다룬다.
+- 그룹은 이 어댑터가 건너뛴다 — 멤버십 동결·재매칭 pair 생성이 얽혀 별도 트랙(`I1G`)이다.
+
 ## 상태 전이
 
 ```
@@ -55,6 +66,6 @@ NOT_STARTED → IN_PROGRESS → COMPLETED   (대상 응답이 확정될 때마�
 
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/review/entity/`
 - 리포지토리: `domain/src/main/kotlin/com/ditto/domain/review/repository/`
-- API·서비스: `api/src/main/kotlin/com/ditto/api/review/`
+- API·서비스: `api/src/main/kotlin/com/ditto/api/review/` (종료 연동은 `service/EndedChatReviewOpener`)
 - 마이그레이션: `domain/db/V20260726221757_리뷰 테이블 추가.sql`
 - 설계 배경: [ADR 0011](../adr/0011-review-progress-and-answer-split.md)
