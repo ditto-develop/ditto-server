@@ -44,15 +44,15 @@
 
 ## 채팅 종료 연동
 
-- 채팅 쪽은 평가를 알지 않는다(`ChatRoomEndService`). `EndedChatReviewOpener`가 종료 결과를 `EndedChatRoom`으로 조립해 `createReviews`에 넘긴다.
+- 채팅 쪽은 평가를 알지 않는다(`ChatRoomEndService`). `EndedChatReviewOpener`가 언제 열지와 실패 격리를 맡고, 종료 결과를 `EndedChatRoom`으로 조립하는 일은 `EndedChatRoomLoader`가 맡는다.
 - **채팅 종료와 평가 생성을 한 트랜잭션으로 묶지 않는다.** 평가 생성 실패가 채팅 종료를 되돌리면 사용자가 나가기를 눌렀는데 실패한다. 계약은 **at-least-once** — 종료는 확정되고 평가는 곧 열린다.
   - **즉시**: 만료 마감·사용자 종료 직후 `openFor`가 연다. Figma가 "시간 만료: 자동 마감, 평가 화면으로 이동"이라 종료하자마자 평가가 보여야 한다.
   - **복구**: `openMissing`이 "끝났는데 평가가 없는 방"을 anti-join 으로 찾아 매 주기 줍는다. 즉시 생성이 실패했거나 그 사이 앱이 죽은 경우를 위한 것이며, `createReviews`가 멱등이라 중복 생성은 없다. 한 번에 처리할 양은 끊는다(장애 후 밀린 물량이 한 호출을 오래 잡지 않게).
+  - **한계 — 열 수 없는 방이 배치를 막는다.** 이 조회는 "아직 못 만든 방"과 "영영 만들 수 없는 방"을 구분하지 못한다. 시도했다는 사실을 어디에도 남기지 않기 때문이다. 원본 퀴즈셋이 사라진 방(#130)처럼 열 수 없는 방이 배치 크기만큼 쌓이면 `ended_at` 오름차순에서 앞자리를 영구 점유하고, 그 뒤에 끝난 방은 복구 대상에 들어오지 못한다. 신호는 `"대상 N건 중 0건 열림"` 로그뿐이다. **안전망을 두껍게 하기보다 입구를 막는 쪽을 먼저 택했다** — 퀴즈셋을 지우는 일 자체가 그 주 매칭·평가까지 고아로 만드는 사고라서다. 시도 횟수를 기록해 배치에서 빼는 보강은 운영 데이터를 보고 결정한다.
 - `quizSetId`·`weekStartedOn`은 `chat_room`에 없어 **원본 매칭을 타고 채운다** — `chat_room.source_id` → `PersonalMatch.quizSetId` → `QuizSet.weekStartedOn`. 방이 여럿이면 일괄 조회해 N+1을 피한다.
 - 원본 매칭이 사라졌거나 종료 시각이 없는 방은 **건너뛰고 로그만 남긴다.** 거기서 터뜨리면 같은 배치의 정상 방까지 막힌다. 원본이 사라지는 경로(탈퇴 hard delete)는 `D1`에서 다룬다.
-- **그룹은 평가보다 재매칭 쌍을 먼저 만든다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가 쌍을 찾지 못하면 제출을 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다. 중간에 실패해 "쌍만 있고 평가 없음"으로 남는 것은 무해하다 — 쌍은 평가 없이 쓰이지 않고, 다음 복구 주기가 평가를 열면서 이미 있는 쌍을 건너뛴다.
-- 쌍은 참여자 전원의 비순서 조합(`N`명이면 `N(N-1)/2`)이며 기존 쌍을 먼저 읽어 비교해 멱등하게 만든다. 유일키 위반을 예외로 받으면 참여 트랜잭션이 롤백 전용으로 마킹돼 같은 트랜잭션의 다른 작업까지 커밋되지 못한다.
-- `quizSetId`의 출처가 유형별로 갈린다(`PERSONAL`→`personal_match`, `GROUP`→`group_match`). 그 차이는 `findQuizSetIdByRoomId`가 흡수하고, 이후 조립은 유형을 신경 쓰지 않는다.
+- **그룹은 평가보다 재매칭 쌍을 먼저 만든다**(`RematchPairCreator`). 그 순서여야 하는 이유와 쌍을 멱등하게 만드는 방법은 [rematch 도메인](rematch.md)에 있다. 중간에 실패해 "쌍만 있고 평가 없음"으로 남는 것은 무해하다 — 쌍은 평가 없이 쓰이지 않고, 다음 복구 주기가 평가를 열면서 이미 있는 쌍을 건너뛴다.
+- `quizSetId`의 출처가 유형별로 갈린다(`PERSONAL`→`personal_match`, `GROUP`→`group_match`). 그 차이는 `EndedChatRoomLoader`가 흡수하고, 평가를 여는 쪽은 유형을 신경 쓰지 않는다.
 
 ## 상태 전이
 
@@ -69,6 +69,6 @@ NOT_STARTED → IN_PROGRESS → COMPLETED   (대상 응답이 확정될 때마�
 
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/review/entity/`
 - 리포지토리: `domain/src/main/kotlin/com/ditto/domain/review/repository/`
-- API·서비스: `api/src/main/kotlin/com/ditto/api/review/` (종료 연동은 `service/EndedChatReviewOpener`)
+- API·서비스: `api/src/main/kotlin/com/ditto/api/review/` (종료 연동은 `service/EndedChatReviewOpener`, 입력 조립은 `service/EndedChatRoomLoader`)
 - 마이그레이션: `domain/db/V20260726221757_리뷰 테이블 추가.sql`
 - 설계 배경: [ADR 0011](../adr/0011-review-progress-and-answer-split.md)

@@ -14,9 +14,9 @@ import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.repository.MemberReviewRepository
 import io.kotest.matchers.shouldBe
