@@ -159,6 +159,37 @@ class ChatRoomEndServiceTest(
                 chatRoomEndService.endByUser(roomId = 9999L, memberId = 1L, now = FRIDAY)
             }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_FOUND
         }
+
+        // 재매칭 방도 두 사람만 있는 1:1 이라 나가기가 되어야 한다. 검사를 "1:1인가"가 아니라
+        // "그룹인가"로 두는 이유가 이것이다 — 두 사람 방이 늘 때 자동으로 허용된다.
+        "재매칭 방도 사용자가 끝낼 수 있다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 200L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(
+                    ChatRoomMember.of(roomId = room.id, memberId = 1L),
+                    ChatRoomMember.of(roomId = room.id, memberId = 2L),
+                ),
+            )
+
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+
+            chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.USER_ENDED
+            chatMessageRepository.findAll().first().content shouldBe ChatRoomEndService.USER_LEFT
+        }
+
+        // 그룹은 한 명이 나가도 남은 사람들의 대화가 이어져야 한다(멤버 이탈은 별도 트랙).
+        "그룹 방은 이 경로로 끝낼 수 없다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(1L, 2L, 3L).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+            )
+
+            shouldThrow<WarnException> {
+                chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+
+            chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.ACTIVE
+        }
     }
 
     "종료 후 차단" - {

@@ -217,6 +217,42 @@ class EndedChatReviewOpenerTest(
         }
     }
 
+    "재매칭 방은 평가를 열지 않는다" - {
+        // 관측 지점은 "평가가 0건"이 아니라 **복구 배치 슬롯을 차지하지 않는가**다.
+        // 평가 0건은 필터가 없어도 성립해(원본이 group_match 가 아니라 조립이 실패한다) 아무것도 증명하지 못한다.
+        //
+        // 이 조회에서 빠지지 않으면 재매칭 방이 "끝났는데 평가 0건"으로 영원히 남아 매 주기 다시 잡히고,
+        // 종료 시각 오름차순의 앞자리를 점유해 그 뒤에 끝난 방이 복구 대상에 들어오지 못한다.
+        "누락 복구 조회에서 빠진다 — 정상 방만 남는다" {
+            val personalRoomId = saveEndedPersonalChat()
+            val rematchRoom = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 500L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(
+                    ChatRoomMember.of(roomId = rematchRoom.id, memberId = MEMBER_A),
+                    ChatRoomMember.of(roomId = rematchRoom.id, memberId = MEMBER_B),
+                ),
+            )
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            memberReviewRepository.findEndedChatRoomIdsWithoutReview(100) shouldBe listOf(personalRoomId)
+        }
+
+        "종료해도 평가가 만들어지지 않는다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 500L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(
+                    ChatRoomMember.of(roomId = room.id, memberId = MEMBER_A),
+                    ChatRoomMember.of(roomId = room.id, memberId = MEMBER_B),
+                ),
+            )
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            endedChatReviewOpener.openFor(listOf(room.id))
+
+            memberReviewRepository.findAll().size shouldBe 0
+        }
+    }
+
     "열 수 없는 방" - {
         // 탈퇴 hard delete 등으로 원본 매칭이 없으면 quizSetId·weekStartedOn 을 채울 수 없다.
         // 같은 배치의 정상 방까지 막지 않도록 건너뛴다(원인은 D1 에서 다룰 영역).

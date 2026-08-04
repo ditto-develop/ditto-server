@@ -79,11 +79,20 @@ class ChatRoom private constructor(
     val isEnded: Boolean
         get() = status == ChatRoomStatus.ENDED
 
+    /**
+     * 참여자 한 사람의 요청으로 끝낼 수 있는 방인지. 두 사람만 있는 방(일반 1:1·재매칭)이 그렇다.
+     *
+     * 그룹은 한 명이 나가도 남은 사람들의 대화가 이어져야 하므로 한 사람이 끝내지 못한다
+     * (멤버 이탈은 별도 트랙). 그래서 판정을 유형 비교로 흘리지 않고 이 이름으로 고정한다 —
+     * 두 사람 방이 늘어날 때 호출자를 고치지 않아도 된다.
+     */
+    fun canEndByUser(): Boolean = sourceType != ChatRoomType.GROUP
+
     /** 기한이 지나 마감한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다. */
     fun expire(at: LocalDateTime) = end(ChatEndReason.EXPIRED, at)
 
     /**
-     * 참여자가 직접 종료한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다.
+     * 참여자가 직접 종료한다. 호출 전에 [canEndByUser]와 [isEnded]로 걸러야 한다.
      *
      * 누가 끝냈는지는 여기 저장하지 않는다 — 나갈 때 남기는 SYSTEM 메시지의 `senderId`가 그 사실을 들고 있고,
      * 조회자는 그 값으로 "상대방이 종료했다"를 판별한다.
