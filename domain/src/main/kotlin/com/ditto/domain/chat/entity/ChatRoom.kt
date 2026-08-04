@@ -36,12 +36,12 @@ class ChatRoom private constructor(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    @Comment("원본 유형 (PERSONAL, GROUP)")
+    @Comment("원본 유형 (PERSONAL, GROUP, REMATCH)")
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 20)
     val sourceType: ChatRoomType,
 
-    @Comment("원본 매칭 ID (personal_match 또는 group_match 의 ID)")
+    @Comment("원본 매칭 ID (personal_match, group_match 또는 rematch 의 ID)")
     @Column(name = "source_id", nullable = false)
     val sourceId: Long,
 
@@ -120,6 +120,16 @@ class ChatRoom private constructor(
 
         fun group(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
             of(ChatRoomType.GROUP, sourceId, period, now)
+
+        /**
+         * 그룹 재매칭으로 성사된 두 사람의 방. [sourceId]는 `rematch.id`다.
+         *
+         * 성사와 개방 시각이 떨어져 있어(성사는 평가 제출 직후, 개방은 그 주 금요일) 대개 `SCHEDULED`로
+         * 만들어진다. 주말 도중에 성사됐다면 [ChatPeriod.isOpenedAt]이 곧바로 참이라 `ACTIVE`로 만들어져
+         * 남은 시간 동안 제공된다.
+         */
+        fun rematch(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
+            of(ChatRoomType.REMATCH, sourceId, period, now)
 
         private fun of(
             sourceType: ChatRoomType,

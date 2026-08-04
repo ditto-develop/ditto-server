@@ -7,6 +7,7 @@ import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.entity.MemberReview
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 import org.springframework.stereotype.Component
@@ -27,18 +28,22 @@ class EndedChatRoomLoader(
 ) {
     /**
      * 방 수만큼 조회하지 않도록 필요한 것을 먼저 일괄로 읽은 뒤 방마다 짝지운다.
-     * 값이 빠진 방은 [toEndedChatRoom]이 건너뛰므로, 돌려주는 목록이 입력보다 짧을 수 있다.
+     *
+     * 평가를 열지 않는 유형([MemberReview.REVIEWABLE_MATCH_TYPES])은 조용히 빠진다 — 실패가 아니라
+     * 정책이므로 로그를 남기지 않는다. 값이 빠진 방은 [toEndedChatRoom]이 건너뛰며 그때는 WARN 을 남긴다.
+     * 그래서 돌려주는 목록이 입력보다 짧을 수 있다.
      */
     fun load(rooms: List<ChatRoom>): List<EndedChatRoom> {
-        if (rooms.isEmpty()) {
+        val reviewableRooms = rooms.filter { it.sourceType in MemberReview.REVIEWABLE_MATCH_TYPES }
+        if (reviewableRooms.isEmpty()) {
             return emptyList()
         }
 
-        val quizSetIdByRoomId = findQuizSetIdByRoomId(rooms)
+        val quizSetIdByRoomId = findQuizSetIdByRoomId(reviewableRooms)
         val weekStartedOnByQuizSetId = findWeekStartedOnByQuizSetId(quizSetIdByRoomId.values)
-        val participantIdsByRoomId = findParticipantIdsByRoomId(rooms)
+        val participantIdsByRoomId = findParticipantIdsByRoomId(reviewableRooms)
 
-        return rooms.mapNotNull { room ->
+        return reviewableRooms.mapNotNull { room ->
             toEndedChatRoom(
                 room = room,
                 quizSetId = quizSetIdByRoomId[room.id],
@@ -48,7 +53,11 @@ class EndedChatRoomLoader(
         }
     }
 
-    /** 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 없는 방은 map 에 담기지 않는다. */
+    /**
+     * 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 없는 방은 map 에 담기지 않는다.
+     *
+     * [MemberReview.REVIEWABLE_MATCH_TYPES]로 걸러진 뒤라 유형은 `PERSONAL`·`GROUP` 둘뿐이다.
+     */
     private fun findQuizSetIdByRoomId(rooms: List<ChatRoom>): Map<Long, Long> {
         val (personalRooms, groupRooms) = rooms.partition { it.sourceType == ChatRoomType.PERSONAL }
         val personalQuizSetIdByMatchId = personalMatchRepository.findAllById(personalRooms.map { it.sourceId })
@@ -56,13 +65,10 @@ class EndedChatRoomLoader(
         val groupQuizSetIdByMatchId = groupMatchRepository.findAllById(groupRooms.map { it.sourceId })
             .associate { it.id to it.quizSetId }
 
-        return rooms.mapNotNull { room ->
-            val quizSetId = when (room.sourceType) {
-                ChatRoomType.PERSONAL -> personalQuizSetIdByMatchId[room.sourceId]
-                ChatRoomType.GROUP -> groupQuizSetIdByMatchId[room.sourceId]
-            }
-            quizSetId?.let { room.id to it }
-        }.toMap()
+        return (
+            personalRooms.mapNotNull { room -> personalQuizSetIdByMatchId[room.sourceId]?.let { room.id to it } } +
+                groupRooms.mapNotNull { room -> groupQuizSetIdByMatchId[room.sourceId]?.let { room.id to it } }
+            ).toMap()
     }
 
     private fun findWeekStartedOnByQuizSetId(quizSetIds: Collection<Long>): Map<Long, LocalDate> =
