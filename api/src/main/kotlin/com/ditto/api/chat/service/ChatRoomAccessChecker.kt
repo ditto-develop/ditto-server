@@ -23,13 +23,22 @@ class ChatRoomAccessChecker(
     }
 
     /**
-     * 방 멤버이면서 방이 아직 열려 있어야 한다. 대화를 이어가는 경로(전송·이미지 발급·구독)가 쓴다.
+     * 방 멤버이면서 방이 **열려 있어야** 한다. 대화를 이어가는 경로(전송·이미지 발급·구독)가 쓴다.
      *
-     * 종료된 방을 **읽는 것**은 막지 않는다 — 지난 대화와 평가 안내를 봐야 하므로, 조회는 [validateMember]를 쓴다.
+     * 개방 전과 종료 후를 다른 코드로 구분한다 — 클라이언트가 "금요일에 열려요"와 "이미 끝났어요"를
+     * 가려 보여줘야 한다. 둘 다 **읽는 것**은 막지 않는다(지난 대화·평가 안내·개방 예정 시각을 봐야
+     * 하므로 조회는 [validateMember]를 쓴다).
+     *
+     * 개방 전 차단이 없으면 금요일 개방이 서버에서 지켜지지 않는다. 매칭 수락은 주중에도 일어나므로
+     * 방은 며칠간 `SCHEDULED`로 존재하고, 그 사이 대화가 오가면 "금~일 72시간"이 클라이언트 렌더링
+     * 규칙에 불과해진다(계획서 ⑧-13 확정).
      */
     fun validateActiveMember(roomId: Long, memberId: Long) {
         validateMember(roomId, memberId)
         val room = chatRoomRepository.findById(roomId).orElseThrow { notFoundOrForbidden(roomId) }
+        if (room.isBeforeOpen) {
+            throw WarnException(ErrorCode.CHAT_ROOM_NOT_OPENED)
+        }
         if (room.isEnded) {
             throw WarnException(ErrorCode.CHAT_ROOM_ENDED)
         }

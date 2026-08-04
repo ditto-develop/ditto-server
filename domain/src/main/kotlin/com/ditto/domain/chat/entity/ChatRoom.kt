@@ -79,6 +79,10 @@ class ChatRoom private constructor(
     val isEnded: Boolean
         get() = status == ChatRoomStatus.ENDED
 
+    /** 아직 개방 시각이 되지 않아 대화를 시작할 수 없는 방. 조회는 허용된다. */
+    val isBeforeOpen: Boolean
+        get() = status == ChatRoomStatus.SCHEDULED
+
     /**
      * 참여자 한 사람의 요청으로 끝낼 수 있는 방인지. 두 사람만 있는 방(일반 1:1·재매칭)이 그렇다.
      *
