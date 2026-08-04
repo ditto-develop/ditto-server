@@ -14,7 +14,7 @@
 **단독 `Review` 클래스는 금지한다.** 기존 신고 **검토**(`AdminReportReviewService`, `MemberReportStatus`, `REPORT_ALREADY_REVIEWED`)가 이미 review라는 말을 쓰고 있어 충돌한다.
 진행 단위는 `MemberReview`, 개별 응답은 `ReviewAnswer`를 쓴다. "묶음 → 개별 응답" 구조는 기존 `Quiz` → `QuizAnswer` 선례를 따른 것이다.
 
-**API 표면도 엔티티 이름을 그대로 쓴다** — 경로 `/api/v1/member-reviews`, 응답 필드 `reviewId`·`matchType`·`matchId`. 계획서는 "리뷰 과제"(`review-tasks`, `taskId`, `sourceType`/`sourceId`)로 적혀 있으나, 새 어휘(`task`)를 늘리지 않고 엔티티·컬럼과 한 이름으로 맞추는 쪽을 택했다(2026-07-29). 같은 개념을 채팅 API가 `roomType`으로 부르는 것과 갈리는 비용은 감수한다.
+**API 표면도 엔티티 이름을 그대로 쓴다** — 경로 `/api/v1/member-reviews`, 응답 필드 `reviewId`·`matchType`·`matchId`. 계획서는 "리뷰 과제"(`review-tasks`, `taskId`, `sourceType`/`sourceId`)로 적혀 있으나, 새 어휘(`task`)를 늘리지 않고 엔티티·컬럼과 한 이름으로 맞추는 쪽을 택했다(2026-07-29). 같은 개념을 채팅 API가 `sourceType`으로 부르는 것과 갈리는 비용은 감수한다.
 
 ## 불변식
 
@@ -33,7 +33,7 @@
 - 남의 평가에 대한 제출은 "권한 없음"이 아니라 `REVIEW_NOT_FOUND`로 답한다 — 존재 여부 자체를 알려주지 않는다.
 - 별점은 1~5 정수(`INVALID_REVIEW_ANSWER`), 코멘트는 공백 제거 후 `null` 정규화 + 최대 50자.
 - 추천 태그는 두지 않는다 — 자유 코멘트만 받는다.
-- `match_type`·`match_id`는 `chat_room`의 `(room_type, source_id)`와 같은 값이다. 조회마다 채팅방을 조인하지 않으려고 복사해 두며, 양쪽 다 생성 후 불변이라 어긋나지 않는다.
+- `match_type`·`match_id`는 `chat_room`의 `(source_type, source_id)`와 같은 값이다. 조회마다 채팅방을 조인하지 않으려고 복사해 두며, 양쪽 다 생성 후 불변이라 어긋나지 않는다.
 - 화면 노출 순서는 생성 순서와 같아 별도 순서 컬럼 없이 `id` 정렬로 처리한다.
 - **조회는 작성자 본인 것만 돌려준다.** 응답의 답변 값(`meetingStatus`·`rating`·`comment`·`answeredAt`)은 전부 요청자의 `member_review` 밑 행에서 오므로, 상대가 나를 어떻게 평가했는지는 어떤 경로로도 나가지 않는다.
 - 미완료 목록 정렬은 `availableAt` 오래된 순이며, 같은 주의 채팅들이 같은 시각에 닫혀 값이 겹칠 수 있어 `id`로 순서를 고정한다.

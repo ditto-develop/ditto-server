@@ -30,7 +30,7 @@ class MemberReviewTest(
             review.completedAt shouldBe null
         }
 
-        "매칭 식별자는 채팅방의 (room_type, source_id)와 같은 값을 담는다" {
+        "매칭 식별자는 채팅방의 (source_type, source_id)와 같은 값을 담는다" {
             val review = memberReviewRepository.save(
                 MemberReviewFixture.create(matchType = ChatRoomType.GROUP, matchId = 42L),
             )

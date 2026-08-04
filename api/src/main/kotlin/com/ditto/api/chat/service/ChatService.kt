@@ -10,6 +10,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatMessageType
+import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -19,6 +20,8 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.infrastructure.storage.ObjectStorage
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @Service
@@ -28,6 +31,7 @@ class ChatService(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val objectStorage: ObjectStorage,
+    private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) {
 
     /**
@@ -36,11 +40,14 @@ class ChatService(
      */
     @Transactional
     fun createPersonalRoom(personalMatchId: Long, memberAId: Long, memberBId: Long) {
-        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.PERSONAL, personalMatchId)) {
             return
         }
 
-        val room = chatRoomRepository.save(ChatRoom.personal(personalMatchId))
+        val now = realNow()
+        val room = chatRoomRepository.save(
+            ChatRoom.personal(personalMatchId, ChatPeriod.weekendOf(now), now),
+        )
         chatRoomMemberRepository.saveAll(
             listOf(
                 ChatRoomMember.of(roomId = room.id, memberId = memberAId),
@@ -55,11 +62,14 @@ class ChatService(
      */
     @Transactional
     fun createGroupRoom(groupMatchId: Long, memberIds: List<Long>) {
-        if (chatRoomRepository.existsByRoomTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
+        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
             return
         }
 
-        val room = chatRoomRepository.save(ChatRoom.group(groupMatchId))
+        val now = realNow()
+        val room = chatRoomRepository.save(
+            ChatRoom.group(groupMatchId, ChatPeriod.weekendOf(now), now),
+        )
         chatRoomMemberRepository.saveAll(
             memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
         )
@@ -74,7 +84,7 @@ class ChatService(
         roomId: Long,
         request: ChatImageUploadUrlsRequest,
     ): ChatImageUploadUrlsResponse {
-        validateRoomMember(roomId, memberId)
+        chatRoomAccessChecker.validateActiveMember(roomId, memberId)
 
         val uploads = request.files.map { file ->
             if (file.contentLength > MAX_IMAGE_BYTES || !file.contentType.startsWith(IMAGE_CONTENT_TYPE_PREFIX)) {
@@ -111,7 +121,7 @@ class ChatService(
 
     /** 방의 과거 메시지 커서 페이징 (최신순). cursor 미만(더 과거)으로 size 개. */
     fun getMessages(memberId: Long, roomId: Long, cursor: Long?, size: Int): ChatMessagesResponse {
-        validateRoomMember(roomId, memberId)
+        chatRoomAccessChecker.validateMember(roomId, memberId)
 
         val pageSize = size.coerceIn(1, MAX_PAGE_SIZE)
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor, pageSize)
@@ -131,7 +141,7 @@ class ChatService(
         content: String,
         messageType: ChatMessageType = ChatMessageType.TEXT,
     ): ChatMessageResponse {
-        validateRoomMember(roomId, senderId)
+        chatRoomAccessChecker.validateActiveMember(roomId, senderId)
         val body = validateAndNormalizeContent(senderId, content, messageType)
 
         val message = chatMessageRepository.save(
@@ -139,6 +149,15 @@ class ChatService(
         )
         return toMessageResponse(message)
     }
+
+    /**
+     * 채팅 생명주기 시각은 어드민 시각 오버라이드를 따르지 않는다.
+     *
+     * opens_at·expires_at 은 **저장되는 값**이고, 이를 판정하는 만료 스케줄러는 실제 시각으로 돈다.
+     * 생성만 가짜 시각을 쓰면 오버라이드가 과거 주일 때 방이 만들어지자마자 만료되고,
+     * 미래 주면 며칠간 열리지 않는다 — 오버라이드를 꺼도 그 방은 망가진 채 남는다.
+     */
+    private fun realNow(): LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
 
     /** TEXT 는 공백·길이 검증, IMAGE 는 본인이 업로드한 key(chat/{senderId}/…)인지 검증한다. */
     private fun validateAndNormalizeContent(senderId: Long, content: String, messageType: ChatMessageType): String =
@@ -162,7 +181,7 @@ class ChatService(
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
-            ?: throw notFoundOrForbidden(roomId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
         roomMember.readUpTo(lastReadMessageId)
     }
 
@@ -197,19 +216,6 @@ class ChatService(
             chatMessageRepository.countByRoomId(roomId)
         } else {
             chatMessageRepository.countByRoomIdAndIdGreaterThan(roomId, lastReadMessageId)
-        }
-
-    private fun validateRoomMember(roomId: Long, memberId: Long) {
-        if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
-            throw notFoundOrForbidden(roomId)
-        }
-    }
-
-    private fun notFoundOrForbidden(roomId: Long): WarnException =
-        if (chatRoomRepository.existsById(roomId)) {
-            WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
-        } else {
-            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
         }
 
     companion object {

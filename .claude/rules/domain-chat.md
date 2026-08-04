@@ -1,1 +1,1 @@
-채팅(chat) 코드를 수정하기 전에 `docs/domains/chat.md`를 먼저 읽어라 — 방 추상화(room_type/source_id)·커서 페이징·읽음 커서·STOMP destination·구독 인가 규칙이 거기 있다. WebSocket 인증/필터 체인을 바꾸면 `docs/domains/auth.md`와 [ADR 0009](../../docs/adr/0009-websocket-stomp-auth.md)를 함께 갱신하라.
+채팅(chat) 코드를 수정하기 전에 `docs/domains/chat.md`를 먼저 읽어라 — 방 추상화(source_type/source_id)·커서 페이징·읽음 커서·STOMP destination·구독 인가 규칙이 거기 있다. WebSocket 인증/필터 체인을 바꾸면 `docs/domains/auth.md`와 [ADR 0009](../../docs/adr/0009-websocket-stomp-auth.md)를 함께 갱신하라.

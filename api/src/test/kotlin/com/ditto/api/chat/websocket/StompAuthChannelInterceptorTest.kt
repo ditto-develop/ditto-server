@@ -5,10 +5,11 @@ import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.api.chat.service.ChatRoomAccessChecker
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -25,8 +26,18 @@ class StompAuthChannelInterceptorTest {
 
     private val apiKeyProperties = ApiKeyProperties(apiKey = "test-key")
     private val jwtTokenProvider = mockk<JwtTokenProvider>()
-    private val chatRoomMemberRepository = mockk<ChatRoomMemberRepository>()
-    private val interceptor = StompAuthChannelInterceptor(apiKeyProperties, jwtTokenProvider, chatRoomMemberRepository)
+    private val chatRoomAccessChecker = mockk<ChatRoomAccessChecker>()
+    private val interceptor =
+        StompAuthChannelInterceptor(apiKeyProperties, jwtTokenProvider, chatRoomAccessChecker)
+
+    /** 구독 인가는 ChatRoomAccessChecker 에 위임한다 — 그 결과만 다르게 준비한다. */
+    private fun givenSubscribeAllowed() {
+        justRun { chatRoomAccessChecker.validateActiveMember(5L, 1L) }
+    }
+
+    private fun givenSubscribeRejected(errorCode: ErrorCode) {
+        every { chatRoomAccessChecker.validateActiveMember(5L, 1L) } throws WarnException(errorCode)
+    }
     private val channel = mockk<MessageChannel>()
 
     private fun connectMessage(apiKey: String?, authorization: String?): Message<*> {
@@ -91,16 +102,27 @@ class StompAuthChannelInterceptorTest {
     @Test
     @DisplayName("SUBSCRIBE: 방 멤버면 통과한다")
     fun subscribeMember() {
-        every { chatRoomMemberRepository.existsByRoomIdAndMemberId(5L, 1L) } returns true
+        givenSubscribeAllowed()
         val message = subscribeMessage(destination = "/sub/chat/rooms/5", memberId = 1L)
 
         interceptor.preSend(message, channel) // 예외 없이 통과
     }
 
     @Test
+    @DisplayName("SUBSCRIBE: 종료된 방은 CHAT_ROOM_ENDED 로 거부한다")
+    fun subscribeEndedRoom() {
+        givenSubscribeRejected(ErrorCode.CHAT_ROOM_ENDED)
+        val message = subscribeMessage(destination = "/sub/chat/rooms/5", memberId = 1L)
+
+        shouldThrow<WarnException> {
+            interceptor.preSend(message, channel)
+        }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
+    }
+
+    @Test
     @DisplayName("SUBSCRIBE: 방 멤버가 아니면 NOT_CHAT_ROOM_MEMBER 로 거부한다")
     fun subscribeNonMember() {
-        every { chatRoomMemberRepository.existsByRoomIdAndMemberId(5L, 1L) } returns false
+        givenSubscribeRejected(ErrorCode.NOT_CHAT_ROOM_MEMBER)
         val message = subscribeMessage(destination = "/sub/chat/rooms/5", memberId = 1L)
 
         shouldThrow<WarnException> {

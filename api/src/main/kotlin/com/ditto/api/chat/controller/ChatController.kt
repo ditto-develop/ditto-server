@@ -5,10 +5,15 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
+import java.time.LocalDateTime
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -20,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class ChatController(
     private val chatService: ChatService,
+    private val chatRoomEndService: ChatRoomEndService,
+    private val messagingTemplate: SimpMessagingTemplate,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -44,6 +51,24 @@ class ChatController(
         @RequestBody request: ChatReadRequest,
     ): ApiResponse<Unit> {
         chatService.markAsRead(principal.memberId, roomId, request.lastReadMessageId)
+        return ApiResponse.ok(Unit)
+    }
+
+    /**
+     * 1:1 채팅 종료. 이미 끝난 방에 다시 요청해도 성공으로 답한다(더블 탭·재시도 대비).
+     *
+     * 이번 요청이 실제로 끝냈을 때만 종료 SYSTEM 메시지를 구독자에게 발행한다 — 상대 화면이
+     * 그때 바로 "상대방이 채팅을 종료했습니다"로 바뀌어야 하는데, 종료된 방은 재구독이 막혀
+     * 나중에 따라잡을 수 없기 때문이다. 발행은 서비스 트랜잭션이 커밋된 뒤에 일어난다.
+     */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/end")
+    fun end(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        chatRoomEndService.endByUser(roomId, principal.memberId, LocalDateTime.now())
+            ?.let { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it) }
         return ApiResponse.ok(Unit)
     }
 

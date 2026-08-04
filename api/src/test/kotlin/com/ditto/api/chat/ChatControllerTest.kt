@@ -9,6 +9,7 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatMessageType
@@ -22,6 +23,7 @@ import io.mockk.mockk
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
@@ -38,8 +40,10 @@ import java.time.LocalDateTime
 class ChatControllerTest : ControllerUnitTest() {
 
     private val chatService: ChatService = mockk()
+    private val chatRoomEndService: ChatRoomEndService = mockk()
+    private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
 
-    override val controller = ChatController(chatService)
+    override val controller = ChatController(chatService, chatRoomEndService, messagingTemplate)
 
     private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
         id = id,
@@ -57,11 +61,16 @@ class ChatControllerTest : ControllerUnitTest() {
         every { chatService.getMyRooms(any()) } returns listOf(
             ChatRoomResponse(
                 roomId = 1L,
-                roomType = ChatRoomType.PERSONAL,
+                sourceType = ChatRoomType.PERSONAL,
                 counterpartMemberIds = listOf(2L),
                 lastMessage = sampleMessage(),
                 unreadCount = 2L,
                 createdAt = LocalDateTime.of(2026, 7, 25, 11, 0),
+                opensAt = LocalDateTime.of(2026, 7, 24, 0, 0),
+                expiresAt = LocalDateTime.of(2026, 7, 27, 0, 0),
+                isEnded = false,
+                endedAt = null,
+                endedReason = null,
             ),
         )
 
@@ -83,7 +92,7 @@ class ChatControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data[].roomId").description("채팅방 ID"),
-                                fieldWithPath("data[].roomType").description("채팅방 유형 (PERSONAL, GROUP)"),
+                                fieldWithPath("data[].sourceType").description("채팅방 유형 (PERSONAL, GROUP)"),
                                 fieldWithPath("data[].counterpartMemberIds[]").description("나를 제외한 참여 회원 ID 목록 (1:1이면 1명)"),
                                 fieldWithPath("data[].lastMessage").description("마지막 메시지 (없으면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.id").description("메시지 ID").optional(),
@@ -95,6 +104,13 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].lastMessage.createdAt").description("메시지 생성일시").optional(),
                                 fieldWithPath("data[].unreadCount").description("안읽음 수"),
                                 fieldWithPath("data[].createdAt").description("채팅방 생성일시"),
+                                fieldWithPath("data[].opensAt").description("채팅 개방 시각 (금요일 00:00)"),
+                                fieldWithPath("data[].expiresAt").description("자동 종료 예정 시각 (월요일 00:00). 남은 시간 카운트다운 기준"),
+                                fieldWithPath("data[].isEnded").description("종료 여부. true 면 전송·구독이 막히고 조회만 가능"),
+                                fieldWithPath("data[].endedAt").description("실제 종료 시각 (종료 전 null)").optional(),
+                                fieldWithPath("data[].endedReason")
+                                    .description("종료 사유 EXPIRED(기한 만료) / USER_ENDED(참여자 종료). 종료 전 null. 누가 종료했는지는 대화의 SYSTEM 메시지(content=USER_LEFT) senderId 로 확인")
+                                    .optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -191,6 +207,45 @@ class ChatControllerTest : ControllerUnitTest() {
                             )
                             .requestFields(
                                 fieldWithPath("lastReadMessageId").description("마지막으로 읽은 메시지 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("1:1 채팅을 종료한다")
+    fun end() {
+        every { chatRoomEndService.endByUser(any(), any(), any()) } returns sampleMessage()
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/end", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-end",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅 종료")
+                            .description(
+                                "1:1 채팅을 종료합니다. 종료되면 전송·구독이 막히고 평가가 열립니다. " +
+                                    "이미 종료된 방에 다시 요청해도 성공으로 답합니다(재시도 대비). " +
+                                    "누가 종료했는지는 대화에 남는 SYSTEM 메시지(content=USER_LEFT)의 senderId 로 확인합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
