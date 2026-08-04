@@ -18,7 +18,7 @@
 - 소속 운영 주는 `OperationWeek`로 받는다. "월요일만 허용"은 그 값 객체가 강제하므로 재매칭 쪽에서 다시 검증하지 않고, `QuizSet`처럼 컬럼은 `weekStartedOn: LocalDate`로 저장하고 `operationWeek` 접근자로 되돌린다([ADR 0010](../adr/0010-week-identifier-week-started-on.md)). 이 컬럼은 원본 추적용이지 제한 키가 아니다.
 - 제출 경로는 pair 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 판정한다 — 동시 제출의 성사 누락 방지 ([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)의 안전 규칙 준수).
 - 횟수 제한은 없다(2026-07-27 기획 확인) — 한 주에 여러 명과 성사 가능하고, 같은 상대와 다른 주말에 다시 성사되는 것도 허용한다.
-- 같은 두 사람이 한 주에 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 된다. 이는 **정상**이다(다른 만남에서 나온 다른 의사). 같은 쌍의 채팅방이 둘 열리는 것만 막으며, 그 판정은 **방을 만드는 `I2`가 담당**한다 — 성사 트랜잭션은 중복을 신경 쓰지 않는다([ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)).
+- 같은 두 사람이 한 주에 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 되고 **채팅방도 둘 열린다** — 중복을 막지 않는다([ADR 0016](../adr/0016-rematch-duplicate-room-allowed.md)이 [ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)을 대체). 현재 구조에서는 그 상황이 만들어지지 않는다: `GroupMatchService`가 `existsByMemberIdAndQuizSetId`로 막아 한 회원은 퀴즈셋당 그룹 하나에만 참여하고, 한 주에 그룹 퀴즈셋이 하나뿐이라 그 주의 그룹도 하나다. **주당 퀴즈셋을 여러 개로 늘리면 이 결정을 다시 봐야 한다.**
 
 ## 상태 전이
 
@@ -30,7 +30,11 @@ WAITING (생성 시)
 
 - 전이는 나중에 도착한 `submitWants()` 호출이 같은 트랜잭션에서 수행한다. 별도 판정 API·배치는 없다.
 - 취소 사유 컬럼은 두지 않는다. `CANCELLED`가 곧 "상호 선택이 아님"이고 `member1Wants`/`member2Wants`로 확인되므로 저장할 정보가 없다. 중복은 성사를 취소하지 않으므로([ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)) 사유가 갈리지 않는다 — 정지·탈퇴처럼 값으로 구분해야 하는 사유가 생기는 `D1`에서 컬럼과 enum을 함께 도입한다.
-- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(source_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`).
+- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(source_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`). 성사된 모든 쌍이 자기 방을 얻으므로(ADR 0016) 이 튜플 조회는 언제나 성립한다.
+- 방은 성사 트랜잭션이 만들지 않는다. `RematchChatRoomOpener`가 "성사됐는데 방이 없는 쌍"을 찾아 예약한다.
+- **개방은 성사 이후 처음 오는 금요일 00:00이다**(`ChatPeriod.upcomingWeekendFrom`). 기획이 "금요일 00:00 채팅방 오픈"으로만 정해 특정 주말을 약속하지 않으므로, **진행 중인 주말에 합류시키지 않는다** — 주말 도중에 성사돼도 남은 몇 시간에 급히 열지 않고 온전한 72시간을 받는 다음 금요일로 간다. 일반 매칭 채팅이 진행 중 주말에 합류하는 것(`weekendOf`)과 다른 점이다.
+  - 그 덕에 **이미 닫힌 창이 계산될 수 없다.** 합류시키면 일요일 늦은 밤 성사(성사를 확정하는 것이 평가 제출이다)에서 방이 몇 분짜리로 열리거나, 예약이 도는 순간 창이 닫혀 `ACTIVE`로 태어난 뒤 곧바로 만료된다. 후자는 방이 존재하는 탓에 예약 조회가 완료로 판정해 다시 고치지 않아 **조용한 유실**이 된다(재매칭은 평가도 열지 않아 보상 경로가 없다).
+  - 기준은 `max(성사 시각, 예약 시점)`이다. 예약이 밀려 성사 다음 금요일마저 지났다면 그 금요일에는 열 수 없고, 열 수 있는 가장 이른 금요일이 답이다. 방 생성을 성사 트랜잭션에 묶지 않는 이유는 성사가 평가 제출 중에 확정되기 때문이다 — 방 생성 실패가 평가 제출을 되돌리면 안 된다.
 - 생성 호출자는 그룹 채팅 종료 어댑터다 — `RematchPairCreator`가 종료 시점 참여자 전원의 쌍(`N(N-1)/2`)을 멱등 생성한다. 제출 호출자는 리뷰 제출 API(A2)의 `RematchSubmitter`다([review 도메인](review.md)).
 - **쌍은 평가보다 먼저 만들어져야 한다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가 쌍을 찾지 못하면 `INVALID_REVIEW_TARGET`으로 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다.
 
@@ -40,4 +44,5 @@ WAITING (생성 시)
 - 리포지토리: `domain/src/main/kotlin/com/ditto/domain/rematch/repository/`
 - 테스트 픽스처: `domain/src/testFixtures/kotlin/com/ditto/domain/rematch/RematchFixture.kt` (엔티티 직접 생성 대신 이 팩토리를 쓴다)
 - 평가 제출과의 접점: `api/src/main/kotlin/com/ditto/api/review/service/RematchSubmitter.kt`(제출), `RematchPairCreator.kt`(생성)
-- 마이그레이션: `domain/db/V20260726232700_재매칭 테이블 추가.sql`
+- 채팅 예약과의 접점: `api/src/main/kotlin/com/ditto/api/rematch/service/RematchChatRoomOpener.kt`, 예약 대상 조회는 `domain/.../rematch/repository/querydsl/`
+- 마이그레이션: `domain/db/V20260726232700_재매칭 테이블 추가.sql`, 예약 조회 인덱스는 `V20260804202238_재매칭 방 예약 조회용 인덱스 추가.sql`

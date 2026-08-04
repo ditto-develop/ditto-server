@@ -81,18 +81,16 @@ class ChatService(
      * 방만 남고 참여자가 없으면 아무도 들어갈 수 없는데, 예약 조회는 방 존재로 완료를 판정해
      * 다음 주기가 그 방을 고치지 않는다.
      *
-     * 개방 시각은 [matchedAt]이 속한 주의 금요일이다. 성사가 이미 주말 도중이면 진행 중인 주말을
-     * 돌려받아 방이 곧바로 `ACTIVE`가 된다(계획서 ⑧-1 "이미 시작된 그 주말에 합류").
+     * 어느 주말에 열지는 예약하는 쪽이 정해 [weekend]로 넘긴다 — 재매칭은 "성사 이후 처음 오는
+     * 금요일"이라는 자기 규칙을 쓰고(`RematchChatRoomOpener`), 일반 매칭 방과 다르다.
      */
     @Transactional
-    fun createRematchRoom(rematchId: Long, memberIds: List<Long>, matchedAt: LocalDateTime) {
+    fun createRematchRoom(rematchId: Long, memberIds: List<Long>, weekend: ChatPeriod) {
         if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.REMATCH, rematchId)) {
             return
         }
 
-        val room = chatRoomRepository.save(
-            ChatRoom.rematch(rematchId, ChatPeriod.weekendOf(matchedAt), realNow()),
-        )
+        val room = chatRoomRepository.save(ChatRoom.rematch(rematchId, weekend, realNow()))
         chatRoomMemberRepository.saveAll(
             memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
         )
