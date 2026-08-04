@@ -79,13 +79,13 @@ paths:
       - UserReports
       summary: 신고 접수
       description: 상대 회원을 신고합니다. 자기 신고·검토 대기 중인 동일 대상 재신고는 거부됩니다. 이미지는 업로드 URL 발급
-        API로 업로드를 마친 objectKey를 전달합니다.
+        API로 업로드를 마친 objectKey를 전달합니다. block을 true로 보내면 신고와 함께 해당 회원을 차단합니다.
       operationId: user-report-create
       requestBody:
         content:
           application/json;charset=UTF-8:
             schema:
-              $ref: "#/components/schemas/api-v1-user-reports1863970767"
+              $ref: "#/components/schemas/api-v1-user-reports387435662"
             examples:
               user-report-create:
                 value: |-
@@ -94,7 +94,8 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/db2933d6-3141-400e-be23-95fa920f1251" ]
+                    "imageKeys" : [ "pending/user-reports/1/7afedaa8-20ed-4435-b7f3-a277e33d4539" ],
+                    "block" : false
                   }
       responses:
         "200":
@@ -168,10 +169,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-08-05 00:11:25",
+                        "joinedAt" : "2026-08-05 00:33:42",
                         "role" : null,
-                        "createdAt" : "2026-08-05 00:11:25",
-                        "updatedAt" : "2026-08-05 00:11:25"
+                        "createdAt" : "2026-08-05 00:33:42",
+                        "updatedAt" : "2026-08-05 00:33:42"
                       },
                       "error" : null
                     }
@@ -454,8 +455,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-04 00:11:25",
-                          "endDate" : "2026-08-06 00:11:25",
+                          "startDate" : "2026-08-04 00:33:42",
+                          "endDate" : "2026-08-06 00:33:42",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -472,8 +473,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-05 00:11:25",
-                            "updatedAt" : "2026-08-05 00:11:25"
+                            "createdAt" : "2026-08-05 00:33:42",
+                            "updatedAt" : "2026-08-05 00:33:42"
                           } ]
                         } ]
                       },
@@ -520,8 +521,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-05 00:11:25",
-                        "updatedAt" : "2026-08-05 00:11:25"
+                        "createdAt" : "2026-08-05 00:33:42",
+                        "updatedAt" : "2026-08-05 00:33:42"
                       },
                       "error" : null
                     }
@@ -598,11 +599,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/827a6cad-cee9-4857-8a3c-65e01550cee3",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/827a6cad-cee9-4857-8a3c-65e01550cee3"
+                          "objectKey" : "pending/user-reports/1/81dafd76-2216-4c31-8083-f4961c6b8eb7",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/81dafd76-2216-4c31-8083-f4961c6b8eb7"
                         }, {
-                          "objectKey" : "pending/user-reports/1/2569fddf-d61b-4075-9a33-49197cff1878",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/2569fddf-d61b-4075-9a33-49197cff1878"
+                          "objectKey" : "pending/user-reports/1/c3997f6b-8c9f-4b45-89fe-be8653153a97",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/c3997f6b-8c9f-4b45-89fe-be8653153a97"
                         } ]
                       },
                       "error" : null
@@ -885,7 +886,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU4NTYyODEsImV4cCI6MTc4NTg1OTg4MX0.rposjPujZbs13aaJsLSzvMw96EnbNnnfXcX4-IXPZ2aqYUEscv0BWB0ov4xuk86MwPdKiiWrf0qYV5lAGtW3WQ"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU4NTc2MTksImV4cCI6MTc4NTg2MTIxOX0.2Kfdn92MfjEEvmCp5b9eYklYAKxC4ef4LyWnIrFQI1dsC4SrL-iz5QtJBa8kvYDmXmE5uJoCYlTm3RVFOm93xw"
                       },
                       "error" : null
                     }
@@ -913,12 +914,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-04 11:26:49"
+                        "blockedAt" : "2026-08-05 00:33:42"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-04 11:26:49"
+                        "blockedAt" : "2026-08-05 00:33:42"
                       } ],
                       "error" : null
                     }
@@ -1211,13 +1212,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-05 00:11:25"
+                          "createdAt" : "2026-08-05 00:33:42"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-05 00:11:25"
+                          "createdAt" : "2026-08-05 00:33:42"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-05 00:11:25"
+                          "createdAt" : "2026-08-05 00:33:42"
                         } ]
                       },
                       "error" : null
@@ -1250,8 +1251,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-29 00:11:25",
-                          "endsAt" : "2026-08-12 00:11:25"
+                          "startsAt" : "2026-07-29 00:33:42",
+                          "endsAt" : "2026-08-12 00:33:42"
                         }
                       },
                       "error" : null
@@ -1427,8 +1428,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-05 00:11:25",
-                        "updatedAt" : "2026-08-05 00:11:25"
+                        "createdAt" : "2026-08-05 00:33:42",
+                        "updatedAt" : "2026-08-05 00:33:42"
                       },
                       "error" : null
                     }
@@ -2387,6 +2388,43 @@ components:
           type: boolean
           description: 채팅 알림 수신 여부. 생략 시 변경 없음
           nullable: true
+    api-v1-user-reports387435662:
+      required:
+      - reason
+      - reportedMemberId
+      - source
+      type: object
+      properties:
+        reason:
+          type: string
+          description: "신고 사유 code. 가능한 값: inappropriate-behavior(부적절한 행동 (성희롱·폭언·\
+            협박 등)), money-demand(금전 요구 (돈을 요구하거나 상업적 홍보)), false-information(허위 정보\
+            \ (프로필 정보가 거짓이거나 사진 도용)), underage(미성년자 (19세 미만으로 의심)), etc(기타)"
+        block:
+          type: boolean
+          description: 함께 차단할지 여부 (기본 false). 신고 화면의 '이 사용자 차단하기' 체크박스
+          nullable: true
+        imageKeys:
+          type: array
+          description: "첨부 이미지 objectKey 목록 (선택, 최대 3개)"
+          nullable: true
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        detail:
+          type: string
+          description: "상세 설명 (선택, 최대 500자 — etc 사유는 필수)"
+          nullable: true
+        source:
+          type: string
+          description: "신고 접수 위치 code. 가능한 값: profile(프로필 화면), match-result(매칭 결과\
+            \ 화면), chat-room(채팅방)"
+        reportedMemberId:
+          type: number
+          description: 피신고자 회원 ID
     api-v1-chat-rooms1291226728:
       required:
       - error
@@ -2871,6 +2909,18 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-quiz-progress-answers-1062387050:
+      required:
+      - choiceId
+      - quizId
+      type: object
+      properties:
+        choiceId:
+          type: number
+          description: 선택한 선택지 ID
+        quizId:
+          type: number
+          description: 퀴즈 ID
     api-v1-user-reports900126493:
       required:
       - error
@@ -2888,18 +2938,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-quiz-progress-answers-1062387050:
-      required:
-      - choiceId
-      - quizId
-      type: object
-      properties:
-        choiceId:
-          type: number
-          description: 선택한 선택지 ID
-        quizId:
-          type: number
-          description: 퀴즈 ID
     api-v1-chat-rooms-roomId-image-upload-urls1777271249:
       type: object
       properties:
@@ -3252,39 +3290,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-user-reports1863970767:
-      required:
-      - reason
-      - reportedMemberId
-      - source
-      type: object
-      properties:
-        reason:
-          type: string
-          description: "신고 사유 code. 가능한 값: inappropriate-behavior(부적절한 행동 (성희롱·폭언·\
-            협박 등)), money-demand(금전 요구 (돈을 요구하거나 상업적 홍보)), false-information(허위 정보\
-            \ (프로필 정보가 거짓이거나 사진 도용)), underage(미성년자 (19세 미만으로 의심)), etc(기타)"
-        imageKeys:
-          type: array
-          description: "첨부 이미지 objectKey 목록 (선택, 최대 3개)"
-          nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        detail:
-          type: string
-          description: "상세 설명 (선택, 최대 500자 — etc 사유는 필수)"
-          nullable: true
-        source:
-          type: string
-          description: "신고 접수 위치 code. 가능한 값: profile(프로필 화면), match-result(매칭 결과\
-            \ 화면)"
-        reportedMemberId:
-          type: number
-          description: 피신고자 회원 ID
     api-v1-users-auth-logout-1831456372:
       required:
       - data

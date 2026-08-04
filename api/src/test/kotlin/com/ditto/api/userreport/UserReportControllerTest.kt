@@ -139,7 +139,8 @@ class UserReportControllerTest : RestDocsTest() {
                             .summary("신고 접수")
                             .description(
                                 "상대 회원을 신고합니다. 자기 신고·검토 대기 중인 동일 대상 재신고는 거부됩니다. " +
-                                    "이미지는 업로드 URL 발급 API로 업로드를 마친 objectKey를 전달합니다.",
+                                    "이미지는 업로드 URL 발급 API로 업로드를 마친 objectKey를 전달합니다. " +
+                                    "block을 true로 보내면 신고와 함께 해당 회원을 차단합니다.",
                             )
                             .requestFields(
                                 fieldWithPath("reportedMemberId").description("피신고자 회원 ID"),
@@ -147,6 +148,9 @@ class UserReportControllerTest : RestDocsTest() {
                                 fieldWithPath("source").description("신고 접수 위치 code. 가능한 값: $REPORT_SOURCE_CODES"),
                                 fieldWithPath("detail").description("상세 설명 (선택, 최대 500자 — etc 사유는 필수)").optional(),
                                 fieldWithPath("imageKeys").description("첨부 이미지 objectKey 목록 (선택, 최대 3개)").optional(),
+                                fieldWithPath("block")
+                                    .description("함께 차단할지 여부 (기본 false). 신고 화면의 '이 사용자 차단하기' 체크박스")
+                                    .optional(),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

@@ -8,6 +8,9 @@ import jakarta.validation.constraints.Size
 
 /**
  * 신고 접수 요청. [imageKeys]는 업로드 URL 발급 API에서 받은 objectKey 목록(최대 3개).
+ *
+ * [block]은 신고 화면 하단의 선택 체크박스("이 사용자 차단하기")에 대응한다 —
+ * 신고와 차단은 별개 기능이고, 체크했을 때만 차단이 생성된다(자동 차단이 아니다).
  */
 data class CreateUserReportRequest(
     @field:Positive(message = "피신고자 ID가 올바르지 않습니다.")
@@ -24,4 +27,6 @@ data class CreateUserReportRequest(
 
     @field:Size(max = MemberReportImage.MAX_COUNT, message = "이미지 첨부는 최대 3장까지 가능합니다.")
     val imageKeys: List<String> = emptyList(),
+
+    val block: Boolean = false,
 )

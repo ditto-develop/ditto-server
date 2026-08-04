@@ -20,6 +20,7 @@ import com.ditto.domain.intronote.repository.IntroNoteRepository
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
+import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class UserService(
     private val memberRepository: MemberRepository,
+    private val memberBlockRepository: MemberBlockRepository,
     private val introNoteRepository: IntroNoteRepository,
     private val matchAccessChecker: MatchAccessChecker,
     private val socialAccountRepository: SocialAccountRepository,
@@ -81,10 +83,16 @@ class UserService(
     /**
      * 타인 공개 프로필 조회. 매칭이 성사된 상대(또는 같은 그룹채팅 참여자)만 조회 가능.
      * 민감정보(email·전화번호·실명)는 반환하지 않는다.
+     *
+     * 차단한/차단당한 상대는 매칭 이력이 있어도 볼 수 없다 —
+     * "차단한 사용자는 나의 프로필을 볼 수 없고"(피그마 6.2.2)를 집행하는 지점이다.
      */
     @Transactional(readOnly = true)
     fun getPublicProfile(viewerId: Long, targetId: Long): PublicProfileResponse {
         if (viewerId != targetId && !matchAccessChecker.isMatched(viewerId, targetId)) {
+            throw WarnException(ErrorCode.FORBIDDEN)
+        }
+        if (viewerId != targetId && memberBlockRepository.existsBetween(viewerId, targetId)) {
             throw WarnException(ErrorCode.FORBIDDEN)
         }
 

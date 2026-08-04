@@ -9,6 +9,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgress
@@ -37,6 +38,7 @@ class MatchmakingService(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
     private val memberRepository: MemberRepository,
+    private val memberBlockRepository: MemberBlockRepository,
     private val exclusionPolicies: List<MatchExclusionPolicy>,
     private val matchingProcessors: List<MatchingProcessor>,
     private val sanctionExpiryService: SanctionExpiryService,
@@ -109,6 +111,7 @@ class MatchmakingService(
             .mapValues { (_, answers) -> answers.associate { it.quizId to it.choiceId } }
         val membersById = memberRepository.findAllById(memberIds).associateBy { it.id }
         val preferenceByMember = completedProgresses.associate { it.memberId to it.preferredGender }
+        val blockedIdsByMember = loadBlockedIdsByMember(memberIds)
         return memberIds.mapNotNull { memberId ->
             // 성별·나이 미상 회원은 성별·나이 기반 매칭이 불가하므로 후보 풀에서 제외한다.
             val member = membersById[memberId] ?: return@mapNotNull null
@@ -121,8 +124,26 @@ class MatchmakingService(
                 age = age,
                 // memberIds 는 completedProgresses 에서 유래하므로 선호값은 항상 존재한다(기본값은 QuizProgress 가 보유).
                 preferredGender = preferenceByMember.getValue(memberId),
+                blockedMemberIds = blockedIdsByMember[memberId].orEmpty(),
             )
         }
+    }
+
+    /**
+     * 후보 풀 안에서 차단 관계인 상대를 회원별로 모은다(방향 무관).
+     * 차단은 회원 전체를 풀에서 빼는 게 아니라 **그 페어만** 깨야 하므로 제외 정책이 아니라 여기서 다룬다.
+     */
+    private fun loadBlockedIdsByMember(memberIds: Set<Long>): Map<Long, Set<Long>> {
+        if (memberIds.isEmpty()) return emptyMap()
+        val blocks = memberBlockRepository.findAllInvolving(memberIds)
+        if (blocks.isEmpty()) return emptyMap()
+
+        val blockedIdsByMember = mutableMapOf<Long, MutableSet<Long>>()
+        blocks.forEach { block ->
+            blockedIdsByMember.getOrPut(block.blockerId) { mutableSetOf() }.add(block.blockedMemberId)
+            blockedIdsByMember.getOrPut(block.blockedMemberId) { mutableSetOf() }.add(block.blockerId)
+        }
+        return blockedIdsByMember
     }
 
     /** 페어(A,B) 하나를 (A→B), (B→A) 두 방향 행으로 변환한다. */
