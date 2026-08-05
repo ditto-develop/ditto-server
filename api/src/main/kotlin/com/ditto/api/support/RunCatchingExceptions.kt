@@ -1,4 +1,4 @@
-package com.ditto.common.exception
+package com.ditto.api.support
 
 /**
  * [runCatching]과 같지만 [Error]는 삼키지 않는다.
@@ -9,6 +9,12 @@ package com.ditto.common.exception
  * 그건 통과시킨다.
  *
  * `onFailure` 안의 `throw`는 [Result]로 감싸이지 않고 호출부까지 그대로 전파된다.
+ *
+ * `inline`을 붙이지 않는다 — 붙이면 호출부로 인라인돼 이 파일에 실행될 바이트코드가 남지 않고,
+ * 커버리지 도구가 영구 미커버로 집계한다. 람다 할당 하나를 아끼는 이득보다 그 손해가 크다.
+ *
+ * `common` 모듈이 더 어울리는 위치이지만 두 사용처가 모두 `api` 라 여기 둔다. `common` 에는 아직 테스트가
+ * 없어서, 파일 하나를 옮기면 그 모듈의 커버리지 게이트(50%)가 활성화되며 무관한 클래스까지 끌고 들어온다.
  */
-inline fun <T> runCatchingExceptions(block: () -> T): Result<T> =
+fun <T> runCatchingExceptions(block: () -> T): Result<T> =
     runCatching(block).onFailure { if (it !is Exception) throw it }

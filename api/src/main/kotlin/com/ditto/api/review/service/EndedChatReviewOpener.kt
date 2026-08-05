@@ -1,7 +1,7 @@
 package com.ditto.api.review.service
 
 import com.ditto.api.review.dto.EndedChatRoom
-import com.ditto.common.exception.runCatchingExceptions
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.review.repository.MemberReviewRepository

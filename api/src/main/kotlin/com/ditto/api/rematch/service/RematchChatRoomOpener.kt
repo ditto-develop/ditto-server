@@ -1,7 +1,7 @@
 package com.ditto.api.rematch.service
 
 import com.ditto.api.chat.service.ChatService
-import com.ditto.common.exception.runCatchingExceptions
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
