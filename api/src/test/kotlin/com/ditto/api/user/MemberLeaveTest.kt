@@ -190,6 +190,43 @@ class MemberLeaveTest(
             exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
         }
 
+        // 방은 스케줄러가 만들어 성사와 예약 사이에 한 주기가 빈다. 그 사이 탈퇴하면 방이 없어
+        // 채팅 조건을 빠져나가고, 뒤이은 예약이 탈퇴자와의 방을 만든다.
+        "성사됐는데 방이 아직 없으면 거부한다" {
+            val member = saveActive("성사된회원")
+            val partner = saveActive("성사상대")
+            val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
+            rematch.submitWants(member.id, wants = true, now = SUBMITTED_AT)
+            rematch.submitWants(partner.id, wants = true, now = SUBMITTED_AT)
+            rematchRepository.save(rematch)
+
+            val exception = shouldThrow<WarnException> {
+                userService.leaveUser(member.id, member.id, LeaveRequest())
+            }
+            exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
+        }
+
+        // MATCHED 는 종단 상태다. 그것만 보고 막으면 한 번 성사된 회원이 채팅이 끝난 뒤에도
+        // 영구히 탈퇴할 수 없다 — 방이 생긴 뒤로는 방 상태가 판정을 이어받아야 한다.
+        "성사된 뒤 방이 끝났으면 탈퇴할 수 있다" {
+            val member = saveActive("재매칭끝난회원")
+            val partner = saveActive("재매칭끝난상대")
+            val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
+            rematch.submitWants(member.id, wants = true, now = SUBMITTED_AT)
+            rematch.submitWants(partner.id, wants = true, now = SUBMITTED_AT)
+            val saved = rematchRepository.save(rematch)
+
+            val room = ChatRoomFixture.rematch(sourceId = saved.id).apply {
+                expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))
+            }
+            chatRoomRepository.save(room)
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
+        }
+
         "끝나지 않은 채팅방이 있으면 거부한다" {
             val member = saveActive("채팅중회원")
             val room = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 1L))

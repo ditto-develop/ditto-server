@@ -40,7 +40,7 @@ WAITING (생성 시)
   - 취소하지 않으면 남은 한쪽이 나중에 제출해 `MATCHED`가 되고, 방 예약이 **탈퇴자와의 채팅방을 만든다.** 그 방은 열리고 상대는 들어가지만 탈퇴자는 로그인이 막혀 못 들어온다.
   - **예약 조회에서 걸러내는 방식으로는 막을 수 없다.** 그 쌍이 조회 조건을 영구히 만족해 배치 앞자리를 점유하고, 탈퇴 회원 완전 삭제는 `member`만 지우므로 `rematch` 행이 영구히 남는다. 상태를 값으로 바꿔야 조회에서 자연히 빠진다.
   - 대상을 찾은 뒤 **행을 잠그고 다시 판정한다.** 잠그지 않으면 그 사이 상대가 성사시킨 커밋을 낡은 스냅샷이 덮어 통보된 성사가 조용히 취소된다(제출 경로가 행을 잠그는 것과 같은 이유 — [ADR 0011](../adr/0011-rematch-pessimistic-lock.md)).
-- **이미 성사된 쌍은 취소하지 않는다.** 상대가 열릴 방을 기다리는 상태라 되돌리면 통보된 성사가 사라진다. 그 상태에서 탈퇴를 막는 것은 `chat_room` 기준(끝나지 않은 방)이므로, 성사와 방 예약 사이 한 주기는 아직 열려 있다 — 방 예약이 들어온 뒤 함께 다룬다.
+- **이미 성사된 쌍은 취소하지 않고 탈퇴 자체를 막는다.** 상대가 열릴 방을 기다리는 상태라 되돌리면 통보된 성사가 사라진다. 방이 생기기 전 구간(성사와 예약 사이 한 주기)은 `LeaveProgressChecker`가 "성사됐는데 방이 없는 쌍"으로 막고, 방이 생긴 뒤에는 "끝나지 않은 방" 조건이 판정을 이어받는다. **`MATCHED`만 보고 막으면 안 된다** — 그 상태는 종단이어서 한 번 성사된 회원이 채팅이 끝난 뒤에도 영구히 탈퇴할 수 없다.
 - **탈퇴로 취소된 쌍에 대한 평가 제출은 거부하지 않는다.** 재매칭 의사만 버리고 평가는 정상 확정시킨다(`RematchSubmitter`) — 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없어 그룹 평가가 미완료로 남는다.
 - 생성 호출자는 그룹 채팅 종료 어댑터다 — `RematchPairCreator`가 종료 시점 참여자 전원의 쌍(`N(N-1)/2`)을 멱등 생성한다. 제출 호출자는 리뷰 제출 API(A2)의 `RematchSubmitter`다([review 도메인](review.md)).
 - **쌍은 평가보다 먼저 만들어져야 한다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가 쌍을 찾지 못하면 `INVALID_REVIEW_TARGET`으로 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다.
@@ -52,5 +52,5 @@ WAITING (생성 시)
 - 테스트 픽스처: `domain/src/testFixtures/kotlin/com/ditto/domain/rematch/RematchFixture.kt` (엔티티 직접 생성 대신 이 팩토리를 쓴다)
 - 평가 제출과의 접점: `api/src/main/kotlin/com/ditto/api/review/service/RematchSubmitter.kt`(제출), `RematchPairCreator.kt`(생성)
 - 채팅 예약과의 접점: `api/src/main/kotlin/com/ditto/api/rematch/service/RematchChatRoomOpener.kt`, 예약 대상 조회는 `domain/.../rematch/repository/querydsl/`
-- 탈퇴와의 접점: `api/src/main/kotlin/com/ditto/api/user/service/LeftMemberRematchCanceller.kt`(미성사 쌍 취소)
+- 탈퇴와의 접점: `api/src/main/kotlin/com/ditto/api/user/service/LeftMemberRematchCanceller.kt`(미성사 쌍 취소), `LeaveProgressChecker.kt`(성사됐는데 방 없는 쌍이면 탈퇴 거부)
 - 마이그레이션: `domain/db/V20260726232700_재매칭 테이블 추가.sql`, 예약 조회 인덱스는 `V20260804202238_재매칭 방 예약 조회용 인덱스 추가.sql`, 취소 사유 컬럼은 `V20260807195824_재매칭 취소 사유 컬럼 추가.sql`

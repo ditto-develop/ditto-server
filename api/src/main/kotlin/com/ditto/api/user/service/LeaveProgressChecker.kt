@@ -3,6 +3,7 @@ package com.ditto.api.user.service
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import org.springframework.stereotype.Component
 
 /**
@@ -13,18 +14,26 @@ import org.springframework.stereotype.Component
  * 채팅은 **아직 끝나지 않은 방(SCHEDULED·ACTIVE)** 이 있으면 진행 중으로 본다.
  * SCHEDULED(개방 예정, 재매칭 방)도 포함한다 — 상대가 곧 열릴 방을 기다리는 상태다.
  *
- * 미성사(WAITING) 재매칭 쌍은 진행 중으로 보지 않는다 — 탈퇴 시점에 취소한다
- * ([LeftMemberRematchCanceller]).
+ * **성사됐는데 방이 아직 없는 재매칭도 진행 중이다.** 방은 스케줄러가 만들어 성사와 예약 사이에 한
+ * 주기(현재 1분)가 빈다. 그 사이 탈퇴하면 방이 없어 위 채팅 조건을 빠져나가고, 뒤이은 예약이
+ * 탈퇴자와의 방을 만든다. 상대가 기다리는 상태는 방이 생긴 뒤와 같으므로 같이 막는다.
+ *
+ * `MATCHED`만 보면 안 된다 — 그 상태는 종단이어서 한 번 성사된 회원이 채팅이 끝난 뒤에도 영구히
+ * 탈퇴할 수 없게 된다. 방이 생긴 뒤에는 위 채팅 조건이 판정을 이어받는다.
+ *
+ * 미성사(`WAITING`) 쌍은 막지 않고 탈퇴 시점에 취소한다([LeftMemberRematchCanceller]).
  */
 @Component
 class LeaveProgressChecker(
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val rematchRepository: RematchRepository,
 ) {
 
     fun hasInProgress(memberId: Long): Boolean =
         personalMatchRepository.existsByMemberIdAndStatusIn(memberId, ONGOING_MATCH_STATUSES) ||
-            chatRoomRepository.existsUnendedRoomOfMember(memberId)
+            chatRoomRepository.existsUnendedRoomOfMember(memberId) ||
+            rematchRepository.existsMatchedWithoutChatRoomOfMember(memberId)
 
     companion object {
         private val ONGOING_MATCH_STATUSES = setOf(

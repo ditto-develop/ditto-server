@@ -24,4 +24,13 @@ interface RematchRepositoryCustom {
      * 행을 잠근다 — ADR 0011).
      */
     fun findMatchedWithoutChatRoom(limit: Int): List<Rematch>
+
+    /**
+     * 회원이 속한 쌍 중 **성사됐는데 방이 아직 없는** 것이 있는지 — 탈퇴 가드용.
+     *
+     * 방이 생긴 뒤에는 `chat_room` 상태가 판정을 이어받으므로(끝나지 않은 방이 있으면 탈퇴를 막는다)
+     * 여기서는 그 사이 구간만 본다. `MATCHED`만 보면 안 된다 — 그 상태는 종단이어서 한 번 성사된
+     * 회원이 채팅이 끝난 뒤에도 영구히 탈퇴할 수 없게 된다.
+     */
+    fun existsMatchedWithoutChatRoomOfMember(memberId: Long): Boolean
 }
