@@ -37,6 +37,7 @@ class UserService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val leaveProgressChecker: LeaveProgressChecker,
+    private val leftMemberRematchCanceller: LeftMemberRematchCanceller,
 ) {
 
     @Transactional
@@ -150,6 +151,9 @@ class UserService(
         }
 
         member.leave(reason = request.reason, now = serverTimeProvider.now())
+
+        // 미성사 재매칭 쌍 취소 — 그대로 두면 남은 한쪽의 제출로 탈퇴자와의 채팅방이 열린다.
+        leftMemberRematchCanceller.cancelWaitingPairs(id)
 
         // 세션은 즉시 끊는다. SocialAccount는 복구·재가입 식별 근거이므로 남긴다.
         refreshTokenRepository.deleteAllByMemberId(id)

@@ -1,10 +1,12 @@
 package com.ditto.domain.rematch.repository
 
 import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.entity.RematchStatus
 import com.ditto.domain.rematch.repository.querydsl.RematchRepositoryCustom
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
@@ -20,6 +22,15 @@ interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCus
      * 진 호출만 실패하고 이긴 호출이 평가까지 열므로 중복 쌍도 지연도 생기지 않는다.
      */
     fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
+
+    /**
+     * 회원이 속한 특정 상태의 쌍. 탈퇴 시 미성사(`WAITING`) 쌍을 찾아 취소하는 데 쓴다.
+     *
+     * 쌍이 정규화돼 있어(작은 ID가 `memberId1`) 회원이 어느 쪽에 있는지 미리 알 수 없으므로 두 컬럼을
+     * 모두 본다. 파생 쿼리로 쓰면 상태를 두 번 넘겨야 해서 JPQL 로 둔다.
+     */
+    @Query("select r from Rematch r where r.status = :status and (r.memberId1 = :memberId or r.memberId2 = :memberId)")
+    fun findAllByStatusAndMemberId(status: RematchStatus, memberId: Long): List<Rematch>
 
     /**
      * 제출 트랜잭션 전용 잠금 조회 — 동시 제출의 상호 선택 판정을 행 잠금으로 직렬화한다.

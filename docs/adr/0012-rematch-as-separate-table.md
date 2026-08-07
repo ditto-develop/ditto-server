@@ -29,6 +29,7 @@
 ## Links
 
 - [Issue #109](https://github.com/ditto-develop/ditto-server/issues/109)
+- **이행(2026-08-07, [#134](https://github.com/ditto-develop/ditto-server/issues/134))** — 예고한 대로 `D1`에서 `cancel_reason`(`NOT_MUTUAL`·`MEMBER_LEFT`)을 도입했다. 탈퇴가 두 번째 사유가 되면서 `CANCELLED`에서 도출할 수 없게 됐다. 상세는 `docs/domains/rematch.md`.
 - [ADR 0011](0011-rematch-pessimistic-lock.md) — 이 테이블의 동시 제출 잠금 규칙
 - [ADR 0008](0008-matching-entity-uniqueness-modeling.md) — 페어 정규화 패턴
 - `domain/src/main/kotlin/com/ditto/domain/rematch/entity/Rematch.kt`

@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component
  *
  * 채팅은 **아직 끝나지 않은 방(SCHEDULED·ACTIVE)** 이 있으면 진행 중으로 본다.
  * SCHEDULED(개방 예정, 재매칭 방)도 포함한다 — 상대가 곧 열릴 방을 기다리는 상태다.
+ *
+ * 미성사(WAITING) 재매칭 쌍은 진행 중으로 보지 않는다 — 탈퇴 시점에 취소한다
+ * ([LeftMemberRematchCanceller]).
  */
 @Component
 class LeaveProgressChecker(

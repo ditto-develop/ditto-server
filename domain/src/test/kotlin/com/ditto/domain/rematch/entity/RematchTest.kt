@@ -229,4 +229,53 @@ class RematchTest(
             }
         }
     }
+
+    "탈퇴 취소" - {
+        "given: 아직 아무도 제출하지 않은 쌍일 때" - {
+            "when: 탈퇴로 취소하면" - {
+                "then: CANCELLED(MEMBER_LEFT) 가 된다" {
+                    val rematch = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+
+                    rematch.cancelForMemberLeave() shouldBe true
+
+                    rematch.status shouldBe RematchStatus.CANCELLED
+                    rematch.cancelReason() shouldBe RematchCancelReason.MEMBER_LEFT
+                    rematch.isCancelledByMemberLeave() shouldBe true
+                }
+            }
+        }
+
+        // 취소 대상 조회는 WAITING 만 넘기지만, 그 조회와 행 잠금 사이에 상대가 제출해 성사시킬 수 있다.
+        // 잠근 뒤 다시 판정하는 것이 이 가드다 — 통보된 성사를 되돌리지 않는다.
+        "given: 그 사이 상대가 제출해 성사된 쌍일 때" - {
+            "when: 탈퇴로 취소하려 하면" - {
+                "then: 아무것도 바꾸지 않는다" {
+                    val rematch = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    rematch.submitWants(1L, wants = true, now = now)
+                    rematch.submitWants(2L, wants = true, now = now)
+
+                    rematch.cancelForMemberLeave() shouldBe false
+
+                    rematch.status shouldBe RematchStatus.MATCHED
+                    rematch.matchedAt() shouldBe now
+                    rematch.cancelReason() shouldBe null
+                }
+            }
+        }
+
+        "given: 상호 선택이 아니어서 이미 취소된 쌍일 때" - {
+            "when: 탈퇴로 취소하려 하면" - {
+                "then: 최초 사유를 덮지 않는다" {
+                    val rematch = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    rematch.submitWants(1L, wants = true, now = now)
+                    rematch.submitWants(2L, wants = false, now = now)
+
+                    rematch.cancelForMemberLeave() shouldBe false
+
+                    rematch.cancelReason() shouldBe RematchCancelReason.NOT_MUTUAL
+                    rematch.isCancelledByMemberLeave() shouldBe false
+                }
+            }
+        }
+    }
 })

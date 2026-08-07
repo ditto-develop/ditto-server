@@ -85,12 +85,27 @@ class Rematch private constructor(
     @Column(name = "matched_at", nullable = true)
     private var matchedAt: LocalDateTime? = null
 
+    // matchedAt 과 같이 status 와 함께만 의미를 갖는 값이라 직접 노출하지 않는다.
+    @Comment("취소 사유")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancel_reason", nullable = true, length = 20)
+    private var cancelReason: RematchCancelReason? = null
+
     /** 이 재매칭이 속한 운영 주. */
     val operationWeek: OperationWeek
         get() = OperationWeek(weekStartedOn)
 
     /** 상호 성사된 시각. 성사되지 않았으면 `null` — 성사 상태와 시각이 함께 움직인다는 불변식을 여기서 지킨다. */
     fun matchedAt(): LocalDateTime? = matchedAt.takeIf { status == RematchStatus.MATCHED }
+
+    /** 취소 사유. 취소되지 않았으면 `null` — 상태와 사유가 함께 움직인다는 불변식을 여기서 지킨다. */
+    fun cancelReason(): RematchCancelReason? = cancelReason.takeIf { status == RematchStatus.CANCELLED }
+
+    /**
+     * 상대의 탈퇴로 취소된 쌍인지. 성사될 수 없으므로 제출된 재매칭 의사를 버려야 한다 —
+     * 그때 평가 제출까지 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없다.
+     */
+    fun isCancelledByMemberLeave(): Boolean = cancelReason() == RematchCancelReason.MEMBER_LEFT
 
     /** memberId 기준 페어의 상대방 ID */
     fun counterpartOf(memberId: Long): Long {
@@ -134,7 +149,28 @@ class Rematch private constructor(
             matchedAt = now
             return
         }
+        cancel(RematchCancelReason.NOT_MUTUAL)
+    }
+
+    /**
+     * 한쪽이 탈퇴해 성사될 수 없는 쌍을 취소한다.
+     *
+     * `WAITING`만 취소한다 — 이미 `MATCHED`면 상대가 열릴 방을 기다리므로 탈퇴 자체를 막고
+     * (`LeaveProgressChecker`), 이미 취소된 쌍은 최초 사유를 덮지 않는다.
+     *
+     * @return 이번 호출로 취소했으면 `true`
+     */
+    fun cancelForMemberLeave(): Boolean {
+        if (status != RematchStatus.WAITING) {
+            return false
+        }
+        cancel(RematchCancelReason.MEMBER_LEFT)
+        return true
+    }
+
+    private fun cancel(reason: RematchCancelReason) {
         status = RematchStatus.CANCELLED
+        cancelReason = reason
     }
 
     private fun validatePairMember(memberId: Long) {
