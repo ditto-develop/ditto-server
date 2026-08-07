@@ -18,7 +18,7 @@
 - 소속 운영 주는 `OperationWeek`로 받는다. "월요일만 허용"은 그 값 객체가 강제하므로 재매칭 쪽에서 다시 검증하지 않고, `QuizSet`처럼 컬럼은 `weekStartedOn: LocalDate`로 저장하고 `operationWeek` 접근자로 되돌린다([ADR 0010](../adr/0010-week-identifier-week-started-on.md)). 이 컬럼은 원본 추적용이지 제한 키가 아니다.
 - 제출 경로는 pair 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 판정한다 — 동시 제출의 성사 누락 방지 ([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)의 안전 규칙 준수).
 - 횟수 제한은 없다(2026-07-27 기획 확인) — 한 주에 여러 명과 성사 가능하고, 같은 상대와 다른 주말에 다시 성사되는 것도 허용한다.
-- 같은 두 사람이 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 되고, 두 성사가 같은 주말로 향하면 **채팅방도 둘 열린다** — 중복을 막지 않는다([ADR 0016](../adr/0016-rematch-duplicate-room-allowed.md)이 [ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)을 대체). `GroupMatchService`의 `existsByMemberIdAndQuizSetId`는 **퀴즈셋 단위** 가드라 주가 다른 두 그룹은 막지 않고, 방이 열릴 주말은 그룹의 주가 아니라 **성사 시각**이 정한다 — 평가 제출에 기한이 없어 두 평가를 같은 주에 몰아 제출하면 두 성사가 같은 금요일로 향한다. 조건이 좁아 감수하며, 막으려면 건너뛴 쌍이 예약 조회에 영구 잔류하는 문제를 떠안는다(근거는 ADR 0016).
+- 같은 두 사람이 여러 그룹에서 만나 양쪽 다 선택하면 `rematch` 행 두 개가 각각 `MATCHED`가 되고, 두 성사가 같은 주말로 향하면 **채팅방도 둘 열린다** — 중복을 막지 않는다([ADR 0017](../adr/0017-rematch-duplicate-room-allowed.md)이 [ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)을 대체). `GroupMatchService`의 `existsByMemberIdAndQuizSetId`는 **퀴즈셋 단위** 가드라 주가 다른 두 그룹은 막지 않고, 방이 열릴 주말은 그룹의 주가 아니라 **성사 시각**이 정한다 — 평가 제출에 기한이 없어 두 평가를 같은 주에 몰아 제출하면 두 성사가 같은 금요일로 향한다. 조건이 좁아 감수하며, 막으려면 건너뛴 쌍이 예약 조회에 영구 잔류하는 문제를 떠안는다(근거는 ADR 0017).
 
 ## 상태 전이
 
@@ -30,7 +30,7 @@ WAITING (생성 시)
 
 - 전이는 나중에 도착한 `submitWants()` 호출이 같은 트랜잭션에서 수행한다. 별도 판정 API·배치는 없다.
 - 취소 사유 컬럼은 두지 않는다. `CANCELLED`가 곧 "상호 선택이 아님"이고 `member1Wants`/`member2Wants`로 확인되므로 저장할 정보가 없다. 중복은 성사를 취소하지 않으므로([ADR 0013](../adr/0013-rematch-duplicate-at-room-creation.md)) 사유가 갈리지 않는다 — 정지·탈퇴처럼 값으로 구분해야 하는 사유가 생기는 `D1`에서 컬럼과 enum을 함께 도입한다.
-- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(source_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`). 성사된 모든 쌍이 자기 방을 얻으므로(ADR 0016) 이 튜플 조회는 언제나 성립한다.
+- 재매칭 채팅의 방 ID·개방/종료 시각은 이 테이블에 두지 않는다. 방은 `chat_room.(source_type, source_id)` = (`REMATCH`, `rematch.id`)로 찾고, 개방·종료 시각은 `chat_room.opens_at`/`expires_at`이 SSOT다(`C1`·`I2`). 성사된 모든 쌍이 자기 방을 얻으므로(ADR 0017) 이 튜플 조회는 언제나 성립한다.
 - 방은 성사 트랜잭션이 만들지 않는다. `RematchChatRoomOpener`가 "성사됐는데 방이 없는 쌍"을 찾아 예약한다.
 - **개방은 성사 이후 처음 오는 금요일 00:00이다**(`ChatPeriod.upcomingWeekendFrom`). 기획이 "금요일 00:00 채팅방 오픈"으로만 정해 특정 주말을 약속하지 않으므로, **진행 중인 주말에 합류시키지 않는다** — 주말 도중에 성사돼도 남은 몇 시간에 급히 열지 않고 온전한 72시간을 받는 다음 금요일로 간다. 일반 매칭 채팅이 진행 중 주말에 합류하는 것(`weekendOf`)과 다른 점이다.
   - 그 덕에 **이미 닫힌 창이 계산될 수 없다.** 합류시키면 일요일 늦은 밤 성사(성사를 확정하는 것이 평가 제출이다)에서 방이 몇 분짜리로 열리거나, 예약이 도는 순간 창이 닫혀 `ACTIVE`로 태어난 뒤 곧바로 만료된다. 후자는 방이 존재하는 탓에 예약 조회가 완료로 판정해 다시 고치지 않아 **조용한 유실**이 된다(재매칭은 평가도 열지 않아 보상 경로가 없다).

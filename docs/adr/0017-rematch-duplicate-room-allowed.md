@@ -1,4 +1,4 @@
-# ADR 0016 — 같은 쌍의 재매칭 채팅방이 둘 열리는 것을 허용한다
+# ADR 0017 — 같은 쌍의 재매칭 채팅방이 둘 열리는 것을 허용한다
 
 - 상태: Accepted (2026-08-04)
 - 근거: discussion(2026-08-04, `I2` 구현 중 발견), [ADR 0013](0013-rematch-duplicate-at-room-creation.md) 재검토
@@ -43,4 +43,5 @@
 - [ADR 0013](0013-rematch-duplicate-at-room-creation.md) — 이 결정으로 대체됨(중복을 방 생성 시점에서 막는다)
 - [ADR 0012](0012-rematch-as-separate-table.md) — `rematch`가 채팅 시각·방 ID를 저장하지 않는다(② 를 택하지 않은 이유의 한 축)
 - [ADR 0008](0008-matching-entity-uniqueness-modeling.md) — 한 멤버의 다중 그룹 참여 허용(중복의 근원)
+- [ADR 0016](0016-member-leave-soft-delete-and-restore.md) — 탈퇴 소프트 삭제. 예약 대상 조회에 "양쪽이 살아 있는 쌍만" 조건을 더할 수 없는 이유가 여기 걸린다 — 탈퇴자가 낀 쌍은 `rematch` 행이 남아(purge 는 `member`만 지운다) 조회에 영구 잔류한다. 취소 사유 컬럼과 함께 `D1`에서 다룬다
 - 핵심 파일: `api/src/main/kotlin/com/ditto/api/rematch/service/RematchChatRoomOpener.kt`(예약), `domain/src/main/kotlin/com/ditto/domain/rematch/repository/querydsl/RematchRepositoryImpl.kt`(예약 대상 조회)
