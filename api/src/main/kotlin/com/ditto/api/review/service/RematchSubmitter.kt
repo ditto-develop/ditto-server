@@ -33,7 +33,7 @@ class RematchSubmitter(
         val rematch = findWithLock(review, memberId, counterpartId) ?: return
         val submitted = validateWants(wants)
         // 상대가 탈퇴해 성사될 수 없는 쌍이면 의사만 버리고 평가 제출은 성공시킨다.
-        // 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없어 평가가 미완료로 남는다.
+        // 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없어 그룹 평가가 미완료로 남는다.
         if (rematch.isCancelledByMemberLeave()) {
             return
         }
@@ -49,8 +49,10 @@ class RematchSubmitter(
     ) {
         val rematch = findWithLock(review, memberId, counterpartId) ?: return
         val submitted = validateWants(wants)
-        // 탈퇴로 취소된 쌍은 의사를 저장하지 않았으므로(위 submit) 재전송도 비교 없이 통과시킨다.
-        if (rematch.isCancelledByMemberLeave()) {
+        // 탈퇴로 취소된 뒤 처음 도착한 제출은 의사를 저장하지 않았으므로 비교할 값이 없다.
+        // 취소 전에 이미 확정한 의사가 있으면 그대로 비교한다 — "확정한 의사는 수정할 수 없다"는 계약이
+        // 취소됐다는 이유로 풀리지는 않는다.
+        if (rematch.isCancelledByMemberLeave() && rematch.wantsOf(memberId) == null) {
             return
         }
         if (!rematch.hasSameWants(memberId, submitted)) {

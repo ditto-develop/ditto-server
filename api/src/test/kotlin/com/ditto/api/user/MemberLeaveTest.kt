@@ -58,6 +58,19 @@ class MemberLeaveTest(
     fun saveActive(nickname: String) =
         memberRepository.save(Member(nickname = nickname).apply { activate() })
 
+    fun saveWaitingRematch(memberId: Long, counterpartId: Long, submittedBy: Long? = null): Rematch {
+        val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
+        submittedBy?.let { rematch.submitWants(it, wants = true, now = SUBMITTED_AT) }
+        return rematchRepository.save(rematch)
+    }
+
+    fun saveMatchedRematch(memberId: Long, counterpartId: Long): Rematch {
+        val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
+        rematch.submitWants(memberId, wants = true, now = SUBMITTED_AT)
+        rematch.submitWants(counterpartId, wants = true, now = SUBMITTED_AT)
+        return rematchRepository.save(rematch)
+    }
+
 
     "탈퇴는 데이터를 지우지 않고 상태만 바꾼다" - {
         "탈퇴하면 LEFT가 되고 사유·일시가 남는다" {
@@ -111,14 +124,7 @@ class MemberLeaveTest(
     }
 
     "탈퇴는 미성사 재매칭 쌍을 취소한다" - {
-        /** 한쪽만 선택해 아직 WAITING 인 쌍. 탈퇴 가드는 이 상태를 진행 중으로 보지 않는다. */
-        fun saveWaitingRematch(memberId: Long, counterpartId: Long, submittedBy: Long? = null): Rematch {
-            val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
-            submittedBy?.let { rematch.submitWants(it, wants = true, now = SUBMITTED_AT) }
-            return rematchRepository.save(rematch)
-        }
-
-        "미성사 쌍이 CANCELLED(MEMBER_LEFT)로 바뀐다" {
+        "취소 사유가 MEMBER_LEFT 로 남는다" {
             val member = saveActive("탈퇴예정회원")
             val partner = saveActive("재매칭상대")
             val rematch = saveWaitingRematch(member.id, partner.id, submittedBy = member.id)
@@ -144,9 +150,7 @@ class MemberLeaveTest(
             cancelled.matchedAt() shouldBe null
         }
 
-        // 취소 대상 조회가 WAITING 만 넘기므로 이미 취소된 쌍은 여기 도달하지 않는다.
-        // 엔티티 가드 자체는 RematchTest 가 직접 호출해 검증한다.
-        "이미 취소된 쌍의 사유는 그대로다" {
+        "이미 NOT_MUTUAL 로 취소된 쌍은 건드리지 않는다" {
             val member = saveActive("거절당한회원")
             val partner = saveActive("거절한상대")
             val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
@@ -195,10 +199,7 @@ class MemberLeaveTest(
         "성사됐는데 방이 아직 없으면 거부한다" {
             val member = saveActive("성사된회원")
             val partner = saveActive("성사상대")
-            val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
-            rematch.submitWants(member.id, wants = true, now = SUBMITTED_AT)
-            rematch.submitWants(partner.id, wants = true, now = SUBMITTED_AT)
-            rematchRepository.save(rematch)
+            saveMatchedRematch(member.id, partner.id)
 
             val exception = shouldThrow<WarnException> {
                 userService.leaveUser(member.id, member.id, LeaveRequest())
@@ -206,19 +207,13 @@ class MemberLeaveTest(
             exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
         }
 
-        // MATCHED 는 종단 상태다. 그것만 보고 막으면 한 번 성사된 회원이 채팅이 끝난 뒤에도
-        // 영구히 탈퇴할 수 없다 — 방이 생긴 뒤로는 방 상태가 판정을 이어받아야 한다.
         "성사된 뒤 방이 끝났으면 탈퇴할 수 있다" {
             val member = saveActive("재매칭끝난회원")
             val partner = saveActive("재매칭끝난상대")
-            val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
-            rematch.submitWants(member.id, wants = true, now = SUBMITTED_AT)
-            rematch.submitWants(partner.id, wants = true, now = SUBMITTED_AT)
-            val saved = rematchRepository.save(rematch)
+            val saved = saveMatchedRematch(member.id, partner.id)
 
-            val room = ChatRoomFixture.rematch(sourceId = saved.id).apply {
-                expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))
-            }
+            val room = ChatRoomFixture.rematch(sourceId = saved.id)
+            room.expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))
             chatRoomRepository.save(room)
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
 

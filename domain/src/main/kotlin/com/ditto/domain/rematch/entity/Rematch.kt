@@ -80,12 +80,11 @@ class Rematch private constructor(
     var status: RematchStatus = RematchStatus.WAITING
         protected set
 
-    // status 와 함께만 의미를 갖는 값이라 직접 노출하지 않는다 — 조회는 matchedAt() 으로 한다.
+    // 아래 두 값은 status 와 함께만 의미를 갖는다 — 직접 노출하지 않고 matchedAt()·cancelReason() 으로 읽는다.
     @Comment("상호 선택 성사 일시")
     @Column(name = "matched_at", nullable = true)
     private var matchedAt: LocalDateTime? = null
 
-    // matchedAt 과 같이 status 와 함께만 의미를 갖는 값이라 직접 노출하지 않는다.
     @Comment("취소 사유")
     @Enumerated(EnumType.STRING)
     @Column(name = "cancel_reason", nullable = true, length = 20)
@@ -95,16 +94,13 @@ class Rematch private constructor(
     val operationWeek: OperationWeek
         get() = OperationWeek(weekStartedOn)
 
-    /** 상호 성사된 시각. 성사되지 않았으면 `null` — 성사 상태와 시각이 함께 움직인다는 불변식을 여기서 지킨다. */
+    /** 상호 성사된 시각. 성사되지 않았으면 `null`. */
     fun matchedAt(): LocalDateTime? = matchedAt.takeIf { status == RematchStatus.MATCHED }
 
-    /** 취소 사유. 취소되지 않았으면 `null` — 상태와 사유가 함께 움직인다는 불변식을 여기서 지킨다. */
+    /** 취소 사유. 취소되지 않았으면 `null`. */
     fun cancelReason(): RematchCancelReason? = cancelReason.takeIf { status == RematchStatus.CANCELLED }
 
-    /**
-     * 상대의 탈퇴로 취소된 쌍인지. 성사될 수 없으므로 제출된 재매칭 의사를 버려야 한다 —
-     * 그때 평가 제출까지 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없다.
-     */
+    /** 상대의 탈퇴로 취소된 쌍인지. 성사될 수 없으므로 제출된 재매칭 의사를 버려야 한다. */
     fun isCancelledByMemberLeave(): Boolean = cancelReason() == RematchCancelReason.MEMBER_LEFT
 
     /** memberId 기준 페어의 상대방 ID */
