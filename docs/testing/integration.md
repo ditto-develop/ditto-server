@@ -62,3 +62,6 @@ class UserServiceTest(
 
 - 제외 대상(`sonar-convention`): `config/**`, `*Application*`, `*Config*`, `*Request*`, `*Response*`, `*Dto*`.
 - CI: `./gradlew build check`(Jacoco) → `./gradlew sonarqube`(SonarCloud). ⚠️ `build check`가 통과해도 Sonar New Code 게이트는 실패할 수 있으니 PR 체크를 함께 확인.
+- **Jacoco 는 모듈별로 자기 클래스만 집계한다.** `domain`·`common` 코드를 `api` 테스트로만 검증하면 그 모듈 리포트에 커버로 잡히지 않아, `build check`는 통과하고 Sonar New Code 만 실패한다 — QueryDSL 조회·값 객체처럼 다른 모듈에 넣은 코드는 **그 모듈에 테스트를 함께 둔다.** 실패 시 파일별 미커버 라인부터 확인: `curl -s "https://sonarcloud.io/api/measures/component_tree?component=ditto-develop_ditto-server&pullRequest=<번호>&metricKeys=new_uncovered_lines,new_lines_to_cover&qualifiers=FIL&ps=100"`.
+- **`inline` 함수는 커버리지를 덮을 수 없다.** 호출부로 인라인돼 선언 파일에 실행될 바이트코드가 남지 않아 영구 미커버로 집계된다. 작은 헬퍼에 습관적으로 붙이지 말 것.
+- **테스트가 없는 모듈은 게이트가 잠들어 있다.** `test` 태스크가 NO-SOURCE 면 검증도 스킵되므로, 그 모듈에 첫 테스트를 넣는 순간 기존 클래스 전체가 50% 기준에 걸린다(`common`이 그 상태다). 첫 테스트 추가는 별도 작업으로 다룬다.

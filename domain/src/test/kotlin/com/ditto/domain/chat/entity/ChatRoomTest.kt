@@ -97,6 +97,16 @@ class ChatRoomTest(
             }
         }
 
+        "when: 사용자가 끝낼 수 있는 방인지 물으면" - {
+            // 두 사람만 있는 방은 한 사람이 끝낼 수 있다. 그룹은 한 명이 나가도 남은 사람들의
+            // 대화가 이어져야 하므로 막는다(멤버 이탈은 별도 트랙).
+            "then: 두 사람 방만 참이다" {
+                chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 31L)).canEndByUser() shouldBe true
+                chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 32L)).canEndByUser() shouldBe true
+                chatRoomRepository.save(ChatRoomFixture.group(sourceId = 33L)).canEndByUser() shouldBe false
+            }
+        }
+
         "given: 이미 종료된 방일 때" - {
             "when: 다시 종료를 시도하면" - {
                 "then: 예외로 막고 최초 종료 기록을 지킨다" {

@@ -6,7 +6,6 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomStatus
-import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -68,7 +67,8 @@ class ChatRoomEndService(
      * 이번 호출이 실제로 끝냈을 때만 그 메시지를 돌려준다 — 호출자는 이 값으로 실시간 브로드캐스트
      * 여부를 정한다. 이미 끝난 방에 다시 요청하면 `null`이다(더블 탭·재시도 대비).
      *
-     * 그룹은 한 명이 나가도 방이 끝나지 않아 이 경로를 쓰지 않는다(멤버 이탈은 별도 트랙).
+     * 끝낼 수 있는 방인지는 방이 답한다([ChatRoom.canEndByUser]) — 재매칭으로 성사된 방도
+     * 두 사람만 있어 같은 경로로 끝낸다.
      */
     @Transactional
     fun endByUser(roomId: Long, memberId: Long, now: LocalDateTime): ChatMessageResponse? {
@@ -76,7 +76,7 @@ class ChatRoomEndService(
         val room = chatRoomRepository.findWithLockById(roomId)
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
-        if (room.sourceType != ChatRoomType.PERSONAL) {
+        if (!room.canEndByUser()) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "그룹 채팅은 이 경로로 종료할 수 없습니다.")
         }
         if (room.isEnded) {

@@ -7,6 +7,7 @@ import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.entity.MemberReview
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 import org.springframework.stereotype.Component
@@ -27,18 +28,22 @@ class EndedChatRoomLoader(
 ) {
     /**
      * 방 수만큼 조회하지 않도록 필요한 것을 먼저 일괄로 읽은 뒤 방마다 짝지운다.
-     * 값이 빠진 방은 [toEndedChatRoom]이 건너뛰므로, 돌려주는 목록이 입력보다 짧을 수 있다.
+     *
+     * 평가를 열지 않는 유형([MemberReview.REVIEWABLE_MATCH_TYPES])은 조용히 빠진다 — 실패가 아니라
+     * 정책이므로 로그를 남기지 않는다. 값이 빠진 방은 [toEndedChatRoom]이 건너뛰며 그때는 WARN 을 남긴다.
+     * 그래서 돌려주는 목록이 입력보다 짧을 수 있다.
      */
     fun load(rooms: List<ChatRoom>): List<EndedChatRoom> {
-        if (rooms.isEmpty()) {
+        val reviewableRooms = rooms.filter { it.sourceType in MemberReview.REVIEWABLE_MATCH_TYPES }
+        if (reviewableRooms.isEmpty()) {
             return emptyList()
         }
 
-        val quizSetIdByRoomId = findQuizSetIdByRoomId(rooms)
+        val quizSetIdByRoomId = findQuizSetIdByRoomId(reviewableRooms)
         val weekStartedOnByQuizSetId = findWeekStartedOnByQuizSetId(quizSetIdByRoomId.values)
-        val participantIdsByRoomId = findParticipantIdsByRoomId(rooms)
+        val participantIdsByRoomId = findParticipantIdsByRoomId(reviewableRooms)
 
-        return rooms.mapNotNull { room ->
+        return reviewableRooms.mapNotNull { room ->
             toEndedChatRoom(
                 room = room,
                 quizSetId = quizSetIdByRoomId[room.id],
@@ -48,21 +53,31 @@ class EndedChatRoomLoader(
         }
     }
 
-    /** 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 없는 방은 map 에 담기지 않는다. */
+    /**
+     * 방마다 원본 매칭을 타고 `quizSetId`를 찾는다. 원본이 없는 방은 map 에 담기지 않는다.
+     *
+     * 유형별로 한 번씩만 조회하며, 어느 테이블을 볼지는 `when`으로 정한다 — **유형이 늘면 컴파일 에러로
+     * 결정을 강제한다.** 유형 비교로 두 갈래를 나누면(`partition`) 새 유형이 조용히 한쪽으로 흡수돼
+     * 엉뚱한 테이블에서 원본을 찾다 실패한다.
+     */
     private fun findQuizSetIdByRoomId(rooms: List<ChatRoom>): Map<Long, Long> {
-        val (personalRooms, groupRooms) = rooms.partition { it.sourceType == ChatRoomType.PERSONAL }
-        val personalQuizSetIdByMatchId = personalMatchRepository.findAllById(personalRooms.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
-        val groupQuizSetIdByMatchId = groupMatchRepository.findAllById(groupRooms.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
+        val quizSetIdByMatchId = rooms.groupBy { it.sourceType }
+            .mapValues { (sourceType, sameTypeRooms) -> findQuizSetIdByMatchId(sourceType, sameTypeRooms) }
 
         return rooms.mapNotNull { room ->
-            val quizSetId = when (room.sourceType) {
-                ChatRoomType.PERSONAL -> personalQuizSetIdByMatchId[room.sourceId]
-                ChatRoomType.GROUP -> groupQuizSetIdByMatchId[room.sourceId]
-            }
-            quizSetId?.let { room.id to it }
+            quizSetIdByMatchId[room.sourceType]?.get(room.sourceId)?.let { room.id to it }
         }.toMap()
+    }
+
+    private fun findQuizSetIdByMatchId(sourceType: ChatRoomType, rooms: List<ChatRoom>): Map<Long, Long> {
+        val matchIds = rooms.map { it.sourceId }
+        return when (sourceType) {
+            ChatRoomType.PERSONAL -> personalMatchRepository.findAllById(matchIds).associate { it.id to it.quizSetId }
+            ChatRoomType.GROUP -> groupMatchRepository.findAllById(matchIds).associate { it.id to it.quizSetId }
+            // 평가를 열지 않는 유형이라 [load]가 이미 걸러낸다. 그 필터가 무너져도 여기서 배치를 깨뜨리지
+            // 않도록 빈 map 을 돌려준다 — 그 방은 [toEndedChatRoom]이 WARN 과 함께 건너뛴다.
+            ChatRoomType.REMATCH -> emptyMap()
+        }
     }
 
     private fun findWeekStartedOnByQuizSetId(quizSetIds: Collection<Long>): Map<Long, LocalDate> =

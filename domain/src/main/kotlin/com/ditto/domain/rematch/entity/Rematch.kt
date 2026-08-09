@@ -11,6 +11,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
@@ -27,6 +28,10 @@ import java.time.LocalDateTime
             name = "rematch_uk_1",
             columnNames = ["source_group_match_id", "member_id_1", "member_id_2"],
         ),
+    ],
+    indexes = [
+        // 방 예약 스케줄러가 "성사됐는데 방 없는 쌍"을 찾는 경로
+        Index(name = "rematch_index_1", columnList = "status, matched_at"),
     ],
 )
 class Rematch private constructor(

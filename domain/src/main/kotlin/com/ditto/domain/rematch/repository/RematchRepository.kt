@@ -1,13 +1,14 @@
 package com.ditto.domain.rematch.repository
 
 import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.repository.querydsl.RematchRepositoryCustom
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
-interface RematchRepository : JpaRepository<Rematch, Long> {
+interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCustom {
 
     /**
      * 소스 그룹에 이미 만들어진 쌍. 그룹 채팅 종료 시 쌍을 멱등하게 만들려고 기존 것을 먼저 읽는다 —

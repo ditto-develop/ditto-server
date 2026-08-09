@@ -23,4 +23,12 @@ object ChatRoomFixture {
         now: LocalDateTime = DEFAULT_NOW,
         period: ChatPeriod = ChatPeriod.weekendOf(now),
     ): ChatRoom = ChatRoom.group(sourceId, period, now).withId(id)
+
+    /** [sourceId]는 `rematch.id`다. */
+    fun rematch(
+        sourceId: Long = 1L,
+        id: Long = 0L,
+        now: LocalDateTime = DEFAULT_NOW,
+        period: ChatPeriod = ChatPeriod.weekendOf(now),
+    ): ChatRoom = ChatRoom.rematch(sourceId, period, now).withId(id)
 }

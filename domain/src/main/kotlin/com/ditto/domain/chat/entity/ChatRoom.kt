@@ -36,12 +36,12 @@ class ChatRoom private constructor(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
 
-    @Comment("원본 유형 (PERSONAL, GROUP)")
+    @Comment("원본 유형 (PERSONAL, GROUP, REMATCH)")
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 20)
     val sourceType: ChatRoomType,
 
-    @Comment("원본 매칭 ID (personal_match 또는 group_match 의 ID)")
+    @Comment("원본 매칭 ID (personal_match, group_match 또는 rematch 의 ID)")
     @Column(name = "source_id", nullable = false)
     val sourceId: Long,
 
@@ -79,11 +79,24 @@ class ChatRoom private constructor(
     val isEnded: Boolean
         get() = status == ChatRoomStatus.ENDED
 
+    /** 아직 개방 시각이 되지 않아 대화를 시작할 수 없는 방. 조회는 허용된다. */
+    val isBeforeOpen: Boolean
+        get() = status == ChatRoomStatus.SCHEDULED
+
+    /**
+     * 참여자 한 사람의 요청으로 끝낼 수 있는 방인지. 두 사람만 있는 방(일반 1:1·재매칭)이 그렇다.
+     *
+     * 그룹은 한 명이 나가도 남은 사람들의 대화가 이어져야 하므로 한 사람이 끝내지 못한다
+     * (멤버 이탈은 별도 트랙). 그래서 판정을 유형 비교로 흘리지 않고 이 이름으로 고정한다 —
+     * 두 사람 방이 늘어날 때 호출자를 고치지 않아도 된다.
+     */
+    fun canEndByUser(): Boolean = sourceType != ChatRoomType.GROUP
+
     /** 기한이 지나 마감한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다. */
     fun expire(at: LocalDateTime) = end(ChatEndReason.EXPIRED, at)
 
     /**
-     * 참여자가 직접 종료한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다.
+     * 참여자가 직접 종료한다. 호출 전에 [canEndByUser]와 [isEnded]로 걸러야 한다.
      *
      * 누가 끝냈는지는 여기 저장하지 않는다 — 나갈 때 남기는 SYSTEM 메시지의 `senderId`가 그 사실을 들고 있고,
      * 조회자는 그 값으로 "상대방이 종료했다"를 판별한다.
@@ -120,6 +133,16 @@ class ChatRoom private constructor(
 
         fun group(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
             of(ChatRoomType.GROUP, sourceId, period, now)
+
+        /**
+         * 그룹 재매칭으로 성사된 두 사람의 방. [sourceId]는 `rematch.id`다.
+         *
+         * 성사와 개방 시각이 떨어져 있어(성사는 평가 제출 직후, 개방은 그 주 금요일) 대개 `SCHEDULED`로
+         * 만들어진다. 주말 도중에 성사됐다면 [ChatPeriod.isOpenedAt]이 곧바로 참이라 `ACTIVE`로 만들어져
+         * 남은 시간 동안 제공된다.
+         */
+        fun rematch(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
+            of(ChatRoomType.REMATCH, sourceId, period, now)
 
         private fun of(
             sourceType: ChatRoomType,

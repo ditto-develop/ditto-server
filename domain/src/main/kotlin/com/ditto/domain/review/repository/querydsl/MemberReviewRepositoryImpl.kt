@@ -29,6 +29,8 @@ class MemberReviewRepositoryImpl(
             .from(chatRoom)
             .where(
                 chatRoom.status.eq(ChatRoomStatus.ENDED),
+                // 평가를 열지 않는 유형은 영원히 "평가 없음"이라 빼지 않으면 배치 앞자리를 점유한다.
+                chatRoom.sourceType.`in`(MemberReview.REVIEWABLE_MATCH_TYPES),
                 queryFactory.selectOne()
                     .from(memberReview)
                     .where(memberReview.chatRoomId.eq(chatRoom.id))

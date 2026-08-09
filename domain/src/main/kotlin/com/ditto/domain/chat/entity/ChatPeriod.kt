@@ -23,10 +23,27 @@ data class ChatPeriod(
 
     companion object {
         /**
-         * [at]이 속한 운영 주(월~일)의 주말 구간. 주중에 성사되든 주말 도중에 성사되든 같은 주말을 가리킨다.
+         * [at] 이후 처음 열리는 주말 — "다가오는 금요일 00:00". 개방 시각이 [at]보다 앞서지 않으므로
+         * **이미 닫힌 구간이 나올 수 없다.**
          *
-         * 주말이 이미 시작된 뒤에 만들어지는 방(운영 복구·주말 중 성사)도 다음 주로 미루지 않고
-         * 진행 중인 주말에 합류시킨다 — 개방 시각이 과거면 [isOpenedAt]이 곧바로 참이 된다.
+         * 재매칭 채팅이 쓴다. 기획이 "금요일 00:00 채팅방 오픈"으로만 정해 특정 주말을 약속하지 않으므로,
+         * 성사가 주말 도중이면 남은 시간에 급히 열지 않고 온전한 72시간을 받는 다음 금요일로 간다.
+         * 진행 중인 주말에 합류시키는 [weekendOf]와 그 점이 다르다.
+         */
+        fun upcomingWeekendFrom(at: LocalDateTime): ChatPeriod {
+            val weekend = of(at.toLocalDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY)))
+            // 금요일 00:00 을 이미 지났다면 그 주말은 시작된 것이므로 다음 금요일로 넘긴다.
+            return weekend.takeIf { it.opensAt >= at } ?: of(weekend.opensAt.toLocalDate().plusWeeks(1))
+        }
+
+        /**
+         * [at]이 속한 운영 주(월~일)의 주말 구간. 일반 매칭 채팅이 쓴다 — 수락 즉시 대화할 수 있어야 하므로
+         * 주말이 이미 시작됐으면 다음 주로 미루지 않고 진행 중인 주말에 합류시킨다(개방 시각이 과거면
+         * [isOpenedAt]이 곧바로 참이 된다).
+         *
+         * **[at]이 주말 도중이면 개방 시각이 과거인 구간을 돌려준다.** 그래서 과거 시각으로 부르면
+         * 이미 닫힌 구간이 나올 수 있다 — 방을 만드는 쪽은 만드는 시점으로 부르거나
+         * [upcomingWeekendFrom]을 써야 한다.
          */
         fun weekendOf(at: LocalDateTime): ChatPeriod {
             val friday = at.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

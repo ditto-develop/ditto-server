@@ -1,5 +1,6 @@
 -- 평가 누락 복구(anti-join)가 매 주기 도는 조회 경로:
---   WHERE status = 'ENDED' AND NOT EXISTS(member_review) ORDER BY ended_at, id LIMIT 100
+--   WHERE status = 'ENDED' AND source_type IN ('PERSONAL','GROUP') AND NOT EXISTS(member_review)
+--   ORDER BY ended_at, id LIMIT 100
 --
 -- 기존 인덱스로는 이 조회를 못 받는다 — chat_room_uk_1(source_type, source_id)은 status·ended_at 을 모르고,
 -- chat_room_index_1(status, expires_at)은 만료 스케줄러용이라 ended_at 정렬을 못 준다.
@@ -7,5 +8,7 @@
 -- 종료 이력 전체를 훑고 filesort 까지 하게 되고, 스케줄러 풀이 1스레드라 방 개방·마감까지 밀린다.
 --
 -- 컬럼 순서는 조회 조건 그대로다 — 등치(status) 먼저, 정렬(ended_at) 다음.
--- 1:1·그룹을 함께 훑으므로 source_type 은 조건에 없다. 넣으면 선행 컬럼이 조건에 안 걸려 인덱스를 못 탄다.
+-- source_type 은 인덱스에 넣지 않는다. 값 목록 조건(IN)이라 선행 컬럼으로 두면 등치 하나로 좁혀지지 않고,
+-- ended_at 뒤에 붙여도 정렬 뒤 필터라 이득이 없다 — 1:1·그룹을 함께 훑는 성질은 그대로다.
+-- 대상 유형의 SSOT 는 MemberReview.REVIEWABLE_MATCH_TYPES 다.
 CREATE INDEX chat_room_index_2 ON chat_room (status, ended_at);

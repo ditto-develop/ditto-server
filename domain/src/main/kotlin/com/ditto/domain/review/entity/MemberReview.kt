@@ -121,6 +121,19 @@ class MemberReview private constructor(
     }
 
     companion object {
+        /**
+         * 채팅이 끝날 때 평가를 여는 방 유형.
+         *
+         * **재매칭 채팅은 평가를 열지 않는다** — 이미 서로를 원해서 만난 자리라 다시 평가를 받지 않는다.
+         *
+         * 평가를 조립하는 쪽과 누락 복구 조회가 **같은 값을 봐야 한다.** 갈라지면 평가가 열리지 않는 방을
+         * 복구 조회가 매 주기 다시 집어오고, 종료 시각 오름차순의 앞자리를 영구 점유해 그 뒤에 끝난 방이
+         * 복구 대상에 들어오지 못한다. 그래서 판정을 여기 한 곳에 둔다.
+         *
+         * 술어 함수가 아니라 집합인 이유는 QueryDSL 조회가 값 목록을 요구하기 때문이다(`in` 조건).
+         */
+        val REVIEWABLE_MATCH_TYPES: Set<ChatRoomType> = setOf(ChatRoomType.PERSONAL, ChatRoomType.GROUP)
+
         fun create(
             authorMemberId: Long,
             matchType: ChatRoomType,
