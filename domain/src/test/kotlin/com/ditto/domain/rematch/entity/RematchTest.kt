@@ -229,4 +229,51 @@ class RematchTest(
             }
         }
     }
+
+    "탈퇴 취소" - {
+        "given: 아직 아무도 제출하지 않은 쌍일 때" - {
+            "when: 탈퇴로 취소하면" - {
+                "then: CANCELLED(MEMBER_LEFT) 가 된다" {
+                    val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+
+                    pair.cancelForMemberLeave() shouldBe true
+
+                    pair.status shouldBe RematchStatus.CANCELLED
+                    pair.cancelReason() shouldBe RematchCancelReason.MEMBER_LEFT
+                    pair.isCancelledByMemberLeave() shouldBe true
+                }
+            }
+        }
+
+        "given: 취소 대상 조회 뒤 상대가 제출해 성사된 쌍일 때" - {
+            "when: 탈퇴로 취소하려 하면" - {
+                "then: 아무것도 바꾸지 않는다" {
+                    val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    pair.submitWants(1L, wants = true, now = now)
+                    pair.submitWants(2L, wants = true, now = now)
+
+                    pair.cancelForMemberLeave() shouldBe false
+
+                    pair.status shouldBe RematchStatus.MATCHED
+                    pair.matchedAt() shouldBe now
+                    pair.cancelReason() shouldBe null
+                }
+            }
+        }
+
+        "given: 상호 선택이 아니어서 이미 취소된 쌍일 때" - {
+            "when: 탈퇴로 취소하려 하면" - {
+                "then: 최초 사유를 덮지 않는다" {
+                    val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+                    pair.submitWants(1L, wants = true, now = now)
+                    pair.submitWants(2L, wants = false, now = now)
+
+                    pair.cancelForMemberLeave() shouldBe false
+
+                    pair.cancelReason() shouldBe RematchCancelReason.NOT_MUTUAL
+                    pair.isCancelledByMemberLeave() shouldBe false
+                }
+            }
+        }
+    }
 })

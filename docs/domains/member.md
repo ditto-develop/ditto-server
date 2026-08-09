@@ -16,7 +16,8 @@
 - `left_at`·`leave_reason`은 LEFT일 때만 값이 존재한다 (`leave`가 설정, `restore`가 비움).
 - 탈퇴는 소프트 삭제다 — 데이터를 지우지 않고 LEFT로 전이하며, 완전 삭제는 30일 경과 후 배치가 한다 ([ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)).
 - 제재 중에도 탈퇴할 수 있다. 소프트 삭제가 제재 이력과 `SocialAccount`를 보존하므로 차단 우회가 되지 않는다.
-- 진행 중인 매칭(PENDING/ACCEPTED)이나 채팅방이 있으면 탈퇴할 수 없다.
+- 진행 중인 매칭(PENDING/ACCEPTED)·끝나지 않은 채팅방·**성사됐는데 방이 아직 없는 재매칭**이 있으면 탈퇴할 수 없다(`LeaveProgressChecker`). 상대가 기다리는 상태를 남기지 않는다.
+- 탈퇴는 **미성사 재매칭 쌍을 취소한다**(`CANCELLED(MEMBER_LEFT)`). 그대로 두면 남은 한쪽의 제출로 성사돼 탈퇴자와의 채팅방이 열린다. 상세는 [rematch 도메인](rematch.md).
 - TODO: 역할(Role) 부여 규칙.
 
 ## 상태 전이

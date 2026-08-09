@@ -7,6 +7,8 @@ import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -27,6 +29,7 @@ private const val MEMBER_B = 2L
 
 class RematchChatRoomOpenerTest(
     private val rematchChatRoomOpener: RematchChatRoomOpener,
+    private val memberRepository: MemberRepository,
     private val rematchRepository: RematchRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
@@ -135,6 +138,22 @@ class RematchChatRoomOpenerTest(
             rematch.submitWants(MEMBER_A, wants = true, now = MATCHED_ON_MONDAY)
             rematch.submitWants(MEMBER_B, wants = false, now = MATCHED_ON_MONDAY)
             rematchRepository.save(rematch)
+
+            rematchChatRoomOpener.openMissing(BEFORE_WEEKEND) shouldBe 0
+
+            chatRoomRepository.findAll().size shouldBe 0
+        }
+    }
+
+    "탈퇴자가 섞인 쌍" - {
+        // 탈퇴는 미성사 쌍을 취소해 이 경로를 막지만, 탈퇴 가드가 읽은 뒤 상대가 제출해 성사시키는
+        // 좁은 창이 남는다. 방을 만들면 남은 한쪽이 아무도 없는 방에 들어간다.
+        "한쪽이 탈퇴했으면 방을 만들지 않는다" {
+            val left = memberRepository.save(Member(nickname = "탈퇴한상대").apply { activate() })
+            val staying = memberRepository.save(Member(nickname = "남은회원").apply { activate() })
+            saveMatchedRematch(memberA = left.id, memberB = staying.id)
+            left.leave(reason = "etc", now = MATCHED_ON_MONDAY)
+            memberRepository.save(left)
 
             rematchChatRoomOpener.openMissing(BEFORE_WEEKEND) shouldBe 0
 

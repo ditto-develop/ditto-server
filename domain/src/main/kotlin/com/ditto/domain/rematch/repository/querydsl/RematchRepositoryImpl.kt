@@ -30,4 +30,21 @@ class RematchRepositoryImpl(
             .orderBy(rematch.matchedAt.asc(), rematch.id.asc())
             .limit(limit.toLong())
             .fetch()
+
+    override fun existsMatchedWithoutChatRoomOfMember(memberId: Long): Boolean =
+        queryFactory
+            .selectOne()
+            .from(rematch)
+            .where(
+                rematch.status.eq(RematchStatus.MATCHED),
+                rematch.memberId1.eq(memberId).or(rematch.memberId2.eq(memberId)),
+                queryFactory.selectOne()
+                    .from(chatRoom)
+                    .where(
+                        chatRoom.sourceType.eq(ChatRoomType.REMATCH),
+                        chatRoom.sourceId.eq(rematch.id),
+                    )
+                    .notExists(),
+            )
+            .fetchFirst() != null
 }

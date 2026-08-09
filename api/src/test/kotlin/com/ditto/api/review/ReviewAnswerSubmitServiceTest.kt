@@ -80,6 +80,16 @@ class ReviewAnswerSubmitServiceTest(
         wantsOneToOneRematch: Boolean? = null,
     ) = ReviewAnswerSubmitRequest(meetingStatus, rating, comment, wantsOneToOneRematch)
 
+    fun findPair(counterpartId: Long) =
+        rematchRepository.findAll().first { it.memberId1 == author && it.memberId2 == counterpartId }
+
+    /** 상대 탈퇴로 취소된 쌍으로 만든다 — 운영에서는 `LeftMemberRematchCanceller`가 탈퇴 트랜잭션에서 건다. */
+    fun cancelPairByLeave(counterpartId: Long) {
+        val rematch = findPair(counterpartId)
+        rematch.cancelForMemberLeave()
+        rematchRepository.save(rematch)
+    }
+
     "대상별 제출" - {
         "제출하면 답변이 확정되고 진행률이 오른다" {
             val reviewId = openGroupReviewWithRematchPairs()
@@ -169,8 +179,7 @@ class ReviewAnswerSubmitServiceTest(
             }
 
             exception.errorCode shouldBe ErrorCode.REVIEW_ANSWER_NOT_MODIFIABLE
-            val rematch = rematchRepository.findAll().first { it.memberId1 == author && it.memberId2 == counterpart }
-            rematch.wantsOf(author) shouldBe true
+            findPair(counterpart).wantsOf(author) shouldBe true
         }
 
         // 성사 응답이 유실돼 클라이언트가 재시도하면, 성사 사실을 다시 알려줄 다른 경로가 아직 없다.
@@ -248,9 +257,58 @@ class ReviewAnswerSubmitServiceTest(
                 author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = false),
             )
 
-            val rematch = rematchRepository.findAll().first { it.memberId1 == author && it.memberId2 == counterpart }
+            val rematch = findPair(counterpart)
             rematch.wantsOf(author) shouldBe false
             rematch.status shouldBe RematchStatus.WAITING
+        }
+    }
+
+    // 상대가 탈퇴하면 쌍이 CANCELLED(MEMBER_LEFT)로 바뀐다. 남은 회원의 제출을 거부하면 그 대상 평가를
+    // 영구히 확정할 수 없어 그룹 평가가 미완료로 남으므로, 의사만 버리고 평가는 받는다.
+    "상대 탈퇴로 취소된 쌍" - {
+        "제출은 성공하고 재매칭 의사만 버려진다" {
+            val reviewId = openGroupReviewWithRematchPairs()
+            cancelPairByLeave(counterpart)
+
+            val response = memberReviewService.submitAnswer(
+                author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = true),
+            )
+
+            response.answeredTargetCount shouldBe 1
+            response.rematch shouldBe null
+            findPair(counterpart).wantsOf(author) shouldBe null
+        }
+
+        // 버려진 의사는 비교할 값이 없다 — 여기서 거부하면 재시도가 영구히 막힌다.
+        "취소된 뒤 보낸 의사는 다르게 다시 보내도 거부하지 않는다" {
+            val reviewId = openGroupReviewWithRematchPairs()
+            cancelPairByLeave(counterpart)
+            memberReviewService.submitAnswer(
+                author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = true),
+            )
+
+            val again = memberReviewService.submitAnswer(
+                author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = false),
+            )
+
+            again.answeredTargetCount shouldBe 1
+        }
+
+        // "확정한 의사는 수정할 수 없다"는 계약이 취소됐다는 이유로 풀리지는 않는다.
+        "취소 전에 확정한 의사를 바꿔 보내면 그대로 거부한다" {
+            val reviewId = openGroupReviewWithRematchPairs()
+            memberReviewService.submitAnswer(
+                author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = true),
+            )
+            cancelPairByLeave(counterpart)
+
+            val exception = shouldThrow<WarnException> {
+                memberReviewService.submitAnswer(
+                    author, reviewId, counterpart, submitRequest(wantsOneToOneRematch = false),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.REVIEW_ANSWER_NOT_MODIFIABLE
         }
     }
 

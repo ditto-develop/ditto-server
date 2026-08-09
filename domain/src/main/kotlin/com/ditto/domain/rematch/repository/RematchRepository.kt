@@ -1,10 +1,13 @@
 package com.ditto.domain.rematch.repository
 
 import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.entity.RematchStatus
 import com.ditto.domain.rematch.repository.querydsl.RematchRepositoryCustom
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
@@ -20,6 +23,28 @@ interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCus
      * 진 호출만 실패하고 이긴 호출이 평가까지 열므로 중복 쌍도 지연도 생기지 않는다.
      */
     fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
+
+    /**
+     * 회원이 속한 특정 상태의 쌍 ID. 탈퇴 시 미성사(`WAITING`) 쌍을 찾아 취소하는 데 쓴다.
+     *
+     * **엔티티가 아니라 ID 를 돌려준다.** 엔티티를 먼저 읽으면 영속성 컨텍스트에 인스턴스가 남아,
+     * 뒤이은 [findWithLockById]가 행에 잠금은 걸어도 필드는 낡은 값 그대로다(ADR 0011 규칙 5).
+     * 그 상태로 판정하면 그 사이 상대가 커밋한 성사를 못 보고 덮어쓴다.
+     *
+     * `id` 순으로 돌려준다 — 한 트랜잭션이 여러 쌍을 잠글 때 순서를 고정해야 순환 대기가 없다(규칙 3).
+     *
+     * 쌍이 정규화돼 있어(작은 ID가 `memberId1`) 회원이 어느 쪽에 있는지 미리 알 수 없으므로 두 컬럼을
+     * 모두 본다. 파생 쿼리로 쓰면 상태를 두 번 넘겨야 해서 JPQL 로 둔다.
+     */
+    @Query(
+        "select r.id from Rematch r " +
+            "where r.status = :status and (r.memberId1 = :memberId or r.memberId2 = :memberId) " +
+            "order by r.id",
+    )
+    fun findAllIdsByStatusAndMemberId(
+        @Param("status") status: RematchStatus,
+        @Param("memberId") memberId: Long,
+    ): List<Long>
 
     /**
      * 제출 트랜잭션 전용 잠금 조회 — 동시 제출의 상호 선택 판정을 행 잠금으로 직렬화한다.

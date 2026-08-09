@@ -1,10 +1,9 @@
 package com.ditto.api.user
 
-import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.AuthService
-import com.ditto.api.system.ServerTimeProvider
-import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.support.IntegrationTest
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.service.LeftMemberPurgeService
 import com.ditto.api.user.service.UserService
@@ -20,6 +19,12 @@ import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.domain.rematch.RematchFixture
+import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.entity.RematchCancelReason
+import com.ditto.domain.rematch.entity.RematchStatus
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -28,6 +33,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
+
+private val SUBMITTED_AT = LocalDateTime.of(2026, 3, 9, 10, 0)
 
 /**
  * 탈퇴 소프트 삭제와 30일 복구. 명세는 탈퇴 화면(피그마 6.2.4)의 안내 문구다.
@@ -42,6 +49,7 @@ class MemberLeaveTest(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val rematchRepository: RematchRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val authService: AuthService,
     dataSource: DataSource,
@@ -49,6 +57,19 @@ class MemberLeaveTest(
 
     fun saveActive(nickname: String) =
         memberRepository.save(Member(nickname = nickname).apply { activate() })
+
+    fun saveWaitingRematch(memberId: Long, counterpartId: Long, submittedBy: Long? = null): Rematch {
+        val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
+        submittedBy?.let { rematch.submitWants(it, wants = true, now = SUBMITTED_AT) }
+        return rematchRepository.save(rematch)
+    }
+
+    fun saveMatchedRematch(memberId: Long, counterpartId: Long): Rematch {
+        val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
+        rematch.submitWants(memberId, wants = true, now = SUBMITTED_AT)
+        rematch.submitWants(counterpartId, wants = true, now = SUBMITTED_AT)
+        return rematchRepository.save(rematch)
+    }
 
 
     "탈퇴는 데이터를 지우지 않고 상태만 바꾼다" - {
@@ -102,6 +123,59 @@ class MemberLeaveTest(
         }
     }
 
+    "탈퇴는 미성사 재매칭 쌍을 취소한다" - {
+        "취소 사유가 MEMBER_LEFT 로 남는다" {
+            val member = saveActive("탈퇴예정회원")
+            val partner = saveActive("재매칭상대")
+            val rematch = saveWaitingRematch(member.id, partner.id, submittedBy = member.id)
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            val cancelled = rematchRepository.findById(rematch.id).orElseThrow()
+            cancelled.status shouldBe RematchStatus.CANCELLED
+            cancelled.cancelReason() shouldBe RematchCancelReason.MEMBER_LEFT
+        }
+
+        "취소된 쌍은 남은 상대가 제출해도 성사되지 않는다" {
+            val member = saveActive("먼저탈퇴한회원")
+            val partner = saveActive("나중제출상대")
+            val rematch = saveWaitingRematch(member.id, partner.id, submittedBy = member.id)
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            val cancelled = rematchRepository.findById(rematch.id).orElseThrow()
+            shouldThrow<WarnException> {
+                cancelled.submitWants(partner.id, wants = true, now = SUBMITTED_AT.plusDays(1))
+            }.errorCode shouldBe ErrorCode.REMATCH_PAIR_ALREADY_SETTLED
+            cancelled.matchedAt() shouldBe null
+        }
+
+        "이미 NOT_MUTUAL 로 취소된 쌍은 건드리지 않는다" {
+            val member = saveActive("거절당한회원")
+            val partner = saveActive("거절한상대")
+            val rematch = RematchFixture.create(memberIdA = member.id, memberIdB = partner.id)
+            rematch.submitWants(member.id, wants = true, now = SUBMITTED_AT)
+            rematch.submitWants(partner.id, wants = false, now = SUBMITTED_AT)
+            rematchRepository.save(rematch)
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            rematchRepository.findById(rematch.id).orElseThrow()
+                .cancelReason() shouldBe RematchCancelReason.NOT_MUTUAL
+        }
+
+        "다른 두 회원의 쌍은 그대로 둔다" {
+            val member = saveActive("탈퇴하는회원")
+            val other = saveActive("무관한회원")
+            val otherPartner = saveActive("무관한상대")
+            val untouched = saveWaitingRematch(other.id, otherPartner.id)
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            rematchRepository.findById(untouched.id).orElseThrow().status shouldBe RematchStatus.WAITING
+        }
+    }
+
     "진행 중인 매칭·채팅이 있으면 탈퇴가 제한된다" - {
         "수락된 매칭이 있으면 거부한다" {
             val member = saveActive("매칭중회원")
@@ -118,6 +192,34 @@ class MemberLeaveTest(
                 userService.leaveUser(member.id, member.id, LeaveRequest())
             }
             exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
+        }
+
+        // 방은 스케줄러가 만들어 성사와 예약 사이에 한 주기가 빈다. 그 사이 탈퇴하면 방이 없어
+        // 채팅 조건을 빠져나가고, 뒤이은 예약이 탈퇴자와의 방을 만든다.
+        "성사됐는데 방이 아직 없으면 거부한다" {
+            val member = saveActive("성사된회원")
+            val partner = saveActive("성사상대")
+            saveMatchedRematch(member.id, partner.id)
+
+            val exception = shouldThrow<WarnException> {
+                userService.leaveUser(member.id, member.id, LeaveRequest())
+            }
+            exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
+        }
+
+        "성사된 뒤 방이 끝났으면 탈퇴할 수 있다" {
+            val member = saveActive("재매칭끝난회원")
+            val partner = saveActive("재매칭끝난상대")
+            val saved = saveMatchedRematch(member.id, partner.id)
+
+            val room = ChatRoomFixture.rematch(sourceId = saved.id)
+            room.expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))
+            chatRoomRepository.save(room)
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
         }
 
         "끝나지 않은 채팅방이 있으면 거부한다" {

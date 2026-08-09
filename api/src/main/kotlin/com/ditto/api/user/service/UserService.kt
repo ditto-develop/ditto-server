@@ -37,6 +37,7 @@ class UserService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val leaveProgressChecker: LeaveProgressChecker,
+    private val leftMemberRematchCanceller: LeftMemberRematchCanceller,
 ) {
 
     @Transactional
@@ -150,6 +151,8 @@ class UserService(
         }
 
         member.leave(reason = request.reason, now = serverTimeProvider.now())
+
+        leftMemberRematchCanceller.cancelWaitingPairs(id)
 
         // 세션은 즉시 끊는다. SocialAccount는 복구·재가입 식별 근거이므로 남긴다.
         refreshTokenRepository.deleteAllByMemberId(id)

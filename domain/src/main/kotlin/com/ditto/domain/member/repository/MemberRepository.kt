@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface MemberRepository : JpaRepository<Member, Long> {
     fun existsByNickname(nickname: String): Boolean
 
+    /** 주어진 ID 중 해당 상태인 회원 수 — 탈퇴자가 섞였는지 확인하는 데 쓴다. */
+    fun countByIdInAndStatus(ids: Collection<Long>, status: MemberStatus): Long
+
     /** 특정 상태이면서 정지 해제 예정일이 지난 회원 목록 (만료 원복 배치용). */
     fun findAllByStatusAndSuspendedUntilLessThanEqual(status: MemberStatus, until: LocalDateTime): List<Member>
 

@@ -3,6 +3,8 @@ package com.ditto.api.rematch.service
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatPeriod
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -28,6 +30,7 @@ import org.springframework.stereotype.Component
 class RematchChatRoomOpener(
     private val rematchRepository: RematchRepository,
     private val chatService: ChatService,
+    private val memberRepository: MemberRepository,
 ) {
     /**
      * 방이 없는 성사분에 방을 예약한다. 스케줄러가 주기적으로 부른다.
@@ -47,7 +50,7 @@ class RematchChatRoomOpener(
         val opened = matched.count { rematch ->
             runCatchingExceptions { reserve(rematch, now) }
                 .onFailure { logger.warn(it) { "재매칭 방 예약 실패 — 다음 주기로 넘긴다: rematchId=${rematch.id}" } }
-                .isSuccess
+                .getOrDefault(false)
         }
         logger.info { "재매칭 방 예약: 대상 ${matched.size}건 중 ${opened}건 생성" }
         return opened
@@ -64,17 +67,34 @@ class RematchChatRoomOpener(
      *
      * 기준을 `max(성사 시각, 예약 시점)`으로 두는 이유는 예약이 밀린 경우다 — 성사 다음 금요일이 이미
      * 지났다면 그 금요일에는 열 수 없고, 열 수 있는 가장 이른 금요일이 답이다.
+     *
+     * @return 방을 예약했으면 `true`. 건너뛴 것을 성공으로 세지 않으려고 돌려준다.
      */
-    private fun reserve(rematch: Rematch, now: LocalDateTime) {
+    private fun reserve(rematch: Rematch, now: LocalDateTime): Boolean {
         val matchedAt = rematch.matchedAt()
             ?: error("성사되지 않은 재매칭에는 방을 만들 수 없습니다: rematchId=${rematch.id}")
+
+        // 탈퇴자가 섞인 쌍은 건너뛴다. 탈퇴는 미성사 쌍을 취소해 이 경로를 막지만
+        // (`LeftMemberRematchCanceller`), 탈퇴 가드가 읽은 뒤 상대가 제출해 성사시키는 좁은 창이 남는다.
+        // 방을 만들면 남은 한쪽이 아무도 없는 방에 들어가므로, 여기서 한 번 더 확인한다.
+        if (hasLeftMember(rematch)) {
+            logger.warn { "탈퇴자가 섞인 재매칭은 방을 만들지 않는다: rematchId=${rematch.id}" }
+            return false
+        }
 
         chatService.createRematchRoom(
             rematchId = rematch.id,
             memberIds = listOf(rematch.memberId1, rematch.memberId2),
             weekend = ChatPeriod.upcomingWeekendFrom(maxOf(matchedAt, now)),
         )
+        return true
     }
+
+    private fun hasLeftMember(rematch: Rematch): Boolean =
+        memberRepository.countByIdInAndStatus(
+            listOf(rematch.memberId1, rematch.memberId2),
+            MemberStatus.LEFT,
+        ) > 0
 
     companion object {
         private val logger = KotlinLogging.logger {}
