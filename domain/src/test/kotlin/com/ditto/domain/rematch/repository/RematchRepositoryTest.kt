@@ -101,4 +101,51 @@ class RematchRepositoryTest(
             }
         }
     }
+
+    "existsMatchedWithoutChatRoomOfMember — 성사됐는데 방이 아직 없는 쌍(탈퇴 가드)" - {
+        "given: 성사된 쌍이 있고 방이 없을 때" - {
+            "when: 그 쌍의 회원으로 조회하면" - {
+                // 쌍은 작은 ID를 memberId1 로 정규화하므로 어느 자리에 있든 자기 쌍으로 잡혀야 한다.
+                "then: 두 자리 모두 있다고 답한다" {
+                    saveMatched(memberIdA = 1L, memberIdB = 2L)
+
+                    rematchRepository.existsMatchedWithoutChatRoomOfMember(1L) shouldBe true
+                    rematchRepository.existsMatchedWithoutChatRoomOfMember(2L) shouldBe true
+                }
+            }
+        }
+
+        "given: 그 쌍의 REMATCH 방이 이미 생겼을 때" - {
+            "when: 조회하면" - {
+                // 방이 생긴 뒤에는 방 상태가 탈퇴 판정을 이어받는다 — 여기서는 그 사이 구간만 본다.
+                "then: 없다고 답한다" {
+                    val rematch = saveMatched()
+                    chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = rematch.id))
+
+                    rematchRepository.existsMatchedWithoutChatRoomOfMember(1L) shouldBe false
+                }
+            }
+        }
+
+        "given: 아직 성사되지 않은 쌍뿐일 때" - {
+            "when: 조회하면" - {
+                // 미성사 쌍은 탈퇴가 취소하므로 막을 이유가 없다.
+                "then: 없다고 답한다" {
+                    rematchRepository.save(RematchFixture.create(memberIdA = 1L, memberIdB = 2L))
+
+                    rematchRepository.existsMatchedWithoutChatRoomOfMember(1L) shouldBe false
+                }
+            }
+        }
+
+        "given: 남의 쌍만 성사됐을 때" - {
+            "when: 그 쌍에 없는 회원으로 조회하면" - {
+                "then: 없다고 답한다" {
+                    saveMatched(memberIdA = 1L, memberIdB = 2L)
+
+                    rematchRepository.existsMatchedWithoutChatRoomOfMember(3L) shouldBe false
+                }
+            }
+        }
+    }
 })
