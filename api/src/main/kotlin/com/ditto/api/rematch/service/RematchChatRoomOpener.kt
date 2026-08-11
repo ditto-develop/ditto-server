@@ -91,7 +91,10 @@ class RematchChatRoomOpener(
             memberIds = memberIds,
             weekend = ChatPeriod.upcomingWeekendFrom(maxOf(matchedAt, now)),
         )
-        notifyMatched(memberIds, chatRoomId)
+        // 방은 이미 커밋됐다. 알림 실패를 여기서 올리면 [openMissing]이 "다음 주기로 넘긴다"고 세는데,
+        // 예약 조회가 방 없는 쌍만 집으므로(`findMatchedWithoutChatRoom`) 그 쌍은 다시 오지 않는다.
+        runCatchingExceptions { notifyMatched(rematch.memberId1, rematch.memberId2, chatRoomId) }
+            .onFailure { logger.warn(it) { "재매칭 성사 알림 실패 — 방은 예약됐다: rematchId=${rematch.id}" } }
         return true
     }
 
@@ -101,14 +104,14 @@ class RematchChatRoomOpener(
      * 알림은 방마다 한 번이다(`REMATCH_MATCHED`의 `target_id` = 방 ID) — 예약이 멱등해 같은 방을
      * 다시 만들려 해도 알림은 하나다. 문구에 상대 닉네임이 들어가므로 사람마다 따로 남긴다.
      */
-    private fun notifyMatched(memberIds: List<Long>, chatRoomId: Long) {
-        val nicknamesById = memberRepository.findAllById(memberIds).associate { it.id to it.nickname }
+    private fun notifyMatched(memberId1: Long, memberId2: Long, chatRoomId: Long) {
+        val nicknamesById = memberRepository.findAllById(listOf(memberId1, memberId2))
+            .associate { it.id to it.nickname }
 
-        memberIds.forEach { memberId ->
-            val counterpartNickname = memberIds.firstOrNull { it != memberId }?.let { nicknamesById[it] }
-                ?: return@forEach
+        listOf(memberId1 to memberId2, memberId2 to memberId1).forEach { (receiverId, counterpartId) ->
+            val counterpartNickname = nicknamesById[counterpartId] ?: return@forEach
             notificationAppender.append(
-                memberId = memberId,
+                memberId = receiverId,
                 content = NotificationMessages.rematchMatched(counterpartNickname),
                 targetId = chatRoomId,
             )

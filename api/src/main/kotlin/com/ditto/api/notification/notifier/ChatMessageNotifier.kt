@@ -3,8 +3,10 @@ package com.ditto.api.notification.notifier
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.member.repository.MemberRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
 /**
@@ -27,9 +29,18 @@ class ChatMessageNotifier(
     /**
      * 방금 저장된 메시지를 상대에게 알린다.
      *
-     * @return 실제로 남긴 알림 수
+     * **실패를 삼킨다.** 적재 자체는 [NotificationAppender]가 흡수하지만 그 앞의 조회는 흡수 범위 밖이라
+     * 여기서 막는다 — STOMP 핸들러에 있어 예외가 올라가면 이미 저장·전달된 메시지에 대해 보낸 사람이
+     * ERROR 프레임을 받는다.
+     *
+     * @return 실제로 남긴 알림 수. 실패했으면 0
      */
-    fun notifyNewMessage(message: ChatMessageResponse): Int {
+    fun notifyNewMessage(message: ChatMessageResponse): Int =
+        runCatchingExceptions { appendToReceivers(message) }
+            .onFailure { logger.warn(it) { "새 메시지 알림 실패 — 무시한다: roomId=${message.roomId}" } }
+            .getOrDefault(0)
+
+    private fun appendToReceivers(message: ChatMessageResponse): Int {
         val receiverIds = chatRoomMemberRepository.findByRoomIdIn(listOf(message.roomId))
             .map { it.memberId }
             .filter { it != message.senderId }
@@ -46,5 +57,9 @@ class ChatMessageNotifier(
             content = message.content,
         )
         return notificationAppender.appendAll(receiverIds, content, targetId = message.roomId)
+    }
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
     }
 }

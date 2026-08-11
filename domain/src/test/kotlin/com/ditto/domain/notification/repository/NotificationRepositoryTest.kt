@@ -171,10 +171,12 @@ class NotificationRepositoryTest(
             save(memberId = ME)
             save(memberId = OTHER)
 
+            val tomorrow = LocalDateTime.now().plusDays(1)
+
             notificationRepository
                 .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(ME, LONG_AGO) shouldBe 2
             notificationRepository
-                .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(ME, LocalDateTime.now().plusDays(1)) shouldBe 0
+                .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(ME, tomorrow) shouldBe 0
         }
 
         "같은 (회원·유형·대상)의 알림이 이미 있는지 답한다 — 한 번만 알리기의 근거" {

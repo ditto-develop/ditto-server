@@ -2,6 +2,7 @@ package com.ditto.api.notification.notifier
 
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -29,9 +30,18 @@ class ReviewRequestNotifier(
     /**
      * 끝난 방들의 참여자에게 평가 요청 알림을 남긴다.
      *
-     * @return 실제로 남긴 알림 수
+     * **실패를 삼킨다.** 적재 자체는 [NotificationAppender]가 흡수하지만 그 앞의 조회는 흡수 범위 밖이라
+     * 여기서 막는다 — 사용자 종료 경로(`ChatController.end`)에 있어 예외가 올라가면 이미 커밋된 종료가
+     * 실패로 보이고, 재시도해도 종료된 방은 아무것도 다시 하지 않는다.
+     *
+     * @return 실제로 남긴 알림 수. 실패했으면 0
      */
-    fun notifyFor(endedRoomIds: Collection<Long>): Int {
+    fun notifyFor(endedRoomIds: Collection<Long>): Int =
+        runCatchingExceptions { appendReviewRequests(endedRoomIds) }
+            .onFailure { logger.warn(it) { "평가 요청 알림 실패 — 무시한다: roomIds=$endedRoomIds" } }
+            .getOrDefault(0)
+
+    private fun appendReviewRequests(endedRoomIds: Collection<Long>): Int {
         if (endedRoomIds.isEmpty()) {
             return 0
         }

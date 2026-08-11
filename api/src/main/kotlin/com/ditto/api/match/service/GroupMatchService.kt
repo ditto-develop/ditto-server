@@ -49,8 +49,10 @@ class GroupMatchService(
         if (room.isActive) {
             val memberIds = groupMatchMemberRepository.findByRoomId(room.id).map { it.memberId }
             val chatRoomId = chatService.createGroupRoom(room.id, memberIds)
-            // 그룹이 구성됐다는 사실을 아는 곳이 여기뿐이다. 알림 적재는 자기 트랜잭션에서 커밋되므로
-            // 이 트랜잭션이 롤백되면 알림만 남을 수 있다 — 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
+            // 그룹이 구성됐다는 사실을 아는 곳이 여기뿐이다. 적재는 자기 트랜잭션에서 즉시 커밋되므로,
+            // 그 뒤 커밋 시점 flush 가 실패해 이 트랜잭션이 롤백되면 그룹도 채팅방도 없이 알림만 남는다
+            // (`createGroupRoom` 은 REQUIRED 라 같은 트랜잭션이다).
+            // 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
             notificationAppender.appendAll(
                 memberIds = memberIds,
                 content = NotificationMessages.groupFormed(memberIds.size),
