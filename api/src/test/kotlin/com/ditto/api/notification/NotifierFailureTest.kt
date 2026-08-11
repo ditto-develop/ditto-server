@@ -1,7 +1,9 @@
 package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
+import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.chat.ChatRoomFixture
@@ -9,6 +11,7 @@ import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -30,6 +33,7 @@ class NotifierFailureTest {
     private val chatRoomRepository = mockk<ChatRoomRepository>()
     private val chatRoomMemberRepository = mockk<ChatRoomMemberRepository>()
     private val memberRepository = mockk<MemberRepository>()
+    private val matchCandidateRepository = mockk<MatchCandidateRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -42,6 +46,13 @@ class NotifierFailureTest {
         chatRoomMemberRepository,
         memberRepository,
         notificationAppender,
+    )
+    private val matchResultNotifier = MatchResultNotifier(matchCandidateRepository, notificationAppender)
+    private val chatEndingSoonNotifier = ChatEndingSoonNotifier(
+        chatRoomRepository,
+        chatRoomMemberRepository,
+        notificationAppender,
+        LEAD_HOURS,
     )
 
     @Test
@@ -77,6 +88,22 @@ class NotifierFailureTest {
         verify(exactly = 0) { notificationAppender.appendAll(any(), any(), any()) }
     }
 
+    @Test
+    @DisplayName("매칭 결과 — 후보 회원 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun matchResultAbsorbsCandidateQueryFailure() {
+        every { matchCandidateRepository.findOwnerMemberIdsByQuizSetId(any()) } throws connectionFailure()
+
+        matchResultNotifier.notifyFor(listOf(QUIZ_SET_ID)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("종료 임박 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun chatEndingSoonAbsorbsRoomQueryFailure() {
+        every { chatRoomRepository.findAllIdsEndingBetween(any(), any()) } throws connectionFailure()
+
+        chatEndingSoonNotifier.notifyEndingSoon(LocalDateTime.of(2026, 7, 16, 12, 0)) shouldBe 0
+    }
+
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")
 
     private fun textMessage() = ChatMessageResponse(
@@ -91,5 +118,7 @@ class NotifierFailureTest {
 
     companion object {
         private const val ROOM_ID = 1L
+        private const val QUIZ_SET_ID = 7L
+        private const val LEAD_HOURS = 6L
     }
 }

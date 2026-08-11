@@ -2,6 +2,7 @@ package com.ditto.api.notification.notifier
 
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -29,9 +30,18 @@ class ChatEndingSoonNotifier(
     /**
      * [now] 기준으로 [leadHours] 안에 끝나는 방의 참여자에게 알린다.
      *
-     * @return 실제로 남긴 알림 수
+     * **실패를 삼킨다.** 적재 자체는 [NotificationAppender]가 흡수하지만 그 앞의 조회는 흡수 범위 밖이다.
+     * 스케줄러가 부르므로 예외가 올라가도 다음 주기에 복구되지만, 같은 주기의 다른 처리까지 끌고 가지
+     * 않도록 여기서 멈춘다 — 알림 어댑터 넷이 모두 같은 규칙이다.
+     *
+     * @return 실제로 남긴 알림 수. 실패했으면 0
      */
-    fun notifyEndingSoon(now: LocalDateTime): Int {
+    fun notifyEndingSoon(now: LocalDateTime): Int =
+        runCatchingExceptions { appendEndingSoon(now) }
+            .onFailure { logger.warn(it) { "종료 임박 알림 실패 — 무시한다: now=$now" } }
+            .getOrDefault(0)
+
+    private fun appendEndingSoon(now: LocalDateTime): Int {
         val roomIds = chatRoomRepository.findAllIdsEndingBetween(now, now.plusHours(leadHours))
         if (roomIds.isEmpty()) {
             return 0

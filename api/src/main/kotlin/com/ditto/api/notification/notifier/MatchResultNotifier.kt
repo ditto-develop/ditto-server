@@ -2,6 +2,7 @@ package com.ditto.api.notification.notifier
 
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
@@ -26,9 +27,18 @@ class MatchResultNotifier(
     /**
      * 후보가 생성된 퀴즈셋들에 대해 알린다.
      *
-     * @return 실제로 남긴 알림 수
+     * **실패를 삼킨다.** 적재 자체는 [NotificationAppender]가 흡수하지만 그 앞의 조회는 흡수 범위 밖이라
+     * 여기서 막는다 — 어드민 후보 재생성(`AdminMatchController`)이 부르는 경로라, 예외가 올라가면 이미
+     * 커밋된 배치가 실패한 것처럼 보인다.
+     *
+     * @return 실제로 남긴 알림 수. 실패했으면 0
      */
-    fun notifyFor(quizSetIds: Collection<Long>): Int {
+    fun notifyFor(quizSetIds: Collection<Long>): Int =
+        runCatchingExceptions { appendMatchResults(quizSetIds) }
+            .onFailure { logger.warn(it) { "매칭 결과 알림 실패 — 무시한다: quizSetIds=$quizSetIds" } }
+            .getOrDefault(0)
+
+    private fun appendMatchResults(quizSetIds: Collection<Long>): Int {
         if (quizSetIds.isEmpty()) {
             return 0
         }
