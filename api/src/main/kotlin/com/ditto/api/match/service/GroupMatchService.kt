@@ -4,6 +4,8 @@ import com.ditto.api.chat.service.ChatService
 import com.ditto.api.match.dto.GroupMatchDeclineRequest
 import com.ditto.api.match.dto.GroupMatchJoinRequest
 import com.ditto.api.match.dto.GroupMatchJoinResponse
+import com.ditto.api.notification.message.NotificationMessages
+import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.GroupMatch
@@ -22,6 +24,7 @@ class GroupMatchService(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
     private val chatService: ChatService,
+    private val notificationAppender: NotificationAppender,
 ) {
 
     /** 그룹 매칭 참여 */
@@ -44,8 +47,7 @@ class GroupMatchService(
         // 방이 막 활성화(참가자 임계값 도달)됐다면 참가자 전원의 채팅방을 생성한다.
         // findOrCreateRoom 은 비활성 방만 반환하므로, isActive == true 는 이번 참여로 활성화됐음을 뜻한다.
         if (room.isActive) {
-            val memberIds = groupMatchMemberRepository.findByRoomId(room.id).map { it.memberId }
-            chatService.createGroupRoom(room.id, memberIds)
+            openGroupChatAndNotify(room.id)
         }
 
         return GroupMatchJoinResponse.from(room)
@@ -61,6 +63,25 @@ class GroupMatchService(
         }
 
         groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
+    }
+
+    /**
+     * 구성이 끝난 그룹의 채팅방을 열고 참가자 전원에게 알린다.
+     *
+     * 그룹이 구성됐다는 사실을 아는 곳이 여기뿐이라 알림도 이 트랜잭션 안에서 남긴다. 적재는 자기
+     * 트랜잭션에서 즉시 커밋되므로, 그 뒤 커밋 시점 flush 가 실패해 이 트랜잭션이 롤백되면 그룹도
+     * 채팅방도 없이 알림만 남는다(`createGroupRoom` 은 REQUIRED 라 같은 트랜잭션이다).
+     * 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
+     */
+    private fun openGroupChatAndNotify(groupMatchId: Long) {
+        val memberIds = groupMatchMemberRepository.findByRoomId(groupMatchId).map { it.memberId }
+        val chatRoomId = chatService.createGroupRoom(groupMatchId, memberIds)
+
+        notificationAppender.appendAll(
+            memberIds = memberIds,
+            content = NotificationMessages.groupFormed(memberIds.size),
+            targetId = chatRoomId,
+        )
     }
 
     /** 참여 가능한 방이 있으면 반환, 없으면 새 방 생성 */

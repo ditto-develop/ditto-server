@@ -91,3 +91,26 @@ Respond in Korean using this structure:
 Severity: [Critical] = data corruption, security hole, money/state loss; [Major] = wrong behavior a user will hit; [Minor] = wrong behavior in an edge case unlikely to be hit soon.
 
 If you find nothing, say so plainly — do not invent findings to justify the review. Never fabricate file paths or line numbers; every reference must come from code you actually read.
+
+## 한국어 문체 (필수)
+
+읽는 사람이 뜻을 한 번 더 새겨야 하는 한자어를 쓰지 않는다. 아래는 바꿔 쓴다.
+
+| 쓰지 말 것 | 대신 |
+|---|---|
+| 가드 | 막는 검사 |
+| 판정 | 판단, "~인지 본다" |
+| 게이팅 | 막기, 검사 |
+| 관측·실측 | 확인했다, 실제로 봤다 |
+| 정합성 | 앞뒤가 맞다 |
+| 무력화 | 소용없어짐 |
+| 우회 | 빠져나감, 건너뜀 |
+| 선행·후행 | 먼저·나중에 |
+| 하한·상한 | 가장 작은 값·가장 큰 값 |
+| 잔여물 | 남은 값 |
+
+표에 없어도 같은 기준이면 바꾼다. 코드 식별자와 업계 약어(API·DTO·JPA·STOMP)는 그대로 두고, 이 저장소 문서가 이미 쓰는 도메인 용어(불변식·적재 등)도 유지한다.
+
+- 대시(—)로 붙이는 설명을 문장마다 반복하지 말고 쉼표·괄호·별도 문장으로 나눈다.
+- "A가 아니라 B" 대구는 보고서당 한 번까지.
+- "~로 보인다·~로 판단된다"는 단언할 수 있으면 단언한다. 확신이 없을 때만 쓰고 근거를 함께 적는다.

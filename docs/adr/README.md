@@ -18,6 +18,7 @@
 - [0014 — ECS 태스크 메모리 예산 재배분: Metaspace 128m→256m, 힙 비율 45%→35%](0014-ecs-metaspace-heap-rebalance.md)
 - [0015 — chat_room의 원본 식별자는 (source_type, source_id)로 접두어를 맞춘다](0015-chat-room-source-type-naming.md)
 - [0016 — 회원 탈퇴는 소프트 삭제로 처리하고 30일 안에 재가입하면 복구한다](0016-member-leave-soft-delete-and-restore.md)
+- [0018 — 알림은 문구를 확정해 적재하고, 적재는 비즈니스 트랜잭션을 되돌리지 않는다](0018-notification-center-append-and-read.md)
 
 ## 언제 ADR을 쓰는가
 

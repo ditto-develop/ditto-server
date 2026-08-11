@@ -1,13 +1,14 @@
 package com.ditto.domain.match.repository
 
 import com.ditto.domain.match.entity.MatchCandidate
+import com.ditto.domain.match.repository.querydsl.MatchCandidateRepositoryCustom
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.transaction.annotation.Transactional
 
-interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long> {
+interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchCandidateRepositoryCustom {
 
     /** 특정 회원이 해당 퀴즈셋에서 노출받을 후보 목록 */
     fun findByOwnerMemberIdAndQuizSetId(ownerMemberId: Long, quizSetId: Long): List<MatchCandidate>

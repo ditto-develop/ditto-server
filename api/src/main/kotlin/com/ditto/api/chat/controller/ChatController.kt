@@ -9,6 +9,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
@@ -29,6 +30,7 @@ class ChatController(
     private val chatRoomEndService: ChatRoomEndService,
     private val messagingTemplate: SimpMessagingTemplate,
     private val endedChatReviewOpener: EndedChatReviewOpener,
+    private val reviewRequestNotifier: ReviewRequestNotifier,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -78,6 +80,7 @@ class ChatController(
             ?.let {
                 messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
                 endedChatReviewOpener.openFor(listOf(roomId))
+                reviewRequestNotifier.notifyFor(listOf(roomId))
             }
         return ApiResponse.ok(Unit)
     }

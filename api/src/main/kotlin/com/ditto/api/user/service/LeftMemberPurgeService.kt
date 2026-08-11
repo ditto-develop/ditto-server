@@ -3,6 +3,7 @@ package com.ditto.api.user.service
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -26,6 +27,7 @@ class LeftMemberPurgeService(
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val notificationRepository: NotificationRepository,
     private val serverTimeProvider: ServerTimeProvider,
     @Value("\${ditto.member.purge.dry-run:true}") private val dryRun: Boolean,
     @Value("\${ditto.member.purge.batch-limit:100}") private val batchLimit: Int,
@@ -59,6 +61,8 @@ class LeftMemberPurgeService(
 
         expired.forEach { member ->
             refreshTokenRepository.deleteAllByMemberId(member.id)
+            // 알림 본문에는 닉네임·메시지 미리보기가 들어 있어 회원과 함께 지운다.
+            notificationRepository.deleteAllByMemberId(member.id)
             socialAccountRepository.findByMemberId(member.id)?.let { socialAccountRepository.delete(it) }
             memberRepository.delete(member)
         }
