@@ -73,6 +73,72 @@ paths:
                       } ],
                       "error" : null
                     }
+  /api/v1/notifications:
+    get:
+      tags:
+      - Notification
+      summary: 알림 목록 조회
+      description: 알림 센터의 목록을 최신순으로 조회합니다. 보관 기간(30일)이 지난 알림은 조회되지 않습니다. category
+        를 생략하면 '전체' 탭입니다. 안읽음 여부는 readAt 이 null 인지로 판단하세요. nextCursor 가 null 이면 마지막
+        페이지입니다.
+      operationId: notifications-get
+      parameters:
+      - name: category
+        in: query
+        description: 필터 (MATCHING·CHAT·SYSTEM). 생략 시 전체
+        required: false
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        description: 이전 응답의 nextCursor. 생략 시 첫 페이지
+        required: false
+        schema:
+          type: string
+      - name: size
+        in: query
+        description: "페이지 크기 (기본 20, 최대 100)"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-notifications-1964664947"
+              examples:
+                notifications-get:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "notifications" : [ {
+                          "id" : 2,
+                          "type" : "CHAT_MESSAGE",
+                          "category" : "CHAT",
+                          "title" : "산책러버님의 새 메시지",
+                          "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
+                          "targetId" : 22,
+                          "readAt" : null,
+                          "createdAt" : "2026-08-11 21:12:07"
+                        }, {
+                          "id" : 1,
+                          "type" : "MATCH_RESULT",
+                          "category" : "MATCHING",
+                          "title" : "이번 주 매칭 결과가 나왔어요",
+                          "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
+                          "targetId" : 11,
+                          "readAt" : null,
+                          "createdAt" : "2026-08-11 21:12:07"
+                        } ],
+                        "nextCursor" : null
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/user-reports:
     post:
       tags:
@@ -94,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/7afedaa8-20ed-4435-b7f3-a277e33d4539" ],
+                    "imageKeys" : [ "pending/user-reports/1/75b9519d-d6bc-40b8-8190-4c739b5ce562" ],
                     "block" : false
                   }
       responses:
@@ -169,10 +235,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "m1",
-                        "joinedAt" : "2026-08-05 00:33:42",
+                        "joinedAt" : "2026-08-11 21:12:08",
                         "role" : null,
-                        "createdAt" : "2026-08-05 00:33:42",
-                        "updatedAt" : "2026-08-05 00:33:42"
+                        "createdAt" : "2026-08-11 21:12:08",
+                        "updatedAt" : "2026-08-11 21:12:08"
                       },
                       "error" : null
                     }
@@ -337,6 +403,59 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/notifications/read-all:
+    put:
+      tags:
+      - Notification
+      summary: 알림 모두 읽음
+      description: 안읽은 알림을 모두 읽음으로 표시합니다(화면 우상단 '모두 읽음'). 이미 다 읽었으면 readCount 가 0
+        이며 성공합니다.
+      operationId: notifications-read-all
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-notifications-read-all-418441164"
+              examples:
+                notifications-read-all:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "readCount" : 2
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/notifications/unread-count:
+    get:
+      tags:
+      - Notification
+      summary: 미읽음 알림 수 조회
+      description: 홈 헤더 벨 배지용입니다. 목록과 같은 창(최근 30일)의 안읽은 알림만 셉니다.
+      operationId: notifications-unread-count
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-notifications-unread-count1460512530"
+              examples:
+                notifications-unread-count:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "count" : 1
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/quiz-progress/answers:
     post:
       tags:
@@ -442,21 +561,21 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "weekStartedOn" : "2026-08-03",
+                        "weekStartedOn" : "2026-08-10",
                         "year" : 2026,
                         "month" : 8,
-                        "week" : 2,
+                        "week" : 3,
                         "quizSets" : [ {
                           "id" : 1,
-                          "weekStartedOn" : "2026-08-03",
+                          "weekStartedOn" : "2026-08-10",
                           "year" : 2026,
                           "month" : 8,
-                          "week" : 2,
+                          "week" : 3,
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-04 00:33:42",
-                          "endDate" : "2026-08-06 00:33:42",
+                          "startDate" : "2026-08-10 21:12:08",
+                          "endDate" : "2026-08-12 21:12:08",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -473,8 +592,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-05 00:33:42",
-                            "updatedAt" : "2026-08-05 00:33:42"
+                            "createdAt" : "2026-08-11 21:12:08",
+                            "updatedAt" : "2026-08-11 21:12:08"
                           } ]
                         } ]
                       },
@@ -521,8 +640,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-05 00:33:42",
-                        "updatedAt" : "2026-08-05 00:33:42"
+                        "createdAt" : "2026-08-11 21:12:08",
+                        "updatedAt" : "2026-08-11 21:12:08"
                       },
                       "error" : null
                     }
@@ -549,10 +668,10 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "weekStartedOn" : "2026-08-03",
+                        "weekStartedOn" : "2026-08-10",
                         "year" : 2026,
                         "month" : 8,
-                        "week" : 2,
+                        "week" : 3,
                         "period" : "QUIZ_PERIOD"
                       },
                       "error" : null
@@ -599,11 +718,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/81dafd76-2216-4c31-8083-f4961c6b8eb7",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/81dafd76-2216-4c31-8083-f4961c6b8eb7"
+                          "objectKey" : "pending/user-reports/1/77d4fbba-fa60-4bef-880b-d2fe58a75979",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/77d4fbba-fa60-4bef-880b-d2fe58a75979"
                         }, {
-                          "objectKey" : "pending/user-reports/1/c3997f6b-8c9f-4b45-89fe-be8653153a97",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/c3997f6b-8c9f-4b45-89fe-be8653153a97"
+                          "objectKey" : "pending/user-reports/1/9d1008d8-8f25-4ec1-8166-9a506020d1fc",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/9d1008d8-8f25-4ec1-8166-9a506020d1fc"
                         } ]
                       },
                       "error" : null
@@ -776,6 +895,38 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/notifications/{id}/read:
+    put:
+      tags:
+      - Notification
+      summary: 알림 읽음
+      description: 알림 하나를 읽음으로 표시합니다. 이미 읽은 알림에 다시 요청해도 성공합니다(멱등). 내 알림이 아니면 404 로
+        응답합니다.
+      operationId: notifications-read
+      parameters:
+      - name: id
+        in: path
+        description: 알림 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-blocks-918175200"
+              examples:
+                notifications-read:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/quiz-progress/quiz-sets/{id}:
     get:
       tags:
@@ -886,7 +1037,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODU4NTc2MTksImV4cCI6MTc4NTg2MTIxOX0.2Kfdn92MfjEEvmCp5b9eYklYAKxC4ef4LyWnIrFQI1dsC4SrL-iz5QtJBa8kvYDmXmE5uJoCYlTm3RVFOm93xw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODY0NTAzMjQsImV4cCI6MTc4NjQ1MzkyNH0._HG0LkcTSi8vk1s-SV_gV6s5DHlTqgbzptvXw4QwNSmNjGeSN9LokylQAkcW3uJNXtDDeuPzdD3LhlXfeB-yGQ"
                       },
                       "error" : null
                     }
@@ -914,12 +1065,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-05 00:33:42"
+                        "blockedAt" : "2026-08-11 21:12:08"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-05 00:33:42"
+                        "blockedAt" : "2026-08-11 21:12:08"
                       } ],
                       "error" : null
                     }
@@ -1212,13 +1363,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-05 00:33:42"
+                          "createdAt" : "2026-08-11 21:12:08"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-05 00:33:42"
+                          "createdAt" : "2026-08-11 21:12:08"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-05 00:33:42"
+                          "createdAt" : "2026-08-11 21:12:08"
                         } ]
                       },
                       "error" : null
@@ -1251,8 +1402,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-07-29 00:33:42",
-                          "endsAt" : "2026-08-12 00:33:42"
+                          "startsAt" : "2026-08-04 21:12:08",
+                          "endsAt" : "2026-08-18 21:12:08"
                         }
                       },
                       "error" : null
@@ -1428,8 +1579,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-05 00:33:42",
-                        "updatedAt" : "2026-08-05 00:33:42"
+                        "createdAt" : "2026-08-11 21:12:08",
+                        "updatedAt" : "2026-08-11 21:12:08"
                       },
                       "error" : null
                     }
@@ -2506,6 +2657,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-notifications-unread-count1460512530:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - count
+          type: object
+          properties:
+            count:
+              type: number
+              description: 안읽은 알림 수
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me-intro-notes-questionCode-1298820809:
       required:
       - error
@@ -2909,18 +3077,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-quiz-progress-answers-1062387050:
-      required:
-      - choiceId
-      - quizId
-      type: object
-      properties:
-        choiceId:
-          type: number
-          description: 선택한 선택지 ID
-        quizId:
-          type: number
-          description: 퀴즈 ID
     api-v1-user-reports900126493:
       required:
       - error
@@ -2938,23 +3094,35 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls1777271249:
+    api-v1-quiz-progress-answers-1062387050:
+      required:
+      - choiceId
+      - quizId
       type: object
       properties:
-        files:
-          type: array
-          items:
-            required:
-            - contentLength
-            - contentType
-            type: object
-            properties:
-              contentLength:
-                type: number
-                description: 이미지 바이트 크기 (최대 10MB)
-              contentType:
-                type: string
-                description: 이미지 MIME 타입 (image/* 만 허용)
+        choiceId:
+          type: number
+          description: 선택한 선택지 ID
+        quizId:
+          type: number
+          description: 퀴즈 ID
+    api-v1-notifications-read-all-418441164:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - readCount
+          type: object
+          properties:
+            readCount:
+              type: number
+              description: 이번 호출로 읽음이 된 건수
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-id-leave-1444522536:
       required:
       - error
@@ -2992,6 +3160,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls1777271249:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            required:
+            - contentLength
+            - contentType
+            type: object
+            properties:
+              contentLength:
+                type: number
+                description: 이미지 바이트 크기 (최대 10MB)
+              contentType:
+                type: string
+                description: 이미지 MIME 타입 (image/* 만 허용)
     api-v1-matches-request-1327932902:
       required:
       - error
@@ -3628,6 +3813,53 @@ components:
           type: object
           description: 응답 본문 없음
           nullable: true
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-notifications-1964664947:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            notifications:
+              type: array
+              items:
+                required:
+                - category
+                - createdAt
+                - id
+                - title
+                - type
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 발생 시각. 상대시간 표기는 클라이언트가 만든다
+                  targetId:
+                    type: number
+                    description: 이동 대상 ID. 무엇을 가리키는지는 type 이 정한다
+                    nullable: true
+                  id:
+                    type: number
+                    description: 알림 ID
+                  body:
+                    type: string
+                    description: 본문
+                    nullable: true
+                  title:
+                    type: string
+                    description: 제목
+                  category:
+                    type: string
+                    description: "필터 카테고리 (MATCHING, CHAT, SYSTEM)"
+                  type:
+                    type: string
+                    description: "알림 유형 (MATCH_RESULT, GROUP_FORMED, REMATCH_MATCHED,\
+                      \ REVIEW_REQUEST, CHAT_MESSAGE, CHAT_ENDING_SOON, SYSTEM_NOTICE)"
         success:
           type: boolean
           description: 성공 여부

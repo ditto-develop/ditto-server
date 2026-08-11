@@ -4,6 +4,8 @@ import com.ditto.api.chat.service.ChatService
 import com.ditto.api.match.dto.GroupMatchDeclineRequest
 import com.ditto.api.match.dto.GroupMatchJoinRequest
 import com.ditto.api.match.dto.GroupMatchJoinResponse
+import com.ditto.api.notification.message.NotificationMessages
+import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.GroupMatch
@@ -22,6 +24,7 @@ class GroupMatchService(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
     private val chatService: ChatService,
+    private val notificationAppender: NotificationAppender,
 ) {
 
     /** 그룹 매칭 참여 */
@@ -45,7 +48,14 @@ class GroupMatchService(
         // findOrCreateRoom 은 비활성 방만 반환하므로, isActive == true 는 이번 참여로 활성화됐음을 뜻한다.
         if (room.isActive) {
             val memberIds = groupMatchMemberRepository.findByRoomId(room.id).map { it.memberId }
-            chatService.createGroupRoom(room.id, memberIds)
+            val chatRoomId = chatService.createGroupRoom(room.id, memberIds)
+            // 그룹이 구성됐다는 사실을 아는 곳이 여기뿐이다. 알림 적재는 자기 트랜잭션에서 커밋되므로
+            // 이 트랜잭션이 롤백되면 알림만 남을 수 있다 — 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
+            notificationAppender.appendAll(
+                memberIds = memberIds,
+                content = NotificationMessages.groupFormed(memberIds.size),
+                targetId = chatRoomId,
+            )
         }
 
         return GroupMatchJoinResponse.from(room)

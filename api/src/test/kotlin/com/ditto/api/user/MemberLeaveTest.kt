@@ -19,6 +19,7 @@ import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
@@ -49,6 +50,7 @@ class MemberLeaveTest(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val notificationRepository: NotificationRepository,
     private val rematchRepository: RematchRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val authService: AuthService,
@@ -350,6 +352,7 @@ class MemberLeaveTest(
                 memberRepository = memberRepository,
                 socialAccountRepository = socialAccountRepository,
                 refreshTokenRepository = refreshTokenRepository,
+                notificationRepository = notificationRepository,
                 serverTimeProvider = serverTimeProvider,
                 dryRun = false,
                 batchLimit = 100,

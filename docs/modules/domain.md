@@ -11,7 +11,7 @@
 ## 패키지 구조
 
 도메인별 패키지 아래에 `entity/`, `repository/`, `repository/querydsl/`를 둔다.
-현재 도메인: `member`, `quiz`, `match`, `review`, `rematch`, `chat`, `memberreport`, `sanction`, `intronote`, `socialaccount`, `refreshtoken`, `system`.
+현재 도메인: `member`, `quiz`, `match`, `review`, `rematch`, `chat`, `notification`, `memberreport`, `sanction`, `intronote`, `socialaccount`, `refreshtoken`, `system`.
 
 - QueryDSL 구현체는 `repository/querydsl/*RepositoryImpl.kt` 네이밍.
 

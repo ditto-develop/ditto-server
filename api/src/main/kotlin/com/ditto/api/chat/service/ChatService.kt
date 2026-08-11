@@ -59,12 +59,13 @@ class ChatService(
     /**
      * 그룹 매칭이 활성화(참가자 임계값 도달)될 때 참가자 전원의 채팅방을 생성한다.
      * 이미 있으면 아무 것도 하지 않는다(멱등). 그룹 참여 트랜잭션 안에서 호출된다.
+     *
+     * @return 만들어진(또는 이미 있던) 방 ID. 그룹 구성 알림이 눌렀을 때 열 방을 가리켜야 해서 돌려준다.
      */
     @Transactional
-    fun createGroupRoom(groupMatchId: Long, memberIds: List<Long>) {
-        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)) {
-            return
-        }
+    fun createGroupRoom(groupMatchId: Long, memberIds: List<Long>): Long {
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)
+            ?.let { return it.id }
 
         val now = realNow()
         val room = chatRoomRepository.save(
@@ -73,6 +74,7 @@ class ChatService(
         chatRoomMemberRepository.saveAll(
             memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
         )
+        return room.id
     }
 
     /**
@@ -83,17 +85,19 @@ class ChatService(
      *
      * 어느 주말에 열지는 예약하는 쪽이 정해 [weekend]로 넘긴다 — 재매칭은 "성사 이후 처음 오는
      * 금요일"이라는 자기 규칙을 쓰고(`RematchChatRoomOpener`), 일반 매칭 방과 다르다.
+     *
+     * @return 예약된(또는 이미 있던) 방 ID. 재매칭 성사 알림이 그 방을 가리켜야 해서 돌려준다.
      */
     @Transactional
-    fun createRematchRoom(rematchId: Long, memberIds: List<Long>, weekend: ChatPeriod) {
-        if (chatRoomRepository.existsBySourceTypeAndSourceId(ChatRoomType.REMATCH, rematchId)) {
-            return
-        }
+    fun createRematchRoom(rematchId: Long, memberIds: List<Long>, weekend: ChatPeriod): Long {
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.REMATCH, rematchId)
+            ?.let { return it.id }
 
         val room = chatRoomRepository.save(ChatRoom.rematch(rematchId, weekend, realNow()))
         chatRoomMemberRepository.saveAll(
             memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) },
         )
+        return room.id
     }
 
     /**

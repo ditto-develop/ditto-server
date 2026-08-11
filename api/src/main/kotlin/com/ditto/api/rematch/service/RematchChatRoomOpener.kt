@@ -1,6 +1,8 @@
 package com.ditto.api.rematch.service
 
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.notification.message.NotificationMessages
+import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.member.entity.MemberStatus
@@ -31,6 +33,7 @@ class RematchChatRoomOpener(
     private val rematchRepository: RematchRepository,
     private val chatService: ChatService,
     private val memberRepository: MemberRepository,
+    private val notificationAppender: NotificationAppender,
 ) {
     /**
      * 방이 없는 성사분에 방을 예약한다. 스케줄러가 주기적으로 부른다.
@@ -82,12 +85,34 @@ class RematchChatRoomOpener(
             return false
         }
 
-        chatService.createRematchRoom(
+        val memberIds = listOf(rematch.memberId1, rematch.memberId2)
+        val chatRoomId = chatService.createRematchRoom(
             rematchId = rematch.id,
-            memberIds = listOf(rematch.memberId1, rematch.memberId2),
+            memberIds = memberIds,
             weekend = ChatPeriod.upcomingWeekendFrom(maxOf(matchedAt, now)),
         )
+        notifyMatched(memberIds, chatRoomId)
         return true
+    }
+
+    /**
+     * 성사 사실을 양쪽에 알린다. 방이 커밋된 뒤에 부르므로 방 없는 알림이 생기지 않는다.
+     *
+     * 알림은 방마다 한 번이다(`REMATCH_MATCHED`의 `target_id` = 방 ID) — 예약이 멱등해 같은 방을
+     * 다시 만들려 해도 알림은 하나다. 문구에 상대 닉네임이 들어가므로 사람마다 따로 남긴다.
+     */
+    private fun notifyMatched(memberIds: List<Long>, chatRoomId: Long) {
+        val nicknamesById = memberRepository.findAllById(memberIds).associate { it.id to it.nickname }
+
+        memberIds.forEach { memberId ->
+            val counterpartNickname = memberIds.firstOrNull { it != memberId }?.let { nicknamesById[it] }
+                ?: return@forEach
+            notificationAppender.append(
+                memberId = memberId,
+                content = NotificationMessages.rematchMatched(counterpartNickname),
+                targetId = chatRoomId,
+            )
+        }
     }
 
     private fun hasLeftMember(rematch: Rematch): Boolean =

@@ -19,6 +19,14 @@ interface ChatRoomRepositoryCustom {
     fun findAllIdsDueToOpen(at: LocalDateTime): List<Long>
 
     /**
+     * 열려 있고 종료 시각이 (`from`, `to`] 안인 방 — 종료 임박 알림 후보.
+     *
+     * 아직 열리지 않은 방(`SCHEDULED`)은 제외한다. 열리기 전에 "곧 종료된다"고 알리면 사용자가 아직
+     * 시작하지도 않은 대화를 재촉받는다. 이미 끝난 방도 알릴 것이 없다.
+     */
+    fun findAllIdsEndingBetween(from: LocalDateTime, to: LocalDateTime): List<Long>
+
+    /**
      * 회원이 참여한 방 중 아직 끝나지 않은(SCHEDULED·ACTIVE) 방이 있는지 — 탈퇴 가드용.
      * "진행 중"의 판정 근거가 방 상태라서 `chat_room_member`를 조인해 확인한다.
      */

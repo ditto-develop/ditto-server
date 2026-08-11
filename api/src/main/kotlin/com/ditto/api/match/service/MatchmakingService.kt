@@ -47,15 +47,19 @@ class MatchmakingService(
     /**
      * 마감([now] 기준)됐고 아직 후보가 없는 퀴즈셋의 매칭 후보를 일괄 생성한다(멱등).
      * 실시간 스케줄러와 어드민 수동 실행이 공유하는 배치 진입점이다.
+     *
+     * @return 이번 호출로 후보를 생성한 퀴즈셋 ID. 알림은 이 트랜잭션이 커밋된 뒤에 남겨야 하므로
+     *   (`MatchResultNotifier`) 대상 목록을 여기서 흘려보낸다.
      */
     @Transactional
-    fun runScheduledMatching(now: LocalDateTime) {
+    fun runScheduledMatching(now: LocalDateTime): List<Long> {
         // 만료 정지 원복을 후보 생성보다 먼저 — 원복된 회원이 이번 매칭 대상에 포함되게 한다 (ADR 0009).
         sanctionExpiryService.expireDue(now)
 
-        quizSetRepository
+        return quizSetRepository
             .findEndedQuizSetsWithoutCandidates(now)
-            .forEach { generateMatchingCandidates(it.id) }
+            .map { it.id }
+            .onEach { generateMatchingCandidates(it) }
     }
 
     /** 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다. */

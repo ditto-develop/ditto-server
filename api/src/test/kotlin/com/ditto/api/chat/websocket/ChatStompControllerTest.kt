@@ -4,6 +4,7 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatSendRequest
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.ChatMessageNotifier
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessageType
@@ -23,7 +24,8 @@ class ChatStompControllerTest {
 
     private val chatService = mockk<ChatService>()
     private val messagingTemplate = mockk<SimpMessagingTemplate>(relaxed = true)
-    private val controller = ChatStompController(chatService, messagingTemplate)
+    private val chatMessageNotifier = mockk<ChatMessageNotifier>(relaxed = true)
+    private val controller = ChatStompController(chatService, messagingTemplate, chatMessageNotifier)
 
     @Test
     @DisplayName("메시지를 저장하고 방 토픽으로 브로드캐스트한다")

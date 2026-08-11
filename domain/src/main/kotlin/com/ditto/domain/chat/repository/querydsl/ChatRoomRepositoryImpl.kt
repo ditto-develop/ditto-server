@@ -32,6 +32,17 @@ class ChatRoomRepositoryImpl(
             )
             .fetch()
 
+    override fun findAllIdsEndingBetween(from: LocalDateTime, to: LocalDateTime): List<Long> =
+        queryFactory
+            .select(chatRoom.id)
+            .from(chatRoom)
+            .where(
+                chatRoom.status.eq(ChatRoomStatus.ACTIVE),
+                chatRoom.expiresAt.gt(from),
+                chatRoom.expiresAt.loe(to),
+            )
+            .fetch()
+
     override fun existsUnendedRoomOfMember(memberId: Long): Boolean =
         queryFactory
             .selectOne()
