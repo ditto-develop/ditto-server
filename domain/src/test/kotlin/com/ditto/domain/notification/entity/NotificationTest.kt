@@ -62,12 +62,6 @@ class NotificationTest : FreeSpec({
             listOf(NotificationType.CHAT_MESSAGE, NotificationType.CHAT_ENDING_SOON)
         NotificationType.of(NotificationCategory.SYSTEM) shouldBe listOf(NotificationType.SYSTEM_NOTICE)
     }
-
-    "중복 정책은 대상 필요 여부를 스스로 답한다" {
-        DuplicatePolicy.ALLOW.requiresTarget shouldBe false
-        DuplicatePolicy.ONCE_PER_TARGET.requiresTarget shouldBe true
-        DuplicatePolicy.COLLAPSE_UNREAD.requiresTarget shouldBe true
-    }
 })
 
 private fun notification(

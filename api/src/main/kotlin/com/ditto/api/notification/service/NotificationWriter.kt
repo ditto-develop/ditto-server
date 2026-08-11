@@ -3,6 +3,7 @@ package com.ditto.api.notification.service
 import com.ditto.api.notification.message.NotificationContent
 import com.ditto.domain.notification.entity.DuplicatePolicy
 import com.ditto.domain.notification.entity.Notification
+import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
@@ -34,20 +35,19 @@ class NotificationWriter(
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun write(memberId: Long, content: NotificationContent, targetId: Long?): Boolean {
         val type = content.type
-        if (type.duplicatePolicy.requiresTarget) {
-            requireNotNull(targetId) { "중복 정책 ${type.duplicatePolicy} 는 targetId 가 필요합니다: type=$type" }
+        when (type.duplicatePolicy) {
+            DuplicatePolicy.ALLOW -> Unit
 
-            when (type.duplicatePolicy) {
-                DuplicatePolicy.ONCE_PER_TARGET ->
-                    if (notificationRepository.existsByMemberIdAndTypeAndTargetId(memberId, type, targetId)) {
-                        return false
-                    }
-                // 안읽은 같은 대상의 알림을 걷어내고 새로 남긴다 — 목록에 한 줄만 보이게 한다.
-                DuplicatePolicy.COLLAPSE_UNREAD ->
-                    notificationRepository.deleteUnread(memberId, type, targetId)
-
-                DuplicatePolicy.ALLOW -> Unit
+            DuplicatePolicy.ONCE_PER_TARGET -> {
+                val target = requireTargetId(type, targetId)
+                if (notificationRepository.existsByMemberIdAndTypeAndTargetId(memberId, type, target)) {
+                    return false
+                }
             }
+
+            // 안읽은 같은 대상의 알림을 걷어내고 새로 남긴다 — 목록에 한 줄만 보이게 한다.
+            DuplicatePolicy.COLLAPSE_UNREAD ->
+                notificationRepository.deleteUnread(memberId, type, requireTargetId(type, targetId))
         }
 
         notificationRepository.save(
@@ -61,4 +61,7 @@ class NotificationWriter(
         )
         return true
     }
+
+    private fun requireTargetId(type: NotificationType, targetId: Long?): Long =
+        requireNotNull(targetId) { "중복 정책 ${type.duplicatePolicy} 는 targetId 가 필요합니다: type=$type" }
 }

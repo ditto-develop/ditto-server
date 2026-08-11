@@ -64,9 +64,4 @@ enum class DuplicatePolicy {
 
     /** 같은 `(회원, 유형, 대상)`의 **안읽은** 행을 지우고 새로 남긴다 — 목록에 한 줄만 보이게 한다. */
     COLLAPSE_UNREAD,
-    ;
-
-    /** 판정 대상(`targetId`)이 반드시 있어야 하는 정책인지. */
-    val requiresTarget: Boolean
-        get() = this != ALLOW
 }
