@@ -97,6 +97,20 @@ class ChatServiceTest(
         response.counterpartMemberIds shouldBe listOf(2L)
         response.lastMessage?.id shouldBe last.id
         response.unreadCount shouldBe 2L
+        response.hasLeft shouldBe false
+    }
+
+    "이탈한 상대는 counterpartMemberIds 에서 빠지고, 내가 나간 방은 hasLeft 로 표시된다" {
+        // given: 3명 방에서 3L 이 이탈
+        val room = saveOpenedRoom(100L, 1L, 2L, 3L)
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        // then: 남은 사람 화면에서 이탈자가 상대 목록에서 빠진다
+        chatService.getMyRooms(memberId = 1L)[0].counterpartMemberIds shouldBe listOf(2L)
+        // then: 이탈자 화면에서는 방이 목록에 남되 hasLeft 로 구분된다 (읽기 전용 안내용)
+        chatService.getMyRooms(memberId = 3L)[0].hasLeft shouldBe true
     }
 
     "메시지 조회는 최신순으로 size 만큼 반환하고 다음 커서를 준다" {

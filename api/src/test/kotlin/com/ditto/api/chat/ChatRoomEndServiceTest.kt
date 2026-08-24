@@ -296,6 +296,26 @@ class ChatRoomEndServiceTest(
                 chatRoomEndService.leave(room.id, memberId = 99L, now = FRIDAY)
             }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
         }
+
+        "이탈자는 그 방에 메시지를 보낼 수 없다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            shouldThrow<WarnException> {
+                chatService.sendMessage(senderId = 1L, roomId = room.id, content = "나갔지만 한마디만")
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+        }
+
+        "이탈자도 지난 대화는 읽을 수 있다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            chatService.sendMessage(senderId = 1L, roomId = room.id, content = "반가워요")
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            val messages = chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 30)
+
+            // 보낸 메시지 + 이탈 시스템 메시지
+            messages.messages.size shouldBe 2
+        }
     }
 
     "종료 후 차단" - {

@@ -53,7 +53,10 @@ class ReviewRequestNotifier(
             return 0
         }
 
-        val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(reviewableRoomIds).groupBy { it.roomId }
+        // 이탈자는 평가 대상이 아니므로(EndedChatRoomLoader 와 같은 기준) 알림도 보내지 않는다.
+        val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(reviewableRoomIds)
+            .filter { !it.hasLeft }
+            .groupBy { it.roomId }
         val nicknamesById = nicknamesOf(membersByRoomId.values.flatten().map { it.memberId })
 
         val appended = reviewableRoomIds.sumOf { roomId ->

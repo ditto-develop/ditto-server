@@ -40,6 +40,15 @@ class ChatRoomUnendedQueryTest(
         chatRoomRepository.existsUnendedRoomOfMember(99L) shouldBe false
     }
 
+    "참여한 방이 ACTIVE 여도 내가 나갔으면 거짓이다 — 나간 방은 탈퇴를 막지 않는다" {
+        val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 6L))
+        chatRoomMemberRepository.save(
+            ChatRoomMember.of(roomId = room.id, memberId = 14L).apply { leave(ChatRoomFixture.DEFAULT_NOW) },
+        )
+
+        chatRoomRepository.existsUnendedRoomOfMember(14L) shouldBe false
+    }
+
     "끝난 방과 안 끝난 방이 섞여 있으면 참이다" {
         val ended = ChatRoomFixture.personal(sourceId = 4L).apply {
             expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))

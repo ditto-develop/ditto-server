@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 data class ChatRoomResponse(
     val roomId: Long,
     val sourceType: ChatRoomType,
-    // 나를 제외한 방 참여자들. 1:1이면 1명, 그룹이면 여러 명.
+    // 나를 제외한, 아직 방에 남아 있는 참여자들. 1:1이면 1명, 그룹이면 여러 명 (이탈자는 빠진다).
     val counterpartMemberIds: List<Long>,
     val lastMessage: ChatMessageResponse?,
     val unreadCount: Long,
@@ -20,6 +20,8 @@ data class ChatRoomResponse(
     // 아래 둘은 종료된 방에만 값이 있다. "누가" 끝냈는지는 대화의 SYSTEM 메시지가 답한다.
     val endedAt: LocalDateTime?,
     val endedReason: ChatEndReason?,
+    // 내가 이 방을 나갔는지. 나간 방은 목록에 남지만 읽기 전용이다.
+    val hasLeft: Boolean,
 ) {
     companion object {
         fun of(
@@ -27,6 +29,7 @@ data class ChatRoomResponse(
             counterpartMemberIds: List<Long>,
             lastMessage: ChatMessageResponse?,
             unreadCount: Long,
+            hasLeft: Boolean,
         ): ChatRoomResponse = ChatRoomResponse(
             roomId = room.id,
             sourceType = room.sourceType,
@@ -39,6 +42,7 @@ data class ChatRoomResponse(
             isEnded = room.isEnded,
             endedAt = room.endedAt,
             endedReason = room.endReason,
+            hasLeft = hasLeft,
         )
     }
 }

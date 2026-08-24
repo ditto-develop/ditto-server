@@ -82,6 +82,7 @@ class ChatControllerTest : ControllerUnitTest() {
                 isEnded = false,
                 endedAt = null,
                 endedReason = null,
+                hasLeft = false,
             ),
         )
 
@@ -120,8 +121,14 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].isEnded").description("종료 여부. true 면 전송·구독이 막히고 조회만 가능"),
                                 fieldWithPath("data[].endedAt").description("실제 종료 시각 (종료 전 null)").optional(),
                                 fieldWithPath("data[].endedReason")
-                                    .description("종료 사유 EXPIRED(기한 만료) / USER_ENDED(참여자 종료). 종료 전 null. 누가 종료했는지는 대화의 SYSTEM 메시지(content=USER_LEFT) senderId 로 확인")
+                                    .description(
+                                        "종료 사유 EXPIRED(기한 만료) / USER_ENDED(참여자 종료) / " +
+                                            "INSUFFICIENT_MEMBERS(그룹 인원 미달 해체). 종료 전 null. " +
+                                            "누가 종료했는지는 대화의 SYSTEM 메시지 senderId 로 확인",
+                                    )
                                     .optional(),
+                                fieldWithPath("data[].hasLeft")
+                                    .description("내가 이 방을 나갔는지. 나간 방은 목록에 남지만 읽기 전용"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

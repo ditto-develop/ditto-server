@@ -48,7 +48,9 @@ class ChatEndingSoonNotifier(
         }
 
         val content = NotificationMessages.chatEndingSoon(leadHours)
+        // 방을 나간 멤버에게는 알리지 않는다 — 종료 임박이 이탈자에게는 의미가 없다.
         val appended = chatRoomMemberRepository.findByRoomIdIn(roomIds)
+            .filter { !it.hasLeft }
             .count { notificationAppender.append(it.memberId, content, targetId = it.roomId) }
 
         if (appended > 0) {
