@@ -8,6 +8,10 @@
 - **새 API는 문서화 테스트를 반드시 함께 작성**한다(테스트 통과해야 문서에 노출됨).
 - `/api/**` 요청엔 반드시 `.withApiKey()`를 호출한다.
 - request/response 필드는 **빠짐없이** 문서화한다.
+- **nullable 필드도 샘플 응답에는 non-null 값이 한 번은 나와야 한다.** 샘플이 전부 null이면 타입을 추론하지 못해
+  그 필드가 openapi.yaml 스키마에서 통째로 빠진다(`fieldWithPath(...).optional()`을 붙여도 마찬가지).
+  목록이면 값이 있는 항목을 하나 섞고, 서버가 항상 null을 주는 필드(미지원 필드 등)만
+  `fieldWithPath(...).type(JsonFieldType.X)`로 타입을 명시한다. 배경: [#140](https://github.com/ditto-develop/ditto-server/issues/140).
 - `tag`는 도메인 단위로 그룹핑(예: `"User"`, `"Auth"`, `"System"`), `summary`는 한 줄.
 
 ---

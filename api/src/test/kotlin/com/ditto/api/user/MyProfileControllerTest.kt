@@ -35,6 +35,7 @@ import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.pat
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -372,9 +373,13 @@ class MyProfileControllerTest : RestDocsTest() {
         fieldWithPath("data.location").description("사는 곳 code").optional(),
         fieldWithPath("data.occupation").description("직업 code").optional(),
         fieldWithPath("data.interests").description("관심사 code 목록"),
-        fieldWithPath("data.rating").description("평점 (평가 도메인 연동 전이라 null)").optional(),
-        fieldWithPath("data.preferredMinAge").description("선호 최소 나이 (미사용, null)").optional(),
-        fieldWithPath("data.preferredMaxAge").description("선호 최대 나이 (미사용, null)").optional(),
+        // 항상 null 인 필드는 type 을 명시해야 스키마에 실린다(값으로 타입을 추론하지 못한다).
+        fieldWithPath("data.rating").type(JsonFieldType.NUMBER)
+            .description("평점 (평가 도메인 연동 전이라 null)").optional(),
+        fieldWithPath("data.preferredMinAge").type(JsonFieldType.NUMBER)
+            .description("선호 최소 나이 (미사용, null)").optional(),
+        fieldWithPath("data.preferredMaxAge").type(JsonFieldType.NUMBER)
+            .description("선호 최대 나이 (미사용, null)").optional(),
         fieldWithPath("error").description("에러 정보 (성공 시 null)"),
     )
 }

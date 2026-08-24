@@ -14,6 +14,7 @@ import com.ditto.api.chat.service.ChatService
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -59,8 +60,8 @@ class ChatControllerTest : ControllerUnitTest() {
         id = id,
         roomId = 1L,
         senderId = 2L,
-        messageType = ChatMessageType.TEXT,
-        content = "안녕하세요",
+        messageType = if (imageUrl != null) ChatMessageType.IMAGE else ChatMessageType.TEXT,
+        content = if (imageUrl != null) "chat/2/photo.png" else "안녕하세요",
         imageUrl = imageUrl,
         createdAt = LocalDateTime.of(2026, 7, 25, 12, 0),
     )
@@ -68,6 +69,8 @@ class ChatControllerTest : ControllerUnitTest() {
     @Test
     @DisplayName("내 채팅방 목록을 조회한다")
     fun getMyRooms() {
+        // 진행 중 방 + 종료된 방을 함께 준다 — nullable 필드(endedAt·endedReason·imageUrl)는
+        // non-null 샘플이 하나는 있어야 openapi.yaml 스키마에 실린다(전부 null이면 필드가 통째로 빠진다).
         every { chatService.getMyRooms(any()) } returns listOf(
             ChatRoomResponse(
                 roomId = 1L,
@@ -81,6 +84,19 @@ class ChatControllerTest : ControllerUnitTest() {
                 isEnded = false,
                 endedAt = null,
                 endedReason = null,
+            ),
+            ChatRoomResponse(
+                roomId = 2L,
+                sourceType = ChatRoomType.REMATCH,
+                counterpartMemberIds = listOf(3L),
+                lastMessage = sampleMessage(id = 7L, imageUrl = "https://cdn.example.com/chat/3/photo.png"),
+                unreadCount = 0L,
+                createdAt = LocalDateTime.of(2026, 7, 18, 11, 0),
+                opensAt = LocalDateTime.of(2026, 7, 17, 0, 0),
+                expiresAt = LocalDateTime.of(2026, 7, 20, 0, 0),
+                isEnded = true,
+                endedAt = LocalDateTime.of(2026, 7, 19, 21, 30),
+                endedReason = ChatEndReason.USER_ENDED,
             ),
         )
 
@@ -102,7 +118,7 @@ class ChatControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data[].roomId").description("채팅방 ID"),
-                                fieldWithPath("data[].sourceType").description("채팅방 유형 (PERSONAL, GROUP)"),
+                                fieldWithPath("data[].sourceType").description("채팅방 유형 (PERSONAL, GROUP, REMATCH)"),
                                 fieldWithPath("data[].counterpartMemberIds[]").description("나를 제외한 참여 회원 ID 목록 (1:1이면 1명)"),
                                 fieldWithPath("data[].lastMessage").description("마지막 메시지 (없으면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.id").description("메시지 ID").optional(),
@@ -133,7 +149,11 @@ class ChatControllerTest : ControllerUnitTest() {
     @DisplayName("채팅방의 과거 메시지를 커서로 조회한다")
     fun getMessages() {
         every { chatService.getMessages(any(), any(), any(), any()) } returns ChatMessagesResponse(
-            messages = listOf(sampleMessage(id = 3L), sampleMessage(id = 2L)),
+            // IMAGE 메시지를 하나 섞는다 — imageUrl 이 전부 null 이면 스키마에서 그 필드가 빠진다.
+            messages = listOf(
+                sampleMessage(id = 3L, imageUrl = "https://cdn.example.com/chat/2/photo.png"),
+                sampleMessage(id = 2L),
+            ),
             nextCursor = 2L,
         )
 

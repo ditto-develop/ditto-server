@@ -36,7 +36,10 @@ class NotificationControllerTest : RestDocsTest() {
     @DisplayName("알림 목록을 최신순으로 조회한다")
     fun getNotifications() {
         val member = saveMember("알림조회회원")
-        save(member.id, NotificationType.MATCH_RESULT, "이번 주 매칭 결과가 나왔어요", targetId = 11L)
+        // 읽은 알림을 하나 섞는다 — readAt 이 전부 null 이면 스키마에서 그 필드가 빠진다.
+        val read = save(member.id, NotificationType.MATCH_RESULT, "이번 주 매칭 결과가 나왔어요", targetId = 11L)
+        read.markRead(LocalDateTime.of(2026, 8, 21, 9, 0))
+        notificationRepository.save(read)
         save(member.id, NotificationType.CHAT_MESSAGE, "산책러버님의 새 메시지", targetId = 22L)
 
         mockMvc.perform(
