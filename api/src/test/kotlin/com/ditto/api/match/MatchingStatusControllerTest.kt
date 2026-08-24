@@ -57,8 +57,14 @@ class MatchingStatusControllerTest : ControllerUnitTest() {
                     respondedAt = LocalDateTime.of(2026, 5, 1, 12, 30),
                 ),
             ),
+            // 응답된 요청을 하나 섞는다 — respondedAt 이 전부 null 이면 스키마에서 그 필드가 빠진다.
             receivedRequests = listOf(
                 sampleRequest(id = 2L, requesterId = 3L, receiverId = 1L, status = PersonalMatchStatus.PENDING),
+                sampleRequest(
+                    id = 3L, requesterId = 4L, receiverId = 1L,
+                    status = PersonalMatchStatus.REJECTED,
+                    respondedAt = LocalDateTime.of(2026, 5, 1, 13, 0),
+                ),
             ),
             hasAcceptedMatch = true,
             acceptedMatchUserId = 2L,
@@ -72,7 +78,7 @@ class MatchingStatusControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.quizSetId").value(10))
             .andExpect(jsonPath("$.data.sentRequests.length()").value(1))
-            .andExpect(jsonPath("$.data.receivedRequests.length()").value(1))
+            .andExpect(jsonPath("$.data.receivedRequests.length()").value(2))
             .andExpect(jsonPath("$.data.hasAcceptedMatch").value(true))
             .andExpect(jsonPath("$.data.acceptedMatchUserId").value(2))
             .andExpect(jsonPath("$.data.groupJoined").value(true))

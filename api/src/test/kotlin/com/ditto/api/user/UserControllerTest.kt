@@ -30,6 +30,7 @@ import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.pos
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -117,7 +118,8 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.job").description("직업 code"),
                                 fieldWithPath("data.caricature").description("프로필 캐리커쳐"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
-                                fieldWithPath("data.role").description("역할"),
+                                fieldWithPath("data.role").type(JsonFieldType.STRING)
+                                    .description("역할 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.createdAt").description("생성일시"),
                                 fieldWithPath("data.updatedAt").description("수정일시"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
@@ -243,9 +245,13 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.location").description("지역 code. 가능한 값: $LOCATION_CODES").optional(),
                                 fieldWithPath("data.occupation").description("직업 code. 가능한 값: $JOB_CODES").optional(),
                                 fieldWithPath("data.interests[]").description("관심사 code 목록. 가능한 값: $INTEREST_CODES").optional(),
-                                fieldWithPath("data.rating").description("평점 (현재 미지원, null)").optional(),
-                                fieldWithPath("data.preferredMinAge").description("선호 최소 나이 (현재 미지원, null)").optional(),
-                                fieldWithPath("data.preferredMaxAge").description("선호 최대 나이 (현재 미지원, null)").optional(),
+                                // 항상 null 인 필드는 type 을 명시해야 스키마에 실린다.
+                                fieldWithPath("data.rating").type(JsonFieldType.NUMBER)
+                                    .description("평점 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMinAge").type(JsonFieldType.NUMBER)
+                                    .description("선호 최소 나이 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMaxAge").type(JsonFieldType.NUMBER)
+                                    .description("선호 최대 나이 (현재 미지원, null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -335,7 +341,8 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.age").description("나이대"),
                                 fieldWithPath("data.birthDate").description("생년월일"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
-                                fieldWithPath("data.role").description("역할"),
+                                fieldWithPath("data.role").type(JsonFieldType.STRING)
+                                    .description("역할 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.createdAt").description("생성일시"),
                                 fieldWithPath("data.updatedAt").description("수정일시"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),

@@ -18,6 +18,7 @@ import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -77,10 +78,12 @@ class MySanctionControllerTest : RestDocsTest() {
                                 fieldWithPath("data.sanction").description("유효한 제재 (없으면 null)").optional(),
                                 fieldWithPath("data.sanction.level").description("제재 수위. 가능한 값: $SANCTION_LEVELS"),
                                 fieldWithPath("data.sanction.levelDescription").description("제재 수위 설명"),
-                                fieldWithPath("data.sanction.reason")
+                                // 직권 제재 샘플이라 null — type 을 명시해야 스키마에 실린다.
+                                fieldWithPath("data.sanction.reason").type(JsonFieldType.STRING)
                                     .description("신고 사유 code (직권 제재는 null). 가능한 값: $REPORT_REASON_CODES")
                                     .optional(),
-                                fieldWithPath("data.sanction.reasonDescription").description("신고 사유 설명 (직권 제재는 null)").optional(),
+                                fieldWithPath("data.sanction.reasonDescription").type(JsonFieldType.STRING)
+                                    .description("신고 사유 설명 (직권 제재는 null)").optional(),
                                 fieldWithPath("data.sanction.startsAt").description("제재 시작 일시"),
                                 fieldWithPath("data.sanction.endsAt").description("제재 종료 일시 (영구 차단은 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
