@@ -1,12 +1,13 @@
 package com.ditto.api.chat.service
 
+import com.ditto.api.chat.dto.ChatLeaveResult
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomStatus
-import com.ditto.api.chat.dto.ChatLeaveResult
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -94,50 +95,57 @@ class ChatRoomEndService(
      *   계속 열려 있으면 아무도 없는 방에 말을 걸게 되기 때문이다.
      *
      * 이미 나갔거나 이미 끝난 방에 다시 요청하면 아무 것도 발행하지 않는다(더블 탭·재시도 대비).
-     * 동시 이탈 경합은 방 행 잠금으로 직렬화한다 — 멤버 행을 바꾸지만 잠그는 대상이 방 행인 이유는,
-     * "잔여 인원 카운트 + 해체 판정"이 방 단위의 원자적 결정이기 때문이다. 각자 자기 멤버 행만 잠그면
-     * 두 명이 동시에 나갈 때 둘 다 "잔여 2명"을 읽어 아무도 해체하지 않는다.
+     *
+     * 동시 이탈 경합은 방 행 잠금이 직렬화하고, 멱등 검사·잔여 인원 카운트는 멤버 행 **잠금 조회**로
+     * 읽는다 — 비잠금 조회는 잠금 대기 전에 고정된 InnoDB 읽기 스냅샷을 쓰므로, 그 사이 커밋된
+     * 다른 멤버의 이탈이 보이지 않아 해체가 누락된다([ChatRoomMemberRepository.findAllWithLockByRoomId]).
+     * 그래서 이 트랜잭션의 첫 조회가 방 행 잠금이어야 하며, 잠금 순서는 항상 방 → 멤버다(데드락 방지).
      */
     @Transactional
     fun leave(roomId: Long, memberId: Long, now: LocalDateTime): ChatLeaveResult {
-        chatRoomAccessChecker.validateMember(roomId, memberId)
         val room = chatRoomRepository.findWithLockById(roomId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
+        val roomMembers = chatRoomMemberRepository.findAllWithLockByRoomId(roomId)
+        val me = roomMembers.find { it.memberId == memberId }
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
         if (room.canEndByUser()) {
             val message = endLockedRoomByUser(room, memberId, now)
             return ChatLeaveResult(
                 systemMessages = listOfNotNull(message),
-                roomEnded = message != null,
+                isRoomEnded = message != null,
             )
         }
-        if (room.isEnded) {
+        if (room.isEnded || me.hasLeft) {
             return ChatLeaveResult.nothing()
         }
-        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
-            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
-        if (roomMember.hasLeft) {
-            return ChatLeaveResult.nothing()
-        }
+        return leaveGroupRoom(room, roomMembers, me, now)
+    }
 
-        // 방 행을 잠근 뒤라 이 카운트는 동시 이탈과 경합하지 않는다. leave 전에 세서 flush 시점에 기대지 않는다.
-        val remainingAfterLeave = chatRoomMemberRepository.countByRoomIdAndLeftAtIsNull(roomId) - 1
-        roomMember.leave(now)
+    /** 잠근 그룹 방에서 [me]를 내보낸다. 잔여 인원이 1명이 되면 방을 해체한다. */
+    private fun leaveGroupRoom(
+        room: ChatRoom,
+        roomMembers: List<ChatRoomMember>,
+        me: ChatRoomMember,
+        now: LocalDateTime,
+    ): ChatLeaveResult {
+        val remainingAfterLeave = roomMembers.count { !it.hasLeft } - 1
+        me.leave(now)
 
         val messages = mutableListOf(
-            chatMessageRepository.save(ChatMessage.system(roomId = roomId, senderId = memberId, content = MEMBER_LEFT)),
+            chatMessageRepository.save(ChatMessage.system(roomId = room.id, senderId = me.memberId, content = MEMBER_LEFT)),
         )
         val shouldDissolve = remainingAfterLeave <= 1
         if (shouldDissolve) {
             room.endByInsufficientMembers(now)
             chatRoomRepository.save(room)
             messages += chatMessageRepository.save(
-                ChatMessage.system(roomId = roomId, senderId = memberId, content = INSUFFICIENT_MEMBERS),
+                ChatMessage.system(roomId = room.id, senderId = me.memberId, content = INSUFFICIENT_MEMBERS),
             )
         }
         return ChatLeaveResult(
             systemMessages = messages.map { ChatMessageResponse.of(it, imageUrl = null) },
-            roomEnded = shouldDissolve,
+            isRoomEnded = shouldDissolve,
         )
     }
 

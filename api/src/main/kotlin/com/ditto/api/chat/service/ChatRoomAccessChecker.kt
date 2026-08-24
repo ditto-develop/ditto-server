@@ -38,7 +38,7 @@ class ChatRoomAccessChecker(
             ?: throw notFoundOrForbidden(roomId)
         // 이탈자는 대화를 이어갈 수 없다. 조회는 [validateMember]를 타므로 여전히 허용된다(읽기 전용).
         if (roomMember.hasLeft) {
-            throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER)
+            throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "이미 나간 채팅방입니다.")
         }
         val room = chatRoomRepository.findById(roomId).orElseThrow { notFoundOrForbidden(roomId) }
         if (room.isBeforeOpen) {

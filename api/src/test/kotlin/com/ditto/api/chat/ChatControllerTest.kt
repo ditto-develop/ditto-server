@@ -281,7 +281,7 @@ class ChatControllerTest : ControllerUnitTest() {
     fun leave() {
         every { chatRoomEndService.leave(any(), any(), any()) } returns ChatLeaveResult(
             systemMessages = listOf(sampleMessage()),
-            roomEnded = false,
+            isRoomEnded = false,
         )
 
         mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/leave", 1L))

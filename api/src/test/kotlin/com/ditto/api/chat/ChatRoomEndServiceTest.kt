@@ -203,7 +203,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
-            result.roomEnded shouldBe false
+            result.isRoomEnded shouldBe false
             result.systemMessages.size shouldBe 1
             result.systemMessages.first().content shouldBe ChatRoomEndService.MEMBER_LEFT
             // 조회자는 이 senderId 로 "○○님이 나갔습니다"를 렌더링한다
@@ -218,7 +218,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
 
-            result.roomEnded shouldBe true
+            result.isRoomEnded shouldBe true
             result.systemMessages.map { it.content } shouldBe listOf(
                 ChatRoomEndService.MEMBER_LEFT,
                 ChatRoomEndService.INSUFFICIENT_MEMBERS,
@@ -237,7 +237,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
-            result.roomEnded shouldBe false
+            result.isRoomEnded shouldBe false
             result.systemMessages.size shouldBe 0
             chatMessageRepository.findAll().size shouldBe 1
         }
@@ -248,7 +248,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = AFTER_EXPIRY)
 
-            result.roomEnded shouldBe false
+            result.isRoomEnded shouldBe false
             result.systemMessages.size shouldBe 0
             chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.EXPIRED
         }
@@ -259,7 +259,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
-            result.roomEnded shouldBe true
+            result.isRoomEnded shouldBe true
             result.systemMessages.first().content shouldBe ChatRoomEndService.USER_LEFT
             chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.USER_ENDED
         }
@@ -275,7 +275,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
-            result.roomEnded shouldBe true
+            result.isRoomEnded shouldBe true
             chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.USER_ENDED
         }
 
@@ -285,7 +285,7 @@ class ChatRoomEndServiceTest(
 
             val result = chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
 
-            result.roomEnded shouldBe false
+            result.isRoomEnded shouldBe false
             result.systemMessages.size shouldBe 0
         }
 

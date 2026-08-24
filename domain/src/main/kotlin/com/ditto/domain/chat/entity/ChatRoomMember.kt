@@ -10,8 +10,12 @@ import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
+import org.hibernate.annotations.DynamicUpdate
 import java.time.LocalDateTime
 
+// 바뀐 컬럼만 UPDATE 한다 — 전 컬럼 UPDATE 면 읽음 처리(readUpTo)와 이탈(leave)이 겹칠 때
+// 먼저 커밋된 left_at 을 읽음 커서 갱신이 NULL 로 되돌려 나간 사람이 참여자로 되살아난다.
+@DynamicUpdate
 @Entity
 @Table(
     name = "chat_room_member",

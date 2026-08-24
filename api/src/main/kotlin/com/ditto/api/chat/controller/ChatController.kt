@@ -86,12 +86,11 @@ class ChatController(
     }
 
     /**
-     * 방 나가기 — 그룹 방에서 나만 빠지고 방은 남은 인원으로 유지된다.
-     * 두 사람 방(일반 1:1·재매칭)은 "나가기"가 곧 종료라 [end]와 같은 규칙으로 처리된다.
-     * 이미 나갔거나 끝난 방에 다시 요청해도 성공으로 답한다(멱등).
+     * 방 나가기. 처리 규칙(두 사람 방 위임·인원 미달 해체·멱등)은 [ChatRoomEndService.leave] 참고.
      *
-     * 이탈로 잔여 인원이 1명이 되면 방이 해체되고(`INSUFFICIENT_MEMBERS`), 그때는 [end]와
-     * 마찬가지로 평가를 연다 — 인원 미달 해체도 정상 종료와 동일하게 평가·재매칭이 열린다(확정 정책).
+     * 해체로 끝난 방도 [end]와 같은 후처리 경로를 탄다. 다만 해체 방은 남은 사람이 1명뿐이라
+     * 평가 성립 최소 인원(2명)에 못 미쳐 실제로 열리는 평가·알림은 없다 — 경로를 가르지 않고
+     * 인원 기준이 거르게 둔다.
      */
     @Loggable
     @PostMapping("/api/v1/chat/rooms/{roomId}/leave")
@@ -103,7 +102,7 @@ class ChatController(
         result.systemMessages.forEach {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
         }
-        if (result.roomEnded) {
+        if (result.isRoomEnded) {
             endedChatReviewOpener.openFor(listOf(roomId))
             reviewRequestNotifier.notifyFor(listOf(roomId))
         }
