@@ -97,6 +97,22 @@ class ChatRoomTest(
             }
         }
 
+        "when: 인원 미달로 해체하면" - {
+            "then: 사유가 INSUFFICIENT_MEMBERS 로 기록되고 DB 에 저장된다" {
+                // 값이 정확히 20자라 컬럼 폭(30) 검증을 겸해 flush 까지 한다.
+                val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 40L))
+                val endedAt = LocalDateTime.of(2026, 3, 14, 21, 0)
+
+                room.endByInsufficientMembers(endedAt)
+
+                chatRoomRepository.saveAndFlush(room).let {
+                    it.isEnded shouldBe true
+                    it.endedAt shouldBe endedAt
+                    it.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+                }
+            }
+        }
+
         "when: 사용자가 끝낼 수 있는 방인지 물으면" - {
             // 두 사람만 있는 방은 한 사람이 끝낼 수 있다. 그룹은 한 명이 나가도 남은 사람들의
             // 대화가 이어져야 하므로 막는다(멤버 이탈은 별도 트랙).
