@@ -5,6 +5,7 @@ import com.ditto.api.chat.dto.ChatImageUploadFileRequest
 import com.ditto.api.chat.dto.ChatImageUploadUrlResponse
 import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
 import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
+import com.ditto.api.chat.dto.ChatLeaveResult
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadRequest
@@ -253,6 +254,51 @@ class ChatControllerTest : ControllerUnitTest() {
                                 "1:1 채팅을 종료합니다. 종료되면 전송·구독이 막히고 평가가 열립니다. " +
                                     "이미 종료된 방에 다시 요청해도 성공으로 답합니다(재시도 대비). " +
                                     "누가 종료했는지는 대화에 남는 SYSTEM 메시지(content=USER_LEFT)의 senderId 로 확인합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("채팅방에서 나간다")
+    fun leave() {
+        every { chatRoomEndService.leave(any(), any(), any()) } returns ChatLeaveResult(
+            systemMessages = listOf(sampleMessage()),
+            roomEnded = false,
+        )
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/leave", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-leave",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅방 나가기")
+                            .description(
+                                "그룹 방에서 나만 빠지고 방은 남은 인원으로 유지됩니다. " +
+                                    "나간 사실은 SYSTEM 메시지(content=MEMBER_LEFT, senderId=나간 회원)로 브로드캐스트됩니다. " +
+                                    "이탈로 잔여 인원이 1명이 되면 방이 해체되고(endedReason=INSUFFICIENT_MEMBERS) " +
+                                    "SYSTEM 메시지(content=INSUFFICIENT_MEMBERS)가 한 건 더 발행됩니다. " +
+                                    "두 사람 방(1:1·재매칭)은 종료(end)와 동일하게 처리됩니다(USER_LEFT). " +
+                                    "이미 나갔거나 끝난 방에 다시 요청해도 성공으로 답합니다(멱등).",
                             )
                             .pathParameters(
                                 parameterWithName("roomId").description("채팅방 ID"),

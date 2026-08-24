@@ -16,4 +16,7 @@ interface ChatRoomMemberRepository : JpaRepository<ChatRoomMember, Long> {
     fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): ChatRoomMember?
 
     fun existsByRoomIdAndMemberId(roomId: Long, memberId: Long): Boolean
+
+    /** 아직 방에 남아 있는(이탈하지 않은) 멤버 수 — 그룹 이탈 시 인원 미달 해체 판정용 */
+    fun countByRoomIdAndLeftAtIsNull(roomId: Long): Long
 }

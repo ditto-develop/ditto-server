@@ -85,6 +85,31 @@ class ChatController(
         return ApiResponse.ok(Unit)
     }
 
+    /**
+     * 방 나가기 — 그룹 방에서 나만 빠지고 방은 남은 인원으로 유지된다.
+     * 두 사람 방(일반 1:1·재매칭)은 "나가기"가 곧 종료라 [end]와 같은 규칙으로 처리된다.
+     * 이미 나갔거나 끝난 방에 다시 요청해도 성공으로 답한다(멱등).
+     *
+     * 이탈로 잔여 인원이 1명이 되면 방이 해체되고(`INSUFFICIENT_MEMBERS`), 그때는 [end]와
+     * 마찬가지로 평가를 연다 — 인원 미달 해체도 정상 종료와 동일하게 평가·재매칭이 열린다(확정 정책).
+     */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/leave")
+    fun leave(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        val result = chatRoomEndService.leave(roomId, principal.memberId, LocalDateTime.now())
+        result.systemMessages.forEach {
+            messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
+        }
+        if (result.roomEnded) {
+            endedChatReviewOpener.openFor(listOf(roomId))
+            reviewRequestNotifier.notifyFor(listOf(roomId))
+        }
+        return ApiResponse.ok(Unit)
+    }
+
     /** 이미지 전송용 presigned PUT URL 발급 (방 멤버만). 업로드 후 messageType=IMAGE, content=objectKey 로 전송. */
     @PostMapping("/api/v1/chat/rooms/{roomId}/image-upload-urls")
     fun issueImageUploadUrls(

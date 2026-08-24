@@ -192,6 +192,112 @@ class ChatRoomEndServiceTest(
         }
     }
 
+    "방 나가기" - {
+        fun saveGroupRoomWithMembers(vararg memberIds: Long) =
+            chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY)).also { room ->
+                chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) })
+            }
+
+        "그룹에서 한 명이 나가면 나간 사실만 남고 방은 유지된다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            result.roomEnded shouldBe false
+            result.systemMessages.size shouldBe 1
+            result.systemMessages.first().content shouldBe ChatRoomEndService.MEMBER_LEFT
+            // 조회자는 이 senderId 로 "○○님이 나갔습니다"를 렌더링한다
+            result.systemMessages.first().senderId shouldBe 1L
+            chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.ACTIVE
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)?.hasLeft shouldBe true
+        }
+
+        "이탈로 잔여 인원이 1명이 되면 방을 해체한다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
+
+            result.roomEnded shouldBe true
+            result.systemMessages.map { it.content } shouldBe listOf(
+                ChatRoomEndService.MEMBER_LEFT,
+                ChatRoomEndService.INSUFFICIENT_MEMBERS,
+            )
+            // 해체 메시지의 senderId 는 마지막 이탈자다
+            result.systemMessages.last().senderId shouldBe 2L
+
+            val reloaded = chatRoomRepository.findAll().first()
+            reloaded.isEnded shouldBe true
+            reloaded.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+        }
+
+        "이미 나간 멤버가 다시 나가도 아무 것도 발행하지 않는다(멱등)" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            result.roomEnded shouldBe false
+            result.systemMessages.size shouldBe 0
+            chatMessageRepository.findAll().size shouldBe 1
+        }
+
+        "이미 종료된 그룹 방에서 나가도 아무 것도 발행하지 않는다(멱등)" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = AFTER_EXPIRY)
+
+            result.roomEnded shouldBe false
+            result.systemMessages.size shouldBe 0
+            chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.EXPIRED
+        }
+
+        // 두 사람 방의 "나가기"는 종료와 같은 뜻이다 — FE 가 방 유형별로 호출을 가르지 않아도 된다.
+        "1:1 방에서 나가면 종료와 동일하게 처리된다" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            result.roomEnded shouldBe true
+            result.systemMessages.first().content shouldBe ChatRoomEndService.USER_LEFT
+            chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.USER_ENDED
+        }
+
+        "재매칭 방에서 나가도 종료와 동일하게 처리된다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 200L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(
+                    ChatRoomMember.of(roomId = room.id, memberId = 1L),
+                    ChatRoomMember.of(roomId = room.id, memberId = 2L),
+                ),
+            )
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            result.roomEnded shouldBe true
+            chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.USER_ENDED
+        }
+
+        "이미 종료된 1:1 방에서 나가도 아무 것도 발행하지 않는다(멱등)" {
+            val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
+            chatRoomEndService.endByUser(room.id, memberId = 1L, now = FRIDAY)
+
+            val result = chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
+
+            result.roomEnded shouldBe false
+            result.systemMessages.size shouldBe 0
+        }
+
+        "방 멤버가 아니면 거부한다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+
+            shouldThrow<WarnException> {
+                chatRoomEndService.leave(room.id, memberId = 99L, now = FRIDAY)
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+        }
+    }
+
     "종료 후 차단" - {
         "종료된 방에는 메시지를 보낼 수 없다" {
             val room = saveRoomWithMembers(FRIDAY, 1L, 2L)
@@ -252,6 +358,35 @@ class ChatRoomEndServiceTest(
             chatRoomRepository.findAll().first().isEnded shouldBe true
             // 먼저 잠근 쪽만 실제로 끝내므로 종료 메시지도 하나뿐이다
             chatMessageRepository.findAll().size shouldBe 1
+        }
+
+        // 각자 자기 멤버 행만 잠그면 두 명이 동시에 나갈 때 둘 다 "잔여 2명"을 읽어 아무도 해체하지
+        // 않는다(1명짜리 방이 남는다). 방 행 잠금이 "이탈 기록 + 잔여 카운트 + 해체 판정"을 직렬화한다.
+        "3명 방에서 두 명이 동시에 나가도 해체가 정확히 한 번 일어난다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(1L, 2L, 3L).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+            )
+            val startLatch = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(2)
+
+            val requests = listOf(1L, 2L).map { memberId ->
+                executor.submit {
+                    startLatch.await()
+                    chatRoomEndService.leave(room.id, memberId, FRIDAY)
+                }
+            }
+            startLatch.countDown()
+            requests.forEach { it.get() }
+            executor.shutdown()
+
+            val reloaded = chatRoomRepository.findAll().first()
+            reloaded.isEnded shouldBe true
+            reloaded.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+            // MEMBER_LEFT 2건 + INSUFFICIENT_MEMBERS 1건 — 해체 메시지가 중복 발행되지 않는다
+            val contents = chatMessageRepository.findAll().map { it.content }
+            contents.count { it == ChatRoomEndService.MEMBER_LEFT } shouldBe 2
+            contents.count { it == ChatRoomEndService.INSUFFICIENT_MEMBERS } shouldBe 1
         }
     }
 })
