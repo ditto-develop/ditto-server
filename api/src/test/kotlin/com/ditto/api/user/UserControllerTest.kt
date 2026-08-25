@@ -21,6 +21,7 @@ import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -30,6 +31,7 @@ import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.pos
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -52,7 +54,7 @@ class UserControllerTest : RestDocsTest() {
     private lateinit var introNoteRepository: IntroNoteRepository
 
     @Test
-    @DisplayName("회원가입에 성공한다")
+    @DisplayName("introduction 을 포함해 가입하면 소개노트에 저장된다")
     fun register() {
         val member = memberRepository.save(Member(nickname = "임시닉네임"))
         val request = CreateUserRequest(
@@ -64,7 +66,8 @@ class UserControllerTest : RestDocsTest() {
             interests = setOf("travel", "music"),
             location = "seoul",
             job = "it-tech",
-            caricature = "m1",
+            caricature = "/onboarding/profileimg/avatar/m1.svg",
+            introduction = "주말마다 한강 산책하는 걸 좋아해요!",
         )
 
         mockMvc.perform(
@@ -78,6 +81,7 @@ class UserControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.id").exists())
             .andExpect(jsonPath("$.data.nickname").value("철수123"))
+            .andExpect(jsonPath("$.data.caricature").value("/onboarding/profileimg/avatar/m1.svg"))
             .andDo(
                 document(
                     "user-register",
@@ -100,7 +104,17 @@ class UserControllerTest : RestDocsTest() {
                                     .description("관심사 code 목록 (필수, 최소 1개). 가능한 값: $INTEREST_CODES"),
                                 fieldWithPath("location").description("사는곳 code (필수). 가능한 값: $LOCATION_CODES"),
                                 fieldWithPath("job").description("직업 code (필수). 가능한 값: $JOB_CODES"),
-                                fieldWithPath("caricature").description("프로필 캐리커쳐 (필수, FE 문자열 그대로 저장)"),
+                                fieldWithPath("caricature")
+                                    .description(
+                                        "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장). 아바타 경로를 실으면 " +
+                                            "프로필 조회의 profileImageUrl 로 그대로 나갑니다",
+                                    ),
+                                fieldWithPath("introduction")
+                                    .description(
+                                        "한 줄 소개 (최대 50자). 소개노트 '나를 한 줄로 표현한다면?' 답변으로 저장됩니다. " +
+                                            "이 응답에는 실리지 않으며 마이프로필 조회(GET /users/me/profile)의 introduction 으로 확인합니다",
+                                    )
+                                    .optional(),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
@@ -117,7 +131,8 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.job").description("직업 code"),
                                 fieldWithPath("data.caricature").description("프로필 캐리커쳐"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
-                                fieldWithPath("data.role").description("역할"),
+                                fieldWithPath("data.role").type(JsonFieldType.STRING)
+                                    .description("역할 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.createdAt").description("생성일시"),
                                 fieldWithPath("data.updatedAt").description("수정일시"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
@@ -126,6 +141,36 @@ class UserControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+
+        // 한 줄 소개는 소개노트 ONE_WORD 에 저장된다 — 프로필 조회·소개노트 화면이 같은 값을 본다
+        val introNote = introNoteRepository.findByMemberIdAndQuestion(member.id, IntroQuestion.ONE_WORD)
+        introNote?.answer shouldBe "주말마다 한강 산책하는 걸 좋아해요!"
+    }
+
+    @Test
+    @DisplayName("introduction 없이 가입하면 소개노트를 만들지 않는다")
+    fun registerWithoutOptionalProfileFields() {
+        val member = memberRepository.save(Member(nickname = "임시닉네임2"))
+        val request = CreateUserRequest(
+            nickname = "영희456",
+            interests = setOf("travel"),
+            location = "seoul",
+            job = "it-tech",
+            caricature = "m2",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/users")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.caricature").value("m2"))
+
+        introNoteRepository.findByMemberIdAndQuestion(member.id, IntroQuestion.ONE_WORD) shouldBe null
     }
 
     @Test
@@ -243,9 +288,13 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.location").description("지역 code. 가능한 값: $LOCATION_CODES").optional(),
                                 fieldWithPath("data.occupation").description("직업 code. 가능한 값: $JOB_CODES").optional(),
                                 fieldWithPath("data.interests[]").description("관심사 code 목록. 가능한 값: $INTEREST_CODES").optional(),
-                                fieldWithPath("data.rating").description("평점 (현재 미지원, null)").optional(),
-                                fieldWithPath("data.preferredMinAge").description("선호 최소 나이 (현재 미지원, null)").optional(),
-                                fieldWithPath("data.preferredMaxAge").description("선호 최대 나이 (현재 미지원, null)").optional(),
+                                // 항상 null 인 필드는 type 을 명시해야 스키마에 실린다.
+                                fieldWithPath("data.rating").type(JsonFieldType.NUMBER)
+                                    .description("평점 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMinAge").type(JsonFieldType.NUMBER)
+                                    .description("선호 최소 나이 (현재 미지원, null)").optional(),
+                                fieldWithPath("data.preferredMaxAge").type(JsonFieldType.NUMBER)
+                                    .description("선호 최대 나이 (현재 미지원, null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -299,7 +348,11 @@ class UserControllerTest : RestDocsTest() {
                 .withApiKey()
                 .withBearerToken(member.id)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(LeaveRequest(reason = "not-useful"))),
+                .content(
+                    objectMapper.writeValueAsString(
+                        LeaveRequest(reason = "other", reasonDetail = "원하는 매칭 상대를 만나기 어려웠어요."),
+                    ),
+                ),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
@@ -323,6 +376,9 @@ class UserControllerTest : RestDocsTest() {
                             )
                             .requestFields(
                                 fieldWithPath("reason").description("탈퇴 사유 code (선택, 최대 50자)").optional(),
+                                fieldWithPath("reasonDetail")
+                                    .description("탈퇴 사유 자유 입력 (선택, 최대 100자). '기타' 선택 시의 서술 — 기타가 아니어도 받습니다")
+                                    .optional(),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
@@ -335,7 +391,8 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.age").description("나이대"),
                                 fieldWithPath("data.birthDate").description("생년월일"),
                                 fieldWithPath("data.joinedAt").description("가입일시"),
-                                fieldWithPath("data.role").description("역할"),
+                                fieldWithPath("data.role").type(JsonFieldType.STRING)
+                                    .description("역할 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.createdAt").description("생성일시"),
                                 fieldWithPath("data.updatedAt").description("수정일시"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),

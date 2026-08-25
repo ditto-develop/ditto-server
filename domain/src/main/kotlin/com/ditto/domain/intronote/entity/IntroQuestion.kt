@@ -24,7 +24,9 @@ enum class IntroQuestion(
     MOST_USED_APPS("most-used-apps", "요즘 내가 가장 많이 쓰는 앱 3개는?"),
     FAVORITE_TIME("favorite-time", "하루 중 가장 좋아하는 시간대는? 그때 주로 뭐해?"),
     NON_NEGOTIABLE("non-negotiable", "내가 절대 양보 못하는 것은?"),
-    ONE_WORD("one-word", "나를 한 단어로 표현한다면?"),
+    // 문구는 Figma 개정에 맞춰 "한 줄"로 바꿨지만 이름과 code 는 유지한다 —
+    // 이름은 DB 저장값(@Enumerated STRING)이고 code 는 FE 계약이라, 바꾸면 마이그레이션과 계약 파손이 따라온다.
+    ONE_WORD("one-word", "나를 한 줄로 표현한다면?"),
     ;
 
     companion object {

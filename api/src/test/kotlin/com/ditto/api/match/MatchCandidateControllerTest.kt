@@ -84,7 +84,7 @@ class MatchCandidateControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.candidates[].nickname").description("닉네임"),
                                 fieldWithPath("data.candidates[].gender").description("성별 (MALE / FEMALE, 없으면 null)").optional(),
                                 fieldWithPath("data.candidates[].age").description("나이 (없으면 null)").optional(),
-                                fieldWithPath("data.candidates[].introduction").description("자기소개 (소개노트 한 단어, 없으면 null)").optional(),
+                                fieldWithPath("data.candidates[].introduction").description("자기소개 (소개노트 한 줄 소개, 없으면 null)").optional(),
                                 fieldWithPath("data.candidates[].location").description("사는 곳 코드"),
                                 fieldWithPath("data.candidates[].profileImageUrl").description("프로필 이미지 (캐리커쳐)"),
                                 fieldWithPath("data.candidates[].matchRate").description("매칭 점수 (0~100)"),
