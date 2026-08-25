@@ -106,6 +106,11 @@ class Member(
     @Comment("탈퇴 사유 code (탈퇴 화면 선택값)")
     @Column(name = "leave_reason", nullable = true, length = 50)
     var leaveReason: String? = null,
+
+    // code 와 분리하는 이유: 한 컬럼에 선택지 code 와 자유 서술이 섞이면 사유 집계 때 파싱이 필요해진다.
+    @Comment("탈퇴 사유 자유 입력 (선택, 최대 100자)")
+    @Column(name = "leave_reason_detail", nullable = true, length = 100)
+    var leaveReasonDetail: String? = null,
 ) : BaseEntity() {
 
     fun activate() {
@@ -143,13 +148,14 @@ class Member(
      * 제재 중에도 탈퇴할 수 있다. hard delete 시절에는 제재 이력과 재가입 식별 근거(SocialAccount)가
      * 함께 사라져 차단 우회 수단이 됐지만, 소프트 삭제는 둘을 모두 보존하므로 막을 이유가 없다.
      */
-    fun leave(reason: String?, now: LocalDateTime) {
+    fun leave(reason: String?, now: LocalDateTime, reasonDetail: String? = null) {
         if (status == MemberStatus.LEFT) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 탈퇴한 회원입니다.")
         }
         status = MemberStatus.LEFT
         leftAt = now
         leaveReason = reason
+        leaveReasonDetail = reasonDetail
     }
 
     /**
@@ -165,6 +171,7 @@ class Member(
         status = MemberStatus.ACTIVE
         leftAt = null
         leaveReason = null
+        leaveReasonDetail = null
     }
 
     /** 탈퇴 후 [retentionDays]일이 지났는지 — 완전 삭제 대상 판정. */
@@ -187,7 +194,8 @@ class Member(
             }
             this.interests = interests
         }
-        if (caricature != null) {
+        // 빈 문자열도 거른다 — null 만 거르면 ""가 저장된 캐리커쳐를 지워 필수값 불변식이 깨진다.
+        if (!caricature.isNullOrBlank()) {
             this.caricature = caricature
         }
     }
