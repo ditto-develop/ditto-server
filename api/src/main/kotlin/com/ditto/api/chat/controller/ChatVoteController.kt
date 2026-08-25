@@ -6,6 +6,7 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
@@ -26,6 +27,7 @@ import java.time.LocalDateTime
 class ChatVoteController(
     private val chatVoteService: ChatVoteService,
     private val messagingTemplate: SimpMessagingTemplate,
+    private val chatVoteClosedNotifier: ChatVoteClosedNotifier,
 ) {
 
     /**
@@ -61,6 +63,7 @@ class ChatVoteController(
         val result = chatVoteService.close(roomId, voteId, principal.memberId, LocalDateTime.now())
         result.systemMessage?.let {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
+            chatVoteClosedNotifier.notifyClosed(roomId, closedBy = principal.memberId)
         }
         return ApiResponse.ok(result.detail)
     }

@@ -24,9 +24,12 @@
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |
+| `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteClosedNotifier` |
 | `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
 
 `MATCH_RESULT`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. 회원+유형만으로 막으면 평생 한 번만 알린다.
+
+\* `VOTE_CLOSED`가 중복을 유형으로 막지 않는 이유: 실제 발행이 close 의 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 마감은 정당한 새 알림이다. 방 종료 동반 마감(`ROOM_ENDED`)은 알리지 않는다 — 방이 끝났다는 사실은 평가 요청 알림이 이미 말한다.
 
 ## 불변식
 

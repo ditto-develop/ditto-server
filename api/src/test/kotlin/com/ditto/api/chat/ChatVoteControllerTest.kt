@@ -12,6 +12,7 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse.MyVoteResponse
 import com.ditto.api.chat.dto.ChatVoteDetailResponse.PlaceOptionResponse
 import com.ditto.api.chat.dto.ChatVoteDetailResponse.TimeOptionResponse
 import com.ditto.api.chat.service.ChatVoteService
+import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatVoteStatus
@@ -42,8 +43,9 @@ class ChatVoteControllerTest : ControllerUnitTest() {
 
     private val chatVoteService: ChatVoteService = mockk()
     private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
+    private val chatVoteClosedNotifier: ChatVoteClosedNotifier = mockk(relaxed = true)
 
-    override val controller = ChatVoteController(chatVoteService, messagingTemplate)
+    override val controller = ChatVoteController(chatVoteService, messagingTemplate, chatVoteClosedNotifier)
 
     /** nullable 필드도 전부 non-null 샘플 — 전부 null 이면 openapi.yaml 스키마에서 그 필드가 빠진다(#140). */
     private fun sampleDetail(
