@@ -41,10 +41,14 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 | `USER_LEFT` | 참여자가 채팅을 종료함 (두 사람 방) | 나간 회원 | 끝남 |
 | `MEMBER_LEFT` | 그룹 멤버가 방을 나감 | 나간 회원 | **계속됨** |
 | `INSUFFICIENT_MEMBERS` | 이탈로 잔여 1명이 되어 자동 해체됨 | 마지막 이탈자 | 끝남 |
+| `VOTE_CREATED:{voteId}` | 만남 투표가 만들어짐 | 만든 회원 | 계속됨 |
+| `VOTE_CLOSED:{voteId}` | 만남 투표가 마감됨 | 마감한 회원 | 계속됨 |
 
 `USER_LEFT`와 `MEMBER_LEFT`를 나누는 이유: 재사용하면 같은 코드가 1:1에서는 "방이 끝났다", 그룹에서는 "방은 계속된다"로 정반대를 뜻해 과거 메시지를 되짚어 해석할 수 없어진다. 해체 시에는 `MEMBER_LEFT` + `INSUFFICIENT_MEMBERS`가 연달아 발행된다.
 
-값 추가 전용이다 — 채팅 연장([#121](https://github.com/ditto-develop/ditto-server/issues/121)), 그룹 투표 등은 해당 기능을 만들 때 코드를 추가한다.
+투표 코드만 `코드:voteId` 접미가 붙는다 — 클라이언트가 배너·카드에서 상세를 재조회하려면 voteId 가 필요해서다(콜론 split 한 번).
+
+값 추가 전용이다 — 채팅 연장([#121](https://github.com/ditto-develop/ditto-server/issues/121)) 등은 해당 기능을 만들 때 코드를 추가한다.
 
 ## 핵심 규칙·불변식
 - 방 생성: `PersonalMatch` 수락(ACCEPT) 시, 그룹은 `GroupMatch` 활성화 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op).

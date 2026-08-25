@@ -14,6 +14,7 @@ import com.ditto.domain.chat.ChatVoteFixture
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
 import com.ditto.domain.chat.repository.ChatVoteOptionRepository
@@ -36,6 +37,7 @@ class ChatVoteServiceTest(
     private val chatVoteRepository: ChatVoteRepository,
     private val chatVoteOptionRepository: ChatVoteOptionRepository,
     private val chatVoteChoiceRepository: ChatVoteChoiceRepository,
+    private val chatMessageRepository: ChatMessageRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -59,11 +61,15 @@ class ChatVoteServiceTest(
         timeOptions = meetAts.map { TimeOptionRequest(meetAt = it) },
     )
 
+    // 생성 결과에서 상세만 꺼낸다 — 생성 SYSTEM 메시지는 별도 케이스("생성은 사건 메시지를 남긴다")가 검증한다.
+    fun createVoteDetail(roomId: Long, memberId: Long, request: ChatVoteCreateRequest) =
+        chatVoteService.createVote(roomId, memberId, request).detail
+
     "투표 생성" - {
         "생성하면 선택지가 저장되고 상세 형태로 돌아온다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
 
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
 
             detail.voteId shouldNotBe 0L
             detail.status shouldBe ChatVoteStatus.OPEN
@@ -76,24 +82,34 @@ class ChatVoteServiceTest(
             chatVoteOptionRepository.findAll().size shouldBe 4
         }
 
+        "생성은 사건 메시지를 남긴다 — 대화 스트림의 투표 카드와 배너의 근거다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+
+            val result = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+
+            result.systemMessage?.content shouldBe "VOTE_CREATED:${result.detail.voteId}"
+            result.systemMessage?.senderId shouldBe 1L
+            chatMessageRepository.findAll().single().content shouldBe "VOTE_CREATED:${result.detail.voteId}"
+        }
+
         "이미 열린 투표가 있으면 VOTE_ALREADY_EXISTS 로 거부한다 — 그것을 돌려주지 않는다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            createVoteDetail(room.id, memberId = 1L, request = createRequest())
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(room.id, memberId = 2L, request = createRequest())
+                createVoteDetail(room.id, memberId = 2L, request = createRequest())
             }.errorCode shouldBe ErrorCode.VOTE_ALREADY_EXISTS
         }
 
         "마감된 투표만 있으면 새로 만들 수 있다 — 닫힌 투표는 방당 1개 제약에서 빠진다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val first = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val first = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(first.voteId).get().let {
                 it.close(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
             }
 
-            val second = chatVoteService.createVote(room.id, memberId = 2L, request = createRequest())
+            val second = createVoteDetail(room.id, memberId = 2L, request = createRequest())
 
             second.voteId shouldNotBe first.voteId
             chatVoteRepository.findAllByRoomIdOrderByIdDesc(room.id).size shouldBe 2
@@ -104,7 +120,7 @@ class ChatVoteServiceTest(
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = 1L))
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+                createVoteDetail(room.id, memberId = 1L, request = createRequest())
             }.errorCode shouldBe ErrorCode.GROUP_ROOM_ONLY
         }
 
@@ -116,7 +132,7 @@ class ChatVoteServiceTest(
                 .let { chatRoomMemberRepository.save(it) }
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(room.id, memberId = 3L, request = createRequest())
+                createVoteDetail(room.id, memberId = 3L, request = createRequest())
             }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
         }
 
@@ -124,7 +140,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(WEDNESDAY, 1L, 2L, 3L)
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+                createVoteDetail(room.id, memberId = 1L, request = createRequest())
             }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_OPENED
         }
 
@@ -134,7 +150,7 @@ class ChatVoteServiceTest(
             chatRoomRepository.save(room)
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+                createVoteDetail(room.id, memberId = 1L, request = createRequest())
             }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
         }
 
@@ -142,7 +158,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(
+                createVoteDetail(
                     room.id, memberId = 1L,
                     request = createRequest(placeLabels = listOf("성수 카페거리", "성수 카페거리")),
                 )
@@ -154,7 +170,7 @@ class ChatVoteServiceTest(
             val meetAt = LocalDateTime.of(2026, 3, 14, 19, 0)
 
             shouldThrow<WarnException> {
-                chatVoteService.createVote(
+                createVoteDetail(
                     room.id, memberId = 1L,
                     request = createRequest(meetAts = listOf(meetAt, meetAt.plusSeconds(30))),
                 )
@@ -165,7 +181,7 @@ class ChatVoteServiceTest(
     "cast — 투표하기 (치환)" - {
         "첫 투표는 표를 만들고 votedCount·myVote 가 채워진다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
             val timeId = detail.timeOptions[0].optionId
 
@@ -182,7 +198,7 @@ class ChatVoteServiceTest(
         // 재투표 화면이 기존 선택을 유지한 채 재제출한다 — 겹치는 표가 정상 경로다.
         "재투표는 치환이다 — 겹치는 표를 유지한 채 빠진 것만 지우고 새 것만 넣는다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(
+            val detail = createVoteDetail(
                 room.id, memberId = 1L, request = createRequest(allowMultiple = true),
             )
             val (placeA, placeB) = detail.placeOptions.map { it.optionId }
@@ -205,7 +221,7 @@ class ChatVoteServiceTest(
 
         "빈 요청은 내 표 전체 취소다 — myVote 가 null 로 돌아간다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
             chatVoteService.cast(
                 room.id, detail.voteId, memberId = 2L,
@@ -222,7 +238,7 @@ class ChatVoteServiceTest(
 
         "다른 투표의 선택지 ID 면 INVALID_VOTE_OPTION 이다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
 
             shouldThrow<WarnException> {
                 chatVoteService.cast(
@@ -234,7 +250,7 @@ class ChatVoteServiceTest(
 
         "시간 선택지를 placeIds 에 실으면 INVALID_VOTE_OPTION 이다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val timeId = detail.timeOptions[0].optionId
 
             shouldThrow<WarnException> {
@@ -247,7 +263,7 @@ class ChatVoteServiceTest(
 
         "복수 선택이 꺼져 있으면 유형별 2개 이상은 VOTE_MULTIPLE_NOT_ALLOWED 다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(
+            val detail = createVoteDetail(
                 room.id, memberId = 1L, request = createRequest(allowMultiple = false),
             )
             val placeIds = detail.placeOptions.map { it.optionId }
@@ -262,7 +278,7 @@ class ChatVoteServiceTest(
 
         "마감된 투표에는 던질 수 없다 — VOTE_ALREADY_CLOSED" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(detail.voteId).get().let {
                 it.close(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
@@ -278,7 +294,7 @@ class ChatVoteServiceTest(
 
         "방을 나간 멤버는 던질 수 없다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 2L)!!
                 .apply { leave(FRIDAY) }
                 .let { chatRoomMemberRepository.save(it) }
@@ -293,7 +309,7 @@ class ChatVoteServiceTest(
 
         "종료된 방에서는 던질 수 없다 — CHAT_ROOM_ENDED" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
             chatRoomRepository.save(room)
 
@@ -308,7 +324,7 @@ class ChatVoteServiceTest(
         // 투표 행 잠금이 치환 구간을 직렬화한다 — 겹치면 삭제·삽입 사이의 중간 상태가 셀 수 있다.
         "세 명이 동시에 던져도 표가 정확히 수렴한다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
             val timeId = detail.timeOptions[0].optionId
             val startLatch = CountDownLatch(1)
@@ -333,10 +349,48 @@ class ChatVoteServiceTest(
         }
     }
 
+    "close — 마감" - {
+        "마감하면 상태가 닫히고 사건 메시지가 남는다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+
+            val result = chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = FRIDAY.plusHours(2))
+
+            result.detail.status shouldBe ChatVoteStatus.CLOSED
+            result.systemMessage?.content shouldBe "VOTE_CLOSED:${detail.voteId}"
+            // 마감자는 senderId 가 들고 있다 — 권한이 멤버 누구나라 생성자가 아닐 수 있다
+            result.systemMessage?.senderId shouldBe 2L
+        }
+
+        "재요청은 성공하되 사건 메시지를 다시 만들지 않는다(멱등)" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatVoteService.close(room.id, detail.voteId, memberId = 1L, now = FRIDAY.plusHours(2))
+
+            val again = chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = FRIDAY.plusHours(3))
+
+            again.detail.status shouldBe ChatVoteStatus.CLOSED
+            again.systemMessage shouldBe null
+            chatMessageRepository.findAll().count { it.content.startsWith("VOTE_CLOSED:") } shouldBe 1
+        }
+
+        "방을 나간 멤버는 마감할 수 없다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 2L)!!
+                .apply { leave(FRIDAY) }
+                .let { chatRoomMemberRepository.save(it) }
+
+            shouldThrow<WarnException> {
+                chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = FRIDAY.plusHours(2))
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+        }
+    }
+
     "조회" - {
         "상세는 선택지별 투표자와 내 표를 담는다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
             val timeId = detail.timeOptions[0].optionId
             chatVoteChoiceRepository.save(ChatVoteFixture.choice(detail.voteId, placeId, memberId = 1L))
@@ -356,7 +410,7 @@ class ChatVoteServiceTest(
         // 이탈자 정책 — 조회는 되고(읽기 전용), 표는 집계에서 빠진다(분자·분모가 함께 준다).
         "이탈자도 결과를 읽을 수 있고, 이탈자의 표는 집계에서 빠진다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
             chatVoteChoiceRepository.save(ChatVoteFixture.choice(detail.voteId, placeId, memberId = 3L))
             chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)!!
@@ -375,12 +429,12 @@ class ChatVoteServiceTest(
 
         "목록은 최신 투표가 앞이다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
-            val first = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val first = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(first.voteId).get().let {
                 it.close(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
             }
-            val second = chatVoteService.createVote(room.id, memberId = 2L, request = createRequest())
+            val second = createVoteDetail(room.id, memberId = 2L, request = createRequest())
 
             chatVoteService.getVotes(room.id, memberId = 1L).map { it.voteId } shouldBe
                 listOf(second.voteId, first.voteId)
@@ -390,7 +444,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
             val other = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 400L, now = FRIDAY))
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = other.id, memberId = 1L))
-            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
 
             shouldThrow<WarnException> {
                 chatVoteService.getVote(other.id, detail.voteId, memberId = 1L)

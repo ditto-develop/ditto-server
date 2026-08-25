@@ -2,6 +2,8 @@ package com.ditto.api.chat
 
 import com.ditto.api.chat.controller.ChatVoteController
 import com.ditto.api.chat.dto.ChatVoteCastRequest
+import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.chat.dto.ChatVoteChangeResult
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
@@ -11,15 +13,18 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse.PlaceOptionResponse
 import com.ditto.api.chat.dto.ChatVoteDetailResponse.TimeOptionResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
@@ -36,8 +41,9 @@ import java.time.LocalDateTime
 class ChatVoteControllerTest : ControllerUnitTest() {
 
     private val chatVoteService: ChatVoteService = mockk()
+    private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
 
-    override val controller = ChatVoteController(chatVoteService)
+    override val controller = ChatVoteController(chatVoteService, messagingTemplate)
 
     /** nullable 필드도 전부 non-null 샘플 — 전부 null 이면 openapi.yaml 스키마에서 그 필드가 빠진다(#140). */
     private fun sampleDetail(
@@ -76,6 +82,16 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         myVote = myVote,
     )
 
+    private fun sampleSystemMessage(content: String) = ChatMessageResponse(
+        id = 900L,
+        roomId = 87L,
+        senderId = 12L,
+        messageType = ChatMessageType.SYSTEM,
+        content = content,
+        imageUrl = null,
+        createdAt = LocalDateTime.of(2026, 3, 24, 21, 3, 12),
+    )
+
     private fun detailResponseFields(prefix: String) = arrayOf(
         fieldWithPath("${prefix}voteId").description("투표 ID"),
         fieldWithPath("${prefix}roomId").description("채팅방 ID"),
@@ -109,8 +125,10 @@ class ChatVoteControllerTest : ControllerUnitTest() {
     @Test
     @DisplayName("그룹 방에 만남 투표를 만든다")
     fun createVote() {
-        every { chatVoteService.createVote(any(), any(), any()) } returns
-            sampleDetail(myVote = null).copy(votedCount = 0)
+        every { chatVoteService.createVote(any(), any(), any()) } returns ChatVoteChangeResult(
+            detail = sampleDetail(myVote = null).copy(votedCount = 0),
+            systemMessage = sampleSystemMessage("VOTE_CREATED:41"),
+        )
 
         val request = ChatVoteCreateRequest(
             allowMultiple = false,
@@ -135,6 +153,7 @@ class ChatVoteControllerTest : ControllerUnitTest() {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.voteId").value(41L))
+            .andDo { verify(exactly = 1) { messagingTemplate.convertAndSend("/sub/chat/rooms/87", any<Any>()) } }
             .andDo(
                 document(
                     "chat-vote-create",
@@ -252,6 +271,50 @@ class ChatVoteControllerTest : ControllerUnitTest() {
                             .requestFields(
                                 fieldWithPath("placeIds[]").description("선택한 장소 선택지 ID 목록 (빈 배열 = 장소 표 취소)"),
                                 fieldWithPath("timeIds[]").description("선택한 시간 선택지 ID 목록 (빈 배열 = 시간 표 취소)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                *detailResponseFields("data."),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("투표를 마감한다 — 멱등, 실제로 닫은 요청만 브로드캐스트")
+    fun close() {
+        every { chatVoteService.close(any(), any(), any(), any()) } returns ChatVoteChangeResult(
+            detail = sampleDetail(status = ChatVoteStatus.CLOSED, closedAt = LocalDateTime.of(2026, 3, 26, 21, 0)),
+            systemMessage = sampleSystemMessage("VOTE_CLOSED:41"),
+        )
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/votes/{voteId}/close", 87L, 41L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.status").value("CLOSED"))
+            .andDo(
+                document(
+                    "chat-vote-close",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                        parameterWithName("voteId").description("투표 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("투표 마감")
+                            .description(
+                                "투표를 마감합니다. 권한은 방 멤버 누구나이며, 마감하면 표를 던질 수 없습니다. " +
+                                    "이미 마감된 투표에 다시 요청해도 성공으로 답합니다(멱등). " +
+                                    "마감 SYSTEM 메시지(content=VOTE_CLOSED:{voteId})는 실제로 닫은 요청만 발행합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                                parameterWithName("voteId").description("투표 ID"),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),

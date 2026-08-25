@@ -1,23 +1,28 @@
 package com.ditto.api.chat.service
 
+import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatVoteCastRequest
+import com.ditto.api.chat.dto.ChatVoteChangeResult
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.ChatVote
 import com.ditto.domain.chat.entity.ChatVoteChoice
 import com.ditto.domain.chat.entity.ChatVoteOption
 import com.ditto.domain.chat.entity.ChatVoteOptionType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
 import com.ditto.domain.chat.repository.ChatVoteOptionRepository
 import com.ditto.domain.chat.repository.ChatVoteRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 /**
  * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성과 조회.
@@ -35,6 +40,7 @@ class ChatVoteService(
     private val chatVoteRepository: ChatVoteRepository,
     private val chatVoteOptionRepository: ChatVoteOptionRepository,
     private val chatVoteChoiceRepository: ChatVoteChoiceRepository,
+    private val chatMessageRepository: ChatMessageRepository,
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) {
 
@@ -46,7 +52,7 @@ class ChatVoteService(
      * 거부한다 — 돌려주면 FE 가 자기가 만든 투표라고 착각한다.
      */
     @Transactional
-    fun createVote(roomId: Long, memberId: Long, request: ChatVoteCreateRequest): ChatVoteDetailResponse {
+    fun createVote(roomId: Long, memberId: Long, request: ChatVoteCreateRequest): ChatVoteChangeResult {
         val room = chatRoomRepository.findWithLockById(roomId) ?: throw WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
 
         validateVotableRoom(room, memberId)
@@ -75,10 +81,53 @@ class ChatVoteService(
             },
         )
 
-        return ChatVoteDetailResponse.beforeAnyVote(
-            vote = vote,
-            options = options,
-            activeMemberIds = activeMemberIds(roomId),
+        // 생성 사실을 대화 스트림에 남긴다 — 화면이 "생성 사용자 전송 메시지"를 요구하고(피그마 4.2.3),
+        // FE 는 이 메시지의 senderId 로 작성자 프로필을 붙인다. voteId 는 코드 뒤에 실어 상세 재조회의 키가 된다.
+        val systemMessage = chatMessageRepository.save(
+            ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CREATED:${vote.id}"),
+        )
+
+        return ChatVoteChangeResult(
+            detail = ChatVoteDetailResponse.beforeAnyVote(
+                vote = vote,
+                options = options,
+                activeMemberIds = activeMemberIds(roomId),
+            ),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+        )
+    }
+
+    /**
+     * 투표를 마감한다 — 마감하면 표를 던질 수 없고 결과만 남는다. 권한은 방 멤버 누구나다.
+     *
+     * 멱등이다: 이미 닫힌 투표에 다시 요청해도 성공으로 답하되, SYSTEM 메시지는 **이번 요청이
+     * 실제로 닫았을 때만** 담는다(더블 탭·재시도가 마감 메시지를 두 번 남기지 않게 — 채팅 종료와 같은 규칙).
+     */
+    @Transactional
+    fun close(roomId: Long, voteId: Long, memberId: Long, now: LocalDateTime): ChatVoteChangeResult {
+        val vote = chatVoteRepository.findWithLockById(voteId)
+            ?: throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        if (vote.roomId != roomId) {
+            throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        }
+        val room = chatRoomRepository.findById(roomId).orElseThrow {
+            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
+        }
+        validateVotableRoom(room, memberId)
+
+        val activeMemberIds = activeMemberIds(roomId)
+        if (vote.isClosed) {
+            return ChatVoteChangeResult(detail = toDetail(vote, activeMemberIds, memberId), systemMessage = null)
+        }
+
+        vote.close(by = memberId, at = now)
+        chatVoteRepository.save(vote)
+        val systemMessage = chatMessageRepository.save(
+            ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CLOSED:${vote.id}"),
+        )
+        return ChatVoteChangeResult(
+            detail = toDetail(vote, activeMemberIds, memberId),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
         )
     }
 
@@ -243,4 +292,14 @@ class ChatVoteService(
             .filter { !it.hasLeft }
             .map { it.memberId }
             .toSet()
+
+    companion object {
+        /**
+         * 투표 사건 코드 — SYSTEM 메시지 content 에 `"코드:voteId"` 형식으로 실린다.
+         * 다른 사건 코드(USER_LEFT 등)와 달리 접미가 붙는 이유: 클라이언트가 배너·카드에서
+         * 상세를 재조회하려면 voteId 가 필요하다. 표시 문구는 클라이언트가 만든다(docs/domains/chat.md).
+         */
+        const val VOTE_CREATED = "VOTE_CREATED"
+        const val VOTE_CLOSED = "VOTE_CLOSED"
+    }
 }
