@@ -8,13 +8,16 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatVoteFixture
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomStatus
+import com.ditto.domain.chat.entity.ChatVoteCloseReason
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.chat.repository.ChatVoteRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
@@ -28,6 +31,7 @@ private val AFTER_EXPIRY = LocalDateTime.of(2026, 3, 16, 0, 0)
 
 class ChatRoomEndServiceTest(
     private val chatRoomEndService: ChatRoomEndService,
+    private val chatVoteRepository: ChatVoteRepository,
     private val chatService: ChatService,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
@@ -49,6 +53,23 @@ class ChatRoomEndServiceTest(
             ended.size shouldBe 1
             chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.ENDED
             chatRoomRepository.findAll().first().endReason shouldBe ChatEndReason.EXPIRED
+        }
+
+        "만료로 끝나는 방의 열린 투표를 함께 닫는다 — 시스템 마감이라 closedBy 가 없다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(1L, 2L, 3L).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+            )
+            val vote = chatVoteRepository.save(ChatVoteFixture.open(roomId = room.id))
+
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            chatVoteRepository.findById(vote.id).get().let {
+                it.isClosed shouldBe true
+                it.closedReason shouldBe ChatVoteCloseReason.ROOM_ENDED
+                it.closedBy shouldBe null
+                it.closedAt shouldBe AFTER_EXPIRY
+            }
         }
 
         "기한 전이면 마감하지 않는다" {
@@ -229,6 +250,20 @@ class ChatRoomEndServiceTest(
             val reloaded = chatRoomRepository.findAll().first()
             reloaded.isEnded shouldBe true
             reloaded.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+        }
+
+        "해체되는 방의 열린 투표를 함께 닫는다" {
+            val room = saveGroupRoomWithMembers(1L, 2L, 3L)
+            val vote = chatVoteRepository.save(ChatVoteFixture.open(roomId = room.id))
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
+
+            chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
+
+            chatVoteRepository.findById(vote.id).get().let {
+                it.isClosed shouldBe true
+                it.closedReason shouldBe ChatVoteCloseReason.ROOM_ENDED
+                it.closedBy shouldBe null
+            }
         }
 
         "이미 나간 멤버가 다시 나가도 아무 것도 발행하지 않는다(멱등)" {

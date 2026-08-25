@@ -13,7 +13,8 @@ CREATE TABLE chat_vote
     allow_multiple BOOLEAN     NOT NULL COMMENT '복수 선택 허용 여부 (생성 시 확정, 장소·시간 공통)',
     status         VARCHAR(20) NOT NULL COMMENT '상태 (OPEN, CLOSED)',
     closed_at      DATETIME(6) NULL COMMENT '마감 시각 (진행 중이면 NULL)',
-    closed_by      BIGINT      NULL COMMENT '마감한 회원 ID (진행 중이면 NULL)',
+    closed_reason  VARCHAR(20) NULL COMMENT '마감 사유 (MEMBER, ROOM_ENDED. 진행 중이면 NULL)',
+    closed_by      BIGINT      NULL COMMENT '마감한 회원 ID (멤버 마감일 때만 값)',
     created_at     DATETIME(6) NOT NULL,
     updated_at     DATETIME(6) NOT NULL,
     -- 방당 열린 투표는 하나다("투표 생성 후 바텀시트에서 '투표 만들기' 삭제", 피그마 4.2.3).

@@ -11,6 +11,7 @@ import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.chat.repository.ChatVoteRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,6 +33,7 @@ import java.time.LocalDateTime
 class ChatRoomEndService(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val chatVoteRepository: ChatVoteRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
 ) {
@@ -44,6 +46,7 @@ class ChatRoomEndService(
         val ended = chatRoomRepository.findAllIdsDueToEnd(now)
             .mapNotNull { roomId -> lockIfStillOpen(roomId)?.also { it.expire(now) } }
         chatRoomRepository.saveAll(ended)
+        ended.forEach { closeOpenVoteQuietly(it.id, now) }
 
         if (ended.isNotEmpty()) {
             logger.info { "채팅방 만료 마감: ${ended.size}건" }
@@ -139,6 +142,7 @@ class ChatRoomEndService(
         if (shouldDissolve) {
             room.endByInsufficientMembers(now)
             chatRoomRepository.save(room)
+            closeOpenVoteQuietly(room.id, now)
             messages += chatMessageRepository.save(
                 ChatMessage.system(roomId = room.id, senderId = me.memberId, content = INSUFFICIENT_MEMBERS),
             )
@@ -160,6 +164,23 @@ class ChatRoomEndService(
             ChatMessage.system(roomId = room.id, senderId = memberId, content = USER_LEFT),
         )
         return ChatMessageResponse.of(message, imageUrl = null)
+    }
+
+    /**
+     * 끝난 방의 열린 투표를 함께 닫는다 — 안 닫으면 종료된 방에 영원히 OPEN 인 투표가 남는다.
+     *
+     * SYSTEM 메시지는 남기지 않는다: 방이 이미 끝나 구독이 막혀 있고(7004), 만료 마감이 원래
+     * 메시지를 만들지 않는 계약과 같은 결이다. 마감자가 없으므로 사유가 ROOM_ENDED 로 남는다.
+     * 투표 행을 잠그고 닫는다 — 진행 중인 cast·close 와의 경합을 직렬화한다(잠금 순서 방 → 투표).
+     */
+    private fun closeOpenVoteQuietly(roomId: Long, now: LocalDateTime) {
+        val openVote = chatVoteRepository.findByOpenRoomId(roomId) ?: return
+        chatVoteRepository.findWithLockById(openVote.id)
+            ?.takeIf { !it.isClosed }
+            ?.let {
+                it.closeBecauseRoomEnded(at = now)
+                chatVoteRepository.save(it)
+            }
     }
 
     /** 잠근 뒤에도 여전히 열려 있는 방만 돌려준다 — 잠금을 기다리는 사이 사용자가 먼저 끝냈을 수 있다. */

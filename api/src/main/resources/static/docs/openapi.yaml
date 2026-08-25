@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-25 20:03:30"
+                          "createdAt" : "2026-08-25 20:21:50"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-25 20:03:30"
+                          "createdAt" : "2026-08-25 20:21:50"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/1f42d704-9ec8-4337-a0fc-0fbc3dadf94f" ],
+                    "imageKeys" : [ "pending/user-reports/1/4bbccd53-2dcf-4b45-834e-0a33629a42c2" ],
                     "block" : false
                   }
       responses:
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-25 20:03:31",
+                        "joinedAt" : "2026-08-25 20:21:51",
                         "role" : null,
-                        "createdAt" : "2026-08-25 20:03:31",
-                        "updatedAt" : "2026-08-25 20:03:31"
+                        "createdAt" : "2026-08-25 20:21:51",
+                        "updatedAt" : "2026-08-25 20:21:51"
                       },
                       "error" : null
                     }
@@ -565,8 +565,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-24 20:03:31",
-                          "endDate" : "2026-08-26 20:03:31",
+                          "startDate" : "2026-08-24 20:21:50",
+                          "endDate" : "2026-08-26 20:21:50",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -583,8 +583,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-25 20:03:31",
-                            "updatedAt" : "2026-08-25 20:03:31"
+                            "createdAt" : "2026-08-25 20:21:50",
+                            "updatedAt" : "2026-08-25 20:21:50"
                           } ]
                         } ]
                       },
@@ -631,8 +631,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-25 20:03:31",
-                        "updatedAt" : "2026-08-25 20:03:31"
+                        "createdAt" : "2026-08-25 20:21:50",
+                        "updatedAt" : "2026-08-25 20:21:50"
                       },
                       "error" : null
                     }
@@ -709,11 +709,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/3dc2b604-d760-4dd1-b397-3ecb3397fbd2",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/3dc2b604-d760-4dd1-b397-3ecb3397fbd2"
+                          "objectKey" : "pending/user-reports/1/27faaaf8-1931-429f-a35c-64d19afc675f",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/27faaaf8-1931-429f-a35c-64d19afc675f"
                         }, {
-                          "objectKey" : "pending/user-reports/1/8972ab2e-d84a-4811-aa24-e21b6453b395",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/8972ab2e-d84a-4811-aa24-e21b6453b395"
+                          "objectKey" : "pending/user-reports/1/24a44bdf-d386-4ce4-a2cd-9741ed7fbfbf",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/24a44bdf-d386-4ce4-a2cd-9741ed7fbfbf"
                         } ]
                       },
                       "error" : null
@@ -1036,7 +1036,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc2NTU4MDYsImV4cCI6MTc4NzY1OTQwNn0.JXnHTiXKiaEhjuGtuLpTtqDOoomUTap7PZyiH5fvDZNtWvPXCfYpsvhO0LhuECbtIPkAS_JOQV0bDSYoD3VllQ"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc2NTY5MDUsImV4cCI6MTc4NzY2MDUwNX0.uhscqkle7uYXiBFaGpD0_FhI4wKzqWXATCN1QUETsN_I7uSEI0HSKDqZRnLgY2x3553dFxjzbJbYPD2KADUnuA"
                       },
                       "error" : null
                     }
@@ -1064,12 +1064,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-25 20:03:31"
+                        "blockedAt" : "2026-08-25 20:21:51"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-25 20:03:31"
+                        "blockedAt" : "2026-08-25 20:21:51"
                       } ],
                       "error" : null
                     }
@@ -1362,13 +1362,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-25 20:03:31"
+                          "createdAt" : "2026-08-25 20:21:51"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-25 20:03:31"
+                          "createdAt" : "2026-08-25 20:21:51"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-25 20:03:31"
+                          "createdAt" : "2026-08-25 20:21:51"
                         } ]
                       },
                       "error" : null
@@ -1401,8 +1401,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-18 20:03:31",
-                          "endsAt" : "2026-09-01 20:03:31"
+                          "startsAt" : "2026-08-18 20:21:51",
+                          "endsAt" : "2026-09-01 20:21:51"
                         }
                       },
                       "error" : null
@@ -1579,8 +1579,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-25 20:03:31",
-                        "updatedAt" : "2026-08-25 20:03:31"
+                        "createdAt" : "2026-08-25 20:21:51",
+                        "updatedAt" : "2026-08-25 20:21:51"
                       },
                       "error" : null
                     }
@@ -2639,26 +2639,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-member-reviews-reviewId-targets-memberId30922589:
-      required:
-      - meetingStatus
-      - rating
-      type: object
-      properties:
-        wantsOneToOneRematch:
-          type: boolean
-          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
-          nullable: true
-        meetingStatus:
-          type: string
-          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
-        rating:
-          type: number
-          description: 별점 1~5 정수
-        comment:
-          type: string
-          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
-          nullable: true
     api-v1-quiz-sets-current-week838676343:
       required:
       - error
@@ -2790,6 +2770,26 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-member-reviews-reviewId-targets-memberId30922589:
+      required:
+      - meetingStatus
+      - rating
+      type: object
+      properties:
+        wantsOneToOneRematch:
+          type: boolean
+          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
+          nullable: true
+        meetingStatus:
+          type: string
+          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
+        rating:
+          type: number
+          description: 별점 1~5 정수
+        comment:
+          type: string
+          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
+          nullable: true
     api-v1-chat-rooms-roomId-votes398406323:
       required:
       - allowMultiple
@@ -2952,83 +2952,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users479155738:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - age
-          - birthDate
-          - caricature
-          - createdAt
-          - email
-          - gender
-          - id
-          - interests
-          - job
-          - joinedAt
-          - location
-          - name
-          - nickname
-          - phoneNumber
-          - updatedAt
-          type: object
-          properties:
-            caricature:
-              type: string
-              description: 프로필 캐리커쳐
-            role:
-              type: string
-              description: "역할 (현재 미지원, null)"
-              nullable: true
-            gender:
-              type: string
-              description: 성별
-            joinedAt:
-              type: string
-              description: 가입일시
-            createdAt:
-              type: string
-              description: 생성일시
-            phoneNumber:
-              type: string
-              description: 전화번호
-            nickname:
-              type: string
-              description: 닉네임
-            name:
-              type: string
-              description: 이름
-            location:
-              type: string
-              description: 사는곳 code
-            id:
-              type: number
-              description: 사용자 ID
-            job:
-              type: string
-              description: 직업 code
-            interests:
-              type: array
-              description: 관심사 code 목록
-              items:
-                oneOf:
-                - type: object
-                - type: boolean
-                - type: string
-                - type: number
-            age:
-              type: number
-              description: 나이대
-            updatedAt:
-              type: string
-              description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users-id-leave1325395818:
       type: object
       properties:
@@ -3178,6 +3101,83 @@ components:
             status:
               type: string
               description: "상태 (OPEN, CLOSED)"
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users479155738:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - caricature
+          - createdAt
+          - email
+          - gender
+          - id
+          - interests
+          - job
+          - joinedAt
+          - location
+          - name
+          - nickname
+          - phoneNumber
+          - updatedAt
+          type: object
+          properties:
+            caricature:
+              type: string
+              description: 프로필 캐리커쳐
+            role:
+              type: string
+              description: "역할 (현재 미지원, null)"
+              nullable: true
+            gender:
+              type: string
+              description: 성별
+            joinedAt:
+              type: string
+              description: 가입일시
+            createdAt:
+              type: string
+              description: 생성일시
+            phoneNumber:
+              type: string
+              description: 전화번호
+            nickname:
+              type: string
+              description: 닉네임
+            name:
+              type: string
+              description: 이름
+            location:
+              type: string
+              description: 사는곳 code
+            id:
+              type: number
+              description: 사용자 ID
+            job:
+              type: string
+              description: 직업 code
+            interests:
+              type: array
+              description: 관심사 code 목록
+              items:
+                oneOf:
+                - type: object
+                - type: boolean
+                - type: string
+                - type: number
+            age:
+              type: number
+              description: 나이대
+            updatedAt:
+              type: string
+              description: 수정일시
         success:
           type: boolean
           description: 성공 여부
@@ -3821,6 +3821,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-chat-rooms-roomId-messages1786138957:
       required:
       - error
@@ -3868,23 +3885,6 @@ components:
                   roomId:
                     type: number
                     description: 채팅방 ID
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-user-reports900126493:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - id
-          type: object
-          properties:
-            id:
-              type: number
-              description: 접수된 신고 ID
         success:
           type: boolean
           description: 성공 여부
@@ -4821,64 +4821,6 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
-    api-v1-users1263059898:
-      required:
-      - caricature
-      - interests
-      - job
-      - location
-      type: object
-      properties:
-        caricature:
-          type: string
-          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장). 아바타 경로를 실으면 프로필 조회의 profileImageUrl\
-            \ 로 그대로 나갑니다"
-        phoneNumber:
-          type: string
-          description: 전화번호 (010-0000-0000)
-          nullable: true
-        gender:
-          type: string
-          description: "성별 (MALE, FEMALE)"
-          nullable: true
-        nickname:
-          type: string
-          description: "닉네임 (2~10자, 한글·영문·숫자)"
-          nullable: true
-        name:
-          type: string
-          description: 이름
-          nullable: true
-        location:
-          type: string
-          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
-            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
-            \ jeonnam, gyeongbuk, gyeongnam, jeju"
-        job:
-          type: string
-          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
-            \ education, medical, finance, legal, manufacturing, distribution, service,\
-            \ construction, arts-media, research, public-admin, student, etc"
-        interests:
-          type: array
-          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, exhibition,\
-            \ performance, photography, reading, music, cooking, travel, gaming, finance,\
-            \ self-improvement, pets, etc"
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        introduction:
-          type: string
-          description: 한 줄 소개 (최대 50자). 소개노트 '나를 한 줄로 표현한다면?' 답변으로 저장됩니다. 이 응답에는 실리지
-            않으며 마이프로필 조회(GET /users/me/profile)의 introduction 으로 확인합니다
-          nullable: true
-        age:
-          type: number
-          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
-          nullable: true
     api-v1-users-id-leave-44232657:
       required:
       - error
@@ -4956,6 +4898,64 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users1263059898:
+      required:
+      - caricature
+      - interests
+      - job
+      - location
+      type: object
+      properties:
+        caricature:
+          type: string
+          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장). 아바타 경로를 실으면 프로필 조회의 profileImageUrl\
+            \ 로 그대로 나갑니다"
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE)"
+          nullable: true
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        location:
+          type: string
+          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
+            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
+            \ jeonnam, gyeongbuk, gyeongnam, jeju"
+        job:
+          type: string
+          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
+            \ education, medical, finance, legal, manufacturing, distribution, service,\
+            \ construction, arts-media, research, public-admin, student, etc"
+        interests:
+          type: array
+          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, exhibition,\
+            \ performance, photography, reading, music, cooking, travel, gaming, finance,\
+            \ self-improvement, pets, etc"
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        introduction:
+          type: string
+          description: 한 줄 소개 (최대 50자). 소개노트 '나를 한 줄로 표현한다면?' 답변으로 저장됩니다. 이 응답에는 실리지
+            않으며 마이프로필 조회(GET /users/me/profile)의 introduction 으로 확인합니다
+          nullable: true
+        age:
+          type: number
+          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
+          nullable: true
     api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
       required:
       - success

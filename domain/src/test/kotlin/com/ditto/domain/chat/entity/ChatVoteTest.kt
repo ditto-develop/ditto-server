@@ -26,6 +26,7 @@ class ChatVoteTest(
                 vote.isClosed shouldBe false
                 vote.openRoomId shouldBe 10L
                 vote.closedAt shouldBe null
+                vote.closedReason shouldBe null
                 vote.closedBy shouldBe null
             }
         }
@@ -36,10 +37,11 @@ class ChatVoteTest(
             "then: 상태·시각·마감자가 기록되고 openRoomId 가 비워진다" {
                 val vote = chatVoteRepository.save(ChatVoteFixture.open(roomId = 10L))
 
-                vote.close(by = 2L, at = closedAt)
+                vote.closeByMember(by = 2L, at = closedAt)
 
                 chatVoteRepository.save(vote).let {
                     it.isClosed shouldBe true
+                    it.closedReason shouldBe ChatVoteCloseReason.MEMBER
                     it.closedAt shouldBe closedAt
                     it.closedBy shouldBe 2L
                     it.openRoomId shouldBe null
@@ -51,10 +53,10 @@ class ChatVoteTest(
             "when: 다시 마감하면" - {
                 "then: 최초 마감 기록이 덮이지 않도록 IllegalStateException 이 발생한다" {
                     val vote = ChatVoteFixture.open(roomId = 10L)
-                    vote.close(by = 1L, at = closedAt)
+                    vote.closeByMember(by = 1L, at = closedAt)
 
                     shouldThrow<IllegalStateException> {
-                        vote.close(by = 2L, at = closedAt.plusHours(1))
+                        vote.closeByMember(by = 2L, at = closedAt.plusHours(1))
                     }
 
                     vote.closedBy shouldBe 1L
@@ -81,7 +83,7 @@ class ChatVoteTest(
             "when: 같은 방에 새로 열면" - {
                 "then: NULL 은 유일 제약에 걸리지 않아 성공한다 — 닫힌 투표는 몇 개든 남는다" {
                     val closed = chatVoteRepository.save(ChatVoteFixture.open(roomId = 10L))
-                    closed.close(by = 1L, at = closedAt)
+                    closed.closeByMember(by = 1L, at = closedAt)
                     chatVoteRepository.saveAndFlush(closed)
 
                     val reopened = chatVoteRepository.saveAndFlush(ChatVoteFixture.open(roomId = 10L))
@@ -97,7 +99,7 @@ class ChatVoteTest(
         "given: 열린 투표와 닫힌 투표가 섞여 있을 때" - {
             "then: 열린 것만 돌려준다" {
                 val closed = chatVoteRepository.save(ChatVoteFixture.open(roomId = 10L))
-                closed.close(by = 1L, at = closedAt)
+                closed.closeByMember(by = 1L, at = closedAt)
                 chatVoteRepository.save(closed)
                 val open = chatVoteRepository.save(ChatVoteFixture.open(roomId = 10L))
 

@@ -74,7 +74,13 @@ class ChatVote private constructor(
     var closedAt: LocalDateTime? = null
         protected set
 
-    @Comment("마감한 회원 ID (진행 중이면 NULL)")
+    @Comment("마감 사유 (MEMBER, ROOM_ENDED. 진행 중이면 NULL)")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "closed_reason", length = 20)
+    var closedReason: ChatVoteCloseReason? = null
+        protected set
+
+    @Comment("마감한 회원 ID (멤버 마감일 때만 값)")
     @Column(name = "closed_by")
     var closedBy: Long? = null
         protected set
@@ -82,18 +88,26 @@ class ChatVote private constructor(
     val isClosed: Boolean
         get() = status == ChatVoteStatus.CLOSED
 
+    /** 방 멤버가 직접 마감한다. */
+    fun closeByMember(by: Long, at: LocalDateTime) = close(ChatVoteCloseReason.MEMBER, by, at)
+
+    /** 방이 끝나며(만료·해체) 함께 마감한다 — 마감자가 없다. */
+    fun closeBecauseRoomEnded(at: LocalDateTime) = close(ChatVoteCloseReason.ROOM_ENDED, by = null, at = at)
+
     /**
-     * 투표를 마감한다. 마감하면 표를 던질 수 없고 결과만 읽는다.
+     * 사유를 밖에서 받지 않는 이유: 마감 경로와 사유·마감자가 어긋나는 조합(ROOM_ENDED 인데 마감자가
+     * 있는 등)을 만들 수 없게 하려는 것이다 — 채팅방 종료([ChatRoom])와 같은 구조다.
      *
      * 이미 마감된 투표를 다시 마감하는 것은 호출자가 [isClosed] 확인을 빠뜨린 것이므로 조용히 넘기지
-     * 않는다 — 최초 마감 시각·마감자가 덮이면 "언제 누가 닫았는지"가 사라진다.
-     * (재요청을 성공으로 답하는 멱등 처리는 서비스가 [isClosed]를 먼저 보고 한다 — 채팅방 종료와 같은 결)
+     * 않는다 — 최초 마감 기록이 덮이면 "언제 누가 왜 닫았는지"가 사라진다.
+     * (재요청을 성공으로 답하는 멱등 처리는 서비스가 [isClosed]를 먼저 보고 한다)
      *
      * [openRoomId]를 함께 비워 방당 1개 제약에서 풀어 준다. 그래야 같은 방에 다음 투표를 만들 수 있다.
      */
-    fun close(by: Long, at: LocalDateTime) {
+    private fun close(reason: ChatVoteCloseReason, by: Long?, at: LocalDateTime) {
         check(!isClosed) { "이미 마감된 투표입니다: id=$id, closedAt=$closedAt" }
         status = ChatVoteStatus.CLOSED
+        closedReason = reason
         closedAt = at
         closedBy = by
         openRoomId = null

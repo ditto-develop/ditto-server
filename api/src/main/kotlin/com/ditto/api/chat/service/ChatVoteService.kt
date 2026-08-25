@@ -120,7 +120,7 @@ class ChatVoteService(
             return ChatVoteChangeResult(detail = toDetail(vote, activeMemberIds, memberId), systemMessage = null)
         }
 
-        vote.close(by = memberId, at = now)
+        vote.closeByMember(by = memberId, at = now)
         chatVoteRepository.save(vote)
         val systemMessage = chatMessageRepository.save(
             ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CLOSED:${vote.id}"),

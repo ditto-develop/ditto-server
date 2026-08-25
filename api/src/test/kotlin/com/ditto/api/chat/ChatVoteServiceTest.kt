@@ -105,7 +105,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
             val first = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(first.voteId).get().let {
-                it.close(by = 1L, at = FRIDAY.plusHours(1))
+                it.closeByMember(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
             }
 
@@ -280,7 +280,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
             val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(detail.voteId).get().let {
-                it.close(by = 1L, at = FRIDAY.plusHours(1))
+                it.closeByMember(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
             }
 
@@ -431,7 +431,7 @@ class ChatVoteServiceTest(
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
             val first = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             chatVoteRepository.findById(first.voteId).get().let {
-                it.close(by = 1L, at = FRIDAY.plusHours(1))
+                it.closeByMember(by = 1L, at = FRIDAY.plusHours(1))
                 chatVoteRepository.save(it)
             }
             val second = createVoteDetail(room.id, memberId = 2L, request = createRequest())
