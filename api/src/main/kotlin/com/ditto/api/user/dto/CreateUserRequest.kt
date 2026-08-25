@@ -38,8 +38,13 @@ data class CreateUserRequest(
     @field:NotBlank
     val job: String,
 
-    // 프론트에서 고른 캐리커쳐 문자열을 그대로 저장한다.
+    // 프론트에서 고른 캐리커쳐 문자열을 그대로 저장한다. FE 는 아바타 경로("/onboarding/.../m1.svg")를
+    // 싣는다 — 조회(profileImageUrl)가 이 값을 그대로 이미지 주소로 내보내는 것과 맞물린다.
     @field:NotBlank
     @field:Size(max = 100)
     val caricature: String,
+
+    // 한 줄 소개. 소개노트 '나를 한 줄로 표현한다면?' 답변에 저장된다(PATCH 의 introduction 과 같은 위치).
+    @field:Size(max = 50)
+    val introduction: String? = null,
 )

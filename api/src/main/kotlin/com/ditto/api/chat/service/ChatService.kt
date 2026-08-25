@@ -226,13 +226,17 @@ class ChatService(
         roomMembers: List<ChatRoomMember>,
         memberId: Long,
     ): ChatRoomResponse {
-        val counterpartMemberIds = roomMembers.filter { it.memberId != memberId }.map { it.memberId }
+        // 이탈자는 상대 목록에서 뺀다 — FE 는 이 목록으로 "지금 함께 있는 사람"을 그린다.
+        val counterpartMemberIds = roomMembers
+            .filter { it.memberId != memberId && !it.hasLeft }
+            .map { it.memberId }
         val lastMessage = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(room.id)
         return ChatRoomResponse.of(
             room = room,
             counterpartMemberIds = counterpartMemberIds,
             lastMessage = lastMessage?.let { toMessageResponse(it) },
             unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
+            hasLeft = myRoomMember.hasLeft,
         )
     }
 

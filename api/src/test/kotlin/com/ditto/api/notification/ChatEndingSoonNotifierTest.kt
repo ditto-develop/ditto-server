@@ -51,6 +51,20 @@ class ChatEndingSoonNotifierTest(
             notificationRepository.count() shouldBe 1
         }
 
+        "방을 나간 멤버에게는 알리지 않는다 — 종료 임박이 이탈자에게는 의미가 없다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.group(now = FRIDAY_NOON))
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = 1L))
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = 2L))
+            chatRoomMemberRepository.save(
+                ChatRoomMemberFixture.create(roomId = room.id, memberId = 3L)
+                    .apply { leave(LocalDateTime.of(2026, 3, 14, 10, 0)) },
+            )
+
+            chatEndingSoonNotifier.notifyEndingSoon(FOUR_HOURS_BEFORE_END) shouldBe 2
+
+            notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(1L, 2L)
+        }
+
         "아직 창 밖이면 알리지 않는다" {
             val room = chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON))
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = 1L))

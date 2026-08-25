@@ -41,7 +41,9 @@ class ChatMessageNotifier(
             .getOrDefault(0)
 
     private fun appendToReceivers(message: ChatMessageResponse): Int {
+        // 방을 나간 멤버에게는 알리지 않는다 — 이탈자는 더 이상 이 방의 수신자가 아니다.
         val receiverIds = chatRoomMemberRepository.findByRoomIdIn(listOf(message.roomId))
+            .filter { !it.hasLeft }
             .map { it.memberId }
             .filter { it != message.senderId }
         if (receiverIds.isEmpty()) {

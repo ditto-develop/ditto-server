@@ -70,9 +70,9 @@ class ChatRoom private constructor(
     var endedAt: LocalDateTime? = null
         protected set
 
-    @Comment("종료 사유 (EXPIRED, USER_ENDED)")
+    @Comment("종료 사유 (EXPIRED, USER_ENDED, INSUFFICIENT_MEMBERS)")
     @Enumerated(EnumType.STRING)
-    @Column(name = "end_reason", length = 20)
+    @Column(name = "end_reason", length = 30)
     var endReason: ChatEndReason? = null
         protected set
 
@@ -104,8 +104,14 @@ class ChatRoom private constructor(
     fun endByUser(at: LocalDateTime) = end(ChatEndReason.USER_ENDED, at)
 
     /**
+     * 그룹 멤버 이탈로 잔여 인원이 1명이 되어 해체한다. 호출 전에 [isEnded]와 잔여 인원을 걸러야 한다.
+     * 마지막 이탈자가 누구였는지는 함께 발행되는 SYSTEM 메시지(`INSUFFICIENT_MEMBERS`)의 `senderId`가 들고 있다.
+     */
+    fun endByInsufficientMembers(at: LocalDateTime) = end(ChatEndReason.INSUFFICIENT_MEMBERS, at)
+
+    /**
      * 사유를 밖에서 받지 않는 이유: 종료 경로와 사유가 어긋나는 조합을 만들 수 없게 하려는 것이다.
-     * 사유가 늘면(상대 차단 종료·그룹 인원 미달 해체) 이름 있는 메서드를 하나 더 둔다.
+     * 사유가 늘면(상대 차단 종료 등) 이름 있는 메서드를 하나 더 둔다.
      *
      * 이미 끝난 방을 다시 끝내려는 것은 호출자가 [isEnded] 확인을 빠뜨린 것이므로 조용히 넘기지 않는다.
      * 그대로 두면 최초 종료 시각·사유가 덮여 "언제 왜 끝났는지"가 사라진다.
