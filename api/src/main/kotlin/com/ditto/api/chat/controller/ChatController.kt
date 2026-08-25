@@ -85,6 +85,30 @@ class ChatController(
         return ApiResponse.ok(Unit)
     }
 
+    /**
+     * 방 나가기. 처리 규칙(두 사람 방 위임·인원 미달 해체·멱등)은 [ChatRoomEndService.leave] 참고.
+     *
+     * 해체로 끝난 방도 [end]와 같은 후처리 경로를 탄다. 다만 해체 방은 남은 사람이 1명뿐이라
+     * 평가 성립 최소 인원(2명)에 못 미쳐 실제로 열리는 평가·알림은 없다 — 경로를 가르지 않고
+     * 인원 기준이 거르게 둔다.
+     */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/leave")
+    fun leave(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        val result = chatRoomEndService.leave(roomId, principal.memberId, LocalDateTime.now())
+        result.systemMessages.forEach {
+            messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
+        }
+        if (result.isRoomEnded) {
+            endedChatReviewOpener.openFor(listOf(roomId))
+            reviewRequestNotifier.notifyFor(listOf(roomId))
+        }
+        return ApiResponse.ok(Unit)
+    }
+
     /** 이미지 전송용 presigned PUT URL 발급 (방 멤버만). 업로드 후 messageType=IMAGE, content=objectKey 로 전송. */
     @PostMapping("/api/v1/chat/rooms/{roomId}/image-upload-urls")
     fun issueImageUploadUrls(

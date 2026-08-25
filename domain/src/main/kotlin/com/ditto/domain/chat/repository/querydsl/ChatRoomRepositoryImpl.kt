@@ -50,6 +50,8 @@ class ChatRoomRepositoryImpl(
             .join(chatRoomMember).on(chatRoomMember.roomId.eq(chatRoom.id))
             .where(
                 chatRoomMember.memberId.eq(memberId),
+                // 내가 나간 방은 진행 중이어도 나를 붙잡지 않는다 — 안 걸러내면 방을 다 나간 회원도 탈퇴가 막힌다.
+                chatRoomMember.leftAt.isNull,
                 chatRoom.status.ne(ChatRoomStatus.ENDED),
             )
             .fetchFirst() != null

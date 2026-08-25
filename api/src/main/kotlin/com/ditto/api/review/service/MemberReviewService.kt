@@ -187,7 +187,7 @@ class MemberReviewService(
             .associateBy { it.id }
 
     companion object {
-        /** 평가는 최소 두 명이 있어야 성립한다(자기 자신은 대상에서 빠지므로). */
-        private const val MIN_REVIEWER_COUNT = 2
+        /** 평가는 최소 두 명이 있어야 성립한다(자기 자신은 대상에서 빠지므로). 알림([ReviewRequestNotifier])도 같은 기준을 쓴다. */
+        const val MIN_REVIEWER_COUNT = 2
     }
 }

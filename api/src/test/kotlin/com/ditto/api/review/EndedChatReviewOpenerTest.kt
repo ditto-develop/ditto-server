@@ -172,6 +172,50 @@ class EndedChatReviewOpenerTest(
                 setOf(MEMBER_A to MEMBER_B, MEMBER_A to MEMBER_C, MEMBER_B to MEMBER_C)
         }
 
+        // 인원 미달 해체 방은 남은 사람이 1명뿐이라 평가가 성립하지 않는다(2명 미만은 열지 않음).
+        "인원 미달로 해체된 방은 평가도 재매칭 쌍도 만들지 않는다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val match = groupMatchRepository.save(
+                GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = 3),
+            )
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
+            chatRoomMemberRepository.save(ChatRoomMember.of(roomId = room.id, memberId = MEMBER_A))
+            listOf(MEMBER_B, MEMBER_C).forEach {
+                chatRoomMemberRepository.save(
+                    ChatRoomMember.of(roomId = room.id, memberId = it).apply { leave(FRIDAY.plusHours(1)) },
+                )
+            }
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            endedChatReviewOpener.openFor(listOf(room.id))
+
+            memberReviewRepository.findAll().size shouldBe 0
+            rematchRepository.findAll().size shouldBe 0
+        }
+
+        // 이탈자는 평가·재매칭 대상이 아니다(#142 확정 정책) — 포함하면 나간 사람에게 평가 화면이 열리고
+        // 이탈자와의 재매칭이 성사될 수 있다. 대상 명단이 한 곳(EndedChatRoomLoader)에서 걸러지므로 둘이 함께 좁혀진다.
+        "이탈한 멤버는 평가와 재매칭 쌍에서 함께 빠진다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val match = groupMatchRepository.save(
+                GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = 3),
+            )
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(
+                listOf(MEMBER_A, MEMBER_B).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+            )
+            chatRoomMemberRepository.save(
+                ChatRoomMember.of(roomId = room.id, memberId = MEMBER_C).apply { leave(FRIDAY.plusHours(1)) },
+            )
+            chatRoomEndService.endExpired(AFTER_EXPIRY)
+
+            endedChatReviewOpener.openFor(listOf(room.id))
+
+            memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe setOf(MEMBER_A, MEMBER_B)
+            val pair = rematchRepository.findAll().single()
+            (pair.memberId1 to pair.memberId2) shouldBe (MEMBER_A to MEMBER_B)
+        }
+
         "다시 열어도 쌍이 늘지 않는다(멱등)" {
             val roomId = saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
 

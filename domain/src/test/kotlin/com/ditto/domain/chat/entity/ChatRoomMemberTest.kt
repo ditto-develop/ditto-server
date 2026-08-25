@@ -2,8 +2,10 @@ package com.ditto.domain.chat.entity
 
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.support.IntegrationTest
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class ChatRoomMemberTest(
@@ -13,13 +15,44 @@ class ChatRoomMemberTest(
 
     "ChatRoomMember 생성" - {
         "when: of 로 만들어 저장하면" - {
-            "then: lastReadMessageId 는 null 로 시작한다" {
+            "then: lastReadMessageId 와 leftAt 은 null 로 시작한다" {
                 val roomMember = chatRoomMemberRepository.save(ChatRoomMember.of(roomId = 1L, memberId = 2L))
 
                 roomMember.id shouldNotBe 0L
                 roomMember.roomId shouldBe 1L
                 roomMember.memberId shouldBe 2L
                 roomMember.lastReadMessageId shouldBe null
+                roomMember.leftAt shouldBe null
+                roomMember.hasLeft shouldBe false
+            }
+        }
+    }
+
+    "leave — 방 이탈" - {
+        "when: leave 하면" - {
+            "then: leftAt 이 기록되고 hasLeft 가 true 가 된다" {
+                val leftAt = LocalDateTime.of(2026, 8, 22, 14, 30)
+                val roomMember = chatRoomMemberRepository.save(ChatRoomMember.of(roomId = 1L, memberId = 2L))
+
+                roomMember.leave(leftAt)
+
+                chatRoomMemberRepository.save(roomMember).let {
+                    it.leftAt shouldBe leftAt
+                    it.hasLeft shouldBe true
+                }
+            }
+        }
+
+        "given: 이미 나간 멤버일 때" - {
+            "when: 다시 leave 하면" - {
+                "then: 최초 이탈 시각이 덮이지 않도록 IllegalStateException 이 발생한다" {
+                    val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
+                    roomMember.leave(LocalDateTime.of(2026, 8, 22, 14, 30))
+
+                    shouldThrow<IllegalStateException> {
+                        roomMember.leave(LocalDateTime.of(2026, 8, 22, 15, 0))
+                    }
+                }
             }
         }
     }

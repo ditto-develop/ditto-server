@@ -60,6 +60,44 @@ class ReviewRequestNotifierTest(
                 "함께한 3명과의 만남을 평가해주세요."
         }
 
+        // 이탈자는 평가 대상이 아니다 — 알리면 평가할 상대가 없는 화면으로 보낸다.
+        "방을 나간 멤버는 받지도 않고 남의 문구 인원에도 세지 않는다" {
+            val me = saveMember("나")
+            val other = saveMember("남은멤버")
+            val leaver = saveMember("나간사람")
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            listOf(me, other).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it.id))
+            }
+            chatRoomMemberRepository.save(
+                ChatRoomMemberFixture.create(roomId = room.id, memberId = leaver.id)
+                    .apply { leave(ChatRoomFixture.DEFAULT_NOW.plusDays(1)) },
+            )
+
+            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 2
+
+            notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(me.id, other.id)
+            // 문구의 상대 집계에서도 이탈자가 빠진다 — 상대가 1명으로 줄면 닉네임 문구로 내려간다
+            notificationRepository.findAll().single { it.memberId == me.id }.body shouldBe
+                "남은멤버님과의 만남을 평가해주세요."
+        }
+
+        // 인원 미달 해체 방은 잔여 1명이라 평가가 열리지 않는다 — 알리면 평가할 것이 없는 화면으로 보낸다.
+        "잔여 인원이 평가 최소(2명) 미만인 방에는 알리지 않는다" {
+            val survivor = saveMember("남은사람")
+            val leaver = saveMember("나간사람")
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = survivor.id))
+            chatRoomMemberRepository.save(
+                ChatRoomMemberFixture.create(roomId = room.id, memberId = leaver.id)
+                    .apply { leave(ChatRoomFixture.DEFAULT_NOW.plusDays(1)) },
+            )
+
+            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 0
+
+            notificationRepository.count() shouldBe 0
+        }
+
         // 재매칭 채팅이 끝나면 평가를 열지 않는다(#132 결정) — 알리면 평가할 것이 없는 화면으로 보낸다.
         "재매칭 방에는 알리지 않는다" {
             val me = saveMember("나")

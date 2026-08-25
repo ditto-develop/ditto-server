@@ -61,6 +61,23 @@ class ChatMessageNotifierTest(
             notification.targetId shouldBe ROOM
         }
 
+        "방을 나간 멤버에게는 남기지 않는다 — 이탈자는 더 이상 이 방의 수신자가 아니다" {
+            val sender = saveMember("산책러버")
+            val receiver = saveMember("받는사람")
+            val leaver = saveMember("나간사람")
+            listOf(sender, receiver).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it.id))
+            }
+            chatRoomMemberRepository.save(
+                ChatRoomMemberFixture.create(roomId = ROOM, memberId = leaver.id)
+                    .apply { leave(LocalDateTime.of(2026, 3, 14, 10, 0)) },
+            )
+
+            chatMessageNotifier.notifyNewMessage(message(sender.id)) shouldBe 1
+
+            notificationRepository.findAll().single().memberId shouldBe receiver.id
+        }
+
         "이미지 메시지는 미리보기 문구로 바꾼다 — 본문에 S3 key 가 들어가면 안 된다" {
             val sender = saveMember("산책러버")
             val receiver = saveMember("받는사람")
