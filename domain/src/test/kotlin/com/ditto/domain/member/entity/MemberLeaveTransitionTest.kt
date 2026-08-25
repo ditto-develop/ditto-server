@@ -14,15 +14,25 @@ class MemberLeaveTransitionTest : FreeSpec(
         val leftAt = LocalDateTime.of(2026, 8, 1, 12, 0)
 
         "leave" - {
-            "탈퇴하면 LEFT가 되고 일시·사유가 남는다" {
+            "탈퇴하면 LEFT가 되고 일시·사유·자유 입력이 남는다" {
+                val member = MemberFixture.create(status = MemberStatus.ACTIVE)
+
+                member.leave(reason = "other", reasonDetail = "원하는 매칭 상대를 만나기 어려웠어요.", now = leftAt)
+
+                member.status shouldBe MemberStatus.LEFT
+                member.leftAt shouldBe leftAt
+                member.leaveReason shouldBe "other"
+                member.leaveReasonDetail shouldBe "원하는 매칭 상대를 만나기 어려웠어요."
+                member.isLeft() shouldBe true
+            }
+
+            "자유 입력 없이 code 만으로도 탈퇴할 수 있다" {
                 val member = MemberFixture.create(status = MemberStatus.ACTIVE)
 
                 member.leave(reason = "not-useful", now = leftAt)
 
-                member.status shouldBe MemberStatus.LEFT
-                member.leftAt shouldBe leftAt
                 member.leaveReason shouldBe "not-useful"
-                member.isLeft() shouldBe true
+                member.leaveReasonDetail.shouldBeNull()
             }
 
             "사유 없이도 탈퇴할 수 있다" {
@@ -58,13 +68,14 @@ class MemberLeaveTransitionTest : FreeSpec(
         "restore" - {
             "복구하면 ACTIVE로 돌아오고 탈퇴 기록이 비워진다" {
                 val member = MemberFixture.create(status = MemberStatus.ACTIVE)
-                member.leave(reason = "etc", now = leftAt)
+                member.leave(reason = "etc", reasonDetail = "다시 올게요", now = leftAt)
 
                 member.restore()
 
                 member.status shouldBe MemberStatus.ACTIVE
                 member.leftAt.shouldBeNull()
                 member.leaveReason.shouldBeNull()
+                member.leaveReasonDetail.shouldBeNull()
             }
 
             "탈퇴하지 않은 회원은 복구할 수 없다" {

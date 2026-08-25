@@ -1,5 +1,6 @@
 package com.ditto.api.user.service
 
+import com.ditto.api.intronote.service.IntroNoteService
 import com.ditto.api.match.MatchAccessChecker
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.user.dto.CheckNicknameResponse
@@ -32,6 +33,7 @@ class UserService(
     private val memberRepository: MemberRepository,
     private val memberBlockRepository: MemberBlockRepository,
     private val introNoteRepository: IntroNoteRepository,
+    private val introNoteService: IntroNoteService,
     private val matchAccessChecker: MatchAccessChecker,
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
@@ -44,9 +46,11 @@ class UserService(
     fun register(memberId: Long, request: CreateUserRequest): RegisterResponse {
         // memberId는 JWT 필터가 검증해 넘긴 값이라 회원이 존재해야 정상이다.
         // 여기서 못 찾으면 클라이언트 잘못이 아니라 토큰-DB 정합성이 깨진 서버 오류다.
-        val member = memberRepository.findById(memberId).orElseThrow {
-            ErrorException(ErrorCode.INTERNAL_ERROR)
-        }
+        // 잠그고 읽는 이유: 가입 요청이 겹치면(더블 탭·재시도) 둘 다 PENDING 을 읽고 통과해
+        // 소개노트 INSERT 가 유니크 충돌(5xx)로 끝난다 — 잠금이 두 번째 요청을 아래
+        // isPending 검사에서 MEMBER_ALREADY_EXISTS 로 정확히 돌려보낸다.
+        val member = memberRepository.findWithLockById(memberId)
+            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR)
 
         if (!member.isPending()) {
             throw ErrorException(ErrorCode.MEMBER_ALREADY_EXISTS)
@@ -69,6 +73,12 @@ class UserService(
             job = Job.from(request.job),
             caricature = request.caricature,
         )
+
+        // 가입에서는 선택 입력이라 빈 값은 오류가 아니라 미입력으로 본다.
+        // (저장 위치는 CreateUserRequest.introduction 참고)
+        request.introduction?.takeIf { it.isNotBlank() }?.let { introduction ->
+            introNoteService.saveAnswer(memberId, IntroQuestion.ONE_WORD.code, introduction.trim())
+        }
 
         return member.toRegisterResponse()
     }
@@ -150,7 +160,7 @@ class UserService(
             throw WarnException(ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS)
         }
 
-        member.leave(reason = request.reason, now = serverTimeProvider.now())
+        member.leave(reason = request.reason, reasonDetail = request.reasonDetail, now = serverTimeProvider.now())
 
         leftMemberRematchCanceller.cancelWaitingPairs(id)
 
