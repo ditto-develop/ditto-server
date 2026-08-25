@@ -49,6 +49,13 @@ object NotificationMessages {
         },
     )
 
+    /** 만남 투표가 마감됐다. */
+    fun voteClosed(): NotificationContent = NotificationContent(
+        type = NotificationType.VOTE_CLOSED,
+        title = "만남 투표가 마감됐어요",
+        body = "확정된 장소와 시간을 확인해 보세요.",
+    )
+
     /**
      * 상대가 메시지를 보냈다. 본문은 미리보기다 — 이미지는 내용을 문구로 대신한다
      * (본문에 S3 key 가 그대로 들어가면 안 된다).

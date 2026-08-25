@@ -37,6 +37,12 @@ enum class NotificationType(
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 만남 투표가 마감돼 결과가 확정됐다. 중복을 유형이 막지 않는 이유: 실제 발행이 close 의
+     * 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 마감은 정당한 새 알림이다.
+     */
+    VOTE_CLOSED(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ALLOW),
+
     /** 운영 공지·업데이트 안내. 같은 내용을 다시 보낼 수 있어야 하므로 중복을 막지 않는다. */
     SYSTEM_NOTICE(NotificationCategory.SYSTEM, "없음", DuplicatePolicy.ALLOW),
     ;

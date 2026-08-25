@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-25 17:08:05"
+                          "createdAt" : "2026-08-25 21:51:56"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-25 17:08:05"
+                          "createdAt" : "2026-08-25 21:51:56"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/2443ff7f-32c3-4d6d-a58f-9ea1d920b0d5" ],
+                    "imageKeys" : [ "pending/user-reports/1/cbece195-3c6e-4a6d-9e6a-387709530fd9" ],
                     "block" : false
                   }
       responses:
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-25 17:08:07",
+                        "joinedAt" : "2026-08-25 21:51:57",
                         "role" : null,
-                        "createdAt" : "2026-08-25 17:08:07",
-                        "updatedAt" : "2026-08-25 17:08:07"
+                        "createdAt" : "2026-08-25 21:51:57",
+                        "updatedAt" : "2026-08-25 21:51:57"
                       },
                       "error" : null
                     }
@@ -565,8 +565,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-24 17:08:06",
-                          "endDate" : "2026-08-26 17:08:06",
+                          "startDate" : "2026-08-24 21:51:56",
+                          "endDate" : "2026-08-26 21:51:56",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -583,8 +583,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-25 17:08:06",
-                            "updatedAt" : "2026-08-25 17:08:06"
+                            "createdAt" : "2026-08-25 21:51:56",
+                            "updatedAt" : "2026-08-25 21:51:56"
                           } ]
                         } ]
                       },
@@ -631,8 +631,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-25 17:08:06",
-                        "updatedAt" : "2026-08-25 17:08:06"
+                        "createdAt" : "2026-08-25 21:51:56",
+                        "updatedAt" : "2026-08-25 21:51:56"
                       },
                       "error" : null
                     }
@@ -709,11 +709,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/5efcd5f5-3507-435b-8e7f-a8c663d9cdb2",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/5efcd5f5-3507-435b-8e7f-a8c663d9cdb2"
+                          "objectKey" : "pending/user-reports/1/2c62bd86-6004-4c22-b6b6-c4f245d3cee0",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/2c62bd86-6004-4c22-b6b6-c4f245d3cee0"
                         }, {
-                          "objectKey" : "pending/user-reports/1/754010ba-377d-4c32-98fc-6afe9d379615",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/754010ba-377d-4c32-98fc-6afe9d379615"
+                          "objectKey" : "pending/user-reports/1/732de290-fc3f-48e8-85fe-33064df1820c",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/732de290-fc3f-48e8-85fe-33064df1820c"
                         } ]
                       },
                       "error" : null
@@ -1036,7 +1036,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc2NDUyODAsImV4cCI6MTc4NzY0ODg4MH0.Ys3C_tE1nNSUB3USmFiPIJwFJ2oYe2UMVhwLOZtPlA60xGAYYIy3ftqAEkdv23SCQN4N2J9LTQ2zzYWp-pGhrw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc2NjIzMTEsImV4cCI6MTc4NzY2NTkxMX0.4tJ04JNN3WU7FkK8Tce71FZjSGdyNT38xwZuOjP6PzKG0YYnfgaxrRIX3GgBJkh4Fm_Ogo-bBH2R8hExPd3ASg"
                       },
                       "error" : null
                     }
@@ -1064,12 +1064,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-25 17:08:07"
+                        "blockedAt" : "2026-08-25 21:51:57"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-25 17:08:07"
+                        "blockedAt" : "2026-08-25 21:51:57"
                       } ],
                       "error" : null
                     }
@@ -1362,13 +1362,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-25 17:08:07"
+                          "createdAt" : "2026-08-25 21:51:57"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-25 17:08:07"
+                          "createdAt" : "2026-08-25 21:51:57"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-25 17:08:07"
+                          "createdAt" : "2026-08-25 21:51:57"
                         } ]
                       },
                       "error" : null
@@ -1401,8 +1401,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-18 17:08:06",
-                          "endsAt" : "2026-09-01 17:08:06"
+                          "startsAt" : "2026-08-18 21:51:56",
+                          "endsAt" : "2026-09-01 21:51:56"
                         }
                       },
                       "error" : null
@@ -1579,8 +1579,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-25 17:08:07",
-                        "updatedAt" : "2026-08-25 17:08:07"
+                        "createdAt" : "2026-08-25 21:51:57",
+                        "updatedAt" : "2026-08-25 21:51:57"
                       },
                       "error" : null
                     }
@@ -1841,6 +1841,200 @@ paths:
                     {
                       "success" : true,
                       "data" : { },
+                      "error" : null
+                    }
+  /api/v1/chat/rooms/{roomId}/votes:
+    get:
+      tags:
+      - Chat
+      summary: 방의 투표 목록
+      description: 방의 투표를 최신순으로 조회합니다. 재접속 후 배너의 열린 투표를 되찾는 복구 경로입니다. 종료된 방·이미 나간
+        방에서도 조회할 수 있습니다(읽기 전용).
+      operationId: chat-vote-list
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes1486910284"
+              examples:
+                chat-vote-list:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : [ {
+                        "voteId" : 41,
+                        "roomId" : 87,
+                        "status" : "OPEN",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : null,
+                        "totalMembers" : 4,
+                        "votedCount" : 2,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : {
+                          "placeIds" : [ 301 ],
+                          "timeIds" : [ 311 ]
+                        }
+                      }, {
+                        "voteId" : 40,
+                        "roomId" : 87,
+                        "status" : "CLOSED",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : "2026-03-20 21:00:00",
+                        "totalMembers" : 4,
+                        "votedCount" : 2,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : {
+                          "placeIds" : [ 301 ],
+                          "timeIds" : [ 311 ]
+                        }
+                      } ],
+                      "error" : null
+                    }
+    post:
+      tags:
+      - Chat
+      summary: 만남 투표 생성
+      description: "그룹 방에서 만날 장소·시간을 정하는 투표를 만듭니다. 방당 진행 중인 투표는 하나이며 이미 있으면 8202 로\
+        \ 거부합니다. 장소·시간 선택지는 각각 2~10개이고, 같은 상호명·같은 일시(분 단위)는 한 투표 안에서 중복될 수 없습니다(8205).\
+        \ 그룹이 아닌 방은 8208, 나간 방은 7002 로 거부합니다."
+      operationId: chat-vote-create
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes398406323"
+            examples:
+              chat-vote-create:
+                value: |-
+                  {
+                    "allowMultiple" : false,
+                    "placeOptions" : [ {
+                      "label" : "강남역 스타벅스",
+                      "address" : "서울 강남구 테헤란로 231",
+                      "mapLink" : "http://place.map.kakao.com/26338954",
+                      "latitude" : 37.4979,
+                      "longitude" : 127.0276
+                    }, {
+                      "label" : "홍대 카페거리",
+                      "address" : null,
+                      "mapLink" : null,
+                      "latitude" : null,
+                      "longitude" : null
+                    } ],
+                    "timeOptions" : [ {
+                      "meetAt" : "2026-03-26 19:00:00"
+                    }, {
+                      "meetAt" : "2026-03-27 18:00:00"
+                    } ]
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes-voteId-cast1371468036"
+              examples:
+                chat-vote-create:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "voteId" : 41,
+                        "roomId" : 87,
+                        "status" : "OPEN",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : null,
+                        "totalMembers" : 4,
+                        "votedCount" : 0,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : null
+                      },
                       "error" : null
                     }
   /api/v1/matches/request/{id}/accept:
@@ -2182,6 +2376,236 @@ paths:
                       "data" : null,
                       "error" : null
                     }
+  /api/v1/chat/rooms/{roomId}/votes/{voteId}:
+    get:
+      tags:
+      - Chat
+      summary: 투표 상세
+      description: 선택지별 투표자(실명 공개)와 내 표를 담은 상세입니다. 서버는 승자·비율을 계산하지 않습니다 — 1위·동표 판정은
+        voterIds 와 입력 순 배열로 클라이언트가 합니다. 이탈한 멤버의 표는 집계에서 빠집니다.
+      operationId: chat-vote-detail
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      - name: voteId
+        in: path
+        description: 투표 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes-voteId-cast1371468036"
+              examples:
+                chat-vote-detail:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "voteId" : 41,
+                        "roomId" : 87,
+                        "status" : "OPEN",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : null,
+                        "totalMembers" : 4,
+                        "votedCount" : 2,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : {
+                          "placeIds" : [ 301 ],
+                          "timeIds" : [ 311 ]
+                        }
+                      },
+                      "error" : null
+                    }
+  /api/v1/chat/rooms/{roomId}/votes/{voteId}/cast:
+    post:
+      tags:
+      - Chat
+      summary: 투표하기
+      description: "요청에 담긴 집합이 내 최종 선택입니다(치환) — 재투표도 같은 경로이며 빈 배열은 해당 유형의 표 취소입니다\
+        . 응답은 갱신된 상세라 재조회가 필요 없습니다. 복수 선택이 꺼진 투표에 유형별 2개 이상이면 8207, 이 투표의 선택지가 아니면\
+        \ 8206, 마감된 투표면 8203 으로 거부합니다."
+      operationId: chat-vote-cast
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      - name: voteId
+        in: path
+        description: 투표 ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes-voteId-cast-2124483018"
+            examples:
+              chat-vote-cast:
+                value: |-
+                  {
+                    "placeIds" : [ 301 ],
+                    "timeIds" : [ 311 ]
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes-voteId-cast1371468036"
+              examples:
+                chat-vote-cast:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "voteId" : 41,
+                        "roomId" : 87,
+                        "status" : "OPEN",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : null,
+                        "totalMembers" : 4,
+                        "votedCount" : 2,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : {
+                          "placeIds" : [ 301 ],
+                          "timeIds" : [ 311 ]
+                        }
+                      },
+                      "error" : null
+                    }
+  /api/v1/chat/rooms/{roomId}/votes/{voteId}/close:
+    post:
+      tags:
+      - Chat
+      summary: 투표 마감
+      description: "투표를 마감합니다. 권한은 방 멤버 누구나이며, 마감하면 표를 던질 수 없습니다. 이미 마감된 투표에 다시 요청\
+        해도 성공으로 답합니다(멱등). 마감 SYSTEM 메시지(content=VOTE_CLOSED:{voteId})는 실제로 닫은 요청만\
+        \ 발행합니다."
+      operationId: chat-vote-close
+      parameters:
+      - name: roomId
+        in: path
+        description: 채팅방 ID
+        required: true
+        schema:
+          type: string
+      - name: voteId
+        in: path
+        description: 투표 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-chat-rooms-roomId-votes-voteId-close-634601543"
+              examples:
+                chat-vote-close:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "voteId" : 41,
+                        "roomId" : 87,
+                        "status" : "CLOSED",
+                        "allowMultiple" : false,
+                        "createdBy" : 12,
+                        "createdAt" : "2026-03-24 21:03:11",
+                        "closedAt" : "2026-03-26 21:00:00",
+                        "totalMembers" : 4,
+                        "votedCount" : 2,
+                        "placeOptions" : [ {
+                          "optionId" : 301,
+                          "label" : "강남역 스타벅스",
+                          "address" : "서울 강남구 테헤란로 231",
+                          "mapLink" : "http://place.map.kakao.com/26338954",
+                          "latitude" : 37.4979,
+                          "longitude" : 127.0276,
+                          "voterIds" : [ 12, 33 ]
+                        }, {
+                          "optionId" : 302,
+                          "label" : "홍대 카페거리",
+                          "address" : null,
+                          "mapLink" : null,
+                          "latitude" : null,
+                          "longitude" : null,
+                          "voterIds" : [ ]
+                        } ],
+                        "timeOptions" : [ {
+                          "optionId" : 311,
+                          "meetAt" : "2026-03-26 19:00:00",
+                          "voterIds" : [ 12 ]
+                        } ],
+                        "myVote" : {
+                          "placeIds" : [ 301 ],
+                          "timeIds" : [ 311 ]
+                        }
+                      },
+                      "error" : null
+                    }
 components:
   schemas:
     api-v1-users-me-blocks617562959:
@@ -2215,26 +2639,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-member-reviews-reviewId-targets-memberId30922589:
-      required:
-      - meetingStatus
-      - rating
-      type: object
-      properties:
-        wantsOneToOneRematch:
-          type: boolean
-          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
-          nullable: true
-        meetingStatus:
-          type: string
-          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
-        rating:
-          type: number
-          description: 별점 1~5 정수
-        comment:
-          type: string
-          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
-          nullable: true
     api-v1-quiz-sets-current-week838676343:
       required:
       - error
@@ -2366,6 +2770,74 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-member-reviews-reviewId-targets-memberId30922589:
+      required:
+      - meetingStatus
+      - rating
+      type: object
+      properties:
+        wantsOneToOneRematch:
+          type: boolean
+          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
+          nullable: true
+        meetingStatus:
+          type: string
+          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
+        rating:
+          type: number
+          description: 별점 1~5 정수
+        comment:
+          type: string
+          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
+          nullable: true
+    api-v1-chat-rooms-roomId-votes398406323:
+      required:
+      - allowMultiple
+      - placeOptions
+      - timeOptions
+      type: object
+      properties:
+        placeOptions:
+          type: array
+          description: 장소 선택지 (2~10개)
+          items:
+            required:
+            - label
+            type: object
+            properties:
+              address:
+                type: string
+                description: 도로명 주소 (선택)
+                nullable: true
+              latitude:
+                type: number
+                description: 위도 (선택)
+                nullable: true
+              label:
+                type: string
+                description: 상호명 (최대 100자)
+              mapLink:
+                type: string
+                description: 카카오맵 URL (선택)
+                nullable: true
+              longitude:
+                type: number
+                description: 경도 (선택)
+                nullable: true
+        allowMultiple:
+          type: boolean
+          description: "복수 선택 허용 여부 (기본 false, 생성 후 변경 불가)"
+        timeOptions:
+          type: array
+          description: 시간 선택지 (2~10개)
+          items:
+            required:
+            - meetAt
+            type: object
+            properties:
+              meetAt:
+                type: string
+                description: "만날 일시 (yyyy-MM-dd HH:mm:ss, 초 이하는 버린다)"
     api-v1-users-me-ratings-854326395:
       required:
       - error
@@ -2480,6 +2952,17 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-id-leave1325395818:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: "탈퇴 사유 code (선택, 최대 50자)"
+          nullable: true
+        reasonDetail:
+          type: string
+          description: "탈퇴 사유 자유 입력 (선택, 최대 100자). '기타' 선택 시의 서술 — 기타가 아니어도 받습니다"
+          nullable: true
     api-v1-users479155738:
       required:
       - error
@@ -2557,17 +3040,147 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-id-leave1325395818:
+    api-v1-chat-rooms-roomId-votes-voteId-close-634601543:
+      required:
+      - error
+      - success
       type: object
       properties:
-        reason:
-          type: string
-          description: "탈퇴 사유 code (선택, 최대 50자)"
-          nullable: true
-        reasonDetail:
-          type: string
-          description: "탈퇴 사유 자유 입력 (선택, 최대 100자). '기타' 선택 시의 서술 — 기타가 아니어도 받습니다"
-          nullable: true
+        data:
+          required:
+          - allowMultiple
+          - createdAt
+          - createdBy
+          - placeOptions
+          - roomId
+          - status
+          - timeOptions
+          - totalMembers
+          - voteId
+          - votedCount
+          type: object
+          properties:
+            totalMembers:
+              type: number
+              description: 방의 활성(이탈하지 않은) 멤버 수 — 진행 카운터의 분모
+            createdAt:
+              type: string
+              description: 생성일시
+            placeOptions:
+              type: array
+              description: 장소 선택지 (입력 순 — 동표 노출 순서)
+              items:
+                required:
+                - label
+                - optionId
+                - voterIds
+                type: object
+                properties:
+                  address:
+                    type: string
+                    description: 도로명 주소 (직접 입력이면 null)
+                    nullable: true
+                  voterIds:
+                    type: array
+                    description: 이 선택지에 투표한 회원 ID 목록 (실명 공개)
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                  latitude:
+                    type: number
+                    description: 위도 (직접 입력이면 null)
+                    nullable: true
+                  optionId:
+                    type: number
+                    description: 선택지 ID
+                  label:
+                    type: string
+                    description: 상호명
+                  mapLink:
+                    type: string
+                    description: 카카오맵 URL (직접 입력이면 null)
+                    nullable: true
+                  longitude:
+                    type: number
+                    description: 경도 (직접 입력이면 null)
+                    nullable: true
+            myVote:
+              type: object
+              properties:
+                timeIds:
+                  type: array
+                  description: 내가 고른 시간 선택지 ID
+                  nullable: true
+                  items:
+                    oneOf:
+                    - type: object
+                    - type: boolean
+                    - type: string
+                    - type: number
+                placeIds:
+                  type: array
+                  description: 내가 고른 장소 선택지 ID
+                  nullable: true
+                  items:
+                    oneOf:
+                    - type: object
+                    - type: boolean
+                    - type: string
+                    - type: number
+              description: 내 표 (한 표도 없으면 null)
+            allowMultiple:
+              type: boolean
+              description: 복수 선택 허용 여부 (장소·시간 공통)
+            createdBy:
+              type: number
+              description: 투표를 만든 회원 ID
+            timeOptions:
+              type: array
+              description: 시간 선택지 (입력 순)
+              items:
+                required:
+                - meetAt
+                - optionId
+                - voterIds
+                type: object
+                properties:
+                  voterIds:
+                    type: array
+                    description: 이 선택지에 투표한 회원 ID 목록
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                  meetAt:
+                    type: string
+                    description: 만날 일시 (표시 문구는 클라이언트가 만든다)
+                  optionId:
+                    type: number
+                    description: 선택지 ID
+            votedCount:
+              type: number
+              description: 장소·시간 중 하나라도 표를 던진 활성 멤버 수
+            voteId:
+              type: number
+              description: 투표 ID
+            closedAt:
+              type: string
+              description: 마감 시각 (진행 중이면 null)
+              nullable: true
+            roomId:
+              type: number
+              description: 채팅방 ID
+            status:
+              type: string
+              description: "상태 (OPEN, CLOSED)"
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me-intro-notes1145489617:
       required:
       - error
@@ -3071,7 +3684,7 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-user-reports900126493:
+    api-v1-chat-rooms-roomId-votes-voteId-cast1371468036:
       required:
       - error
       - success
@@ -3079,12 +3692,132 @@ components:
       properties:
         data:
           required:
-          - id
+          - allowMultiple
+          - createdAt
+          - createdBy
+          - placeOptions
+          - roomId
+          - status
+          - timeOptions
+          - totalMembers
+          - voteId
+          - votedCount
           type: object
           properties:
-            id:
+            totalMembers:
               type: number
-              description: 접수된 신고 ID
+              description: 방의 활성(이탈하지 않은) 멤버 수 — 진행 카운터의 분모
+            createdAt:
+              type: string
+              description: 생성일시
+            placeOptions:
+              type: array
+              description: 장소 선택지 (입력 순 — 동표 노출 순서)
+              items:
+                required:
+                - label
+                - optionId
+                - voterIds
+                type: object
+                properties:
+                  address:
+                    type: string
+                    description: 도로명 주소 (직접 입력이면 null)
+                    nullable: true
+                  voterIds:
+                    type: array
+                    description: 이 선택지에 투표한 회원 ID 목록 (실명 공개)
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                  latitude:
+                    type: number
+                    description: 위도 (직접 입력이면 null)
+                    nullable: true
+                  optionId:
+                    type: number
+                    description: 선택지 ID
+                  label:
+                    type: string
+                    description: 상호명
+                  mapLink:
+                    type: string
+                    description: 카카오맵 URL (직접 입력이면 null)
+                    nullable: true
+                  longitude:
+                    type: number
+                    description: 경도 (직접 입력이면 null)
+                    nullable: true
+            myVote:
+              type: object
+              properties:
+                timeIds:
+                  type: array
+                  description: 내가 고른 시간 선택지 ID
+                  nullable: true
+                  items:
+                    oneOf:
+                    - type: object
+                    - type: boolean
+                    - type: string
+                    - type: number
+                placeIds:
+                  type: array
+                  description: 내가 고른 장소 선택지 ID
+                  nullable: true
+                  items:
+                    oneOf:
+                    - type: object
+                    - type: boolean
+                    - type: string
+                    - type: number
+              description: 내 표 (한 표도 없으면 null)
+            allowMultiple:
+              type: boolean
+              description: 복수 선택 허용 여부 (장소·시간 공통)
+            createdBy:
+              type: number
+              description: 투표를 만든 회원 ID
+            timeOptions:
+              type: array
+              description: 시간 선택지 (입력 순)
+              items:
+                required:
+                - meetAt
+                - optionId
+                - voterIds
+                type: object
+                properties:
+                  voterIds:
+                    type: array
+                    description: 이 선택지에 투표한 회원 ID 목록
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                  meetAt:
+                    type: string
+                    description: 만날 일시 (표시 문구는 클라이언트가 만든다)
+                  optionId:
+                    type: number
+                    description: 선택지 ID
+            votedCount:
+              type: number
+              description: 장소·시간 중 하나라도 표를 던진 활성 멤버 수
+            voteId:
+              type: number
+              description: 투표 ID
+            roomId:
+              type: number
+              description: 채팅방 ID
+            status:
+              type: string
+              description: "상태 (OPEN, CLOSED)"
         success:
           type: boolean
           description: 성공 여부
@@ -3164,6 +3897,23 @@ components:
             readCount:
               type: number
               description: 이번 호출로 읽음이 된 건수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
         success:
           type: boolean
           description: 성공 여부
@@ -3859,6 +4609,30 @@ components:
               contentType:
                 type: string
                 description: 파일 MIME 타입 (image/* 만 허용)
+    api-v1-chat-rooms-roomId-votes-voteId-cast-2124483018:
+      required:
+      - placeIds
+      - timeIds
+      type: object
+      properties:
+        timeIds:
+          type: array
+          description: 선택한 시간 선택지 ID 목록 (빈 배열 = 시간 표 취소)
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        placeIds:
+          type: array
+          description: 선택한 장소 선택지 ID 목록 (빈 배열 = 장소 표 취소)
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
     api-v1-users-me861338172:
       required:
       - error
@@ -3892,6 +4666,149 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-chat-rooms-roomId-votes1486910284:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            required:
+            - allowMultiple
+            - createdAt
+            - createdBy
+            - placeOptions
+            - roomId
+            - status
+            - timeOptions
+            - totalMembers
+            - voteId
+            - votedCount
+            type: object
+            properties:
+              totalMembers:
+                type: number
+                description: 방의 활성(이탈하지 않은) 멤버 수 — 진행 카운터의 분모
+              createdAt:
+                type: string
+                description: 생성일시
+              placeOptions:
+                type: array
+                description: 장소 선택지 (입력 순 — 동표 노출 순서)
+                items:
+                  required:
+                  - label
+                  - optionId
+                  - voterIds
+                  type: object
+                  properties:
+                    address:
+                      type: string
+                      description: 도로명 주소 (직접 입력이면 null)
+                      nullable: true
+                    voterIds:
+                      type: array
+                      description: 이 선택지에 투표한 회원 ID 목록 (실명 공개)
+                      items:
+                        oneOf:
+                        - type: object
+                        - type: boolean
+                        - type: string
+                        - type: number
+                    latitude:
+                      type: number
+                      description: 위도 (직접 입력이면 null)
+                      nullable: true
+                    optionId:
+                      type: number
+                      description: 선택지 ID
+                    label:
+                      type: string
+                      description: 상호명
+                    mapLink:
+                      type: string
+                      description: 카카오맵 URL (직접 입력이면 null)
+                      nullable: true
+                    longitude:
+                      type: number
+                      description: 경도 (직접 입력이면 null)
+                      nullable: true
+              myVote:
+                type: object
+                properties:
+                  timeIds:
+                    type: array
+                    description: 내가 고른 시간 선택지 ID
+                    nullable: true
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                  placeIds:
+                    type: array
+                    description: 내가 고른 장소 선택지 ID
+                    nullable: true
+                    items:
+                      oneOf:
+                      - type: object
+                      - type: boolean
+                      - type: string
+                      - type: number
+                description: 내 표 (한 표도 없으면 null)
+              allowMultiple:
+                type: boolean
+                description: 복수 선택 허용 여부 (장소·시간 공통)
+              createdBy:
+                type: number
+                description: 투표를 만든 회원 ID
+              timeOptions:
+                type: array
+                description: 시간 선택지 (입력 순)
+                items:
+                  required:
+                  - meetAt
+                  - optionId
+                  - voterIds
+                  type: object
+                  properties:
+                    voterIds:
+                      type: array
+                      description: 이 선택지에 투표한 회원 ID 목록
+                      items:
+                        oneOf:
+                        - type: object
+                        - type: boolean
+                        - type: string
+                        - type: number
+                    meetAt:
+                      type: string
+                      description: 만날 일시 (표시 문구는 클라이언트가 만든다)
+                    optionId:
+                      type: number
+                      description: 선택지 ID
+              votedCount:
+                type: number
+                description: 장소·시간 중 하나라도 표를 던진 활성 멤버 수
+              voteId:
+                type: number
+                description: 투표 ID
+              closedAt:
+                type: string
+                description: 마감 시각 (진행 중이면 null)
+                nullable: true
+              roomId:
+                type: number
+                description: 채팅방 ID
+              status:
+                type: string
+                description: "상태 (OPEN, CLOSED)"
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-request-793255208:
       required:
       - quizSetId
@@ -3904,6 +4821,46 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
+    api-v1-users-id-leave-44232657:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            role:
+              type: string
+              description: "역할 (현재 미지원, null)"
+              nullable: true
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users1263059898:
       required:
       - caricature
@@ -3999,51 +4956,37 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-id-leave-44232657:
+    api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
+      required:
+      - success
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
       required:
       - error
       - success
       type: object
       properties:
         data:
-          required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - joinedAt
-          - name
-          - nickname
-          - phoneNumber
-          - updatedAt
           type: object
           properties:
-            createdAt:
-              type: string
-              description: 생성일시
-            role:
-              type: string
-              description: "역할 (현재 미지원, null)"
-              nullable: true
-            nickname:
-              type: string
-              description: 닉네임
-            id:
-              type: number
-              description: 사용자 ID
-            updatedAt:
-              type: string
-              description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
-      required:
-      - success
-      type: object
-      properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부
@@ -4113,32 +5056,6 @@ components:
             updatedAt:
               type: string
               description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            uploads:
-              type: array
-              items:
-                required:
-                - objectKey
-                - uploadUrl
-                type: object
-                properties:
-                  uploadUrl:
-                    type: string
-                    description: presigned PUT 업로드 URL
-                  objectKey:
-                    type: string
-                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부

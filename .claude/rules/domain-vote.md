@@ -1,0 +1,1 @@
+투표(vote — ChatVote·ChatVoteOption·ChatVoteChoice) 코드를 수정하기 전에 `docs/domains/vote.md`를 먼저 읽어라 — 방당 1개(open_room_id 유일키)·치환 cast(차집합인 이유)·활성 멤버 집계·잠금 순서(방 → 멤버 → 투표)·마감 두 경로가 거기 있다. SYSTEM 메시지 코드(`VOTE_CREATED:{id}` 등)를 바꾸면 `docs/domains/chat.md`의 SYSTEM 표를 함께 갱신하라.

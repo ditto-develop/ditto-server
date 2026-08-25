@@ -54,5 +54,13 @@ enum class ErrorCode(
     NOT_REMATCH_PAIR_MEMBER(403, "8102", "재매칭 쌍에 속한 회원이 아닙니다."),
     REMATCH_ALREADY_SUBMITTED(409, "8103", "이미 재매칭 의사를 확정했습니다."),
     REMATCH_PAIR_ALREADY_SETTLED(409, "8104", "이미 성사 여부가 확정된 재매칭입니다."),
+    // 82xx는 그룹 만남 투표 대역이다.
+    VOTE_NOT_FOUND(404, "8201", "존재하지 않는 투표입니다."),
+    VOTE_ALREADY_EXISTS(409, "8202", "이미 진행 중인 투표가 있습니다."),
+    VOTE_ALREADY_CLOSED(409, "8203", "이미 마감된 투표입니다."),
+    DUPLICATE_VOTE_OPTION(409, "8205", "이미 등록된 선택지입니다."),
+    INVALID_VOTE_OPTION(400, "8206", "이 투표의 선택지가 아닙니다."),
+    VOTE_MULTIPLE_NOT_ALLOWED(400, "8207", "복수 선택이 허용되지 않은 투표입니다."),
+    GROUP_ROOM_ONLY(400, "8208", "투표는 그룹 채팅방에서만 지원합니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }

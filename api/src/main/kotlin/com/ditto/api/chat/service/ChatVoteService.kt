@@ -1,0 +1,306 @@
+package com.ditto.api.chat.service
+
+import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.chat.dto.ChatVoteCastRequest
+import com.ditto.api.chat.dto.ChatVoteChangeResult
+import com.ditto.api.chat.dto.ChatVoteCreateRequest
+import com.ditto.api.chat.dto.ChatVoteDetailResponse
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatMessage
+import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.entity.ChatVote
+import com.ditto.domain.chat.entity.ChatVoteChoice
+import com.ditto.domain.chat.entity.ChatVoteOption
+import com.ditto.domain.chat.entity.ChatVoteOptionType
+import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
+import com.ditto.domain.chat.repository.ChatVoteOptionRepository
+import com.ditto.domain.chat.repository.ChatVoteRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
+
+/**
+ * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성·조회·투표(cast)·마감(close).
+ *
+ * 잠금 순서는 방 → 멤버 → 투표로 고정한다(그룹 이탈 트랜잭션이 방 → 멤버를 이미 고정했다).
+ * 생성은 방 행 잠금이 트랜잭션의 **첫 접근**이어야 한다(ADR 0011 규칙 5) — 그래서
+ * `ChatRoomAccessChecker`를 쓰지 않고 잠근 엔티티로 직접 판정한다(그 안의 비잠금 `findById`가
+ * 영속성 컨텍스트에 낡은 방 인스턴스를 먼저 올린다).
+ */
+@Service
+@Transactional(readOnly = true)
+class ChatVoteService(
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val chatVoteRepository: ChatVoteRepository,
+    private val chatVoteOptionRepository: ChatVoteOptionRepository,
+    private val chatVoteChoiceRepository: ChatVoteChoiceRepository,
+    private val chatMessageRepository: ChatMessageRepository,
+    private val chatRoomAccessChecker: ChatRoomAccessChecker,
+) {
+
+    /**
+     * 투표를 만든다. 방당 열린 투표는 하나다 — 방 행 잠금이 동시 생성을 직렬화하고,
+     * 잠금을 빠뜨린 경로가 생겨도 `chat_vote_uk_1`(open_room_id 유일)이 마지막으로 막는다.
+     *
+     * 생성은 멱등이 아니다. 이미 열린 투표가 있으면 그것을 돌려주지 않고 `VOTE_ALREADY_EXISTS`로
+     * 거부한다 — 돌려주면 FE 가 자기가 만든 투표라고 착각한다.
+     */
+    @Transactional
+    fun createVote(roomId: Long, memberId: Long, request: ChatVoteCreateRequest): ChatVoteChangeResult {
+        val room = chatRoomRepository.findWithLockById(roomId) ?: throw WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
+
+        validateVotableRoom(room, memberId)
+        validateNoDuplicateOptions(request)
+
+        if (chatVoteRepository.findByOpenRoomId(roomId) != null) {
+            throw WarnException(ErrorCode.VOTE_ALREADY_EXISTS)
+        }
+
+        val vote = chatVoteRepository.save(
+            ChatVote.open(roomId = roomId, createdBy = memberId, allowMultiple = request.allowMultiple),
+        )
+        val options = chatVoteOptionRepository.saveAll(
+            request.placeOptions.map {
+                ChatVoteOption.createPlaceOption(
+                    voteId = vote.id,
+                    createdBy = memberId,
+                    label = it.label.trim(),
+                    address = it.address,
+                    mapLink = it.mapLink,
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                )
+            } + request.timeOptions.map {
+                ChatVoteOption.createTimeOption(voteId = vote.id, createdBy = memberId, meetAt = it.meetAt)
+            },
+        )
+
+        // 생성 사실을 대화 스트림에 남긴다 — 화면이 "생성 사용자 전송 메시지"를 요구하고(피그마 4.2.3),
+        // FE 는 이 메시지의 senderId 로 작성자 프로필을 붙인다. voteId 는 코드 뒤에 실어 상세 재조회의 키가 된다.
+        val systemMessage = chatMessageRepository.save(
+            ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CREATED:${vote.id}"),
+        )
+
+        return ChatVoteChangeResult(
+            detail = ChatVoteDetailResponse.beforeAnyVote(
+                vote = vote,
+                options = options,
+                activeMemberIds = activeMemberIds(roomId),
+            ),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+        )
+    }
+
+    /**
+     * 투표를 마감한다 — 마감하면 표를 던질 수 없고 결과만 남는다. 권한은 방 멤버 누구나다.
+     *
+     * 멱등이다: 이미 닫힌 투표에 다시 요청해도 성공으로 답하되, SYSTEM 메시지는 **이번 요청이
+     * 실제로 닫았을 때만** 담는다(더블 탭·재시도가 마감 메시지를 두 번 남기지 않게 — 채팅 종료와 같은 규칙).
+     */
+    @Transactional
+    fun close(roomId: Long, voteId: Long, memberId: Long, now: LocalDateTime): ChatVoteChangeResult {
+        val vote = chatVoteRepository.findWithLockById(voteId)
+            ?: throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        if (vote.roomId != roomId) {
+            throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        }
+        val room = chatRoomRepository.findById(roomId).orElseThrow {
+            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
+        }
+        // 방 해체가 투표를 자동 마감한 뒤의 재요청도 성공이어야 해서, 멱등 반환이 방 상태 검사보다 먼저다.
+        validateVoterMembership(room, memberId)
+        val activeMemberIds = activeMemberIds(roomId)
+        if (vote.isClosed) {
+            return ChatVoteChangeResult(detail = toDetail(vote, activeMemberIds, memberId), systemMessage = null)
+        }
+        validateRoomOpenForVoting(room)
+
+        vote.closeByMember(by = memberId, at = now)
+        chatVoteRepository.save(vote)
+        val systemMessage = chatMessageRepository.save(
+            ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CLOSED:${vote.id}"),
+        )
+        return ChatVoteChangeResult(
+            detail = toDetail(vote, activeMemberIds, memberId),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+        )
+    }
+
+    /**
+     * 방의 투표 목록 — 최신이 앞이다. 재접속·브로드캐스트 유실 시 배너 복구의 근거다.
+     * 조회는 종료된 방·이탈자에게도 열려 있다(지난 결과를 봐야 한다 — 읽기 전용 규칙).
+     */
+    fun getVotes(roomId: Long, memberId: Long): List<ChatVoteDetailResponse> {
+        chatRoomAccessChecker.validateMember(roomId, memberId)
+        val activeMemberIds = activeMemberIds(roomId)
+        return chatVoteRepository.findAllByRoomIdOrderByIdDesc(roomId).map { vote ->
+            toDetail(vote, activeMemberIds, memberId)
+        }
+    }
+
+    /** 투표 상세 — 집계와 내 표. */
+    fun getVote(roomId: Long, voteId: Long, memberId: Long): ChatVoteDetailResponse {
+        chatRoomAccessChecker.validateMember(roomId, memberId)
+        val vote = findVoteInRoom(voteId, roomId)
+        return toDetail(vote, activeMemberIds(roomId), memberId)
+    }
+
+    /**
+     * 투표하기 — 요청에 담긴 집합이 그 회원의 최종 선택이다(치환).
+     *
+     * 투표 행 잠금이 트랜잭션의 첫 접근이다(ADR 0011 규칙 5). 동시 cast 는 이 잠금이 직렬화한다 —
+     * 잠그지 않으면 삭제와 삽입 사이의 중간 상태(표가 줄어든 순간)를 다른 조회가 본다.
+     * 방 행은 잠그지 않는다(수정하지 않고, 상태 판정은 잠금 획득 뒤에 읽어 최신 커밋을 본다).
+     *
+     * 치환은 차집합이다 — 빠진 표만 지우고 새 표만 넣고 겹치는 표는 건드리지 않는다.
+     * 전량 삭제 후 재삽입이 왜 안 되는지는 `docs/domains/vote.md` 참고.
+     */
+    @Transactional
+    fun cast(roomId: Long, voteId: Long, memberId: Long, request: ChatVoteCastRequest): ChatVoteDetailResponse {
+        val vote = chatVoteRepository.findWithLockById(voteId) ?: throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        if (vote.roomId != roomId) {
+            throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        }
+        val room = chatRoomRepository.findById(roomId).orElseThrow {
+            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
+        }
+
+        validateVotableRoom(room, memberId)
+
+        if (vote.isClosed) {
+            throw WarnException(ErrorCode.VOTE_ALREADY_CLOSED)
+        }
+
+        val options = chatVoteOptionRepository.findAllByVoteIdOrderByIdAsc(voteId)
+        val wantedOptionIds = normalizeCastSelection(vote, options, request)
+
+        val choices = chatVoteChoiceRepository.findAllByVoteId(voteId)
+        val myChoices = choices.filter { it.memberId == memberId }
+        val currentOptionIds = myChoices.map { it.optionId }.toSet()
+
+        chatVoteChoiceRepository.deleteAllByIdInBatch(
+            myChoices.filter { it.optionId !in wantedOptionIds }.map { it.id },
+        )
+        val inserted = chatVoteChoiceRepository.saveAll(
+            (wantedOptionIds - currentOptionIds).map { ChatVoteChoice.of(voteId, it, memberId) },
+        )
+
+        val untouched = myChoices.filter { it.optionId in wantedOptionIds }
+        val othersChoices = choices.filter { it.memberId != memberId }
+        return ChatVoteDetailResponse.of(
+            vote = vote,
+            options = options,
+            choices = othersChoices + untouched + inserted,
+            activeMemberIds = activeMemberIds(roomId),
+            viewerId = memberId,
+        )
+    }
+
+    /**
+     * 요청 선택을 검증해 치환의 목표 집합으로 만든다. 전부 이 투표의 선택지여야 하고 유형이 맞아야
+     * 하며, 복수 선택이 꺼져 있으면 유형별 1개까지. 같은 ID 중복은 오류가 아니라 한 표로 접는다.
+     */
+    private fun normalizeCastSelection(
+        vote: ChatVote,
+        options: List<ChatVoteOption>,
+        request: ChatVoteCastRequest,
+    ): Set<Long> {
+        val placeIds = request.placeIds.distinct()
+        val timeIds = request.timeIds.distinct()
+
+        val optionTypeById = options.associate { it.id to it.optionType }
+        val typeMismatched = placeIds.any { optionTypeById[it] != ChatVoteOptionType.PLACE } ||
+            timeIds.any { optionTypeById[it] != ChatVoteOptionType.TIME }
+        if (typeMismatched) {
+            throw WarnException(ErrorCode.INVALID_VOTE_OPTION)
+        }
+        if (!vote.allowMultiple && (placeIds.size > 1 || timeIds.size > 1)) {
+            throw WarnException(ErrorCode.VOTE_MULTIPLE_NOT_ALLOWED)
+        }
+        return (placeIds + timeIds).toSet()
+    }
+
+    private fun validateVotableRoom(room: ChatRoom, memberId: Long) {
+        validateVoterMembership(room, memberId)
+        validateRoomOpenForVoting(room)
+    }
+
+    /** 이탈은 행 삭제가 아니라 left_at 이라 exists 검사로는 나간 멤버가 통과한다 — 행을 읽어 [hasLeft]로 거른다. */
+    private fun validateVoterMembership(room: ChatRoom, memberId: Long) {
+        if (room.sourceType != ChatRoomType.GROUP) {
+            throw WarnException(ErrorCode.GROUP_ROOM_ONLY)
+        }
+        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, memberId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(room.id)
+        if (roomMember.hasLeft) {
+            throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "이미 나간 채팅방입니다.")
+        }
+    }
+
+    /** 개방 전·종료 후 방은 막는다 — 채팅 전송과 같은 규칙. */
+    private fun validateRoomOpenForVoting(room: ChatRoom) {
+        if (room.isBeforeOpen) {
+            throw WarnException(ErrorCode.CHAT_ROOM_NOT_OPENED)
+        }
+        if (room.isEnded) {
+            throw WarnException(ErrorCode.CHAT_ROOM_ENDED)
+        }
+    }
+
+    /**
+     * 요청 안의 중복을 저장 전에 거른다 — DB 유일키(uk_1·uk_2)가 최종으로 막지만,
+     * 그때는 이미 INSERT 라 INTERNAL_ERROR 로 새므로 여기서 8205 로 정확히 답한다.
+     */
+    private fun validateNoDuplicateOptions(request: ChatVoteCreateRequest) {
+        // DB collation 이 대소문자를 무시하므로("GS25"=="gs25") 판정 기준을 lowercase 로 맞춘다.
+        val labels = request.placeOptions.map { it.label.trim().lowercase() }
+        if (labels.size != labels.distinct().size) {
+            throw WarnException(ErrorCode.DUPLICATE_VOTE_OPTION)
+        }
+        val meetAts = request.timeOptions.map { it.meetAt.withSecond(0).withNano(0) }
+        if (meetAts.size != meetAts.distinct().size) {
+            throw WarnException(ErrorCode.DUPLICATE_VOTE_OPTION)
+        }
+    }
+
+    private fun findVoteInRoom(voteId: Long, roomId: Long): ChatVote {
+        val vote = chatVoteRepository.findById(voteId).orElse(null)
+            ?: throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        // 다른 방의 투표 ID 로 접근하면 존재를 숨기지 않고 404 로 답한다 — 방 멤버십은 이미 검증됐다.
+        if (vote.roomId != roomId) {
+            throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        }
+        return vote
+    }
+
+    private fun toDetail(vote: ChatVote, activeMemberIds: Set<Long>, viewerId: Long): ChatVoteDetailResponse =
+        ChatVoteDetailResponse.of(
+            vote = vote,
+            options = chatVoteOptionRepository.findAllByVoteIdOrderByIdAsc(vote.id),
+            choices = chatVoteChoiceRepository.findAllByVoteId(vote.id),
+            activeMemberIds = activeMemberIds,
+            viewerId = viewerId,
+        )
+
+    private fun activeMemberIds(roomId: Long): Set<Long> =
+        chatRoomMemberRepository.findByRoomIdIn(listOf(roomId))
+            .filter { !it.hasLeft }
+            .map { it.memberId }
+            .toSet()
+
+    companion object {
+        /**
+         * 투표 사건 코드 — SYSTEM 메시지 content 에 `"코드:voteId"` 형식으로 실린다.
+         * 다른 사건 코드(USER_LEFT 등)와 달리 접미가 붙는 이유: 클라이언트가 배너·카드에서
+         * 상세를 재조회하려면 voteId 가 필요하다. 표시 문구는 클라이언트가 만든다(docs/domains/chat.md).
+         */
+        const val VOTE_CREATED = "VOTE_CREATED"
+        const val VOTE_CLOSED = "VOTE_CLOSED"
+    }
+}
