@@ -1,5 +1,6 @@
 package com.ditto.api.chat.controller
 
+import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
@@ -40,6 +41,17 @@ class ChatVoteController(
         @PathVariable roomId: Long,
     ): ApiResponse<List<ChatVoteDetailResponse>> =
         ApiResponse.ok(chatVoteService.getVotes(roomId, principal.memberId))
+
+    /** 투표하기 — 요청에 담긴 집합이 내 최종 선택이다(치환). 재투표도 같은 경로다. */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/votes/{voteId}/cast")
+    fun cast(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+        @PathVariable voteId: Long,
+        @RequestBody request: ChatVoteCastRequest,
+    ): ApiResponse<ChatVoteDetailResponse> =
+        ApiResponse.ok(chatVoteService.cast(roomId, voteId, principal.memberId, request))
 
     /** 투표 상세 — 집계 + 내 표. */
     @GetMapping("/api/v1/chat/rooms/{roomId}/votes/{voteId}")

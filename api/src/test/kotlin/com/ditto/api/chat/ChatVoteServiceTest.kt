@@ -1,5 +1,6 @@
 package com.ditto.api.chat
 
+import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
@@ -21,6 +22,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 private val FRIDAY = LocalDateTime.of(2026, 3, 13, 12, 0)
@@ -156,6 +159,177 @@ class ChatVoteServiceTest(
                     request = createRequest(meetAts = listOf(meetAt, meetAt.plusSeconds(30))),
                 )
             }.errorCode shouldBe ErrorCode.DUPLICATE_VOTE_OPTION
+        }
+    }
+
+    "cast — 투표하기 (치환)" - {
+        "첫 투표는 표를 만들고 votedCount·myVote 가 채워진다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val placeId = detail.placeOptions[0].optionId
+            val timeId = detail.timeOptions[0].optionId
+
+            val cast = chatVoteService.cast(
+                room.id, detail.voteId, memberId = 2L,
+                request = ChatVoteCastRequest(placeIds = listOf(placeId), timeIds = listOf(timeId)),
+            )
+
+            cast.votedCount shouldBe 1
+            cast.myVote?.placeIds shouldBe listOf(placeId)
+            cast.placeOptions[0].voterIds shouldBe listOf(2L)
+        }
+
+        // 재투표 화면이 기존 선택을 유지한 채 재제출한다 — 겹치는 표가 정상 경로다.
+        "재투표는 치환이다 — 겹치는 표를 유지한 채 빠진 것만 지우고 새 것만 넣는다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(
+                room.id, memberId = 1L, request = createRequest(allowMultiple = true),
+            )
+            val (placeA, placeB) = detail.placeOptions.map { it.optionId }
+            val timeA = detail.timeOptions[0].optionId
+            chatVoteService.cast(
+                room.id, detail.voteId, memberId = 2L,
+                request = ChatVoteCastRequest(placeIds = listOf(placeA), timeIds = listOf(timeA)),
+            )
+
+            // placeA 유지 + placeB 추가 + timeA 제거
+            val recast = chatVoteService.cast(
+                room.id, detail.voteId, memberId = 2L,
+                request = ChatVoteCastRequest(placeIds = listOf(placeA, placeB), timeIds = emptyList()),
+            )
+
+            recast.myVote?.placeIds?.toSet() shouldBe setOf(placeA, placeB)
+            recast.myVote?.timeIds shouldBe emptyList<Long>()
+            chatVoteChoiceRepository.findAllByVoteId(detail.voteId).size shouldBe 2
+        }
+
+        "빈 요청은 내 표 전체 취소다 — myVote 가 null 로 돌아간다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val placeId = detail.placeOptions[0].optionId
+            chatVoteService.cast(
+                room.id, detail.voteId, memberId = 2L,
+                request = ChatVoteCastRequest(placeIds = listOf(placeId)),
+            )
+
+            val cancelled = chatVoteService.cast(
+                room.id, detail.voteId, memberId = 2L, request = ChatVoteCastRequest(),
+            )
+
+            cancelled.myVote shouldBe null
+            cancelled.votedCount shouldBe 0
+        }
+
+        "다른 투표의 선택지 ID 면 INVALID_VOTE_OPTION 이다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = listOf(99999L)),
+                )
+            }.errorCode shouldBe ErrorCode.INVALID_VOTE_OPTION
+        }
+
+        "시간 선택지를 placeIds 에 실으면 INVALID_VOTE_OPTION 이다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val timeId = detail.timeOptions[0].optionId
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = listOf(timeId)),
+                )
+            }.errorCode shouldBe ErrorCode.INVALID_VOTE_OPTION
+        }
+
+        "복수 선택이 꺼져 있으면 유형별 2개 이상은 VOTE_MULTIPLE_NOT_ALLOWED 다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(
+                room.id, memberId = 1L, request = createRequest(allowMultiple = false),
+            )
+            val placeIds = detail.placeOptions.map { it.optionId }
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = placeIds),
+                )
+            }.errorCode shouldBe ErrorCode.VOTE_MULTIPLE_NOT_ALLOWED
+        }
+
+        "마감된 투표에는 던질 수 없다 — VOTE_ALREADY_CLOSED" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            chatVoteRepository.findById(detail.voteId).get().let {
+                it.close(by = 1L, at = FRIDAY.plusHours(1))
+                chatVoteRepository.save(it)
+            }
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = listOf(detail.placeOptions[0].optionId)),
+                )
+            }.errorCode shouldBe ErrorCode.VOTE_ALREADY_CLOSED
+        }
+
+        "방을 나간 멤버는 던질 수 없다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 2L)!!
+                .apply { leave(FRIDAY) }
+                .let { chatRoomMemberRepository.save(it) }
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = listOf(detail.placeOptions[0].optionId)),
+                )
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+        }
+
+        "종료된 방에서는 던질 수 없다 — CHAT_ROOM_ENDED" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
+            chatRoomRepository.save(room)
+
+            shouldThrow<WarnException> {
+                chatVoteService.cast(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = ChatVoteCastRequest(placeIds = listOf(detail.placeOptions[0].optionId)),
+                )
+            }.errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
+        }
+
+        // 투표 행 잠금이 치환 구간을 직렬화한다 — 겹치면 삭제·삽입 사이의 중간 상태가 셀 수 있다.
+        "세 명이 동시에 던져도 표가 정확히 수렴한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = chatVoteService.createVote(room.id, memberId = 1L, request = createRequest())
+            val placeId = detail.placeOptions[0].optionId
+            val timeId = detail.timeOptions[0].optionId
+            val startLatch = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(3)
+
+            val requests = listOf(1L, 2L, 3L).map { memberId ->
+                executor.submit {
+                    startLatch.await()
+                    chatVoteService.cast(
+                        room.id, detail.voteId, memberId,
+                        request = ChatVoteCastRequest(placeIds = listOf(placeId), timeIds = listOf(timeId)),
+                    )
+                }
+            }
+            startLatch.countDown()
+            requests.forEach { it.get() }
+            executor.shutdown()
+
+            val reloaded = chatVoteService.getVote(room.id, detail.voteId, memberId = 1L)
+            reloaded.votedCount shouldBe 3
+            reloaded.placeOptions[0].voterIds.toSet() shouldBe setOf(1L, 2L, 3L)
         }
     }
 

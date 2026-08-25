@@ -1,6 +1,7 @@
 package com.ditto.api.chat
 
 import com.ditto.api.chat.controller.ChatVoteController
+import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
@@ -203,6 +204,58 @@ class ChatVoteControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 *detailResponseFields("data[]."),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("투표에 표를 던진다 — 재투표도 같은 경로다")
+    fun cast() {
+        every { chatVoteService.cast(any(), any(), any(), any()) } returns sampleDetail()
+
+        val request = ChatVoteCastRequest(placeIds = listOf(301L), timeIds = listOf(311L))
+
+        mockMvc.perform(
+            post("/api/v1/chat/rooms/{roomId}/votes/{voteId}/cast", 87L, 41L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.myVote.placeIds[0]").value(301L))
+            .andDo(
+                document(
+                    "chat-vote-cast",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                        parameterWithName("voteId").description("투표 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("투표하기")
+                            .description(
+                                "요청에 담긴 집합이 내 최종 선택입니다(치환) — 재투표도 같은 경로이며 " +
+                                    "빈 배열은 해당 유형의 표 취소입니다. 응답은 갱신된 상세라 재조회가 필요 없습니다. " +
+                                    "복수 선택이 꺼진 투표에 유형별 2개 이상이면 8207, 이 투표의 선택지가 아니면 8206, " +
+                                    "마감된 투표면 8203 으로 거부합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                                parameterWithName("voteId").description("투표 ID"),
+                            )
+                            .requestFields(
+                                fieldWithPath("placeIds[]").description("선택한 장소 선택지 ID 목록 (빈 배열 = 장소 표 취소)"),
+                                fieldWithPath("timeIds[]").description("선택한 시간 선택지 ID 목록 (빈 배열 = 시간 표 취소)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                *detailResponseFields("data."),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
