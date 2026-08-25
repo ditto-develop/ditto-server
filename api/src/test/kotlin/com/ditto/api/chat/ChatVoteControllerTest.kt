@@ -1,8 +1,8 @@
 package com.ditto.api.chat
 
 import com.ditto.api.chat.controller.ChatVoteController
-import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteChangeResult
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest

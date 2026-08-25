@@ -25,4 +25,13 @@ interface ChatVoteRepository : JpaRepository<ChatVote, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Transactional(propagation = Propagation.MANDATORY)
     fun findWithLockById(id: Long): ChatVote?
+
+    /**
+     * 방 종료가 열린 투표를 함께 닫을 때 쓴다. open_room_id 가 유일 인덱스라 단건 잠금이다.
+     * 비잠금 [findByOpenRoomId]로 먼저 찾으면 만료 sweep 의 스냅샷에 갇혀 그 사이 생긴 투표를
+     * 놓친다 — ADR 0011 규칙 5·7.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findWithLockByOpenRoomId(openRoomId: Long): ChatVote?
 }

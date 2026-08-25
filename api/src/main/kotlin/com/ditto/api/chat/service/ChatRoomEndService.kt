@@ -174,13 +174,9 @@ class ChatRoomEndService(
      * 투표 행을 잠그고 닫는다 — 진행 중인 cast·close 와의 경합을 직렬화한다(잠금 순서 방 → 투표).
      */
     private fun closeOpenVoteQuietly(roomId: Long, now: LocalDateTime) {
-        val openVote = chatVoteRepository.findByOpenRoomId(roomId) ?: return
-        chatVoteRepository.findWithLockById(openVote.id)
-            ?.takeIf { !it.isClosed }
-            ?.let {
-                it.closeBecauseRoomEnded(at = now)
-                chatVoteRepository.save(it)
-            }
+        val openVote = chatVoteRepository.findWithLockByOpenRoomId(roomId) ?: return
+        openVote.closeBecauseRoomEnded(at = now)
+        chatVoteRepository.save(openVote)
     }
 
     /** 잠근 뒤에도 여전히 열려 있는 방만 돌려준다 — 잠금을 기다리는 사이 사용자가 먼저 끝냈을 수 있다. */

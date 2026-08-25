@@ -10,12 +10,12 @@ import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
@@ -31,7 +31,7 @@ class ChatVoteController(
 ) {
 
     /**
-     * 투표 생성 — 방당 열린 투표 1개. 이미 있으면 8202 로 거부한다(멱등 아님).
+     * 투표 생성 — 방당 열린 투표 1개. 이미 있으면 VOTE_ALREADY_EXISTS 로 거부한다(멱등 아님).
      * 생성 SYSTEM 메시지는 서비스 커밋 뒤 여기서 브로드캐스트한다 — 잠금 구간에 외부 I/O 를
      * 넣지 않는 규칙(ADR 0011)이고, 채팅 종료가 같은 구조다.
      */
@@ -83,7 +83,7 @@ class ChatVoteController(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable roomId: Long,
         @PathVariable voteId: Long,
-        @RequestBody request: ChatVoteCastRequest,
+        @Valid @RequestBody request: ChatVoteCastRequest,
     ): ApiResponse<ChatVoteDetailResponse> =
         ApiResponse.ok(chatVoteService.cast(roomId, voteId, principal.memberId, request))
 

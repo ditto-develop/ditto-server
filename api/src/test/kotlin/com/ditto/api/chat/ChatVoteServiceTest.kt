@@ -13,8 +13,8 @@ import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.ChatVoteFixture
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatVoteStatus
-import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
 import com.ditto.domain.chat.repository.ChatVoteOptionRepository
@@ -161,6 +161,17 @@ class ChatVoteServiceTest(
                 createVoteDetail(
                     room.id, memberId = 1L,
                     request = createRequest(placeLabels = listOf("성수 카페거리", "성수 카페거리")),
+                )
+            }.errorCode shouldBe ErrorCode.DUPLICATE_VOTE_OPTION
+        }
+
+        "대소문자만 다른 상호명도 DUPLICATE_VOTE_OPTION 으로 거부한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+
+            shouldThrow<WarnException> {
+                createVoteDetail(
+                    room.id, memberId = 1L,
+                    request = createRequest(placeLabels = listOf("GS25", "gs25")),
                 )
             }.errorCode shouldBe ErrorCode.DUPLICATE_VOTE_OPTION
         }
@@ -372,6 +383,19 @@ class ChatVoteServiceTest(
             again.detail.status shouldBe ChatVoteStatus.CLOSED
             again.systemMessage shouldBe null
             chatMessageRepository.findAll().count { it.content.startsWith("VOTE_CLOSED:") } shouldBe 1
+        }
+
+        "방이 종료된 뒤에도 이미 닫힌 투표의 재요청은 성공한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatVoteService.close(room.id, detail.voteId, memberId = 1L, now = FRIDAY.plusHours(2))
+            room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
+            chatRoomRepository.save(room)
+
+            val again = chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = FRIDAY.plusHours(3))
+
+            again.detail.status shouldBe ChatVoteStatus.CLOSED
+            again.systemMessage shouldBe null
         }
 
         "방을 나간 멤버는 마감할 수 없다" {

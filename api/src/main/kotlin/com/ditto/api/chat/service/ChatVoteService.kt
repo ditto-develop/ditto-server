@@ -7,15 +7,15 @@ import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatMessage
+import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.ChatVote
 import com.ditto.domain.chat.entity.ChatVoteChoice
 import com.ditto.domain.chat.entity.ChatVoteOption
 import com.ditto.domain.chat.entity.ChatVoteOptionType
-import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
 import com.ditto.domain.chat.repository.ChatVoteOptionRepository
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /**
- * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성과 조회.
+ * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성·조회·투표(cast)·마감(close).
  *
  * 잠금 순서는 방 → 멤버 → 투표로 고정한다(그룹 이탈 트랜잭션이 방 → 멤버를 이미 고정했다).
  * 생성은 방 행 잠금이 트랜잭션의 **첫 접근**이어야 한다(ADR 0011 규칙 5) — 그래서
@@ -113,12 +113,13 @@ class ChatVoteService(
         val room = chatRoomRepository.findById(roomId).orElseThrow {
             WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
         }
-        validateVotableRoom(room, memberId)
-
+        // 방 해체가 투표를 자동 마감한 뒤의 재요청도 성공이어야 해서, 멱등 반환이 방 상태 검사보다 먼저다.
+        validateVoterMembership(room, memberId)
         val activeMemberIds = activeMemberIds(roomId)
         if (vote.isClosed) {
             return ChatVoteChangeResult(detail = toDetail(vote, activeMemberIds, memberId), systemMessage = null)
         }
+        validateRoomOpenForVoting(room)
 
         vote.closeByMember(by = memberId, at = now)
         chatVoteRepository.save(vote)
@@ -158,9 +159,7 @@ class ChatVoteService(
      * 방 행은 잠그지 않는다(수정하지 않고, 상태 판정은 잠금 획득 뒤에 읽어 최신 커밋을 본다).
      *
      * 치환은 차집합이다 — 빠진 표만 지우고 새 표만 넣고 겹치는 표는 건드리지 않는다.
-     * 전량 삭제 후 재삽입은 Hibernate flush 가 INSERT 를 DELETE 보다 먼저 실행해
-     * 겹치는 표에서 chat_vote_choice_uk_1 에 걸린다(설계서 §5-4). 재투표 화면이 기존 선택을
-     * 유지한 채 재제출하므로 겹침이 정상 경로다.
+     * 전량 삭제 후 재삽입이 왜 안 되는지는 `docs/domains/vote.md` 참고.
      */
     @Transactional
     fun cast(roomId: Long, voteId: Long, memberId: Long, request: ChatVoteCastRequest): ChatVoteDetailResponse {
@@ -179,7 +178,7 @@ class ChatVoteService(
         }
 
         val options = chatVoteOptionRepository.findAllByVoteIdOrderByIdAsc(voteId)
-        val wantedOptionIds = validateCastSelection(vote, options, request)
+        val wantedOptionIds = normalizeCastSelection(vote, options, request)
 
         val choices = chatVoteChoiceRepository.findAllByVoteId(voteId)
         val myChoices = choices.filter { it.memberId == memberId }
@@ -204,12 +203,10 @@ class ChatVoteService(
     }
 
     /**
-     * 선택이 이 투표에서 유효한지 — 전부 이 투표의 선택지이고 유형이 맞아야 하며,
-     * 복수 선택이 꺼져 있으면 유형별 1개까지다. 같은 ID 중복은 오류가 아니라 한 표로 접는다.
-     *
-     * @return 최종 선택 집합 (치환의 목표 상태)
+     * 요청 선택을 검증해 치환의 목표 집합으로 만든다. 전부 이 투표의 선택지여야 하고 유형이 맞아야
+     * 하며, 복수 선택이 꺼져 있으면 유형별 1개까지. 같은 ID 중복은 오류가 아니라 한 표로 접는다.
      */
-    private fun validateCastSelection(
+    private fun normalizeCastSelection(
         vote: ChatVote,
         options: List<ChatVoteOption>,
         request: ChatVoteCastRequest,
@@ -229,22 +226,25 @@ class ChatVoteService(
         return (placeIds + timeIds).toSet()
     }
 
-    /**
-     * 투표를 던질 수 있는 방인지 — 그룹이고, 열려 있고, 내가 아직 나가지 않은 멤버여야 한다.
-     *
-     * 이탈 판정을 exists 가 아니라 행 조회 + [hasLeft]로 하는 이유: 이탈은 행 삭제가 아니라
-     * left_at 소프트 컬럼이라 exists 는 나간 멤버에게도 참이다.
-     */
     private fun validateVotableRoom(room: ChatRoom, memberId: Long) {
+        validateVoterMembership(room, memberId)
+        validateRoomOpenForVoting(room)
+    }
+
+    /** 이탈은 행 삭제가 아니라 left_at 이라 exists 검사로는 나간 멤버가 통과한다 — 행을 읽어 [hasLeft]로 거른다. */
+    private fun validateVoterMembership(room: ChatRoom, memberId: Long) {
         if (room.sourceType != ChatRoomType.GROUP) {
             throw WarnException(ErrorCode.GROUP_ROOM_ONLY)
         }
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, memberId)
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(room.id)
-
         if (roomMember.hasLeft) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "이미 나간 채팅방입니다.")
         }
+    }
+
+    /** 개방 전·종료 후 방은 막는다 — 채팅 전송과 같은 규칙. */
+    private fun validateRoomOpenForVoting(room: ChatRoom) {
         if (room.isBeforeOpen) {
             throw WarnException(ErrorCode.CHAT_ROOM_NOT_OPENED)
         }
@@ -258,7 +258,8 @@ class ChatVoteService(
      * 그때는 이미 INSERT 라 INTERNAL_ERROR 로 새므로 여기서 8205 로 정확히 답한다.
      */
     private fun validateNoDuplicateOptions(request: ChatVoteCreateRequest) {
-        val labels = request.placeOptions.map { it.label.trim() }
+        // DB collation 이 대소문자를 무시하므로("GS25"=="gs25") 판정 기준을 lowercase 로 맞춘다.
+        val labels = request.placeOptions.map { it.label.trim().lowercase() }
         if (labels.size != labels.distinct().size) {
             throw WarnException(ErrorCode.DUPLICATE_VOTE_OPTION)
         }
