@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 /**
  * 투표 생성 요청. 화면(피그마 4.2.2)이 장소 → 시간 2단계로 받아 한 번에 제출한다.
  *
- * 장소·시간 **둘 다** [MIN_OPTION_COUNT]~[MAX_OPTION_COUNT]개다 — 생성 모달이 두 스텝을 모두
+ * 장소·시간 **둘 다** [MIN_OPTION_COUNT]~[ChatVoteOption.MAX_COUNT_PER_TYPE]개다 — 생성 모달이 두 스텝을 모두
  * 강제하고 유효성 문구도 "최소 2개"다. `title`은 받지 않는다(생성 화면에 제목 입력이 없다 —
  * 배너 문구는 FE 기본값이다).
  */
@@ -17,11 +17,11 @@ data class ChatVoteCreateRequest(
     val allowMultiple: Boolean = false,
 
     @field:Valid
-    @field:Size(min = MIN_OPTION_COUNT, max = MAX_OPTION_COUNT, message = "장소 선택지는 ${MIN_OPTION_COUNT}~${MAX_OPTION_COUNT}개여야 합니다.")
+    @field:Size(min = MIN_OPTION_COUNT, max = ChatVoteOption.MAX_COUNT_PER_TYPE, message = "장소 선택지는 ${MIN_OPTION_COUNT}~${ChatVoteOption.MAX_COUNT_PER_TYPE}개여야 합니다.")
     val placeOptions: List<PlaceOptionRequest>,
 
     @field:Valid
-    @field:Size(min = MIN_OPTION_COUNT, max = MAX_OPTION_COUNT, message = "시간 선택지는 ${MIN_OPTION_COUNT}~${MAX_OPTION_COUNT}개여야 합니다.")
+    @field:Size(min = MIN_OPTION_COUNT, max = ChatVoteOption.MAX_COUNT_PER_TYPE, message = "시간 선택지는 ${MIN_OPTION_COUNT}~${ChatVoteOption.MAX_COUNT_PER_TYPE}개여야 합니다.")
     val timeOptions: List<TimeOptionRequest>,
 ) {
     data class PlaceOptionRequest(
@@ -47,6 +47,5 @@ data class ChatVoteCreateRequest(
 
     companion object {
         const val MIN_OPTION_COUNT = 2
-        const val MAX_OPTION_COUNT = 10
     }
 }
