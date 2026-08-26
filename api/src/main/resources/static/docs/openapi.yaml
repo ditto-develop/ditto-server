@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-26 20:51:14"
+                          "createdAt" : "2026-08-26 20:57:12"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-26 20:51:14"
+                          "createdAt" : "2026-08-26 20:57:12"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/68f50773-13f3-47f7-aab0-657a954476af" ],
+                    "imageKeys" : [ "pending/user-reports/1/a6584879-c04d-4d43-a742-fda5fdc51980" ],
                     "block" : false
                   }
       responses:
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-26 20:51:15",
+                        "joinedAt" : "2026-08-26 20:57:14",
                         "role" : null,
-                        "createdAt" : "2026-08-26 20:51:15",
-                        "updatedAt" : "2026-08-26 20:51:15"
+                        "createdAt" : "2026-08-26 20:57:14",
+                        "updatedAt" : "2026-08-26 20:57:14"
                       },
                       "error" : null
                     }
@@ -606,8 +606,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-25 20:51:14",
-                          "endDate" : "2026-08-27 20:51:14",
+                          "startDate" : "2026-08-25 20:57:13",
+                          "endDate" : "2026-08-27 20:57:13",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -624,8 +624,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-26 20:51:14",
-                            "updatedAt" : "2026-08-26 20:51:14"
+                            "createdAt" : "2026-08-26 20:57:13",
+                            "updatedAt" : "2026-08-26 20:57:13"
                           } ]
                         } ]
                       },
@@ -672,8 +672,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-26 20:51:15",
-                        "updatedAt" : "2026-08-26 20:51:15"
+                        "createdAt" : "2026-08-26 20:57:13",
+                        "updatedAt" : "2026-08-26 20:57:13"
                       },
                       "error" : null
                     }
@@ -750,11 +750,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/10edd50e-b9ba-4775-a444-fce3c9130512",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/10edd50e-b9ba-4775-a444-fce3c9130512"
+                          "objectKey" : "pending/user-reports/1/dcfa0421-9d54-4772-ad2b-aa0928a204e3",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/dcfa0421-9d54-4772-ad2b-aa0928a204e3"
                         }, {
-                          "objectKey" : "pending/user-reports/1/50968c49-d8b1-4796-ba98-0a95d398c42d",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/50968c49-d8b1-4796-ba98-0a95d398c42d"
+                          "objectKey" : "pending/user-reports/1/062bca7c-3c5a-4982-85d8-b52b30c32843",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/062bca7c-3c5a-4982-85d8-b52b30c32843"
                         } ]
                       },
                       "error" : null
@@ -1108,7 +1108,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDUwNjksImV4cCI6MTc4Nzc0ODY2OX0.1LKnNg_PYqTmebJ_obCXGBTsCV7KQsbGL0DV6cFEHLMCqwGaVMwPK6hRKzz5MJOfbveOPGJMzDjHu1_WVqtM7g"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDU0MjgsImV4cCI6MTc4Nzc0OTAyOH0.PXGtCezAuRZtyC8jq2W7qQ8jdb4mwIXiPOjTLzJZyGdrfZYTgVCKFbib6nBqgEX1F--1h3abtcfC8thcrTo59A"
                       },
                       "error" : null
                     }
@@ -1136,12 +1136,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 20:51:15"
+                        "blockedAt" : "2026-08-26 20:57:13"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 20:51:15"
+                        "blockedAt" : "2026-08-26 20:57:13"
                       } ],
                       "error" : null
                     }
@@ -1434,13 +1434,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-26 20:51:15"
+                          "createdAt" : "2026-08-26 20:57:14"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-26 20:51:15"
+                          "createdAt" : "2026-08-26 20:57:14"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-26 20:51:15"
+                          "createdAt" : "2026-08-26 20:57:14"
                         } ]
                       },
                       "error" : null
@@ -1473,8 +1473,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-19 20:51:15",
-                          "endsAt" : "2026-09-02 20:51:15"
+                          "startsAt" : "2026-08-19 20:57:13",
+                          "endsAt" : "2026-09-02 20:57:13"
                         }
                       },
                       "error" : null
@@ -1651,8 +1651,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-26 20:51:15",
-                        "updatedAt" : "2026-08-26 20:51:15"
+                        "createdAt" : "2026-08-26 20:57:14",
+                        "updatedAt" : "2026-08-26 20:57:14"
                       },
                       "error" : null
                     }
@@ -2890,6 +2890,50 @@ components:
         meetAt:
           type: string
           description: "만날 일시 (yyyy-MM-dd HH:mm:ss, 초 이하는 버린다)"
+    api-v1-member-reviews-reviewId-targets-memberId30922589:
+      required:
+      - meetingStatus
+      - rating
+      type: object
+      properties:
+        wantsOneToOneRematch:
+          type: boolean
+          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
+          nullable: true
+        meetingStatus:
+          type: string
+          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
+        rating:
+          type: number
+          description: 별점 1~5 정수
+        comment:
+          type: string
+          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
+          nullable: true
+    api-v1-chat-rooms-roomId-votes-voteId-place-options-487658908:
+      required:
+      - label
+      type: object
+      properties:
+        address:
+          type: string
+          description: 도로명 주소 (선택)
+          nullable: true
+        latitude:
+          type: number
+          description: 위도 (선택)
+          nullable: true
+        label:
+          type: string
+          description: 상호명 (최대 100자)
+        mapLink:
+          type: string
+          description: 카카오맵 URL (선택)
+          nullable: true
+        longitude:
+          type: number
+          description: 경도 (선택)
+          nullable: true
     api-v1-quiz-sets-current-week838676343:
       required:
       - error
@@ -3021,50 +3065,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-member-reviews-reviewId-targets-memberId30922589:
-      required:
-      - meetingStatus
-      - rating
-      type: object
-      properties:
-        wantsOneToOneRematch:
-          type: boolean
-          description: 1:1 재매칭 의사. 그룹 평가에서만 필수이며 1:1 평가에는 보낼 수 없다
-          nullable: true
-        meetingStatus:
-          type: string
-          description: "만남 상태 (MET, APPOINTMENT_MADE, CHAT_ONLY, NO_SHOW)"
-        rating:
-          type: number
-          description: 별점 1~5 정수
-        comment:
-          type: string
-          description: "한줄 코멘트. 최대 50자, 공백만 보내면 미입력 처리"
-          nullable: true
-    api-v1-chat-rooms-roomId-votes-voteId-place-options-487658908:
-      required:
-      - label
-      type: object
-      properties:
-        address:
-          type: string
-          description: 도로명 주소 (선택)
-          nullable: true
-        latitude:
-          type: number
-          description: 위도 (선택)
-          nullable: true
-        label:
-          type: string
-          description: 상호명 (최대 100자)
-        mapLink:
-          type: string
-          description: 카카오맵 URL (선택)
-          nullable: true
-        longitude:
-          type: number
-          description: 경도 (선택)
-          nullable: true
     api-v1-chat-rooms-roomId-votes398406323:
       required:
       - allowMultiple
@@ -3227,17 +3227,83 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-id-leave1325395818:
+    api-v1-users479155738:
+      required:
+      - error
+      - success
       type: object
       properties:
-        reason:
-          type: string
-          description: "탈퇴 사유 code (선택, 최대 50자)"
-          nullable: true
-        reasonDetail:
-          type: string
-          description: "탈퇴 사유 자유 입력 (선택, 최대 100자). '기타' 선택 시의 서술 — 기타가 아니어도 받습니다"
-          nullable: true
+        data:
+          required:
+          - age
+          - birthDate
+          - caricature
+          - createdAt
+          - email
+          - gender
+          - id
+          - interests
+          - job
+          - joinedAt
+          - location
+          - name
+          - nickname
+          - phoneNumber
+          - updatedAt
+          type: object
+          properties:
+            caricature:
+              type: string
+              description: 프로필 캐리커쳐
+            role:
+              type: string
+              description: "역할 (현재 미지원, null)"
+              nullable: true
+            gender:
+              type: string
+              description: 성별
+            joinedAt:
+              type: string
+              description: 가입일시
+            createdAt:
+              type: string
+              description: 생성일시
+            phoneNumber:
+              type: string
+              description: 전화번호
+            nickname:
+              type: string
+              description: 닉네임
+            name:
+              type: string
+              description: 이름
+            location:
+              type: string
+              description: 사는곳 code
+            id:
+              type: number
+              description: 사용자 ID
+            job:
+              type: string
+              description: 직업 code
+            interests:
+              type: array
+              description: 관심사 code 목록
+              items:
+                oneOf:
+                - type: object
+                - type: boolean
+                - type: string
+                - type: number
+            age:
+              type: number
+              description: 나이대
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-chat-rooms-roomId-votes-voteId-close-634601543:
       required:
       - error
@@ -3379,83 +3445,17 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users479155738:
-      required:
-      - error
-      - success
+    api-v1-users-id-leave1325395818:
       type: object
       properties:
-        data:
-          required:
-          - age
-          - birthDate
-          - caricature
-          - createdAt
-          - email
-          - gender
-          - id
-          - interests
-          - job
-          - joinedAt
-          - location
-          - name
-          - nickname
-          - phoneNumber
-          - updatedAt
-          type: object
-          properties:
-            caricature:
-              type: string
-              description: 프로필 캐리커쳐
-            role:
-              type: string
-              description: "역할 (현재 미지원, null)"
-              nullable: true
-            gender:
-              type: string
-              description: 성별
-            joinedAt:
-              type: string
-              description: 가입일시
-            createdAt:
-              type: string
-              description: 생성일시
-            phoneNumber:
-              type: string
-              description: 전화번호
-            nickname:
-              type: string
-              description: 닉네임
-            name:
-              type: string
-              description: 이름
-            location:
-              type: string
-              description: 사는곳 code
-            id:
-              type: number
-              description: 사용자 ID
-            job:
-              type: string
-              description: 직업 code
-            interests:
-              type: array
-              description: 관심사 code 목록
-              items:
-                oneOf:
-                - type: object
-                - type: boolean
-                - type: string
-                - type: number
-            age:
-              type: number
-              description: 나이대
-            updatedAt:
-              type: string
-              description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
+        reason:
+          type: string
+          description: "탈퇴 사유 code (선택, 최대 50자)"
+          nullable: true
+        reasonDetail:
+          type: string
+          description: "탈퇴 사유 자유 입력 (선택, 최대 100자). '기타' 선택 시의 서술 — 기타가 아니어도 받습니다"
+          nullable: true
     api-v1-users-me-intro-notes1145489617:
       required:
       - error
@@ -3522,13 +3522,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users-me-notification-settings899749817:
-      type: object
-      properties:
-        chat:
-          type: boolean
-          description: 채팅 알림 수신 여부. 생략 시 변경 없음
-          nullable: true
     api-v1-users-me-sanction-1380459345:
       required:
       - error
@@ -3574,6 +3567,13 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-me-notification-settings899749817:
+      type: object
+      properties:
+        chat:
+          type: boolean
+          description: 채팅 알림 수신 여부. 생략 시 변경 없음
+          nullable: true
     api-v1-user-reports387435662:
       required:
       - reason
@@ -5262,83 +5262,6 @@ components:
         quizSetId:
           type: number
           description: 퀴즈 세트 ID
-    api-v1-users-id-leave-44232657:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - age
-          - birthDate
-          - createdAt
-          - email
-          - gender
-          - id
-          - joinedAt
-          - name
-          - nickname
-          - phoneNumber
-          - updatedAt
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 생성일시
-            role:
-              type: string
-              description: "역할 (현재 미지원, null)"
-              nullable: true
-            nickname:
-              type: string
-              description: 닉네임
-            id:
-              type: number
-              description: 사용자 ID
-            updatedAt:
-              type: string
-              description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-matches-request-id-reject-1480143692:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - createdAt
-          - id
-          - quizSetId
-          - receiverId
-          - requesterId
-          - status
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 요청 생성일시
-            receiverId:
-              type: number
-              description: 수신자 ID
-            requesterId:
-              type: number
-              description: 요청자 ID
-            quizSetId:
-              type: number
-              description: 퀴즈 세트 ID
-            id:
-              type: number
-              description: 매칭 ID
-            status:
-              type: string
-              description: 변경된 매칭 상태 (REJECTED)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users1263059898:
       required:
       - caricature
@@ -5397,37 +5320,88 @@ components:
           type: number
           description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
           nullable: true
-    api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
-      required:
-      - success
-      type: object
-      properties:
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+    api-v1-matches-request-id-reject-1480143692:
       required:
       - error
       - success
       type: object
       properties:
         data:
+          required:
+          - createdAt
+          - id
+          - quizSetId
+          - receiverId
+          - requesterId
+          - status
           type: object
           properties:
-            uploads:
-              type: array
-              items:
-                required:
-                - objectKey
-                - uploadUrl
-                type: object
-                properties:
-                  uploadUrl:
-                    type: string
-                    description: presigned PUT 업로드 URL
-                  objectKey:
-                    type: string
-                    description: 업로드 후 메시지 content 로 전송할 S3 key
+            createdAt:
+              type: string
+              description: 요청 생성일시
+            receiverId:
+              type: number
+              description: 수신자 ID
+            requesterId:
+              type: number
+              description: 요청자 ID
+            quizSetId:
+              type: number
+              description: 퀴즈 세트 ID
+            id:
+              type: number
+              description: 매칭 ID
+            status:
+              type: string
+              description: 변경된 매칭 상태 (REJECTED)
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-id-leave-44232657:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - age
+          - birthDate
+          - createdAt
+          - email
+          - gender
+          - id
+          - joinedAt
+          - name
+          - nickname
+          - phoneNumber
+          - updatedAt
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 생성일시
+            role:
+              type: string
+              description: "역할 (현재 미지원, null)"
+              nullable: true
+            nickname:
+              type: string
+              description: 닉네임
+            id:
+              type: number
+              description: 사용자 ID
+            updatedAt:
+              type: string
+              description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
+      required:
+      - success
+      type: object
+      properties:
         success:
           type: boolean
           description: 성공 여부
@@ -5497,6 +5471,32 @@ components:
             updatedAt:
               type: string
               description: 수정일시
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부

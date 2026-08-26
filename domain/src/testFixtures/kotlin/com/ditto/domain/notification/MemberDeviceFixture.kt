@@ -11,7 +11,7 @@ object MemberDeviceFixture {
         token: String = "fcm-token-1",
         platform: DevicePlatform = DevicePlatform.ANDROID,
         id: Long = 0L,
-    ): MemberDevice = MemberDevice(
+    ): MemberDevice = MemberDevice.create(
         memberId = memberId,
         token = token,
         platform = platform,

@@ -27,7 +27,7 @@ class MemberDeviceService(
     fun register(memberId: Long, token: String, platform: DevicePlatform): Boolean {
         val device = memberDeviceRepository.findByToken(token)
         if (device == null) {
-            memberDeviceRepository.save(MemberDevice(memberId = memberId, token = token, platform = platform))
+            memberDeviceRepository.save(MemberDevice.create(memberId = memberId, token = token, platform = platform))
             return true
         }
         if (device.isOwnedBy(memberId)) {

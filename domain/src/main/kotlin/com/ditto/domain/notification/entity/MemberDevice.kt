@@ -33,13 +33,11 @@ import org.hibernate.annotations.Comment
         Index(name = "member_device_index_1", columnList = "member_id"),
     ],
 )
-class MemberDevice(
+class MemberDevice private constructor(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0L,
-
-    memberId: Long,
 
     @Comment("FCM 등록 토큰")
     @Column(nullable = false, length = TOKEN_MAX_LENGTH)
@@ -49,6 +47,8 @@ class MemberDevice(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     val platform: DevicePlatform,
+
+    memberId: Long,
 ) : BaseEntity() {
 
     @Comment("소유 회원 ID")
@@ -65,5 +65,8 @@ class MemberDevice(
 
     companion object {
         const val TOKEN_MAX_LENGTH = 512
+
+        fun create(memberId: Long, token: String, platform: DevicePlatform): MemberDevice =
+            MemberDevice(token = token, platform = platform, memberId = memberId)
     }
 }
