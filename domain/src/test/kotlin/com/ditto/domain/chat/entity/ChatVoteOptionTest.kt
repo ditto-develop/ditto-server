@@ -82,6 +82,19 @@ class ChatVoteOptionTest(
         }
     }
 
+    "hasSameLabel — 상호명 중복 판정" - {
+        "then: 앞뒤 공백과 대소문자를 무시하고 같다고 본다" {
+            val option = ChatVoteFixture.place(voteId = 1L, label = "GS25 성수점")
+
+            option.hasSameLabel(" gs25 성수점 ") shouldBe true
+            option.hasSameLabel("GS25 성수2점") shouldBe false
+        }
+
+        "then: TIME 선택지는 label 이 없어 항상 false 다" {
+            ChatVoteFixture.time(voteId = 1L).hasSameLabel("아무거나") shouldBe false
+        }
+    }
+
     "입력 순 조회" - {
         "then: id 오름차순 = 입력 순으로 돌려준다 (동표 노출 순서의 근거)" {
             val first = chatVoteOptionRepository.save(ChatVoteFixture.place(voteId = 1L, label = "성수"))
