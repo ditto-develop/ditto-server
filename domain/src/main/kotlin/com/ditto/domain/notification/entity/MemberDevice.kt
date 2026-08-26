@@ -14,14 +14,13 @@ import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
 
 /**
- * 푸시 발송(FCM)의 주소록 한 줄 — 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원.
- * 회원 1명이 여러 행을 가질 수 있다(폰·태블릿, 기기 교체).
+ * 푸시 주소록 — FCM 디바이스 토큰과 소유 회원. 회원 하나가 기기 여러 개를 가질 수 있다.
  *
- * **토큰 단독 유일 제약이 "한 토큰 = 한 회원"을 DB 수준에서 강제한다.** 토큰은 기기의 것이라
- * 로그아웃해도 그대로다 — 공용 기기에서 다른 회원이 로그인하면 행을 새로 만들지 않고
- * [transferTo]로 소유자를 갱신해, 이전 회원의 알림이 남의 폰에 뜨는 것을 막는다.
+ * 토큰은 기기 소속이라 로그아웃해도 남는다. 그래서 token 단독 유일키로 "한 토큰 = 한 회원"을
+ * 강제하고, 같은 기기에서 다른 회원이 로그인하면 행을 새로 만들지 않고 [transferTo]로 소유자만
+ * 갈아끼운다. 안 그러면 이전 회원의 알림이 남의 폰에 뜬다.
  *
- * 토큰은 불투명 문자열이다. 형식이 보장되지 않으므로 잘라서 해석하거나 검증하지 않는다.
+ * 토큰 형식은 해석하지 않는다.
  */
 @Entity
 @Table(
@@ -30,7 +29,7 @@ import org.hibernate.annotations.Comment
         UniqueConstraint(name = "member_device_uk_1", columnNames = ["token"]),
     ],
     indexes = [
-        // 발송이 회원의 기기 목록을 집어오는 경로. 탈퇴 정리도 이 인덱스를 탄다.
+        // 발송·탈퇴 정리가 회원의 기기 목록을 읽는 경로.
         Index(name = "member_device_index_1", columnList = "member_id"),
     ],
 )
@@ -42,7 +41,7 @@ class MemberDevice(
 
     memberId: Long,
 
-    @Comment("FCM 등록 토큰 (불투명 문자열 — 형식을 해석하지 않는다)")
+    @Comment("FCM 등록 토큰")
     @Column(nullable = false, length = TOKEN_MAX_LENGTH)
     val token: String,
 
@@ -59,7 +58,7 @@ class MemberDevice(
 
     fun isOwnedBy(memberId: Long): Boolean = this.memberId == memberId
 
-    /** 소유자를 갱신한다. 같은 회원이면 변경이 없어 재등록이 멱등해진다. */
+    /** 소유자 갱신. 같은 회원이면 변경이 없어 재등록이 멱등해진다. */
     fun transferTo(memberId: Long) {
         this.memberId = memberId
     }

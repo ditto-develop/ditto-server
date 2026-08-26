@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-26 19:42:23"
+                          "createdAt" : "2026-08-26 20:51:14"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-26 19:42:23"
+                          "createdAt" : "2026-08-26 20:51:14"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/2e2e0628-d9dd-4c86-ad0c-7b1506fb74aa" ],
+                    "imageKeys" : [ "pending/user-reports/1/68f50773-13f3-47f7-aab0-657a954476af" ],
                     "block" : false
                   }
       responses:
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-26 19:42:24",
+                        "joinedAt" : "2026-08-26 20:51:15",
                         "role" : null,
-                        "createdAt" : "2026-08-26 19:42:24",
-                        "updatedAt" : "2026-08-26 19:42:24"
+                        "createdAt" : "2026-08-26 20:51:15",
+                        "updatedAt" : "2026-08-26 20:51:15"
                       },
                       "error" : null
                     }
@@ -413,7 +413,7 @@ paths:
               notification-devices-register:
                 value: |-
                   {
-                    "token" : "fcm-device-token",
+                    "token" : "dGVzdC1pbnN0YW5jZS1pZA:APA91bFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
                     "platform" : "IOS"
                   }
       responses:
@@ -606,8 +606,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-25 19:42:23",
-                          "endDate" : "2026-08-27 19:42:23",
+                          "startDate" : "2026-08-25 20:51:14",
+                          "endDate" : "2026-08-27 20:51:14",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -624,8 +624,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-26 19:42:23",
-                            "updatedAt" : "2026-08-26 19:42:23"
+                            "createdAt" : "2026-08-26 20:51:14",
+                            "updatedAt" : "2026-08-26 20:51:14"
                           } ]
                         } ]
                       },
@@ -672,8 +672,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-26 19:42:23",
-                        "updatedAt" : "2026-08-26 19:42:23"
+                        "createdAt" : "2026-08-26 20:51:15",
+                        "updatedAt" : "2026-08-26 20:51:15"
                       },
                       "error" : null
                     }
@@ -750,11 +750,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/0ab23804-1607-40a9-87cd-70fedd3a4c86",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/0ab23804-1607-40a9-87cd-70fedd3a4c86"
+                          "objectKey" : "pending/user-reports/1/10edd50e-b9ba-4775-a444-fce3c9130512",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/10edd50e-b9ba-4775-a444-fce3c9130512"
                         }, {
-                          "objectKey" : "pending/user-reports/1/3b8531df-b313-4a9c-8abd-7d0dbe13623e",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/3b8531df-b313-4a9c-8abd-7d0dbe13623e"
+                          "objectKey" : "pending/user-reports/1/50968c49-d8b1-4796-ba98-0a95d398c42d",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/50968c49-d8b1-4796-ba98-0a95d398c42d"
                         } ]
                       },
                       "error" : null
@@ -1108,7 +1108,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDA5MzksImV4cCI6MTc4Nzc0NDUzOX0.sF7NA_oj1no-AJRPexDYh4Syf8emebcXZxODCMwYKGjiryXdTdKWV_RTey2tIli5FBf4w9-2rVMbMSNXpKsShQ"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDUwNjksImV4cCI6MTc4Nzc0ODY2OX0.1LKnNg_PYqTmebJ_obCXGBTsCV7KQsbGL0DV6cFEHLMCqwGaVMwPK6hRKzz5MJOfbveOPGJMzDjHu1_WVqtM7g"
                       },
                       "error" : null
                     }
@@ -1136,12 +1136,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 19:42:24"
+                        "blockedAt" : "2026-08-26 20:51:15"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 19:42:24"
+                        "blockedAt" : "2026-08-26 20:51:15"
                       } ],
                       "error" : null
                     }
@@ -1434,13 +1434,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-26 19:42:24"
+                          "createdAt" : "2026-08-26 20:51:15"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-26 19:42:24"
+                          "createdAt" : "2026-08-26 20:51:15"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-26 19:42:24"
+                          "createdAt" : "2026-08-26 20:51:15"
                         } ]
                       },
                       "error" : null
@@ -1473,8 +1473,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-19 19:42:24",
-                          "endsAt" : "2026-09-02 19:42:24"
+                          "startsAt" : "2026-08-19 20:51:15",
+                          "endsAt" : "2026-09-02 20:51:15"
                         }
                       },
                       "error" : null
@@ -1651,8 +1651,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-26 19:42:24",
-                        "updatedAt" : "2026-08-26 19:42:24"
+                        "createdAt" : "2026-08-26 20:51:15",
+                        "updatedAt" : "2026-08-26 20:51:15"
                       },
                       "error" : null
                     }
@@ -4096,6 +4096,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-chat-rooms-roomId-messages1786138957:
       required:
       - error
@@ -4172,23 +4189,6 @@ components:
             readCount:
               type: number
               description: 이번 호출로 읽음이 된 건수
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-user-reports900126493:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - id
-          type: object
-          properties:
-            id:
-              type: number
-              description: 접수된 신고 ID
         success:
           type: boolean
           description: 성공 여부
@@ -5405,6 +5405,32 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-quiz-sets-id-1204282298:
       required:
       - error
@@ -5471,32 +5497,6 @@ components:
             updatedAt:
               type: string
               description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            uploads:
-              type: array
-              items:
-                required:
-                - objectKey
-                - uploadUrl
-                type: object
-                properties:
-                  uploadUrl:
-                    type: string
-                    description: presigned PUT 업로드 URL
-                  objectKey:
-                    type: string
-                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부

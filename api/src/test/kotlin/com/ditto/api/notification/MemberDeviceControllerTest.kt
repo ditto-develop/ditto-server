@@ -25,6 +25,9 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
+// 실제 FCM 등록 토큰 모양(163자, 콜론 포함) — DELETE 경로 변수 매핑이 콜론에서 깨지지 않는지도 함께 태운다.
+private const val REAL_SHAPE_TOKEN = "dGVzdC1pbnN0YW5jZS1pZA:APA91bFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 class MemberDeviceControllerTest : RestDocsTest() {
 
     @Autowired
@@ -33,7 +36,7 @@ class MemberDeviceControllerTest : RestDocsTest() {
     @Test
     @DisplayName("디바이스 토큰을 등록한다")
     fun registerDevice() {
-        val request = MemberDeviceRegisterRequest(token = "fcm-device-token", platform = DevicePlatform.IOS)
+        val request = MemberDeviceRegisterRequest(token = REAL_SHAPE_TOKEN, platform = DevicePlatform.IOS)
 
         mockMvc.perform(
             post("/api/v1/notifications/devices")
@@ -80,8 +83,8 @@ class MemberDeviceControllerTest : RestDocsTest() {
     @DisplayName("같은 토큰을 다시 등록하면 registered 가 false 다")
     fun registerDeviceAgain() {
         val member = saveMember("재등록회원")
-        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "fcm-device-token"))
-        val request = MemberDeviceRegisterRequest(token = "fcm-device-token", platform = DevicePlatform.ANDROID)
+        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = REAL_SHAPE_TOKEN))
+        val request = MemberDeviceRegisterRequest(token = REAL_SHAPE_TOKEN, platform = DevicePlatform.ANDROID)
 
         mockMvc.perform(
             post("/api/v1/notifications/devices")
@@ -99,10 +102,10 @@ class MemberDeviceControllerTest : RestDocsTest() {
     @DisplayName("디바이스 토큰을 해제한다")
     fun unregisterDevice() {
         val member = saveMember("해제회원")
-        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "fcm-device-token"))
+        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = REAL_SHAPE_TOKEN))
 
         mockMvc.perform(
-            delete("/api/v1/notifications/devices/{token}", "fcm-device-token")
+            delete("/api/v1/notifications/devices/{token}", REAL_SHAPE_TOKEN)
                 .withApiKey()
                 .withBearerToken(member.id),
         )
@@ -137,10 +140,10 @@ class MemberDeviceControllerTest : RestDocsTest() {
     @DisplayName("남의 토큰은 해제할 수 없다")
     fun unregisterOthersTokenRejected() {
         val owner = saveMember("토큰주인")
-        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = owner.id, token = "fcm-device-token"))
+        memberDeviceRepository.save(MemberDeviceFixture.create(memberId = owner.id, token = REAL_SHAPE_TOKEN))
 
         mockMvc.perform(
-            delete("/api/v1/notifications/devices/{token}", "fcm-device-token")
+            delete("/api/v1/notifications/devices/{token}", REAL_SHAPE_TOKEN)
                 .withApiKey()
                 .withBearerToken(),
         )
