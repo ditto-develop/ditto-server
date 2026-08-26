@@ -58,6 +58,7 @@ enum class ErrorCode(
     VOTE_NOT_FOUND(404, "8201", "존재하지 않는 투표입니다."),
     VOTE_ALREADY_EXISTS(409, "8202", "이미 진행 중인 투표가 있습니다."),
     VOTE_ALREADY_CLOSED(409, "8203", "이미 마감된 투표입니다."),
+    VOTE_OPTION_LIMIT_REACHED(409, "8204", "선택지는 유형별 최대 10개까지 만들 수 있습니다."),
     DUPLICATE_VOTE_OPTION(409, "8205", "이미 등록된 선택지입니다."),
     INVALID_VOTE_OPTION(400, "8206", "이 투표의 선택지가 아닙니다."),
     VOTE_MULTIPLE_NOT_ALLOWED(400, "8207", "복수 선택이 허용되지 않은 투표입니다."),

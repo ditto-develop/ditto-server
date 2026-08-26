@@ -2,6 +2,8 @@ package com.ditto.api.chat.controller
 
 import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
+import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
+import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.chat.websocket.ChatStompDestinations
@@ -75,6 +77,28 @@ class ChatVoteController(
         @PathVariable roomId: Long,
     ): ApiResponse<List<ChatVoteDetailResponse>> =
         ApiResponse.ok(chatVoteService.getVotes(roomId, principal.memberId))
+
+    /** 장소 선택지 추가 — 진행 중 투표에 하나씩. 방 멤버 누구나, 조용히(메시지 없음). */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/votes/{voteId}/place-options")
+    fun addPlaceOption(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+        @PathVariable voteId: Long,
+        @Valid @RequestBody request: PlaceOptionRequest,
+    ): ApiResponse<ChatVoteDetailResponse> =
+        ApiResponse.ok(chatVoteService.addPlaceOption(roomId, voteId, principal.memberId, request))
+
+    /** 시간 선택지 추가 — 규칙은 장소 추가와 같다. */
+    @Loggable
+    @PostMapping("/api/v1/chat/rooms/{roomId}/votes/{voteId}/time-options")
+    fun addTimeOption(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+        @PathVariable voteId: Long,
+        @Valid @RequestBody request: TimeOptionRequest,
+    ): ApiResponse<ChatVoteDetailResponse> =
+        ApiResponse.ok(chatVoteService.addTimeOption(roomId, voteId, principal.memberId, request))
 
     /** 투표하기 — 요청에 담긴 집합이 내 최종 선택이다(치환). 재투표도 같은 경로다. */
     @Loggable

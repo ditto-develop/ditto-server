@@ -111,7 +111,7 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         fieldWithPath("${prefix}placeOptions[].mapLink").description("카카오맵 URL (직접 입력이면 null)").optional(),
         fieldWithPath("${prefix}placeOptions[].latitude").description("위도 (직접 입력이면 null)").optional(),
         fieldWithPath("${prefix}placeOptions[].longitude").description("경도 (직접 입력이면 null)").optional(),
-        fieldWithPath("${prefix}placeOptions[].voterIds[]").description("이 선택지에 투표한 회원 ID 목록 (실명 공개)"),
+        fieldWithPath("${prefix}placeOptions[].voterIds[]").description("이 선택지에 투표한 회원 ID 목록 (이름 매핑은 클라이언트가 한다)"),
         fieldWithPath("${prefix}timeOptions[]").description("시간 선택지 (입력 순)"),
         fieldWithPath("${prefix}timeOptions[].optionId").description("선택지 ID"),
         fieldWithPath("${prefix}timeOptions[].meetAt").description("만날 일시 (표시 문구는 클라이언트가 만든다)"),
@@ -225,6 +225,117 @@ class ChatVoteControllerTest : ControllerUnitTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 *detailResponseFields("data[]."),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("진행 중 투표에 장소 선택지를 추가한다")
+    fun addPlaceOption() {
+        every { chatVoteService.addPlaceOption(any(), any(), any(), any()) } returns sampleDetail()
+
+        val request = PlaceOptionRequest(
+            label = "성수 카페거리",
+            address = "서울 성동구 성수동2가",
+            mapLink = "http://place.map.kakao.com/12345678",
+            latitude = 37.5446,
+            longitude = 127.0559,
+        )
+
+        mockMvc.perform(
+            post("/api/v1/chat/rooms/{roomId}/votes/{voteId}/place-options", 87L, 41L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-vote-place-option-add",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                        parameterWithName("voteId").description("투표 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("투표 장소 선택지 추가")
+                            .description(
+                                "진행 중 투표에 장소 선택지를 하나 추가합니다(항목 제안 화면). " +
+                                    "권한은 방 멤버 누구나이며, SYSTEM 메시지는 남지 않습니다. " +
+                                    "장소가 이미 10개면 8204, 같은 상호명(대소문자 무시)이 있으면 8205, " +
+                                    "마감된 투표면 8203 으로 거부합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                                parameterWithName("voteId").description("투표 ID"),
+                            )
+                            .requestFields(
+                                fieldWithPath("label").description("상호명 (최대 100자)"),
+                                fieldWithPath("address").description("도로명 주소 (선택)").optional(),
+                                fieldWithPath("mapLink").description("카카오맵 URL (선택)").optional(),
+                                fieldWithPath("latitude").description("위도 (선택)").optional(),
+                                fieldWithPath("longitude").description("경도 (선택)").optional(),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                *detailResponseFields("data."),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("진행 중 투표에 시간 선택지를 추가한다")
+    fun addTimeOption() {
+        every { chatVoteService.addTimeOption(any(), any(), any(), any()) } returns sampleDetail()
+
+        val request = TimeOptionRequest(meetAt = LocalDateTime.of(2026, 3, 28, 20, 0))
+
+        mockMvc.perform(
+            post("/api/v1/chat/rooms/{roomId}/votes/{voteId}/time-options", 87L, 41L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-vote-time-option-add",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                        parameterWithName("voteId").description("투표 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("투표 시간 선택지 추가")
+                            .description(
+                                "진행 중 투표에 시간 선택지를 하나 추가합니다(항목 제안 화면). " +
+                                    "규칙은 장소 추가와 같고, 중복 판정은 분 단위입니다 — " +
+                                    "시간이 이미 10개면 8204, 같은 일시(분 단위)면 8205, 마감된 투표면 8203.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                                parameterWithName("voteId").description("투표 ID"),
+                            )
+                            .requestFields(
+                                fieldWithPath("meetAt").description("만날 일시 (yyyy-MM-dd HH:mm:ss, 초 이하는 버린다)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                *detailResponseFields("data."),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -351,7 +462,7 @@ class ChatVoteControllerTest : ControllerUnitTest() {
                             .tag("Chat")
                             .summary("투표 상세")
                             .description(
-                                "선택지별 투표자(실명 공개)와 내 표를 담은 상세입니다. " +
+                                "선택지별 투표자(회원 ID)와 내 표를 담은 상세입니다. " +
                                     "서버는 승자·비율을 계산하지 않습니다 — 1위·동표 판정은 voterIds 와 " +
                                     "입력 순 배열로 클라이언트가 합니다. 이탈한 멤버의 표는 집계에서 빠집니다.",
                             )
