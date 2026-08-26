@@ -360,6 +360,105 @@ class ChatVoteServiceTest(
         }
     }
 
+    "선택지 추가" - {
+        "장소를 추가하면 갱신된 상세가 돌아온다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+
+            val updated = chatVoteService.addPlaceOption(
+                room.id, detail.voteId, memberId = 2L,
+                request = PlaceOptionRequest(label = "을지로 노가리골목"),
+            )
+
+            updated.placeOptions.map { it.label } shouldBe listOf("성수 카페거리", "강남역", "을지로 노가리골목")
+        }
+
+        "시간을 추가하면 초 이하가 버려져 저장된다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+
+            val updated = chatVoteService.addTimeOption(
+                room.id, detail.voteId, memberId = 1L,
+                request = TimeOptionRequest(meetAt = LocalDateTime.of(2026, 3, 16, 20, 0, 45)),
+            )
+
+            updated.timeOptions.last().meetAt shouldBe LocalDateTime.of(2026, 3, 16, 20, 0)
+        }
+
+        "기존 선택지와 대소문자만 다른 상호명이면 DUPLICATE_VOTE_OPTION 으로 거부한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(
+                room.id, memberId = 1L,
+                request = createRequest(placeLabels = listOf("GS25", "강남역")),
+            )
+
+            shouldThrow<WarnException> {
+                chatVoteService.addPlaceOption(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = PlaceOptionRequest(label = "gs25"),
+                )
+            }.errorCode shouldBe ErrorCode.DUPLICATE_VOTE_OPTION
+        }
+
+        "유형별 10개를 넘으면 VOTE_OPTION_LIMIT_REACHED 로 거부한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(
+                room.id, memberId = 1L,
+                request = createRequest(placeLabels = (1..10).map { "장소$it" }),
+            )
+
+            shouldThrow<WarnException> {
+                chatVoteService.addPlaceOption(
+                    room.id, detail.voteId, memberId = 1L,
+                    request = PlaceOptionRequest(label = "열한 번째"),
+                )
+            }.errorCode shouldBe ErrorCode.VOTE_OPTION_LIMIT_REACHED
+        }
+
+        "장소 상한이 차도 시간은 추가할 수 있다 — 상한은 유형별이다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(
+                room.id, memberId = 1L,
+                request = createRequest(placeLabels = (1..10).map { "장소$it" }),
+            )
+
+            val updated = chatVoteService.addTimeOption(
+                room.id, detail.voteId, memberId = 1L,
+                request = TimeOptionRequest(meetAt = LocalDateTime.of(2026, 3, 16, 20, 0)),
+            )
+
+            updated.timeOptions.size shouldBe 3
+        }
+
+        "마감된 투표에는 추가할 수 없다 — VOTE_ALREADY_CLOSED" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatVoteService.close(room.id, detail.voteId, memberId = 1L, now = FRIDAY.plusHours(1))
+
+            shouldThrow<WarnException> {
+                chatVoteService.addPlaceOption(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = PlaceOptionRequest(label = "새 장소"),
+                )
+            }.errorCode shouldBe ErrorCode.VOTE_ALREADY_CLOSED
+        }
+
+        "방을 나간 멤버는 추가할 수 없다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 2L)!!
+                .apply { leave(FRIDAY) }
+                .let { chatRoomMemberRepository.save(it) }
+
+            shouldThrow<WarnException> {
+                chatVoteService.addTimeOption(
+                    room.id, detail.voteId, memberId = 2L,
+                    request = TimeOptionRequest(meetAt = LocalDateTime.of(2026, 3, 16, 20, 0)),
+                )
+            }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+        }
+    }
+
     "close — 마감" - {
         "마감하면 상태가 닫히고 사건 메시지가 남는다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)

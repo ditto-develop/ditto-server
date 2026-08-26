@@ -81,7 +81,21 @@ class ChatVoteOption private constructor(
     val createdBy: Long,
 ) : BaseEntity() {
 
+    /** 같은 상호명인지 — [normalizeLabel] 기준. TIME 선택지는 label 이 없어 항상 false 다. */
+    fun hasSameLabel(candidate: String): Boolean =
+        label?.let { normalizeLabel(it) } == normalizeLabel(candidate)
+
     companion object {
+        /**
+         * 상호명 중복 판정의 단일 기준 — 앞뒤 공백을 걷고 소문자로 접는다.
+         * 생성(요청 내 중복)과 추가(기존 행과 중복)가 반드시 같은 함수를 써야 한다 —
+         * lowercase()와 equals(ignoreCase)는 일부 문자(터키어 İ 등)에서 판정이 갈린다.
+         */
+        fun normalizeLabel(label: String): String = label.trim().lowercase()
+
+        /** 유형별 선택지 상한 — 생성(2~10)과 진행 중 추가가 함께 지키는 도메인 규칙이다. */
+        const val MAX_COUNT_PER_TYPE = 10
+
         const val LABEL_MAX_LENGTH = 100
         const val ADDRESS_MAX_LENGTH = 200
         const val MAP_LINK_MAX_LENGTH = 500
@@ -97,7 +111,8 @@ class ChatVoteOption private constructor(
         ): ChatVoteOption = ChatVoteOption(
             voteId = voteId,
             optionType = ChatVoteOptionType.PLACE,
-            label = label,
+            // trim 을 여기서 하는 이유는 초 절삭과 같다 — 저장 규칙을 호출부의 기억력에 맡기지 않는다.
+            label = label.trim(),
             address = address,
             mapLink = mapLink,
             latitude = latitude,
