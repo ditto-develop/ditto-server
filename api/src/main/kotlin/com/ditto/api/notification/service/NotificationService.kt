@@ -41,7 +41,7 @@ class NotificationService(
             category = category,
             cursor = cursor,
             size = pageSize,
-            from = retentionFrom(),
+            from = Notification.retentionFrom(),
         )
 
         return NotificationsResponse(
@@ -53,7 +53,7 @@ class NotificationService(
 
     /** 홈 헤더 벨 배지용 미읽음 수 */
     fun getUnreadCount(memberId: Long): Long =
-        notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(memberId, retentionFrom())
+        notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(memberId, Notification.retentionFrom())
 
     /**
      * 알림 하나를 읽음으로 표시한다. 이미 읽은 알림에 다시 요청해도 성공한다(멱등).
@@ -79,7 +79,6 @@ class NotificationService(
     @Transactional
     fun markAllRead(memberId: Long): Long = notificationRepository.markAllRead(memberId, LocalDateTime.now())
 
-    private fun retentionFrom(): LocalDateTime = LocalDateTime.now().minusDays(Notification.RETENTION_DAYS)
 
     companion object {
         /** 한 페이지 최대 건수. 채팅 메시지 페이징과 같은 상한을 쓴다. */

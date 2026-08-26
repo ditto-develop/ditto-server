@@ -65,7 +65,10 @@
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
   `MATCH_RESULT`→`/matching/`, `REVIEW_REQUEST`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
   방이 지워졌으면 deepLink 없이 보낸다.
-- **뱃지** — 미읽음 수 API 와 같은 기준(30일 창·실제 시각)이라 인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
+- **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
+  인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
+- **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON` 6시간 — 종료 6시간 전
+  알림이라 종료가 지나면 무의미). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
 - **죽은 토큰 정리** — 발송 결과의 `UNREGISTERED` 토큰을 `PushDeadDeviceCleaner`가 지운다(FCM 콜백
   스레드라 자기 트랜잭션). 방치하면 실패율이 쌓여 FCM 이 발송량을 제한한다.
 
@@ -97,7 +100,6 @@
 ## TODO (미확정)
 
 - 탈퇴 완전 삭제 시 `member_device` 정리 — FE 가 탈퇴 전 해제를 부르지만 서버측 보강 필요 (#154)
-- 푸시 ttl — 현재 전부 기본(4주). 시효성 알림(채팅 등)에 짧은 ttl 을 줄지
 - 실시간 배지 — 현재는 폴링/재조회. STOMP 개인 큐 여부 미정
 - `SYSTEM_NOTICE` 발송 주체 — 어드민 공지 화면
 - 채팅 연장(#121)으로 종료 시각이 밀렸을 때 종료 임박 알림을 다시 보낼지

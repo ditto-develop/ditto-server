@@ -12,16 +12,16 @@ import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.github.oshai.kotlinlogging.KotlinLogging
-import java.time.LocalDateTime
+import java.time.Duration
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 
 /**
- * 방금 적재된 알림 한 행을 푸시로 내보낸다. 부르는 곳은 `NotificationAppender` 하나다 —
- * 행이 생긴 알림만 오므로 중복 정책이 여기에도 이미 적용돼 있다.
+ * 적재된 알림을 푸시로 내보낸다. `NotificationAppender`만 부른다.
  *
- * **실패를 삼킨다.** 발송을 못 한 것이 적재·비즈니스 흐름을 되돌리면 안 된다.
- * 발송 자체는 비동기(fire-and-forget)라 이 메서드는 FCM 응답을 기다리지 않고,
- * 여기서 잡는 것은 그 앞의 조회(설정·기기·방)다.
+ * 발송 실패가 비즈니스 흐름을 되돌리면 안 되므로 준비 조회의 예외는 삼킨다.
+ * 발송 자체는 fire-and-forget 이라 FCM 응답을 기다리지 않는다.
  */
 @Component
 class PushNotifier(
@@ -33,42 +33,49 @@ class PushNotifier(
     private val pushSender: PushSender,
 ) {
 
-    fun push(notification: Notification) {
-        runCatchingExceptions { send(notification) }
-            .onFailure {
-                logger.warn(it) { "푸시 준비 실패 — 무시한다: notificationId=${notification.id}, type=${notification.type}" }
-            }
+    /**
+     * 같은 사건으로 생긴 알림들을 내보낸다. deepLink 는 유형·대상이 같으면 동일하므로
+     * 한 번만 계산한다(그룹 채팅 한 건이 수신자 수만큼 방을 조회하지 않게).
+     *
+     * `NOT_SUPPORTED`: 트랜잭션 안 적재 지점(`GroupMatchService.joinGroupMatch`)에서 호출자
+     * 트랜잭션에 합류하면 미읽음 수가 옛 스냅샷으로 계산돼 방금 커밋된 알림이 뱃지에서 빠진다.
+     * 조회가 호출자 세션을 건드리며 생길 수 있는 rollback-only 오염도 함께 막는다.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun pushAll(notifications: List<Notification>) {
+        val first = notifications.firstOrNull() ?: return
+        runCatchingExceptions {
+            val deepLink = deepLinkOf(first)
+            notifications.forEach { send(it, deepLink) }
+        }.onFailure {
+            logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
+        }
     }
 
-    private fun send(notification: Notification) {
-        val memberId = notification.memberId
+    private fun send(notification: Notification, deepLink: String?) {
         if (!allowsPush(notification)) {
             return
         }
-        val tokens = memberDeviceRepository.findAllByMemberId(memberId).map { it.token }
+        val tokens = memberDeviceRepository.findAllByMemberId(notification.memberId).map { it.token }
         if (tokens.isEmpty()) {
-            // 웹 전용 회원 — 앱을 안 쓰면 주소록이 비어 있다. 정상이다.
-            return
+            return // 웹 전용 회원
         }
 
-        pushSender.send(buildMessage(notification, tokens)) { deadTokens ->
-            pushDeadDeviceCleaner.clean(deadTokens)
-        }
+        pushSender.send(buildMessage(notification, tokens, deepLink), pushDeadDeviceCleaner::clean)
     }
 
-    /** 토글은 회원이 처음 건드릴 때 생성된다 — 행이 없으면 기본값으로 판단한다(조회 API 와 같은 규칙). */
+    /** 설정 행은 회원이 토글을 처음 건드릴 때 생기므로, 없으면 기본값으로 판단한다. */
     private fun allowsPush(notification: Notification): Boolean {
         val setting = memberNotificationSettingRepository.findByMemberId(notification.memberId)
             ?: MemberNotificationSetting.defaultOf(notification.memberId)
         return setting.allowsPush(notification.category)
     }
 
-    private fun buildMessage(notification: Notification, tokens: List<String>): PushMessage {
-        // FCM 제약: data 값은 전부 문자열이어야 한다.
+    private fun buildMessage(notification: Notification, tokens: List<String>, deepLink: String?): PushMessage {
         val data = buildMap {
             put("notificationId", notification.id.toString())
             put("type", notification.type.name)
-            deepLinkOf(notification)?.let { put("deepLink", it) }
+            deepLink?.let { put("deepLink", it) }
         }
         return PushMessage(
             tokens = tokens,
@@ -76,22 +83,22 @@ class PushNotifier(
             body = notification.body,
             data = data,
             unreadCount = countUnread(notification.memberId),
+            ttl = ttlOf(notification.type),
         )
     }
 
     /**
-     * 알림을 탭했을 때 앱 웹뷰가 이동할 경로. FE 라우트를 그대로 쓰며 **끝 슬래시가 필수**다
-     * (FE 의 `trailingSlash: true` — 없으면 웹뷰 이동에 리다이렉트가 한 번 낀다).
-     *
-     * 채팅 계열은 방 종류로 경로가 갈린다(`/chat/group/` vs `/chat/one-on-one/`) — FE 방 목록과
-     * 같은 이분법이라 재매칭 방도 one-on-one 이다. 방이 그새 지워졌으면 deepLink 없이 보낸다(탭하면 앱만 열림).
+     * 알림을 탭했을 때 앱 웹뷰가 이동할 경로. FE 라우트 그대로이며 끝 슬래시 필수
+     * (FE 가 `trailingSlash: true` — 없으면 리다이렉트가 한 번 낀다).
+     * 방이 그새 지워졌으면 deepLink 없이 보낸다.
      */
     private fun deepLinkOf(notification: Notification): String? {
         val targetId = notification.targetId
         return when (notification.type) {
             NotificationType.MATCH_RESULT -> "/matching/"
-            NotificationType.GROUP_FORMED, NotificationType.VOTE_CLOSED -> targetId?.let { "/chat/group/$it/" }
-            NotificationType.REMATCH_MATCHED -> targetId?.let { "/chat/one-on-one/$it/" }
+            NotificationType.GROUP_FORMED, NotificationType.VOTE_CLOSED ->
+                targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
+            NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
             NotificationType.REVIEW_REQUEST -> chatRoomPathOf(targetId)?.let { it + "rate/" }
             NotificationType.CHAT_MESSAGE, NotificationType.CHAT_ENDING_SOON -> chatRoomPathOf(targetId)
             NotificationType.SYSTEM_NOTICE -> null
@@ -103,15 +110,27 @@ class PushNotifier(
             return null
         }
         val room = chatRoomRepository.findById(roomId).orElse(null) ?: return null
-        return if (room.sourceType == ChatRoomType.GROUP) "/chat/group/$roomId/" else "/chat/one-on-one/$roomId/"
+        return chatRoomPath(room.sourceType, roomId)
     }
 
-    /** iOS 앱 아이콘 뱃지 — 벨 배지 API(unread-count)와 같은 기준(30일 창)이라 인앱·아이콘 뱃지가 같은 수다. */
+    /** FE 방 목록과 같은 이분법 — 재매칭 방도 1:1 화면으로 연다. */
+    private fun chatRoomPath(sourceType: ChatRoomType, roomId: Long): String =
+        if (sourceType == ChatRoomType.GROUP) "/chat/group/$roomId/" else "/chat/one-on-one/$roomId/"
+
+    /** 벨 배지 API 와 같은 창을 써야 인앱과 아이콘 뱃지가 같은 수가 된다. */
     private fun countUnread(memberId: Long): Int =
         notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(
             memberId,
-            LocalDateTime.now().minusDays(Notification.RETENTION_DAYS),
+            Notification.retentionFrom(),
         ).toInt()
+
+    /** 시효가 있는 알림만 짧게. 없으면 FCM 기본(4주)이라 꺼져 있던 기기에 지난 알림이 몰린다. */
+    private fun ttlOf(type: NotificationType): Duration? = when (type) {
+        NotificationType.CHAT_MESSAGE -> Duration.ofHours(1)
+        // 종료 6시간 전 알림 — 종료가 지나면 무의미하다.
+        NotificationType.CHAT_ENDING_SOON -> Duration.ofHours(6)
+        else -> null
+    }
 
     companion object {
         private val logger = KotlinLogging.logger {}

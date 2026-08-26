@@ -8,6 +8,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingException
 import com.google.firebase.messaging.MessagingErrorCode
 import com.google.firebase.messaging.SendResponse
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -68,7 +69,9 @@ class FirebaseFcmSenderTest : FreeSpec({
                 every { sendEachForMulticastAsync(any()) } returns failedFuture
             }
 
-            FirebaseFcmSender(firebaseMessaging).send(message(listOf("alive")))
+            shouldNotThrowAny {
+                FirebaseFcmSender(firebaseMessaging).send(message(listOf("alive")))
+            }
         }
     }
 

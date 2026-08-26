@@ -31,26 +31,24 @@ internal object FcmMessageComposer {
             .setApnsConfig(apnsConfigOf(message))
             .build()
 
-    private fun androidConfigOf(message: PushMessage): AndroidConfig {
-        val builder = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
-        if (message.ttl != null) {
-            builder.setTtl(message.ttl.toMillis())
-        }
-        return builder.build()
-    }
+    private fun androidConfigOf(message: PushMessage): AndroidConfig =
+        AndroidConfig.builder()
+            .setPriority(AndroidConfig.Priority.HIGH)
+            .apply { message.ttl?.let { setTtl(it.toMillis()) } }
+            .build()
 
-    private fun apnsConfigOf(message: PushMessage): ApnsConfig {
-        val aps = Aps.builder()
-        if (message.unreadCount != null) {
-            aps.setBadge(message.unreadCount)
-        }
-        val builder = ApnsConfig.builder().setAps(aps.build())
-        if (message.ttl != null) {
-            // APNs 는 유효 기간을 절대 시각(epoch 초)으로 받는다.
-            builder.putHeader(APNS_EXPIRATION_HEADER, Instant.now().plus(message.ttl).epochSecond.toString())
-        }
-        return builder.build()
-    }
+    private fun apnsConfigOf(message: PushMessage): ApnsConfig =
+        ApnsConfig.builder()
+            .setAps(
+                Aps.builder()
+                    .apply { message.unreadCount?.let { setBadge(it) } }
+                    .build(),
+            )
+            .apply {
+                // APNs 는 유효 기간을 절대 시각(epoch 초)으로 받는다.
+                message.ttl?.let { putHeader(APNS_EXPIRATION_HEADER, Instant.now().plus(it).epochSecond.toString()) }
+            }
+            .build()
 
     private const val APNS_EXPIRATION_HEADER = "apns-expiration"
 }

@@ -15,10 +15,9 @@ internal class DeadTokenCallback(
 ) : ApiFutureCallback<BatchResponse> {
 
     override fun onSuccess(result: BatchResponse) {
-        val deadTokens = result.responses
-            .withIndex()
+        val deadTokens = tokens.zip(result.responses)
             .filter { (_, response) -> response.exception?.messagingErrorCode == MessagingErrorCode.UNREGISTERED }
-            .map { (index, _) -> tokens[index] }
+            .map { (token, _) -> token }
         if (result.failureCount > deadTokens.size) {
             logger.warn { "푸시 일부 실패: 실패 ${result.failureCount}건 중 무효 토큰 ${deadTokens.size}건" }
         }

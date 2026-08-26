@@ -24,7 +24,7 @@ class NotificationPurgeScheduler(
     /** 매일 04:10 — 탈퇴 완전 삭제(04:00) 뒤로 둔다. 트래픽이 가장 낮은 시간대다. */
     @Scheduled(cron = "\${notification.purge.scheduler.cron:0 10 4 * * *}")
     fun purgeExpired() {
-        val threshold = LocalDateTime.now().minusDays(Notification.RETENTION_DAYS)
+        val threshold = Notification.retentionFrom()
         val deleted = notificationRepository.deleteCreatedBefore(threshold)
 
         if (deleted > 0) {
