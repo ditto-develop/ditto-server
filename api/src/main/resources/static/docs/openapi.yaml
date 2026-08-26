@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-26 19:11:19"
+                          "createdAt" : "2026-08-26 21:53:18"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-26 19:11:19"
+                          "createdAt" : "2026-08-26 21:53:18"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/bf10ddd4-8b2d-4173-9bd8-d61f10b46410" ],
+                    "imageKeys" : [ "pending/user-reports/1/31cfbf04-ffe6-436b-ba3b-cb425a0d5d6c" ],
                     "block" : false
                   }
       responses:
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-26 19:11:20",
+                        "joinedAt" : "2026-08-26 21:53:19",
                         "role" : null,
-                        "createdAt" : "2026-08-26 19:11:20",
-                        "updatedAt" : "2026-08-26 19:11:20"
+                        "createdAt" : "2026-08-26 21:53:19",
+                        "updatedAt" : "2026-08-26 21:53:20"
                       },
                       "error" : null
                     }
@@ -394,6 +394,47 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/notifications/devices:
+    post:
+      tags:
+      - Notification
+      summary: 푸시 디바이스 토큰 등록
+      description: "앱이 FCM 에서 받은 디바이스 토큰을 등록합니다. 로그인 직후·앱 실행·토큰 갱신 때마다 호출하세요. 재호출해\
+        도 행이 늘지 않으며(멱등), 다른 회원의 토큰이었다면 소유자를 요청 회원으로 갱신합니다. registered 는 이번 호출로 이 회\
+        원 소유가 됐는지입니다(신규·소유권 이전 true, 이미 내 토큰이던 재호출 false) — false 도 실패가 아닙니다. 실패는\
+        \ success 가 말합니다."
+      operationId: notification-devices-register
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-notifications-devices-933306617"
+            examples:
+              notification-devices-register:
+                value: |-
+                  {
+                    "token" : "dGVzdC1pbnN0YW5jZS1pZA:APA91bFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                    "platform" : "IOS"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-notifications-devices2085580702"
+              examples:
+                notification-devices-register:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "registered" : true
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/notifications/read-all:
     put:
       tags:
@@ -565,8 +606,8 @@ paths:
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-25 19:11:20",
-                          "endDate" : "2026-08-27 19:11:20",
+                          "startDate" : "2026-08-25 21:53:19",
+                          "endDate" : "2026-08-27 21:53:19",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -583,8 +624,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-26 19:11:20",
-                            "updatedAt" : "2026-08-26 19:11:20"
+                            "createdAt" : "2026-08-26 21:53:19",
+                            "updatedAt" : "2026-08-26 21:53:19"
                           } ]
                         } ]
                       },
@@ -631,8 +672,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-26 19:11:20",
-                        "updatedAt" : "2026-08-26 19:11:20"
+                        "createdAt" : "2026-08-26 21:53:19",
+                        "updatedAt" : "2026-08-26 21:53:19"
                       },
                       "error" : null
                     }
@@ -709,11 +750,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/13fa85a0-3aec-4088-ab44-ce8553a516da",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/13fa85a0-3aec-4088-ab44-ce8553a516da"
+                          "objectKey" : "pending/user-reports/1/857f68db-9fb9-448a-a561-e98bd93520fa",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/857f68db-9fb9-448a-a561-e98bd93520fa"
                         }, {
-                          "objectKey" : "pending/user-reports/1/35a5e187-8d35-4db1-ae06-b1861cebeeba",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/35a5e187-8d35-4db1-ae06-b1861cebeeba"
+                          "objectKey" : "pending/user-reports/1/976825c5-92e2-40e2-b9d0-efd1a8461a7c",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/976825c5-92e2-40e2-b9d0-efd1a8461a7c"
                         } ]
                       },
                       "error" : null
@@ -894,6 +935,37 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/notifications/devices/{token}:
+    delete:
+      tags:
+      - Notification
+      summary: 푸시 디바이스 토큰 해제
+      description: 로그아웃·탈퇴 직전에 호출하세요. 이미 없는 토큰이어도 성공합니다(멱등). 다른 회원의 토큰이면 404 로 응답합니다.
+      operationId: notification-devices-unregister
+      parameters:
+      - name: token
+        in: path
+        description: 해제할 FCM 디바이스 토큰
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-blocks-918175200"
+              examples:
+                notification-devices-unregister:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/notifications/{id}/read:
     put:
       tags:
@@ -1036,7 +1108,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3MzkwNzUsImV4cCI6MTc4Nzc0MjY3NX0.VmEoD6obqeCLrzFWBkIGUICmkLpAdP3guPXqP7Asxr4RfnwwHXGx1jhnPcHNCp7zDHgraUNlgDX2GwJFfpEWFQ"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDg3OTIsImV4cCI6MTc4Nzc1MjM5Mn0.-Cj-N1kPwPNvMUid2jKVka9zrHRl-6NDPIe5V8-JbZNZQ9w9yVJadoeO2cgNYUocefAbj567Hddz8jLQ0MRcSw"
                       },
                       "error" : null
                     }
@@ -1064,12 +1136,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 19:11:20"
+                        "blockedAt" : "2026-08-26 21:53:19"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 19:11:20"
+                        "blockedAt" : "2026-08-26 21:53:19"
                       } ],
                       "error" : null
                     }
@@ -1362,13 +1434,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-26 19:11:20"
+                          "createdAt" : "2026-08-26 21:53:19"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-26 19:11:20"
+                          "createdAt" : "2026-08-26 21:53:19"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-26 19:11:20"
+                          "createdAt" : "2026-08-26 21:53:19"
                         } ]
                       },
                       "error" : null
@@ -1401,8 +1473,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-19 19:11:20",
-                          "endsAt" : "2026-09-02 19:11:20"
+                          "startsAt" : "2026-08-19 21:53:19",
+                          "endsAt" : "2026-09-02 21:53:19"
                         }
                       },
                       "error" : null
@@ -1579,8 +1651,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-26 19:11:20",
-                        "updatedAt" : "2026-08-26 19:11:20"
+                        "createdAt" : "2026-08-26 21:53:20",
+                        "updatedAt" : "2026-08-26 21:53:20"
                       },
                       "error" : null
                     }
@@ -3889,6 +3961,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-chat-rooms-roomId-messages1786138957:
       required:
       - error
@@ -3951,23 +4040,6 @@ components:
         quizId:
           type: number
           description: 퀴즈 ID
-    api-v1-user-reports900126493:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - id
-          type: object
-          properties:
-            id:
-              type: number
-              description: 접수된 신고 ID
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-notifications-read-all-418441164:
       required:
       - error
@@ -4354,6 +4426,23 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-notifications-devices2085580702:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - registered
+          type: object
+          properties:
+            registered:
+              type: boolean
+              description: 이번 호출로 이 회원 소유가 됐는지. 멱등 재호출이면 false (실패 아님)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-id-profile1659441471:
       required:
       - error
@@ -4569,6 +4658,18 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-notifications-devices-933306617:
+      required:
+      - platform
+      - token
+      type: object
+      properties:
+        platform:
+          type: string
+          description: "기기 플랫폼 (IOS, ANDROID)"
+        token:
+          type: string
+          description: FCM 디바이스 토큰 (최대 512자)
     api-v1-users-auth-logout-1831456372:
       required:
       - data
@@ -5064,43 +5165,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-matches-request-id-reject-1480143692:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - createdAt
-          - id
-          - quizSetId
-          - receiverId
-          - requesterId
-          - status
-          type: object
-          properties:
-            createdAt:
-              type: string
-              description: 요청 생성일시
-            receiverId:
-              type: number
-              description: 수신자 ID
-            requesterId:
-              type: number
-              description: 요청자 ID
-            quizSetId:
-              type: number
-              description: 퀴즈 세트 ID
-            id:
-              type: number
-              description: 매칭 ID
-            status:
-              type: string
-              description: 변경된 매칭 상태 (REJECTED)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-users1263059898:
       required:
       - caricature
@@ -5159,11 +5223,74 @@ components:
           type: number
           description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
           nullable: true
+    api-v1-matches-request-id-reject-1480143692:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - createdAt
+          - id
+          - quizSetId
+          - receiverId
+          - requesterId
+          - status
+          type: object
+          properties:
+            createdAt:
+              type: string
+              description: 요청 생성일시
+            receiverId:
+              type: number
+              description: 수신자 ID
+            requesterId:
+              type: number
+              description: 요청자 ID
+            quizSetId:
+              type: number
+              description: 퀴즈 세트 ID
+            id:
+              type: number
+              description: 매칭 ID
+            status:
+              type: string
+              description: 변경된 매칭 상태 (REJECTED)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-admin-quiz-sets-quizSetId-matching-regenerate-1319553622:
       required:
       - success
       type: object
       properties:
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부
@@ -5233,32 +5360,6 @@ components:
             updatedAt:
               type: string
               description: 수정일시
-        success:
-          type: boolean
-          description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          type: object
-          properties:
-            uploads:
-              type: array
-              items:
-                required:
-                - objectKey
-                - uploadUrl
-                type: object
-                properties:
-                  uploadUrl:
-                    type: string
-                    description: presigned PUT 업로드 URL
-                  objectKey:
-                    type: string
-                    description: 업로드 후 메시지 content 로 전송할 S3 key
         success:
           type: boolean
           description: 성공 여부

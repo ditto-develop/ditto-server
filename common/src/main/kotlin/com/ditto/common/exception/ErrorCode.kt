@@ -63,5 +63,7 @@ enum class ErrorCode(
     INVALID_VOTE_OPTION(400, "8206", "이 투표의 선택지가 아닙니다."),
     VOTE_MULTIPLE_NOT_ALLOWED(400, "8207", "복수 선택이 허용되지 않은 투표입니다."),
     GROUP_ROOM_ONLY(400, "8208", "투표는 그룹 채팅방에서만 지원합니다."),
+    // 83xx는 푸시 디바이스 대역이다.
+    DEVICE_NOT_FOUND(404, "8301", "등록되지 않은 디바이스입니다."),
     INTERNAL_ERROR(500, "9999", "알 수 없는 에러가 발생했습니다."),
 }
