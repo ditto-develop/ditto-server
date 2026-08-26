@@ -4,6 +4,9 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteChangeResult
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
+import com.ditto.api.chat.dto.ChatVoteCreateRequest.Companion.MAX_OPTION_COUNT
+import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
+import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -25,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /**
- * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성·조회·투표(cast)·마감(close).
+ * 그룹 만남 투표(피그마 4.2.2~4.2.4) — 생성·조회·선택지 추가·투표(cast)·마감(close).
  *
  * 잠금 순서는 방 → 멤버 → 투표로 고정한다(그룹 이탈 트랜잭션이 방 → 멤버를 이미 고정했다).
  * 생성은 방 행 잠금이 트랜잭션의 **첫 접근**이어야 한다(ADR 0011 규칙 5) — 그래서
@@ -152,6 +155,66 @@ class ChatVoteService(
     }
 
     /**
+     * 진행 중 투표에 장소 선택지를 하나 추가한다 — 권한은 방 멤버 누구나(피그마 4.2.3 "항목 추가").
+     * SYSTEM 메시지·브로드캐스트는 없다 — 채팅방에 뜨는 것은 생성·마감뿐이라는 확정 정책 그대로다.
+     *
+     * 투표 행 잠금이 트랜잭션의 첫 접근이다(ADR 0011 규칙 5) — cast 의 선택지 읽기,
+     * 동시 추가의 개수 상한·중복 판정이 이 잠금으로 직렬화된다. 시간 추가도 같다.
+     */
+    @Transactional
+    fun addPlaceOption(
+        roomId: Long,
+        voteId: Long,
+        memberId: Long,
+        request: PlaceOptionRequest,
+    ): ChatVoteDetailResponse {
+        val vote = lockVoteForOptionAdd(roomId, voteId, memberId)
+        val placeOptions = sameTypeOptionsWithinLimit(voteId, ChatVoteOptionType.PLACE)
+
+        val label = request.label.trim()
+        if (placeOptions.any {
+                val placeOptionLabel = it.label?.trim()
+                placeOptionLabel.equals(label, ignoreCase = true)
+            }) {
+            throw WarnException(ErrorCode.DUPLICATE_VOTE_OPTION)
+        }
+
+        chatVoteOptionRepository.save(
+            ChatVoteOption.createPlaceOption(
+                voteId = vote.id,
+                createdBy = memberId,
+                label = label,
+                address = request.address,
+                mapLink = request.mapLink,
+                latitude = request.latitude,
+                longitude = request.longitude,
+            ),
+        )
+        return toDetail(vote, activeMemberIds(roomId), memberId)
+    }
+
+    /** 진행 중 투표에 시간 선택지를 하나 추가한다 — 규칙은 [addPlaceOption]과 같고 중복 판정만 분 단위다. */
+    @Transactional
+    fun addTimeOption(
+        roomId: Long,
+        voteId: Long,
+        memberId: Long,
+        request: TimeOptionRequest,
+    ): ChatVoteDetailResponse {
+        val vote = lockVoteForOptionAdd(roomId, voteId, memberId)
+        val timeOptions = sameTypeOptionsWithinLimit(voteId, ChatVoteOptionType.TIME)
+
+        val meetAt = request.meetAt.withSecond(0).withNano(0)
+        if (timeOptions.any { it.meetAt == meetAt }) {
+            throw WarnException(ErrorCode.DUPLICATE_VOTE_OPTION)
+        }
+        chatVoteOptionRepository.save(
+            ChatVoteOption.createTimeOption(voteId = vote.id, createdBy = memberId, meetAt = meetAt),
+        )
+        return toDetail(vote, activeMemberIds(roomId), memberId)
+    }
+
+    /**
      * 투표하기 — 요청에 담긴 집합이 그 회원의 최종 선택이다(치환).
      *
      * 투표 행 잠금이 트랜잭션의 첫 접근이다(ADR 0011 규칙 5). 동시 cast 는 이 잠금이 직렬화한다 —
@@ -251,6 +314,32 @@ class ChatVoteService(
         if (room.isEnded) {
             throw WarnException(ErrorCode.CHAT_ROOM_ENDED)
         }
+    }
+
+    /** 선택지 추가의 공통 관문 — 투표 행을 잠그고(첫 접근) 방·멤버·진행 중 여부를 검증한다. */
+    private fun lockVoteForOptionAdd(roomId: Long, voteId: Long, memberId: Long): ChatVote {
+        val vote = chatVoteRepository.findWithLockById(voteId) ?: throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        if (vote.roomId != roomId) {
+            throw WarnException(ErrorCode.VOTE_NOT_FOUND)
+        }
+        val room = chatRoomRepository.findById(roomId).orElseThrow {
+            WarnException(ErrorCode.CHAT_ROOM_NOT_FOUND)
+        }
+        validateVotableRoom(room, memberId)
+        if (vote.isClosed) {
+            throw WarnException(ErrorCode.VOTE_ALREADY_CLOSED)
+        }
+        return vote
+    }
+
+    /** 같은 유형의 기존 선택지 — 유형별 상한(10개)을 넘으면 8204. 중복 판정의 비교 대상으로도 쓴다. */
+    private fun sameTypeOptionsWithinLimit(voteId: Long, type: ChatVoteOptionType): List<ChatVoteOption> {
+        val sameTypeOptions = chatVoteOptionRepository.findAllByVoteIdOrderByIdAsc(voteId)
+            .filter { it.optionType == type }
+        if (sameTypeOptions.size >= MAX_OPTION_COUNT) {
+            throw WarnException(ErrorCode.VOTE_OPTION_LIMIT_REACHED)
+        }
+        return sameTypeOptions
     }
 
     /**
