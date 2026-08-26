@@ -1,12 +1,14 @@
 package com.ditto.api.notification.service
 
 import com.ditto.api.notification.message.NotificationContent
+import com.ditto.api.notification.push.PushNotifier
 import com.ditto.api.support.runCatchingExceptions
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
 /**
- * 알림을 남기는 유일한 입구. 적재 지점 여섯 곳이 이것만 부른다.
+ * 알림을 남기는 유일한 입구. 적재 지점 여섯 곳이 이것만 부르고, 푸시도 여기서 함께 나간다 —
+ * 중복 정책으로 걸러진 사건(행이 안 생김)은 푸시도 안 나가, 인앱과 푸시가 항상 같이 움직인다.
  *
  * **실패를 삼킨다.** 알림을 못 남긴 것이 매칭·그룹 참여·채팅 전송·평가 열기를 되돌리는 것보다 낫다.
  * 트랜잭션을 여기서 열지 않는 것이 핵심이다 — [NotificationWriter]가 다른 빈이라 호출마다 자기
@@ -18,19 +20,25 @@ import org.springframework.stereotype.Component
 @Component
 class NotificationAppender(
     private val notificationWriter: NotificationWriter,
+    private val pushNotifier: PushNotifier,
 ) {
 
     /**
-     * 한 사람에게 알림을 남긴다. 중복 처리는 유형의 정책이 정한다(`NotificationType.duplicatePolicy`).
+     * 한 사람에게 알림을 남기고 푸시를 보낸다. 중복 처리는 유형의 정책이 정한다(`NotificationType.duplicatePolicy`).
      *
      * @return 실제로 행이 생겼으면 `true`. 이미 알린 사건이거나 적재가 실패했으면 `false`
      */
-    fun append(memberId: Long, content: NotificationContent, targetId: Long? = null): Boolean =
-        runCatchingExceptions { notificationWriter.write(memberId, content, targetId) }
+    fun append(memberId: Long, content: NotificationContent, targetId: Long? = null): Boolean {
+        val notification = runCatchingExceptions { notificationWriter.write(memberId, content, targetId) }
             .onFailure {
                 logger.warn(it) { "알림 적재 실패 — 무시한다: memberId=$memberId, type=${content.type}, targetId=$targetId" }
             }
-            .getOrDefault(false)
+            .getOrNull()
+            ?: return false // 적재 실패거나 이미 알린 사건 — 푸시도 없다
+
+        pushNotifier.push(notification)
+        return true
+    }
 
     /**
      * 여러 사람에게 같은 내용을 남긴다. 문구가 사람마다 달라야 하면([memberId]별 닉네임 등)

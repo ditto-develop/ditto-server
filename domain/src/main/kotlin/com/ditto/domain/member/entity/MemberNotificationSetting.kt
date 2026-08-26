@@ -1,6 +1,7 @@
 package com.ditto.domain.member.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.notification.entity.NotificationCategory
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -47,6 +48,19 @@ class MemberNotificationSetting(
     @Column(nullable = false)
     var marketing: Boolean = false,
 ) : BaseEntity() {
+
+    /**
+     * 이 카테고리의 푸시를 받겠다고 했는지 — 발송 게이트. 인앱 알림 센터는 이 값과 무관하게 쌓인다.
+     *
+     * SYSTEM(운영 공지)은 막지 않는다 — 설정 화면(피그마 6.2)의 세 토글 중 어디에도 속하지 않는다.
+     * `marketing` 토글은 마케팅 수신 동의라 공지와 다른 개념이다. 어드민 공지(발송 주체)가 생길 때
+     * 공지 성격에 따라 재검토한다.
+     */
+    fun allowsPush(category: NotificationCategory): Boolean = when (category) {
+        NotificationCategory.MATCHING -> matching
+        NotificationCategory.CHAT -> chat
+        NotificationCategory.SYSTEM -> true
+    }
 
     /** 부분 패치 — null인 항목은 변경하지 않는다. */
     fun update(matching: Boolean?, chat: Boolean?, marketing: Boolean?) {
