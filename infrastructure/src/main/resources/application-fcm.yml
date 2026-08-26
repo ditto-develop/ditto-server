@@ -1,0 +1,10 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+ditto:
+  fcm:
+    # Secrets Manager(ditto/fcm-credentials)의 서비스 계정 키 JSON 전체.
+    # 기본값을 두지 않는다 — 미주입이면 placeholder 해석 실패로 부팅이 죽는 게 의도다(fail-fast).
+    credentials: ${FCM_CREDENTIALS}

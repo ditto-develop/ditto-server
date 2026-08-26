@@ -10,4 +10,5 @@ dependencies {
     implementation(project(":domain"))
     implementation("org.springframework:spring-web")
     implementation(Dependencies.AWS_S3)
+    implementation(Dependencies.FIREBASE_ADMIN)
 }

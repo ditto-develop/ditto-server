@@ -18,6 +18,7 @@ object DependencyVersions {
     const val COROUTINES = "1.9.0"
     const val RESTDOCS_API_SPEC = "0.19.4"
     const val AWS_SDK = "2.46.7"
+    const val FIREBASE_ADMIN = "9.8.0"
 }
 
 object Dependencies {
@@ -58,4 +59,5 @@ object Dependencies {
     const val SPRING_RESTDOCS_MOCKMVC = "org.springframework.restdocs:spring-restdocs-mockmvc"
     const val RESTDOCS_API_SPEC_MOCKMVC = "com.epages:restdocs-api-spec-mockmvc:${DependencyVersions.RESTDOCS_API_SPEC}"
     const val AWS_S3 = "software.amazon.awssdk:s3:${DependencyVersions.AWS_SDK}"
+    const val FIREBASE_ADMIN = "com.google.firebase:firebase-admin:${DependencyVersions.FIREBASE_ADMIN}"
 }
