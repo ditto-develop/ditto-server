@@ -202,5 +202,90 @@ class OAuthFacadeTest(
                 jwtTokenProvider.getMemberId(accessToken) shouldBe member.id
             }
         }
+
+        "네이티브 소셜 로그인" - {
+            "신규 사용자면 PENDING으로 생성되고 accessToken·signupRequired=true를 반환한다" {
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                result.response.accessToken shouldNotBe null
+                result.response.signupRequired shouldBe true
+                result.response.sanctioned shouldBe false
+                result.refreshToken shouldNotBe null
+                memberRepository.count() shouldBe 1
+                memberRepository.findAll().first().status shouldBe MemberStatus.PENDING
+                socialAccountRepository.count() shouldBe 1
+                refreshTokenRepository.count() shouldBe 1
+            }
+
+            "ACTIVE 사용자면 signupRequired=false이고 accessToken에 memberId가 담긴다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                memberRepository.save(member)
+
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                result.response.signupRequired shouldBe false
+                jwtTokenProvider.getMemberId(result.response.accessToken!!) shouldBe member.id
+            }
+
+            "이용 정지 중인 회원이면 토큰 없이 제재 코드와 해제 예정일을 반환한다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.suspendUntil(LocalDateTime.now().plusDays(7))
+                memberRepository.save(member)
+
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                result.response.accessToken shouldBe null
+                result.response.sanctioned shouldBe true
+                result.response.sanctionCode shouldBe ErrorCode.MEMBER_SUSPENDED.name
+                result.response.suspendedUntil shouldNotBe null
+                result.refreshToken shouldBe null
+                refreshTokenRepository.count() shouldBe 0
+            }
+
+            "영구 차단 회원이면 해제 예정일 없이 차단 코드만 반환한다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.ban()
+                memberRepository.save(member)
+
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                result.response.sanctioned shouldBe true
+                result.response.sanctionCode shouldBe ErrorCode.MEMBER_BANNED.name
+                result.response.suspendedUntil shouldBe null
+                result.refreshToken shouldBe null
+            }
+
+            "정지 해제 예정일이 지난 회원은 정상 로그인되고 ACTIVE로 원복된다" {
+                val member =
+                    memberSocialAccountService.findOrCreateMember(SocialProvider.KAKAO, "12345", "test@example.com", null)
+                member.activate()
+                member.suspendUntil(LocalDateTime.now().minusDays(1))
+                memberRepository.save(member)
+
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                result.response.sanctioned shouldBe false
+                result.response.accessToken shouldNotBe null
+
+                val reloaded = memberRepository.findById(member.id).orElseThrow()
+                reloaded.status shouldBe MemberStatus.ACTIVE
+                reloaded.suspendedUntil shouldBe null
+            }
+
+            "리다이렉트 로그인과 같은 회원으로 이어진다 (소셜 계정이 하나만 생긴다)" {
+                oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
+
+                oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+
+                memberRepository.count() shouldBe 1
+                socialAccountRepository.count() shouldBe 1
+            }
+        }
     },
 )
