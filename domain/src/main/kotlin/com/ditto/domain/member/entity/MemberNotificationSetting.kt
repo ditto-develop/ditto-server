@@ -1,6 +1,7 @@
 package com.ditto.domain.member.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.notification.entity.NotificationCategory
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -47,6 +48,16 @@ class MemberNotificationSetting(
     @Column(nullable = false)
     var marketing: Boolean = false,
 ) : BaseEntity() {
+
+    /**
+     * 이 카테고리의 푸시를 받겠다고 했는지 — 발송 게이트. 인앱 알림 센터는 이 값과 무관하게 쌓인다.
+     * SYSTEM 은 세 토글 어디에도 속하지 않아 막지 않는다 — 배경은 `docs/domains/notification.md`.
+     */
+    fun allowsPush(category: NotificationCategory): Boolean = when (category) {
+        NotificationCategory.MATCHING -> matching
+        NotificationCategory.CHAT -> chat
+        NotificationCategory.SYSTEM -> true
+    }
 
     /** 부분 패치 — null인 항목은 변경하지 않는다. */
     fun update(matching: Boolean?, chat: Boolean?, marketing: Boolean?) {

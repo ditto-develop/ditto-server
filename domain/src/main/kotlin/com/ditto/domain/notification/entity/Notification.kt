@@ -97,6 +97,9 @@ class Notification private constructor(
         /** 목록 조회 창과 보관 기간. 화면 스펙("최근 30일")이 둘의 근거다. */
         const val RETENTION_DAYS = 30L
 
+        /** 보관 창의 시작. 목록·벨 배지·purge·푸시 뱃지가 전부 이걸 쓴다 — 한 곳만 다르면 수가 어긋난다. */
+        fun retentionFrom(): LocalDateTime = LocalDateTime.now().minusDays(RETENTION_DAYS)
+
         /**
          * 긴 본문은 잘라서 저장한다. 본문이 메시지 미리보기인 경우가 있어(새 메시지 알림)
          * 길이를 부르는 쪽이 통제할 수 없다 — 여기서 자르지 않으면 컬럼 초과로 적재가 실패한다.

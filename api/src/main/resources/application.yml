@@ -7,6 +7,7 @@ spring:
       - oauth
       - db
       - storage
+      - fcm
 
 server:
   port: 8080

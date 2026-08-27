@@ -30,10 +30,10 @@ class NotificationWriter(
     /**
      * 중복 정책에 따라 적재한다.
      *
-     * @return 실제로 행이 생겼으면 `true`. 이미 알린 사건이라 건너뛰었으면 `false`
+     * @return 실제로 생긴 행. 이미 알린 사건이라 건너뛰었으면 `null` — 푸시도 함께 건너뛴다
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun write(memberId: Long, content: NotificationContent, targetId: Long?): Boolean {
+    fun write(memberId: Long, content: NotificationContent, targetId: Long?): Notification? {
         val type = content.type
         when (type.duplicatePolicy) {
             DuplicatePolicy.ALLOW -> Unit
@@ -41,7 +41,7 @@ class NotificationWriter(
             DuplicatePolicy.ONCE_PER_TARGET -> {
                 val target = requireTargetId(type, targetId)
                 if (notificationRepository.existsByMemberIdAndTypeAndTargetId(memberId, type, target)) {
-                    return false
+                    return null
                 }
             }
 
@@ -50,7 +50,7 @@ class NotificationWriter(
                 notificationRepository.deleteUnread(memberId, type, requireTargetId(type, targetId))
         }
 
-        notificationRepository.save(
+        return notificationRepository.save(
             Notification.create(
                 memberId = memberId,
                 type = type,
@@ -59,7 +59,6 @@ class NotificationWriter(
                 targetId = targetId,
             ),
         )
-        return true
     }
 
     private fun requireTargetId(type: NotificationType, targetId: Long?): Long =

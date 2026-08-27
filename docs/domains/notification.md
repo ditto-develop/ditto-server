@@ -2,8 +2,8 @@
 
 알림 센터(피그마 `7.2 알림 센터`). 사건이 생길 때 **행을 적재**하고, 화면이 최신순 커서 페이징으로 읽고 읽음 표시한다.
 
-푸시 발송(FCM)은 아직 없다. 이 도메인은 인앱 기록과 **푸시 주소록(디바이스 토큰)**을 다루며,
-발송이 붙으면 같은 적재 지점에서 함께 보낸다.
+인앱 기록과 함께 **푸시(FCM)도 이 도메인이 보낸다** — 적재 입구(`NotificationAppender`)에서
+행이 생긴 알림만 `PushNotifier`가 내보내므로, 중복 정책이 푸시에도 그대로 적용된다.
 
 ## 용어
 
@@ -15,6 +15,8 @@
 - `NotificationWriter` — 실제 저장. `REQUIRES_NEW`로 자기 트랜잭션에서 커밋한다.
 - `NotificationMessages` — 문구 한곳 모음(정본은 기획의 "알림 문구 정책" 문서).
 - `MemberDevice` — 푸시 주소록 한 줄. 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원. 회원 1명이 여러 행(폰·태블릿).
+- `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·deepLink·뱃지가 여기 있다.
+- `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 무효 토큰(`UNREGISTERED`)을 콜백으로 돌려준다.
 
 ## 유형 표 (FE 계약)
 
@@ -50,6 +52,26 @@
   응답의 `registered`는 "이번 호출로 이 회원 소유가 됐는지"다(멱등 재호출이면 `false`, 실패 아님).
   토큰은 불투명 문자열이다 — 형식을 해석·검증하지 않는다.
 
+## 푸시 발송
+
+적재와 같은 입구에서 나간다: `NotificationAppender` → 행 생성 시 `PushNotifier.push` → `PushSender`(FCM).
+발송은 비동기(fire-and-forget)라 적재·비즈니스 흐름을 기다리게 하지 않고, 준비 실패도 삼킨다.
+
+- **토글 게이트** — `MemberNotificationSetting.allowsPush`: MATCHING→`matching`, CHAT→`chat`.
+  SYSTEM 은 막지 않는다(설정 화면의 세 토글 어디에도 속하지 않고, `marketing`은 마케팅 수신 동의라 공지와
+  다른 개념 — 어드민 공지가 생길 때 재검토). 행이 없는 회원은 기본값으로 판단한다.
+- **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
+- **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
+  (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
+  `MATCH_RESULT`→`/matching/`, `REVIEW_REQUEST`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
+  방이 지워졌으면 deepLink 없이 보낸다.
+- **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
+  인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
+- **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON` 6시간 — 종료 6시간 전
+  알림이라 종료가 지나면 무의미). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
+- **죽은 토큰 정리** — 발송 결과의 `UNREGISTERED` 토큰을 `PushDeadDeviceCleaner`가 지운다(FCM 콜백
+  스레드라 자기 트랜잭션). 방치하면 실패율이 쌓여 FCM 이 발송량을 제한한다.
+
 ## 적재 지점을 어디에 두는가
 
 원칙은 **커밋된 뒤에, 사건을 아는 곳에서**다.
@@ -77,9 +99,7 @@
 
 ## TODO (미확정)
 
-- 푸시 발송(FCM) — 발송 인프라(Admin SDK)·payload 계약, 알림 토글을 게이트로 사용. 주소록(`MemberDevice`)은 #152 로 완료
-- 죽은 토큰 정리 — 발송 시 FCM 이 `Unregistered`/410 을 주면 그 행을 삭제(발송 인프라와 함께)
-- 탈퇴 완전 삭제 시 `member_device` 정리 — FE 가 탈퇴 전 해제를 부르지만 서버측 보강 필요
+- 탈퇴 완전 삭제 시 `member_device` 정리 — FE 가 탈퇴 전 해제를 부르지만 서버측 보강 필요 (#154)
 - 실시간 배지 — 현재는 폴링/재조회. STOMP 개인 큐 여부 미정
 - `SYSTEM_NOTICE` 발송 주체 — 어드민 공지 화면
 - 채팅 연장(#121)으로 종료 시각이 밀렸을 때 종료 임박 알림을 다시 보낼지

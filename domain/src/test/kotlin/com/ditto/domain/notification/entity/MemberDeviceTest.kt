@@ -51,6 +51,21 @@ class MemberDeviceTest(
         }
     }
 
+    "deleteAllByTokenIn — 죽은 토큰 일괄 삭제" - {
+        "목록의 토큰만 지우고 지운 수를 준다" {
+            memberDeviceRepository.save(MemberDevice.create(memberId = 1L, token = "dead-1", platform = DevicePlatform.IOS))
+            memberDeviceRepository.save(MemberDevice.create(memberId = 2L, token = "dead-2", platform = DevicePlatform.ANDROID))
+            memberDeviceRepository.save(MemberDevice.create(memberId = 3L, token = "alive", platform = DevicePlatform.IOS))
+
+            transactionTemplate.execute {
+                memberDeviceRepository.deleteAllByTokenIn(listOf("dead-1", "dead-2"))
+            } shouldBe 2
+
+            memberDeviceRepository.count() shouldBe 1
+            memberDeviceRepository.findByToken("alive")!!.memberId shouldBe 3L
+        }
+    }
+
     "deleteByTokenAndMemberId — 소유자 조건부 삭제" - {
         "소유자가 맞으면 지우고 1 을 준다" {
             memberDeviceRepository.save(MemberDevice.create(memberId = 1L, token = "fcm-token", platform = DevicePlatform.IOS))
