@@ -1,5 +1,6 @@
 package com.ditto.api.auth
 
+import com.ditto.api.auth.dto.NativeSocialLoginRequest
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -10,13 +11,18 @@ import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get
+import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
+import org.springframework.restdocs.payload.JsonFieldType
+import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 
 class OAuthControllerTest : RestDocsTest() {
 
@@ -87,6 +93,105 @@ class OAuthControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("네이티브 로그인은 카카오 액세스 토큰을 우리 토큰으로 교환한다")
+    fun nativeLogin() {
+        val request = NativeSocialLoginRequest(accessToken = "kakao-sdk-access-token")
+
+        mockMvc.perform(
+            post("/api/v1/users/social-login/kakao/native")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty)
+            .andExpect(jsonPath("$.data.signupRequired").value(true))
+            .andExpect(jsonPath("$.data.sanctioned").value(false))
+            .andExpect(header().string("Set-Cookie", containsString("refreshToken=")))
+            .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+            .andDo(
+                document(
+                    "oauth-native-login",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("OAuth")
+                            .summary("네이티브 소셜 로그인 (앱)")
+                            .description(
+                                "네이티브 카카오 SDK가 받아온 액세스 토큰을 우리 accessToken으로 교환한다(앱 전용). " +
+                                    "웹은 리다이렉트 로그인을 그대로 쓰며 이 엔드포인트는 대체가 아니라 추가다. " +
+                                    "refreshToken은 리다이렉트 로그인과 동일하게 HttpOnly 쿠키로 내려간다. " +
+                                    "제재 회원은 accessToken 없이 sanctioned=true와 sanctionCode(MEMBER_SUSPENDED|MEMBER_BANNED), " +
+                                    "정지면 suspendedUntil까지 함께 받는다.",
+                            )
+                            .requestFields(
+                                fieldWithPath("accessToken").description("네이티브 소셜 SDK가 발급받은 액세스 토큰"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.accessToken").type(JsonFieldType.STRING).optional()
+                                    .description("우리 서비스 accessToken (제재 회원은 null)"),
+                                fieldWithPath("data.signupRequired").description("회원가입(추가 정보 입력) 필요 여부"),
+                                fieldWithPath("data.sanctioned").description("제재 회원 여부"),
+                                fieldWithPath("data.sanctionCode").type(JsonFieldType.STRING).optional()
+                                    .description("제재 코드 (MEMBER_SUSPENDED | MEMBER_BANNED, 제재가 아니면 null)"),
+                                fieldWithPath("data.suspendedUntil").type(JsonFieldType.STRING).optional()
+                                    .description("정지 해제 예정 일시 (정지만 존재, 그 외 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("네이티브 로그인도 제재 회원에게는 토큰 없이 제재 사실만 알린다")
+    fun nativeLoginWithSuspendedMember() {
+        val request = NativeSocialLoginRequest(accessToken = "kakao-sdk-access-token")
+        // 첫 로그인으로 회원을 만든 뒤 정지시킨다 — Fake 카카오 클라이언트는 항상 같은 소셜 계정을 반환한다.
+        mockMvc.perform(
+            post("/api/v1/users/social-login/kakao/native")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        ).andExpect(status().isOk)
+
+        val member = memberRepository.findAll().first()
+        member.activate()
+        member.suspendUntil(LocalDateTime.now().plusDays(7))
+        memberRepository.save(member)
+
+        mockMvc.perform(
+            post("/api/v1/users/social-login/kakao/native")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.accessToken").doesNotExist())
+            .andExpect(jsonPath("$.data.sanctioned").value(true))
+            .andExpect(jsonPath("$.data.sanctionCode").value("MEMBER_SUSPENDED"))
+            .andExpect(jsonPath("$.data.suspendedUntil").isNotEmpty)
+            .andExpect(header().doesNotExist("Set-Cookie"))
+    }
+
+    @Test
+    @DisplayName("네이티브 로그인에 API Key가 없으면 401을 반환한다")
+    fun nativeLoginWithoutApiKey() {
+        val request = NativeSocialLoginRequest(accessToken = "kakao-sdk-access-token")
+
+        mockMvc.perform(
+            post("/api/v1/users/social-login/kakao/native")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
