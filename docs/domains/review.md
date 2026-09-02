@@ -37,6 +37,7 @@
 - 추천 태그는 두지 않는다 — 자유 코멘트만 받는다.
 - `match_type`·`match_id`는 `chat_room`의 `(source_type, source_id)`와 같은 값이다. 조회마다 채팅방을 조인하지 않으려고 복사해 두며, 양쪽 다 생성 후 불변이라 어긋나지 않는다.
 - 화면 노출 순서는 생성 순서와 같아 별도 순서 컬럼 없이 `id` 정렬로 처리한다.
+- **받은 평가 집계의 공개 기준은 3건**이며(`MemberRatingService.PUBLIC_THRESHOLD`), 미달이면 총 건수만 내려간다. 내 프로필(`/users/me/ratings`)과 타인 프로필(`/users/{id}/ratings`)이 같은 집계를 쓰고, `PublicProfileResponse.rating`도 같은 기준으로 채운다. 타인 조회는 코멘트까지 포함하며 열람 권한은 공개 프로필과 같다(매칭된 상대 + 차단 아님). 배경·감수한 프라이버시 비용: [ADR 0020](../adr/0020-peer-profile-answer-match-summary.md).
 - **조회는 작성자 본인 것만 돌려준다.** 응답의 답변 값(`meetingStatus`·`rating`·`comment`·`answeredAt`)은 전부 요청자의 `member_review` 밑 행에서 오므로, 상대가 나를 어떻게 평가했는지는 어떤 경로로도 나가지 않는다.
 - 미완료 목록 정렬은 `availableAt` 오래된 순이며, 같은 주의 채팅들이 같은 시각에 닫혀 값이 겹칠 수 있어 `id`로 순서를 고정한다.
 - "미완료"는 `COMPLETED가 아님`이며, 이 판정은 조회 쿼리(`findPendingByAuthorOldestFirst`) 한 곳에만 둔다 — 서비스나 호출부에서 상태를 나열하지 않는다.

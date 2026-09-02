@@ -12,12 +12,21 @@ import kotlin.math.roundToInt
  */
 object MatchScoreCalculator {
 
-    fun calculate(participant1: MatchParticipant, participant2: MatchParticipant): MatchScore {
-        val totalQuestionCount = participant1.answers.size
+    fun calculate(participant1: MatchParticipant, participant2: MatchParticipant): MatchScore =
+        calculate(participant1.answers, participant2.answers)
+
+    /**
+     * 답변 맵만으로 계산한다. 매칭 후보 선정 밖에서도(예: 프로필의 "나와 같은 답" 배지)
+     * 같은 수치를 보여야 해서 성별·나이 없는 입력을 함께 받는다.
+     *
+     * @param answers1 quizId -> choiceId. 문항 수의 기준이 되는 쪽이다.
+     */
+    fun calculate(answers1: Map<Long, Long>, answers2: Map<Long, Long>): MatchScore {
+        val totalQuestionCount = answers1.size
         if (totalQuestionCount == 0) return MatchScore(score = 0.0, matchedQuestionCount = 0, totalQuestionCount = 0)
 
-        val matchedQuestionCount = participant1.answers.count { (quizId, choiceId) ->
-            participant2.answers[quizId] == choiceId
+        val matchedQuestionCount = answers1.count { (quizId, choiceId) ->
+            answers2[quizId] == choiceId
         }
 
         val score = matchedQuestionCount.toDouble() / totalQuestionCount * 100

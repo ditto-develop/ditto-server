@@ -15,8 +15,9 @@ data class PublicProfileResponse(
     val location: String?,
     val occupation: String?,
     val interests: List<String>,
-    // 아래 3개는 아직 데이터 소스가 없어 null. (rating: 평가 도메인 별도 / preferred: FE 미사용)
+    // 받은 평가 평균. 공개 기준(3건) 미달이면 null — 평가 카드와 같은 기준이다.
     val rating: Double? = null,
+    // preferred* 는 FE 미사용이라 아직 데이터 소스가 없다.
     val preferredMinAge: Int? = null,
     val preferredMaxAge: Int? = null,
 )
