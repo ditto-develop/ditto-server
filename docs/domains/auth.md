@@ -14,6 +14,7 @@
 - 다중 `SecurityFilterChain`, 매칭 안 된 경로는 마지막 체인 `anyRequest().denyAll()`로 자동 차단(secure-by-default). [ADR 0002](../adr/0002-security-filter-chain-deny-all-default.md)
 - JWT subject = 내부 `memberId`(소셜 식별자 결합 제거), role claim은 서버가 인가에 쓰지 않음. [ADR 0003](../adr/0003-jwt-subject-member-id.md)
 - OAuth 콜백은 FE로 302 리다이렉트, refreshToken은 HttpOnly·Secure·SameSite 쿠키로만 전달(URL·로그·히스토리 노출 차단). [ADR 0004](../adr/0004-oauth-callback-redirect-and-cookie.md)
+- **카카오는 일반 앱이다 — 받는 동의항목은 `profile_nickname` 하나뿐이다.** 이름·성별·연령대·생일·전화번호·이메일은 모두 비즈 앱 전용이라 신청할 수 없다. 요청 scope는 `ditto.oauth.kakao.scopes` 설정값이며(비즈 앱 전환 시 환경변수만 확대), **설정되지 않은 동의항목을 넘기면 카카오가 로그인을 거부**한다. 성별·나이는 온보딩 입력으로 받아 가입 필수값이고, 이름·전화번호·이메일·생년월일은 `PATCH /api/v1/users/me/personal-info`(사용자 입력)와 재로그인(`updateOAuthInfo`) 두 경로로 나중에 채운다. [ADR 0021](../adr/0021-kakao-general-app-profile-input.md)
 - 카카오 동의항목(email·생년월일)은 콜백 쿼리가 아니라 `GET /api/v1/users/me`로 전달. PENDING 허용은 `JwtAuthenticationFilter`의 `pendingAllowedPaths`로 처리. [ADR 0005](../adr/0005-kakao-consent-via-me-api.md)
 - PENDING 게이트: 회원가입 미완료 회원은 `pendingAllowedPaths` 외 보호 API 접근 시 `SIGNUP_REQUIRED`.
 - 탈퇴 게이트: LEFT 회원은 보호 API 접근·토큰 갱신이 모두 `MEMBER_LEFT`(403)로 거부된다. 복구 경로는 재가입(소셜 로그인)뿐이다. `refresh`는 필터를 지나지 않으므로 `AuthService.refresh`에도 같은 게이트가 있다. [ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)
@@ -35,6 +36,7 @@
 - [0005](../adr/0005-kakao-consent-via-me-api.md) 카카오 동의항목 me API 전달
 - [0006](../adr/0006-admin-authz-filter-path-check.md) 어드민 인가 필터 경로 검사
 - [0009](../adr/0009-websocket-stomp-auth.md) WebSocket(STOMP) 인증 — 핸드셰이크 개방 + 프레임 레벨 인증·구독 인가
+- [0021](../adr/0021-kakao-general-app-profile-input.md) 카카오 일반 앱 전제 — 프로필 정보는 온보딩 입력
 
 ## 핵심 파일
 - 체인 정의: `api/src/main/kotlin/com/ditto/api/config/SecurityConfig.kt` (Order 1~6, 각 체인 KDoc)

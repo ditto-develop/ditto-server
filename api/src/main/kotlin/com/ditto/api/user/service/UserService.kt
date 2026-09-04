@@ -10,6 +10,7 @@ import com.ditto.api.user.dto.LeaveResponse
 import com.ditto.api.user.dto.MeResponse
 import com.ditto.api.user.dto.PublicProfileResponse
 import com.ditto.api.user.dto.RegisterResponse
+import com.ditto.api.user.dto.UpdatePersonalInfoRequest
 import com.ditto.api.user.dto.toLeaveResponse
 import com.ditto.api.user.dto.toMeResponse
 import com.ditto.api.user.dto.toRegisterResponse
@@ -88,6 +89,28 @@ class UserService(
         val member = memberRepository.findById(memberId).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
         }
+        return member.toMeResponse()
+    }
+
+    /**
+     * 가입 때 받지 못한 신원 정보(이름·전화번호·이메일·생년월일)를 나중에 채운다. 준 값만 반영한다.
+     *
+     * 일반 앱에서는 카카오가 이 값들을 주지 않으므로 사용자 입력이 유일한 경로다. 몇 번이든 호출할 수 있고,
+     * 비즈 앱 전환 후 재로그인으로 카카오 값이 들어오면 그쪽이 최신 값으로 덮는다([Member.updateOAuthInfo]).
+     */
+    @Transactional
+    fun updatePersonalInfo(memberId: Long, request: UpdatePersonalInfoRequest): MeResponse {
+        val member = memberRepository.findById(memberId).orElseThrow {
+            WarnException(ErrorCode.NOT_FOUND)
+        }
+
+        member.updatePersonalInfo(
+            name = request.name,
+            phoneNumber = request.phoneNumber,
+            email = request.email,
+            birthDate = request.birthDate,
+        )
+
         return member.toMeResponse()
     }
 

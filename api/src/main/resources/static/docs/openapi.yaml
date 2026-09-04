@@ -122,7 +122,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 22,
                           "readAt" : null,
-                          "createdAt" : "2026-08-26 21:53:18"
+                          "createdAt" : "2026-09-04 22:30:25"
                         }, {
                           "id" : 1,
                           "type" : "MATCH_RESULT",
@@ -131,7 +131,7 @@ paths:
                           "body" : "나와 답변이 비슷한 사람들을 찾았어요. 지금 확인해 보세요.",
                           "targetId" : 11,
                           "readAt" : "2026-08-21 09:00:00",
-                          "createdAt" : "2026-08-26 21:53:18"
+                          "createdAt" : "2026-09-04 22:30:25"
                         } ],
                         "nextCursor" : null
                       },
@@ -160,7 +160,7 @@ paths:
                     "reason" : "inappropriate-behavior",
                     "source" : "profile",
                     "detail" : "대화 중 폭언을 반복했습니다.",
-                    "imageKeys" : [ "pending/user-reports/1/31cfbf04-ffe6-436b-ba3b-cb425a0d5d6c" ],
+                    "imageKeys" : [ "pending/user-reports/1/9f274fc6-8a41-4b2c-9b25-2d2ca49abc82" ],
                     "block" : false
                   }
       responses:
@@ -193,7 +193,7 @@ paths:
         content:
           application/json;charset=UTF-8:
             schema:
-              $ref: "#/components/schemas/api-v1-users1263059898"
+              $ref: "#/components/schemas/api-v1-users548057481"
             examples:
               user-register:
                 value: |-
@@ -236,10 +236,10 @@ paths:
                         "location" : "seoul",
                         "job" : "it-tech",
                         "caricature" : "/onboarding/profileimg/avatar/m1.svg",
-                        "joinedAt" : "2026-08-26 21:53:19",
+                        "joinedAt" : "2026-09-04 22:30:26",
                         "role" : null,
-                        "createdAt" : "2026-08-26 21:53:19",
-                        "updatedAt" : "2026-08-26 21:53:20"
+                        "createdAt" : "2026-09-04 22:30:26",
+                        "updatedAt" : "2026-09-04 22:30:26"
                       },
                       "error" : null
                     }
@@ -313,18 +313,50 @@ paths:
     get:
       tags:
       - Matching
-      summary: 1:1 매칭 추천 후보 목록 조회
-      description: "회원이 최근 완료한 1:1 퀴즈셋의 추천 후보를 매칭 점수 내림차순으로 조회합니다. 대상 퀴즈셋은 서버가 결정하\
-        며, 응답의 quizSetId 로 확인합니다."
-      operationId: match-candidate-list
+      summary: 1:1 매칭 요청 목록 조회
+      description: 퀴즈셋에 대한 내가 보낸/받은 1:1 매칭 요청 목록을 조회합니다.
+      operationId: match-candidate-listpersonal-match-list
+      parameters:
+      - name: quizSetId
+        in: query
+        description: 퀴즈 세트 ID
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: "200"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-matches-1on11956789472"
+                $ref: "#/components/schemas/api-v1-matches-1on1-729000088"
               examples:
+                personal-match-list:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "sent" : [ {
+                          "id" : 1,
+                          "quizSetId" : 10,
+                          "requesterId" : 1,
+                          "receiverId" : 2,
+                          "status" : "PENDING",
+                          "createdAt" : "2026-05-01 12:00:00",
+                          "respondedAt" : null
+                        } ],
+                        "received" : [ {
+                          "id" : 2,
+                          "quizSetId" : 10,
+                          "requesterId" : 3,
+                          "receiverId" : 1,
+                          "status" : "PENDING",
+                          "createdAt" : "2026-05-01 12:00:00",
+                          "respondedAt" : null
+                        } ]
+                      },
+                      "error" : null
+                    }
                 match-candidate-list:
                   value: |-
                     {
@@ -593,21 +625,21 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "weekStartedOn" : "2026-08-24",
+                        "weekStartedOn" : "2026-08-31",
                         "year" : 2026,
                         "month" : 8,
-                        "week" : 5,
+                        "week" : 6,
                         "quizSets" : [ {
                           "id" : 1,
-                          "weekStartedOn" : "2026-08-24",
+                          "weekStartedOn" : "2026-08-31",
                           "year" : 2026,
                           "month" : 8,
-                          "week" : 5,
+                          "week" : 6,
                           "category" : "성격",
                           "title" : "이번 주 1:1 매칭",
                           "description" : "테스트 퀴즈 세트 설명",
-                          "startDate" : "2026-08-25 21:53:19",
-                          "endDate" : "2026-08-27 21:53:19",
+                          "startDate" : "2026-09-03 22:30:25",
+                          "endDate" : "2026-09-05 22:30:25",
                           "isActive" : true,
                           "matchingType" : "ONE_TO_ONE",
                           "quizzes" : [ {
@@ -624,8 +656,8 @@ paths:
                               "order" : 2
                             } ],
                             "order" : 1,
-                            "createdAt" : "2026-08-26 21:53:19",
-                            "updatedAt" : "2026-08-26 21:53:19"
+                            "createdAt" : "2026-09-04 22:30:25",
+                            "updatedAt" : "2026-09-04 22:30:25"
                           } ]
                         } ]
                       },
@@ -672,8 +704,8 @@ paths:
                         "endDate" : "2026-04-12 23:59:59",
                         "isActive" : true,
                         "matchingType" : "ONE_TO_ONE",
-                        "createdAt" : "2026-08-26 21:53:19",
-                        "updatedAt" : "2026-08-26 21:53:19"
+                        "createdAt" : "2026-09-04 22:30:25",
+                        "updatedAt" : "2026-09-04 22:30:25"
                       },
                       "error" : null
                     }
@@ -700,11 +732,11 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "weekStartedOn" : "2026-08-24",
+                        "weekStartedOn" : "2026-08-31",
                         "year" : 2026,
                         "month" : 8,
-                        "week" : 5,
-                        "period" : "QUIZ_PERIOD"
+                        "week" : 6,
+                        "period" : "CHATTING_PERIOD"
                       },
                       "error" : null
                     }
@@ -750,11 +782,11 @@ paths:
                       "success" : true,
                       "data" : {
                         "uploads" : [ {
-                          "objectKey" : "pending/user-reports/1/857f68db-9fb9-448a-a561-e98bd93520fa",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/857f68db-9fb9-448a-a561-e98bd93520fa"
+                          "objectKey" : "pending/user-reports/1/a851dc76-7c3b-470b-a039-644c519a129c",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/a851dc76-7c3b-470b-a039-644c519a129c"
                         }, {
-                          "objectKey" : "pending/user-reports/1/976825c5-92e2-40e2-b9d0-efd1a8461a7c",
-                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/976825c5-92e2-40e2-b9d0-efd1a8461a7c"
+                          "objectKey" : "pending/user-reports/1/143962fe-61cf-46d8-a58d-e24cd3463d53",
+                          "uploadUrl" : "https://fake-storage.local/pending/user-reports/1/143962fe-61cf-46d8-a58d-e24cd3463d53"
                         } ]
                       },
                       "error" : null
@@ -1108,7 +1140,7 @@ paths:
                     {
                       "success" : true,
                       "data" : {
-                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc3NDg3OTIsImV4cCI6MTc4Nzc1MjM5Mn0.-Cj-N1kPwPNvMUid2jKVka9zrHRl-6NDPIe5V8-JbZNZQ9w9yVJadoeO2cgNYUocefAbj567Hddz8jLQ0MRcSw"
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODg1Mjg2MjIsImV4cCI6MTc4ODUzMjIyMn0.wjID4RoNoqvTRuWWUXzNbhvlmDs-_ffZoRoQrEdSbQyDIdFCmATZjQx4TD0NSWZVtz-4Nd7cYjt9wJGbSSW_Pw"
                       },
                       "error" : null
                     }
@@ -1136,12 +1168,12 @@ paths:
                         "id" : 3,
                         "nickname" : "나중차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 21:53:19"
+                        "blockedAt" : "2026-09-04 22:30:26"
                       }, {
                         "id" : 2,
                         "nickname" : "먼저차단된회원",
                         "profileImageUrl" : "/assets/avatar/m1.png",
-                        "blockedAt" : "2026-08-26 21:53:19"
+                        "blockedAt" : "2026-09-04 22:30:26"
                       } ],
                       "error" : null
                     }
@@ -1319,6 +1351,52 @@ paths:
                     }
       security:
       - bearerAuthJWT: []
+  /api/v1/users/me/personal-info:
+    patch:
+      tags:
+      - Users
+      summary: 신원 정보 보완
+      description: "가입 때 받지 못한 신원 정보를 나중에 채웁니다. 모든 항목이 선택이며 보낸 항목만 반영되고, 몇 번이든 호출할\
+        \ 수 있습니다. 카카오 일반 앱에서는 이름·전화번호·이메일·생년월일이 동의항목으로 제공되지 않으므로 이 API가 유일한 입력 경로입\
+        니다. 성별·나이는 가입 필수값이라 여기서 다루지 않습니다."
+      operationId: user-personal-info-update
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-me-personal-info-2076113858"
+            examples:
+              user-personal-info-update:
+                value: |-
+                  {
+                    "name" : "김철수",
+                    "phoneNumber" : "010-1234-5678",
+                    "email" : "chulsoo@example.com",
+                    "birthDate" : "1995-03-15 00:00:00"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-personal-info2065510644"
+              examples:
+                user-personal-info-update:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "email" : "chulsoo@example.com",
+                        "birthDate" : "1995-03-15",
+                        "name" : "김철수",
+                        "phoneNumber" : "010-1234-5678",
+                        "gender" : null
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/me/profile:
     get:
       tags:
@@ -1434,13 +1512,13 @@ paths:
                         "noShowCount" : 1,
                         "ratings" : [ {
                           "comment" : null,
-                          "createdAt" : "2026-08-26 21:53:19"
+                          "createdAt" : "2026-09-04 22:30:26"
                         }, {
                           "comment" : "약속 시간 잘 지켜요",
-                          "createdAt" : "2026-08-26 21:53:19"
+                          "createdAt" : "2026-09-04 22:30:26"
                         }, {
                           "comment" : "대화가 편하고 좋았어요",
-                          "createdAt" : "2026-08-26 21:53:19"
+                          "createdAt" : "2026-09-04 22:30:26"
                         } ]
                       },
                       "error" : null
@@ -1473,8 +1551,8 @@ paths:
                           "levelDescription" : "기간 이용 정지",
                           "reason" : null,
                           "reasonDescription" : null,
-                          "startsAt" : "2026-08-19 21:53:19",
-                          "endsAt" : "2026-09-02 21:53:19"
+                          "startsAt" : "2026-08-28 22:30:26",
+                          "endsAt" : "2026-09-11 22:30:26"
                         }
                       },
                       "error" : null
@@ -1527,6 +1605,45 @@ paths:
       responses:
         "302":
           description: "302"
+  /api/v1/users/{id}/answers:
+    get:
+      tags:
+      - Users
+      summary: 타인 답변 일치 조회 ("나와 같은 답")
+      description: "상대와 나의 퀴즈 답변이 몇 개나 같은지 알려줍니다. 상대가 무엇을 골랐는지는 내려주지 않습니다. 기준은 두 사\
+        람이 함께 완주한 가장 최근 퀴즈셋이며, 그런 퀴즈셋이 없으면 quizSetId=null에 나머지는 0입니다. matchRate는 매\
+        칭 점수와 같은 계산(일치 문항 ÷ 전체 문항 × 100, 소수점 1자리)입니다. 등급 라벨 문구와 그룹 평균 계산은 클라이언트가 처\
+        리합니다. 권한은 공개 프로필과 동일합니다(차단 관계면 403)."
+      operationId: user-answer-match
+      parameters:
+      - name: id
+        in: path
+        description: 대상 사용자 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-id-answers-1440553509"
+              examples:
+                user-answer-match:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "quizSetId" : 1,
+                        "matchedCount" : 2,
+                        "totalCount" : 3,
+                        "matchRate" : 66.7
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
   /api/v1/users/{id}/intro-notes:
     get:
       tags:
@@ -1651,8 +1768,8 @@ paths:
                         "birthDate" : null,
                         "joinedAt" : null,
                         "role" : null,
-                        "createdAt" : "2026-08-26 21:53:20",
-                        "updatedAt" : "2026-08-26 21:53:20"
+                        "createdAt" : "2026-09-04 22:30:26",
+                        "updatedAt" : "2026-09-04 22:30:26"
                       },
                       "error" : null
                     }
@@ -1698,6 +1815,54 @@ paths:
                         "rating" : null,
                         "preferredMinAge" : null,
                         "preferredMaxAge" : null
+                      },
+                      "error" : null
+                    }
+      security:
+      - bearerAuthJWT: []
+  /api/v1/users/{id}/ratings:
+    get:
+      tags:
+      - Users
+      summary: 타인 받은 평가 조회
+      description: "매칭된 상대가 받은 평가 요약입니다. `GET /users/me/ratings`와 같은 스키마·같은 공개 기준으\
+        로, 총 평가가 publicThreshold(3)건 미만이면 totalCount만 실제 값이고 평균·노쇼는 0, 코멘트는 빈 배열입니\
+        다. 권한은 공개 프로필과 동일합니다(매칭된 상대 또는 같은 그룹채팅 참여자, 차단 관계면 403)."
+      operationId: user-ratings
+      parameters:
+      - name: id
+        in: path
+        description: 대상 사용자 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-me-ratings-854326395"
+              examples:
+                user-ratings:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "averageScore" : 4.0,
+                        "totalCount" : 3,
+                        "publicThreshold" : 3,
+                        "noShowCount" : 1,
+                        "ratings" : [ {
+                          "comment" : null,
+                          "createdAt" : "2026-08-28 04:16:53"
+                        }, {
+                          "comment" : "약속 시간 잘 지켜요",
+                          "createdAt" : "2026-08-28 04:16:53"
+                        }, {
+                          "comment" : "대화가 편하고 좋았어요",
+                          "createdAt" : "2026-08-28 04:16:53"
+                        } ]
                       },
                       "error" : null
                     }
@@ -2395,13 +2560,54 @@ paths:
                       },
                       "error" : null
                     }
+  /api/v1/users/social-login/kakao/native:
+    post:
+      tags:
+      - OAuth
+      summary: 네이티브 소셜 로그인 (앱)
+      description: "네이티브 카카오 SDK가 받아온 액세스 토큰을 우리 accessToken으로 교환한다(앱 전용). 웹은 리다이렉\
+        트 로그인을 그대로 쓰며 이 엔드포인트는 대체가 아니라 추가다. refreshToken은 리다이렉트 로그인과 동일하게 HttpOnly\
+        \ 쿠키로 내려간다. 제재 회원은 accessToken 없이 sanctioned=true와 sanctionCode(MEMBER_SUSPENDED|MEMBER_BANNED),\
+        \ 정지면 suspendedUntil까지 함께 받는다."
+      operationId: oauth-native-login
+      requestBody:
+        content:
+          application/json;charset=UTF-8:
+            schema:
+              $ref: "#/components/schemas/api-v1-users-social-login-kakao-native127283492"
+            examples:
+              oauth-native-login:
+                value: |-
+                  {
+                    "accessToken" : "kakao-sdk-access-token"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-social-login-kakao-native1593957050"
+              examples:
+                oauth-native-login:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : {
+                        "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3ODc4NTc2MTcsImV4cCI6MTc4Nzg2MTIxN30.bMoQkhuWsxQQOGfk-vzcHXticueKbufYAIPPG3OMXJmg3k_VLEJmJ3VNlTQ2WGGF3FjV8q6zdBRMUxgm5iKxag",
+                        "signupRequired" : true,
+                        "sanctioned" : false,
+                        "sanctionCode" : null,
+                        "suspendedUntil" : null
+                      },
+                      "error" : null
+                    }
   /api/v1/users/social-login/{provider}/callback:
     get:
       tags:
       - OAuth
       summary: 소셜 로그인 콜백
-      description: "소셜 로그인 인가 코드를 받아 토큰을 발급한 뒤 프론트 콜백 페이지로 리다이렉트한다. accessToken과 회\
-        원가입 필요 여부(signupRequired)는 쿼리 파라미터로, refreshToken은 HttpOnly 쿠키로 전달된다."
+      description: 신규 사용자는 토큰을 발급하지 않습니다. 회원가입이 필요합니다.
       operationId: oauth-callback
       parameters:
       - name: provider
@@ -2417,6 +2623,20 @@ paths:
         schema:
           type: string
       responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-users-social-login-provider-callback-272682272"
+              examples:
+                oauth-callback-new-user:
+                  value: |-
+                    {
+                      "success" : true,
+                      "data" : { },
+                      "error" : null
+                    }
         "302":
           description: "302"
   /api/v1/admin/quiz-sets/{quizSetId}/matching/regenerate:
@@ -3630,6 +3850,65 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users548057481:
+      required:
+      - age
+      - caricature
+      - gender
+      - interests
+      - job
+      - location
+      type: object
+      properties:
+        caricature:
+          type: string
+          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장). 아바타 경로를 실으면 프로필 조회의 profileImageUrl\
+            \ 로 그대로 나갑니다"
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        gender:
+          type: string
+          description: "성별 (MALE, FEMALE). **필수** — 매칭의 입력값입니다"
+        nickname:
+          type: string
+          description: "닉네임 (2~10자, 한글·영문·숫자)"
+          nullable: true
+        name:
+          type: string
+          description: 이름
+          nullable: true
+        location:
+          type: string
+          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
+            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
+            \ jeonnam, gyeongbuk, gyeongnam, jeju"
+        job:
+          type: string
+          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
+            \ education, medical, finance, legal, manufacturing, distribution, service,\
+            \ construction, arts-media, research, public-admin, student, etc"
+        interests:
+          type: array
+          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, exhibition,\
+            \ performance, photography, reading, music, cooking, travel, gaming, finance,\
+            \ self-improvement, pets, etc"
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        introduction:
+          type: string
+          description: 한 줄 소개 (최대 50자). 소개노트 '나를 한 줄로 표현한다면?' 답변으로 저장됩니다. 이 응답에는 실리지
+            않으며 마이프로필 조회(GET /users/me/profile)의 introduction 으로 확인합니다
+          nullable: true
+        age:
+          type: number
+          description: "나이 (20~100). **필수** — 매칭의 입력값입니다. 나이대 구간의 중앙값을 보냅니다(20~24\
+            \ → 22, 25~29 → 27 … 60 이상 → 60)"
     api-v1-chat-rooms-1047905630:
       required:
       - error
@@ -3886,6 +4165,14 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-social-login-kakao-native127283492:
+      required:
+      - accessToken
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: 네이티브 소셜 SDK가 발급받은 액세스 토큰
     api-v1-quiz-progress-current1012077415:
       required:
       - error
@@ -3961,23 +4248,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-user-reports900126493:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - id
-          type: object
-          properties:
-            id:
-              type: number
-              description: 접수된 신고 ID
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-chat-rooms-roomId-messages1786138957:
       required:
       - error
@@ -4040,6 +4310,39 @@ components:
         quizId:
           type: number
           description: 퀴즈 ID
+    api-v1-users-social-login-kakao-native1593957050:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - sanctioned
+          - signupRequired
+          type: object
+          properties:
+            suspendedUntil:
+              type: string
+              description: "정지 해제 예정 일시 (정지만 존재, 그 외 null)"
+              nullable: true
+            sanctioned:
+              type: boolean
+              description: 제재 회원 여부
+            accessToken:
+              type: string
+              description: 우리 서비스 accessToken (제재 회원은 null)
+              nullable: true
+            sanctionCode:
+              type: string
+              description: "제재 코드 (MEMBER_SUSPENDED | MEMBER_BANNED, 제재가 아니면 null)"
+              nullable: true
+            signupRequired:
+              type: boolean
+              description: 회원가입(추가 정보 입력) 필요 여부
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-notifications-read-all-418441164:
       required:
       - error
@@ -4054,6 +4357,23 @@ components:
             readCount:
               type: number
               description: 이번 호출로 읽음이 된 건수
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-user-reports900126493:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - id
+          type: object
+          properties:
+            id:
+              type: number
+              description: 접수된 신고 ID
         success:
           type: boolean
           description: 성공 여부
@@ -4074,99 +4394,6 @@ components:
               contentType:
                 type: string
                 description: 이미지 MIME 타입 (image/* 만 허용)
-    api-v1-matches-1on11956789472:
-      required:
-      - error
-      - success
-      type: object
-      properties:
-        data:
-          required:
-          - algorithmVersion
-          - candidates
-          - matchingType
-          - quizSetId
-          type: object
-          properties:
-            candidates:
-              type: array
-              description: 추천 후보 목록 (매칭 점수 내림차순)
-              items:
-                required:
-                - location
-                - matchRate
-                - nickname
-                - profileImageUrl
-                - scoreBreakdown
-                - userId
-                type: object
-                properties:
-                  scoreBreakdown:
-                    required:
-                    - matchedQuestions
-                    - quizMatchRate
-                    - reasons
-                    - totalQuestions
-                    type: object
-                    properties:
-                      totalQuestions:
-                        type: number
-                        description: 전체 비교 문항 수
-                      reasons:
-                        type: array
-                        description: 매칭 사유 문구
-                        items:
-                          oneOf:
-                          - type: object
-                          - type: boolean
-                          - type: string
-                          - type: number
-                      quizMatchRate:
-                        type: number
-                        description: 퀴즈 답변 일치율 (0~100)
-                      matchedQuestions:
-                        type: number
-                        description: 일치한 문항 수
-                    description: 매칭 점수 상세
-                  gender:
-                    type: string
-                    description: "성별 (MALE / FEMALE, 없으면 null)"
-                    nullable: true
-                  nickname:
-                    type: string
-                    description: 닉네임
-                  location:
-                    type: string
-                    description: 사는 곳 코드
-                  matchRate:
-                    type: number
-                    description: 매칭 점수 (0~100)
-                  profileImageUrl:
-                    type: string
-                    description: 프로필 이미지 (캐리커쳐)
-                  userId:
-                    type: number
-                    description: 후보 회원 ID
-                  introduction:
-                    type: string
-                    description: "자기소개 (소개노트 한 줄 소개, 없으면 null)"
-                    nullable: true
-                  age:
-                    type: number
-                    description: 나이 (없으면 null)
-                    nullable: true
-            algorithmVersion:
-              type: string
-              description: 매칭 알고리즘 버전
-            quizSetId:
-              type: number
-              description: 후보가 속한 퀴즈 세트 ID
-            matchingType:
-              type: string
-              description: 매칭 타입 (ONE_TO_ONE / GROUP)
-        success:
-          type: boolean
-          description: 성공 여부
     api-v1-matches-request-1327932902:
       required:
       - error
@@ -4811,6 +5038,19 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-users-social-login-provider-callback-272682272:
+      required:
+      - data
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          description: 빈 객체 (신규 사용자)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-matches-group-join-1969670024:
       required:
       - quizSetId
@@ -4881,6 +5121,163 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-matches-1on1-729000088:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          required:
+          - algorithmVersion
+          - candidates
+          - matchingType
+          - quizSetId
+          - received
+          - sent
+          type: object
+          properties:
+            candidates:
+              type: array
+              description: 추천 후보 목록 (매칭 점수 내림차순)
+              items:
+                required:
+                - location
+                - matchRate
+                - nickname
+                - profileImageUrl
+                - scoreBreakdown
+                - userId
+                type: object
+                properties:
+                  scoreBreakdown:
+                    required:
+                    - matchedQuestions
+                    - quizMatchRate
+                    - reasons
+                    - totalQuestions
+                    type: object
+                    properties:
+                      totalQuestions:
+                        type: number
+                        description: 전체 비교 문항 수
+                      reasons:
+                        type: array
+                        description: 매칭 사유 문구
+                        items:
+                          oneOf:
+                          - type: object
+                          - type: boolean
+                          - type: string
+                          - type: number
+                      quizMatchRate:
+                        type: number
+                        description: 퀴즈 답변 일치율 (0~100)
+                      matchedQuestions:
+                        type: number
+                        description: 일치한 문항 수
+                    description: 매칭 점수 상세
+                  gender:
+                    type: string
+                    description: "성별 (MALE / FEMALE, 없으면 null)"
+                    nullable: true
+                  nickname:
+                    type: string
+                    description: 닉네임
+                  location:
+                    type: string
+                    description: 사는 곳 코드
+                  matchRate:
+                    type: number
+                    description: 매칭 점수 (0~100)
+                  profileImageUrl:
+                    type: string
+                    description: 프로필 이미지 (캐리커쳐)
+                  userId:
+                    type: number
+                    description: 후보 회원 ID
+                  introduction:
+                    type: string
+                    description: "자기소개 (소개노트 한 줄 소개, 없으면 null)"
+                    nullable: true
+                  age:
+                    type: number
+                    description: 나이 (없으면 null)
+                    nullable: true
+            algorithmVersion:
+              type: string
+              description: 매칭 알고리즘 버전
+            quizSetId:
+              type: number
+              description: 후보가 속한 퀴즈 세트 ID
+            received:
+              type: array
+              description: 내가 받은 요청 목록
+              items:
+                required:
+                - createdAt
+                - id
+                - quizSetId
+                - receiverId
+                - requesterId
+                - status
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 요청 생성일시
+                  receiverId:
+                    type: number
+                    description: 수신자 ID
+                  requesterId:
+                    type: number
+                    description: 요청자 ID
+                  quizSetId:
+                    type: number
+                    description: 퀴즈 세트 ID
+                  id:
+                    type: number
+                    description: 매칭 ID
+                  status:
+                    type: string
+                    description: 상태
+            matchingType:
+              type: string
+              description: 매칭 타입 (ONE_TO_ONE / GROUP)
+            sent:
+              type: array
+              description: 내가 보낸 요청 목록
+              items:
+                required:
+                - createdAt
+                - id
+                - quizSetId
+                - receiverId
+                - requesterId
+                - status
+                type: object
+                properties:
+                  createdAt:
+                    type: string
+                    description: 요청 생성일시
+                  receiverId:
+                    type: number
+                    description: 수신자 ID
+                  requesterId:
+                    type: number
+                    description: 요청자 ID
+                  quizSetId:
+                    type: number
+                    description: 퀴즈 세트 ID
+                  id:
+                    type: number
+                    description: 매칭 ID
+                  status:
+                    type: string
+                    description: 상태 (PENDING / ACCEPTED / REJECTED / CANCELLED / EXPIRED)
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me-blocks1689110600:
       required:
       - memberId
@@ -4943,6 +5340,34 @@ components:
             - type: boolean
             - type: string
             - type: number
+    api-v1-users-me-personal-info2065510644:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            phoneNumber:
+              type: string
+              description: 전화번호
+              nullable: true
+            name:
+              type: string
+              description: 이름
+              nullable: true
+            birthDate:
+              type: string
+              description: 생년월일
+              nullable: true
+            email:
+              type: string
+              description: 이메일
+              nullable: true
+        success:
+          type: boolean
+          description: 성공 여부
     api-v1-users-me861338172:
       required:
       - error
@@ -5165,64 +5590,6 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-users1263059898:
-      required:
-      - caricature
-      - interests
-      - job
-      - location
-      type: object
-      properties:
-        caricature:
-          type: string
-          description: "프로필 캐리커쳐 (필수, FE 문자열 그대로 저장). 아바타 경로를 실으면 프로필 조회의 profileImageUrl\
-            \ 로 그대로 나갑니다"
-        phoneNumber:
-          type: string
-          description: 전화번호 (010-0000-0000)
-          nullable: true
-        gender:
-          type: string
-          description: "성별 (MALE, FEMALE)"
-          nullable: true
-        nickname:
-          type: string
-          description: "닉네임 (2~10자, 한글·영문·숫자)"
-          nullable: true
-        name:
-          type: string
-          description: 이름
-          nullable: true
-        location:
-          type: string
-          description: "사는곳 code (필수). 가능한 값: seoul, gyeonggi, incheon, busan, daegu,\
-            \ daejeon, gwangju, ulsan, sejong, gangwon, chungbuk, chungnam, jeonbuk,\
-            \ jeonnam, gyeongbuk, gyeongnam, jeju"
-        job:
-          type: string
-          description: "직업 code (필수). 가능한 값: it-tech, management, marketing, design,\
-            \ education, medical, finance, legal, manufacturing, distribution, service,\
-            \ construction, arts-media, research, public-admin, student, etc"
-        interests:
-          type: array
-          description: "관심사 code 목록 (필수, 최소 1개). 가능한 값: workout, movie-drama, exhibition,\
-            \ performance, photography, reading, music, cooking, travel, gaming, finance,\
-            \ self-improvement, pets, etc"
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        introduction:
-          type: string
-          description: 한 줄 소개 (최대 50자). 소개노트 '나를 한 줄로 표현한다면?' 답변으로 저장됩니다. 이 응답에는 실리지
-            않으며 마이프로필 조회(GET /users/me/profile)의 introduction 으로 확인합니다
-          nullable: true
-        age:
-          type: number
-          description: "나이대 (20, 25, 30, 35, 40, 45, 50, 60)"
-          nullable: true
     api-v1-matches-request-id-reject-1480143692:
       required:
       - error
@@ -5268,29 +5635,32 @@ components:
         success:
           type: boolean
           description: 성공 여부
-    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+    api-v1-users-id-answers-1440553509:
       required:
       - error
       - success
       type: object
       properties:
         data:
+          required:
+          - matchRate
+          - matchedCount
+          - totalCount
           type: object
           properties:
-            uploads:
-              type: array
-              items:
-                required:
-                - objectKey
-                - uploadUrl
-                type: object
-                properties:
-                  uploadUrl:
-                    type: string
-                    description: presigned PUT 업로드 URL
-                  objectKey:
-                    type: string
-                    description: 업로드 후 메시지 content 로 전송할 S3 key
+            quizSetId:
+              type: number
+              description: 비교 기준 퀴즈셋 ID (함께 완주한 셋이 없으면 null)
+              nullable: true
+            matchedCount:
+              type: number
+              description: 같은 선택지를 고른 문항 수
+            totalCount:
+              type: number
+              description: 비교한 전체 문항 수
+            matchRate:
+              type: number
+              description: 일치율 0~100 (소수점 1자리)
         success:
           type: boolean
           description: 성공 여부
@@ -5363,6 +5733,51 @@ components:
         success:
           type: boolean
           description: 성공 여부
+    api-v1-chat-rooms-roomId-image-upload-urls-1366152212:
+      required:
+      - error
+      - success
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uploads:
+              type: array
+              items:
+                required:
+                - objectKey
+                - uploadUrl
+                type: object
+                properties:
+                  uploadUrl:
+                    type: string
+                    description: presigned PUT 업로드 URL
+                  objectKey:
+                    type: string
+                    description: 업로드 후 메시지 content 로 전송할 S3 key
+        success:
+          type: boolean
+          description: 성공 여부
+    api-v1-users-me-personal-info-2076113858:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          description: 전화번호 (010-0000-0000)
+          nullable: true
+        name:
+          type: string
+          description: 이름 (최대 50자)
+          nullable: true
+        birthDate:
+          type: string
+          description: 생년월일 (과거 날짜)
+          nullable: true
+        email:
+          type: string
+          description: 이메일
+          nullable: true
   securitySchemes:
     ApiKey:
       type: apiKey

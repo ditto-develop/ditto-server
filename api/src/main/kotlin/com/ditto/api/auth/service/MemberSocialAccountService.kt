@@ -44,7 +44,13 @@ class MemberSocialAccountService(
                 log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
                 member.updateEmail(email)
             }
-            member.updateOAuthInfo(name = name, phoneNumber = phoneNumber, gender = gender)
+            // 비즈 앱 전환으로 동의항목이 열리면 재로그인만으로 값이 채워진다(미동의 항목은 null이라 무시된다).
+            member.updateOAuthInfo(
+                name = name,
+                phoneNumber = phoneNumber,
+                gender = gender,
+                birthDate = birthDate,
+            )
             restoreIfWithinRetention(member)
             return member
         }

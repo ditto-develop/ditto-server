@@ -35,6 +35,8 @@ import javax.sql.DataSource
 // 관심사·사는곳·직업이 필수가 된 register 요청을, 검증 대상이 아닌 분기 테스트에서 간편히 만들기 위한 헬퍼.
 private fun validRegisterRequest(nickname: String? = null) = CreateUserRequest(
     nickname = nickname,
+    gender = Gender.MALE,
+    age = 27,
     interests = setOf("music"),
     location = "seoul",
     job = "it-tech",
@@ -139,6 +141,8 @@ class UserServiceTest(
                     userService.register(
                         pending.id,
                         CreateUserRequest(
+                            gender = Gender.FEMALE,
+                            age = 32,
                             interests = setOf("travel"),
                             location = "seoul",
                             job = "invalid-code",
