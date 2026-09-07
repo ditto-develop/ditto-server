@@ -3,6 +3,7 @@ package com.ditto.domain.member.entity
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.shouldBe
+import java.time.LocalDateTime
 import io.kotest.matchers.shouldNotBe
 import javax.sql.DataSource
 
@@ -94,6 +95,66 @@ class MemberTest(
                 member.name shouldBe "기존이름"
                 member.phoneNumber shouldBe "010-1111-1111"
                 member.gender shouldBe Gender.MALE
+            }
+
+            "updateOAuthInfo() - 생년월일도 갱신한다 (비즈 앱 전환 후 재로그인으로 채워지는 경로)" {
+                val member = Member(nickname = "테스트유저")
+                val birthDate = LocalDateTime.of(1995, 3, 15, 0, 0)
+
+                member.updateOAuthInfo(name = null, phoneNumber = null, gender = null, birthDate = birthDate)
+
+                member.birthDate shouldBe birthDate
+            }
+
+            "updateOAuthInfo() - 생년월일이 null이면 기존 값을 유지한다" {
+                val birthDate = LocalDateTime.of(1990, 1, 2, 0, 0)
+                val member = Member(nickname = "테스트유저", birthDate = birthDate)
+
+                member.updateOAuthInfo(name = null, phoneNumber = null, gender = null, birthDate = null)
+
+                member.birthDate shouldBe birthDate
+            }
+        }
+
+        "Member 신원 정보 보완" - {
+            "updatePersonalInfo() - 이름·전화번호·이메일·생년월일을 채운다" {
+                val member = Member(nickname = "테스트유저")
+                val birthDate = LocalDateTime.of(1995, 3, 15, 0, 0)
+
+                member.updatePersonalInfo(
+                    name = "홍길동",
+                    phoneNumber = "010-1234-5678",
+                    email = "hong@example.com",
+                    birthDate = birthDate,
+                )
+
+                member.name shouldBe "홍길동"
+                member.phoneNumber shouldBe "010-1234-5678"
+                member.email shouldBe "hong@example.com"
+                member.birthDate shouldBe birthDate
+            }
+
+            "updatePersonalInfo() - null 값인 필드는 기존 값을 유지한다 (부분 갱신)" {
+                val birthDate = LocalDateTime.of(1990, 1, 2, 0, 0)
+                val member = Member(
+                    nickname = "테스트유저",
+                    name = "기존이름",
+                    phoneNumber = "010-1111-1111",
+                    email = "old@example.com",
+                    birthDate = birthDate,
+                )
+
+                member.updatePersonalInfo(
+                    name = null,
+                    phoneNumber = "010-9999-8888",
+                    email = null,
+                    birthDate = null,
+                )
+
+                member.phoneNumber shouldBe "010-9999-8888"
+                member.name shouldBe "기존이름"
+                member.email shouldBe "old@example.com"
+                member.birthDate shouldBe birthDate
             }
         }
 

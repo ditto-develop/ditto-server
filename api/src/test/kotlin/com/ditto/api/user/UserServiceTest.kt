@@ -3,6 +3,7 @@ package com.ditto.api.user
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.UpdatePersonalInfoRequest
 import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.service.UserService
 import com.ditto.common.exception.ErrorCode
@@ -151,6 +152,15 @@ class UserServiceTest(
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            }
+        }
+
+        "신원 정보 보완" - {
+            "존재하지 않는 회원이면 NOT_FOUND" {
+                val exception = shouldThrow<WarnException> {
+                    userService.updatePersonalInfo(999_999L, UpdatePersonalInfoRequest(name = "홍길동"))
+                }
+                exception.errorCode shouldBe ErrorCode.NOT_FOUND
             }
         }
 
