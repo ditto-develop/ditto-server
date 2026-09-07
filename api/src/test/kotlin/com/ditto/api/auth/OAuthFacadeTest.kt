@@ -17,6 +17,8 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import com.ditto.infrastructure.oauth.NativeSocialAuthenticatorFactory
+import com.ditto.infrastructure.oauth.NativeSocialCredential
 import com.ditto.infrastructure.oauth.OAuthClientFactory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -43,6 +45,8 @@ class OAuthFacadeTest(
     dataSource,
     {
 
+        val kakaoCredential = NativeSocialCredential(token = "kakao-sdk-access-token")
+
         "인가 URL 조회" - {
             "카카오 인가 URL을 반환한다" {
                 val result = oAuthFacade.getAuthorizationUrl(SocialProvider.KAKAO)
@@ -53,7 +57,11 @@ class OAuthFacadeTest(
 
             "지원하지 않는 제공자면 예외가 발생한다" {
                 val facadeWithNoClients = OAuthFacade(
-                    oAuthService = OAuthService(OAuthClientFactory(emptyMap()), frontProperties),
+                    oAuthService = OAuthService(
+                        oAuthClientFactory = OAuthClientFactory(emptyMap()),
+                        nativeSocialAuthenticatorFactory = NativeSocialAuthenticatorFactory(emptyMap()),
+                        frontProperties = frontProperties,
+                    ),
                     memberSocialAccountService = memberSocialAccountService,
                     jwtTokenProvider = jwtTokenProvider,
                     authService = authService,
@@ -205,7 +213,7 @@ class OAuthFacadeTest(
 
         "네이티브 소셜 로그인" - {
             "신규 사용자면 PENDING으로 생성되고 accessToken·signupRequired=true를 반환한다" {
-                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 result.response.accessToken shouldNotBe null
                 result.response.signupRequired shouldBe true
@@ -223,7 +231,7 @@ class OAuthFacadeTest(
                 member.activate()
                 memberRepository.save(member)
 
-                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 result.response.signupRequired shouldBe false
                 jwtTokenProvider.getMemberId(result.response.accessToken!!) shouldBe member.id
@@ -236,7 +244,7 @@ class OAuthFacadeTest(
                 member.suspendUntil(LocalDateTime.now().plusDays(7))
                 memberRepository.save(member)
 
-                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 result.response.accessToken shouldBe null
                 result.response.sanctioned shouldBe true
@@ -253,7 +261,7 @@ class OAuthFacadeTest(
                 member.ban()
                 memberRepository.save(member)
 
-                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 result.response.sanctioned shouldBe true
                 result.response.sanctionCode shouldBe ErrorCode.MEMBER_BANNED.name
@@ -268,7 +276,7 @@ class OAuthFacadeTest(
                 member.suspendUntil(LocalDateTime.now().minusDays(1))
                 memberRepository.save(member)
 
-                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 result.response.sanctioned shouldBe false
                 result.response.accessToken shouldNotBe null
@@ -281,10 +289,52 @@ class OAuthFacadeTest(
             "리다이렉트 로그인과 같은 회원으로 이어진다 (소셜 계정이 하나만 생긴다)" {
                 oAuthFacade.login(SocialProvider.KAKAO, "auth-code")
 
-                oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, "kakao-sdk-access-token")
+                oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
 
                 memberRepository.count() shouldBe 1
                 socialAccountRepository.count() shouldBe 1
+            }
+        }
+
+        "애플 네이티브 로그인" - {
+            "신규 사용자면 PENDING 으로 생성되고 애플이 준 이름이 저장된다" {
+                val credential = NativeSocialCredential(token = "apple-identity-token", name = "김철수")
+
+                val result = oAuthFacade.loginWithNativeToken(SocialProvider.APPLE, credential)
+
+                result.response.accessToken shouldNotBe null
+                result.response.signupRequired shouldBe true
+                memberRepository.count() shouldBe 1
+                val member = memberRepository.findAll().first()
+                member.status shouldBe MemberStatus.PENDING
+                member.name shouldBe "김철수"
+            }
+
+            "재로그인 때 이름이 없어도(애플은 최초 1회만 준다) 기존 이름이 유지된다" {
+                oAuthFacade.loginWithNativeToken(
+                    SocialProvider.APPLE,
+                    NativeSocialCredential(token = "apple-identity-token", name = "김철수"),
+                )
+
+                oAuthFacade.loginWithNativeToken(
+                    SocialProvider.APPLE,
+                    NativeSocialCredential(token = "apple-identity-token"),
+                )
+
+                memberRepository.count() shouldBe 1
+                memberRepository.findAll().first().name shouldBe "김철수"
+            }
+
+            "카카오로 가입한 회원과 이어붙이지 않는다 — 제공자별 소셜 계정이 따로 생긴다" {
+                oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, kakaoCredential)
+
+                oAuthFacade.loginWithNativeToken(
+                    SocialProvider.APPLE,
+                    NativeSocialCredential(token = "apple-identity-token"),
+                )
+
+                memberRepository.count() shouldBe 2
+                socialAccountRepository.count() shouldBe 2
             }
         }
     },
