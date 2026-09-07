@@ -12,6 +12,7 @@ import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.infrastructure.oauth.NativeSocialCredential
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import org.springframework.stereotype.Component
 
@@ -52,9 +53,9 @@ class OAuthFacade(
      */
     fun loginWithNativeToken(
         provider: SocialProvider,
-        socialAccessToken: String,
+        credential: NativeSocialCredential,
     ): NativeSocialLoginResult {
-        val userInfo = oAuthService.getOAuthUserInfoByAccessToken(provider, socialAccessToken)
+        val userInfo = oAuthService.authenticateNative(provider, credential)
         val member = findOrCreateMember(provider, userInfo)
 
         blockingSanctionOf(member)?.let { sanctionCode ->
