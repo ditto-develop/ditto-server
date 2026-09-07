@@ -213,7 +213,7 @@ class OAuthControllerTest : RestDocsTest() {
     @DisplayName("애플 웹 콜백은 폼 POST 로 받아 프론트 콜백으로 리다이렉트한다")
     fun appleWebCallback() {
         mockMvc.perform(
-            post("/api/v1/users/social-login/apple/callback")
+            post("/api/v1/users/social-login/APPLE/callback")
                 .withApiKey()
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("code", "apple-authorization-code")
@@ -260,7 +260,7 @@ class OAuthControllerTest : RestDocsTest() {
     @DisplayName("애플 웹 콜백에 user 가 없으면(재로그인) 이름 없이 진행한다")
     fun appleWebCallbackWithoutUserField() {
         mockMvc.perform(
-            post("/api/v1/users/social-login/apple/callback")
+            post("/api/v1/users/social-login/APPLE/callback")
                 .withApiKey()
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .param("id_token", "apple-identity-token"),
