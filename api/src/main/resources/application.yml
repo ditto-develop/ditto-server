@@ -27,7 +27,6 @@ ditto:
       same-site: Lax
       path: /api/v1/users/auth
   cors:
-    # TODO(#54): 웹 프론트 dev origin 확정 필요
     allowed-origins:
       - http://localhost:3000
       - http://localhost:5173
