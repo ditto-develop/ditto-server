@@ -128,6 +128,40 @@ class MemberSocialAccountServiceTest(
                 socialAccountRepository.count() shouldBe 1
             }
 
+            "동의항목이 나중에 열리면 재로그인만으로 생년월일이 채워진다" {
+                // 일반 앱에서는 카카오가 생년월일을 주지 않아 null로 가입된다.
+                val created = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                )
+                created.birthDate shouldBe null
+
+                // 비즈 앱 전환으로 동의항목이 열린 뒤 재로그인하면 값이 들어온다.
+                val birthDate = LocalDateTime.of(1995, 3, 15, 0, 0)
+                val found = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", birthDate,
+                )
+
+                found.id shouldBe created.id
+                found.birthDate shouldBe birthDate
+            }
+
+            "재로그인 시 미동의 항목(null)은 기존 값을 덮지 않는다" {
+                val birthDate = LocalDateTime.of(1990, 1, 2, 0, 0)
+                memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", birthDate,
+                    name = "김철수", phoneNumber = "010-1234-5678", gender = Gender.MALE,
+                )
+
+                val found = memberSocialAccountService.findOrCreateMember(
+                    SocialProvider.KAKAO, "kakao-123", "test@kakao.com", null,
+                )
+
+                found.birthDate shouldBe birthDate
+                found.name shouldBe "김철수"
+                found.phoneNumber shouldBe "010-1234-5678"
+                found.gender shouldBe Gender.MALE
+            }
+
             "기존 사용자 재로그인 시 이메일이 변경되었으면 갱신한다" {
                 val created = memberSocialAccountService.findOrCreateMember(
                     SocialProvider.KAKAO, "kakao-123", "old@kakao.com", null,

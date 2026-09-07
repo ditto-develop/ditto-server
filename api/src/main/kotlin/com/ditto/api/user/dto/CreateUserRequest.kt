@@ -2,6 +2,8 @@ package com.ditto.api.user.dto
 
 import com.ditto.domain.member.entity.Gender
 import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Pattern
@@ -23,10 +25,18 @@ data class CreateUserRequest(
     @field:Email
     val email: String? = null,
 
-    val gender: Gender? = null,
+    // 성별·나이는 매칭의 입력값이라 필수다 — 없으면 후보 풀 구성 단계에서 조용히 제외돼
+    // "가입은 됐는데 매칭만 영영 안 되는" 회원이 생긴다. 카카오(비즈 앱) 동의항목이 아니라
+    // 온보딩 화면에서 직접 받는다(피그마 1.3.2 회원가입 _ 프로필 작성).
+    val gender: Gender,
 
-    val age: Int? = null,
+    // 나이대의 대표값. FE는 구간 중앙값을 보낸다(20~24 → 22, 25~29 → 27 … 60 이상 → 60).
+    @field:Min(20)
+    @field:Max(100)
+    val age: Int,
 
+    // 아래 4개(생년월일·이름·전화번호·이메일)는 일반 앱에서 카카오가 주지 않는 값이라 비워둘 수 있다.
+    // 가입 후 `PATCH /api/v1/users/me/personal-info`로 언제든 채울 수 있다.
     val birthDate: LocalDateTime? = null,
 
     @field:NotEmpty(message = "관심사는 최소 1개 이상 선택해야 합니다.")

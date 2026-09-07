@@ -8,6 +8,10 @@
 `Member`, `MemberStatus`(상태 — PENDING/ACTIVE/SUSPENDED/BANNED/LEFT), `MemberRole`(역할), `Gender`/`GenderPreference`(성별·선호), `Job`, `Location`, `Interest`(관심사).
 
 ## 불변식
+
+- **성별·나이는 가입 필수값**이다(`CreateUserRequest`). 카카오 일반 앱은 이 동의항목을 주지 않으므로 온보딩 화면에서 직접 받으며, 값이 없으면 매칭 후보 풀에서 조용히 제외되기 때문에 입구에서 막는다. `age`는 나이대 구간의 중앙값(22·27·32 … 60)이 들어온다. [ADR 0021](../adr/0021-kakao-general-app-profile-input.md)
+- 이름·전화번호·이메일·생년월일은 **없어도 가입이 성립**하고 나중에 `PATCH /api/v1/users/me/personal-info`로 채운다. 재로그인 시 카카오가 준 값이 있으면 그쪽이 덮고, 미동의(null)는 기존 값을 유지한다.
+
 - 가입 완료(`register`)는 PENDING에서만 가능 — 제재(SUSPENDED/BANNED) 회원이 이 경로로 ACTIVE가 될 수 없다 (`INVALID_STATUS_TRANSITION`).
 - `suspended_until`은 SUSPENDED일 때만 값이 존재한다 (`suspendUntil`이 설정, `ban`/`reinstate`가 비움).
 - BANNED는 정지(`suspendUntil`)로 낮출 수 없다. 해제는 `reinstate`(어드민 직권)로만.

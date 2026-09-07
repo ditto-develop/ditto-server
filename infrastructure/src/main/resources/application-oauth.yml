@@ -10,6 +10,9 @@ ditto:
       client-secret: ""
       redirect-uri: http://localhost:8080/api/v1/users/social-login/KAKAO/callback
       admin-redirect-uri: http://localhost:8080/admin/oauth/kakao/callback
+      # 일반 앱이 기본 제공받는 동의항목만 요청한다. 이름·성별·연령대·생일·전화번호·이메일은 비즈 앱 전용이라
+      # 설정 없이 scope 로 넘기면 카카오가 로그인을 거부한다. 비즈 앱 전환 시 이 목록만 늘리면 된다.
+      scopes: profile_nickname
       connect-timeout: 3s
       read-timeout: 5s
 
@@ -32,5 +35,7 @@ ditto:
       client-secret: ${KAKAO_CLIENT_SECRET}
       redirect-uri: ${KAKAO_REDIRECT_URI}
       admin-redirect-uri: ${KAKAO_ADMIN_REDIRECT_URI}
+      # 비즈 앱 전환으로 동의항목이 열리면 환경변수로 늘린다 (예: profile_nickname,account_email)
+      scopes: ${KAKAO_SCOPES:profile_nickname}
       connect-timeout: 3s
       read-timeout: 5s
