@@ -7,6 +7,7 @@ import com.ditto.infrastructure.oauth.kakao.dto.KakaoUserResponse
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -32,10 +33,32 @@ class KakaoOAuthClientTest : FreeSpec(
                 url shouldContain "${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
             }
 
-            "scope에 account_email·birthyear·birthday·name·phone_number·gender를 포함한다" {
+            "기본 동의항목은 profile_nickname 하나다 — 나머지는 비즈 앱 전용이라 넘기면 로그인이 거부된다" {
                 val url = client.getAuthorizationUrl()
 
-                url shouldContain "${OAuthConstants.PARAM_SCOPE}=account_email,birthyear,birthday,name,phone_number,gender"
+                url shouldContain "${OAuthConstants.PARAM_SCOPE}=profile_nickname"
+            }
+
+            "설정한 동의항목을 콤마로 이어 붙인다 (비즈 앱 전환 시 설정만 늘리면 된다)" {
+                val bizClient = KakaoOAuthClient(
+                    properties = properties.copy(scopes = listOf("profile_nickname", "account_email", "gender")),
+                    client = apiSender,
+                )
+
+                val url = bizClient.getAuthorizationUrl()
+
+                url shouldContain "${OAuthConstants.PARAM_SCOPE}=profile_nickname,account_email,gender"
+            }
+
+            "동의항목 설정이 비어 있으면 scope 파라미터를 붙이지 않는다 (앱 설정을 그대로 따른다)" {
+                val noScopeClient = KakaoOAuthClient(
+                    properties = properties.copy(scopes = emptyList()),
+                    client = apiSender,
+                )
+
+                val url = noScopeClient.getAuthorizationUrl()
+
+                url shouldNotContain OAuthConstants.PARAM_SCOPE
             }
         }
 

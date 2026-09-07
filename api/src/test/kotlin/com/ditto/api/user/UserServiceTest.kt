@@ -3,6 +3,7 @@ package com.ditto.api.user
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.UpdatePersonalInfoRequest
 import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.service.UserService
 import com.ditto.common.exception.ErrorCode
@@ -35,6 +36,8 @@ import javax.sql.DataSource
 // 관심사·사는곳·직업이 필수가 된 register 요청을, 검증 대상이 아닌 분기 테스트에서 간편히 만들기 위한 헬퍼.
 private fun validRegisterRequest(nickname: String? = null) = CreateUserRequest(
     nickname = nickname,
+    gender = Gender.MALE,
+    age = 27,
     interests = setOf("music"),
     location = "seoul",
     job = "it-tech",
@@ -139,6 +142,8 @@ class UserServiceTest(
                     userService.register(
                         pending.id,
                         CreateUserRequest(
+                            gender = Gender.FEMALE,
+                            age = 32,
                             interests = setOf("travel"),
                             location = "seoul",
                             job = "invalid-code",
@@ -147,6 +152,15 @@ class UserServiceTest(
                     )
                 }
                 exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            }
+        }
+
+        "신원 정보 보완" - {
+            "존재하지 않는 회원이면 NOT_FOUND" {
+                val exception = shouldThrow<WarnException> {
+                    userService.updatePersonalInfo(999_999L, UpdatePersonalInfoRequest(name = "홍길동"))
+                }
+                exception.errorCode shouldBe ErrorCode.NOT_FOUND
             }
         }
 

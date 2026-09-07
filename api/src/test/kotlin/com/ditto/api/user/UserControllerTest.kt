@@ -3,6 +3,7 @@ package com.ditto.api.user
 import com.ditto.api.support.RestDocsTest
 import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.dto.CreateUserRequest
+import com.ditto.api.user.dto.UpdatePersonalInfoRequest
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
@@ -41,6 +42,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get
+import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
@@ -129,8 +131,12 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("nickname").description("닉네임 (2~10자, 한글·영문·숫자)").optional(),
                                 fieldWithPath("phoneNumber").description("전화번호 (010-0000-0000)").optional(),
                                 fieldWithPath("email").description("이메일").optional(),
-                                fieldWithPath("gender").description("성별 (MALE, FEMALE)").optional(),
-                                fieldWithPath("age").description("나이대 (20, 25, 30, 35, 40, 45, 50, 60)").optional(),
+                                fieldWithPath("gender").description("성별 (MALE, FEMALE). **필수** — 매칭의 입력값입니다"),
+                                fieldWithPath("age")
+                                    .description(
+                                        "나이 (20~100). **필수** — 매칭의 입력값입니다. " +
+                                            "나이대 구간의 중앙값을 보냅니다(20~24 → 22, 25~29 → 27 … 60 이상 → 60)",
+                                    ),
                                 fieldWithPath("birthDate").description("생년월일").optional(),
                                 fieldWithPath("interests[]")
                                     .description("관심사 code 목록 (필수, 최소 1개). 가능한 값: $INTEREST_CODES"),
@@ -185,6 +191,8 @@ class UserControllerTest : RestDocsTest() {
         val member = memberRepository.save(Member(nickname = "임시닉네임2"))
         val request = CreateUserRequest(
             nickname = "영희456",
+            gender = Gender.FEMALE,
+            age = 27,
             interests = setOf("travel"),
             location = "seoul",
             job = "it-tech",
@@ -485,6 +493,106 @@ class UserControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.data.matchedCount").value(0))
             .andExpect(jsonPath("$.data.totalCount").value(0))
             .andExpect(jsonPath("$.data.matchRate").value(0.0))
+    }
+
+    @Test
+    @DisplayName("성별·나이 없이 가입하면 거부한다")
+    fun registerWithoutGenderAndAge() {
+        val member = memberRepository.save(Member(nickname = "임시닉네임3"))
+        // 성별·나이는 매칭의 입력값이라 필수다 — 빠지면 후보 풀에서 조용히 제외되므로 가입 단계에서 막는다.
+        val body = """
+            {"nickname":"철수789","interests":["travel"],"location":"seoul","job":"it-tech","caricature":"m1"}
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/api/v1/users")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("0001"))
+    }
+
+    @Test
+    @DisplayName("가입 때 못 받은 신원 정보를 나중에 채운다")
+    fun updatePersonalInfo() {
+        val member = memberRepository.save(Member(nickname = "정보보완유저").apply { activate() })
+        val request = UpdatePersonalInfoRequest(
+            name = "김철수",
+            phoneNumber = "010-1234-5678",
+            email = "chulsoo@example.com",
+            birthDate = LocalDateTime.of(1995, 3, 15, 0, 0),
+        )
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/personal-info")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.name").value("김철수"))
+            .andExpect(jsonPath("$.data.phoneNumber").value("010-1234-5678"))
+            .andExpect(jsonPath("$.data.email").value("chulsoo@example.com"))
+            .andExpect(jsonPath("$.data.birthDate").value("1995-03-15"))
+            .andDo(
+                document(
+                    "user-personal-info-update",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("신원 정보 보완")
+                            .description(
+                                "가입 때 받지 못한 신원 정보를 나중에 채웁니다. 모든 항목이 선택이며 보낸 항목만 반영되고, " +
+                                    "몇 번이든 호출할 수 있습니다. 카카오 일반 앱에서는 이름·전화번호·이메일·생년월일이 " +
+                                    "동의항목으로 제공되지 않으므로 이 API가 유일한 입력 경로입니다. " +
+                                    "성별·나이는 가입 필수값이라 여기서 다루지 않습니다.",
+                            )
+                            .requestFields(
+                                fieldWithPath("name").description("이름 (최대 50자)").optional(),
+                                fieldWithPath("phoneNumber").description("전화번호 (010-0000-0000)").optional(),
+                                fieldWithPath("email").description("이메일").optional(),
+                                fieldWithPath("birthDate").description("생년월일 (과거 날짜)").optional(),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.email").description("이메일").optional(),
+                                fieldWithPath("data.birthDate").description("생년월일").optional(),
+                                fieldWithPath("data.name").description("이름").optional(),
+                                fieldWithPath("data.phoneNumber").description("전화번호").optional(),
+                                fieldWithPath("data.gender").description("성별 (MALE, FEMALE)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("신원 정보 보완은 보낸 항목만 바꾼다")
+    fun updatePersonalInfoPartially() {
+        val member = memberRepository.save(
+            Member(nickname = "부분갱신유저", name = "이전이름", phoneNumber = "010-0000-0000").apply { activate() },
+        )
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/personal-info")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"phoneNumber":"010-9999-8888"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.phoneNumber").value("010-9999-8888"))
+            // 보내지 않은 이름은 그대로 남는다.
+            .andExpect(jsonPath("$.data.name").value("이전이름"))
     }
 
     @Test

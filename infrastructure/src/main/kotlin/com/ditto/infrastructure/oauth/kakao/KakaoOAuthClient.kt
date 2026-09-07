@@ -14,12 +14,18 @@ class KakaoOAuthClient(
     private val client: KakaoApiSender,
 ) : OAuthClient {
 
+    /**
+     * 동의항목은 [KakaoOAuthProperties.scopes]가 정한다 — 설정되지 않은 동의항목을 넘기면 카카오가 로그인을
+     * 거부하므로, 앱 종류(일반/비즈)에 따라 코드가 아니라 설정으로 맞춘다. 비어 있으면 scope 없이 요청한다.
+     */
     override fun getAuthorizationUrl(): String {
-        return "${AUTHORIZATION_URI}?" +
+        val base = "${AUTHORIZATION_URI}?" +
             "${OAuthConstants.PARAM_CLIENT_ID}=${properties.clientId}" +
             "&${OAuthConstants.PARAM_REDIRECT_URI}=${properties.redirectUri}" +
-            "&${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}" +
-            "&${OAuthConstants.PARAM_SCOPE}=${SCOPES.joinToString(SCOPE_DELIMITER)}"
+            "&${OAuthConstants.PARAM_RESPONSE_TYPE}=${OAuthConstants.RESPONSE_TYPE_CODE}"
+
+        if (properties.scopes.isEmpty()) return base
+        return base + "&${OAuthConstants.PARAM_SCOPE}=${properties.scopes.joinToString(SCOPE_DELIMITER)}"
     }
 
     override fun getAccessToken(code: String): String {
@@ -142,6 +148,5 @@ class KakaoOAuthClient(
 
         // 카카오는 콤마로 구분된 scope 목록을 허용한다.
         private const val SCOPE_DELIMITER = ","
-        private val SCOPES = listOf("account_email", "birthyear", "birthday", "name", "phone_number", "gender")
     }
 }

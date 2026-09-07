@@ -129,14 +129,41 @@ class Member(
      * 소셜 로그인에서 받은 개인정보로 갱신한다.
      * 제공된(non-null) 값만 덮어쓰며, 미동의로 null이 온 항목은 기존 값을 유지한다.
      */
+    /**
+     * 소셜 로그인이 준 정보를 회원에 반영한다. 준 값만 덮어쓴다(미동의 항목은 null로 오므로 기존 값이 남는다).
+     *
+     * 일반 앱(비즈 앱 미전환)에서는 이름·전화번호·성별·생년월일이 모두 null로 오므로 아무것도 바뀌지 않는다.
+     * 나중에 비즈 앱으로 전환해 동의항목을 열면, 회원은 **재로그인만으로** 이 값들을 채우게 된다.
+     */
     fun updateOAuthInfo(
         name: String?,
         phoneNumber: String?,
         gender: Gender?,
+        birthDate: LocalDateTime? = null,
     ) {
         if (name != null) this.name = name
         if (phoneNumber != null) this.phoneNumber = phoneNumber
         if (gender != null) this.gender = gender
+        if (birthDate != null) this.birthDate = birthDate
+    }
+
+    /**
+     * 회원이 직접 입력한 신원 정보를 채운다. 가입 때 못 받은 값을 나중에 보완하는 경로다 —
+     * 일반 앱에서는 카카오가 이름·전화번호·이메일·생년월일을 주지 않으므로 이 경로가 유일한 입력구다.
+     *
+     * null인 항목은 건드리지 않는다(부분 갱신). 성별·나이는 여기서 다루지 않는다 —
+     * 가입 필수값이고, 프로필 수정 화면에서도 변경 대상이 아니다(피그마 6.1.1).
+     */
+    fun updatePersonalInfo(
+        name: String?,
+        phoneNumber: String?,
+        email: String?,
+        birthDate: LocalDateTime?,
+    ) {
+        if (name != null) this.name = name
+        if (phoneNumber != null) this.phoneNumber = phoneNumber
+        if (email != null) this.email = email
+        if (birthDate != null) this.birthDate = birthDate
     }
 
     fun isLeft(): Boolean = status == MemberStatus.LEFT
