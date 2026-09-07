@@ -15,7 +15,7 @@ class AppleWebAuthorizationUrlProviderTest : FreeSpec(
         val properties = AppleOAuthProperties(
             clientIds = listOf("pics.ditto.app", "pics.ditto.web"),
             webClientId = "pics.ditto.web",
-            webRedirectUri = "https://api.ditto.pics/api/v1/users/social-login/apple/callback",
+            webRedirectUri = "https://api.ditto.pics/api/v1/users/social-login/APPLE/callback",
         )
         val provider = AppleWebAuthorizationUrlProvider(properties)
 
@@ -42,7 +42,7 @@ class AppleWebAuthorizationUrlProviderTest : FreeSpec(
             "redirect_uri 는 콘솔에 등록한 Return URL 그대로 실린다" {
                 // 쿼리 값의 ':' '/' 는 RFC 3986 상 인코딩이 필요 없어 그대로 남는다.
                 provider.getAuthorizationUrl() shouldContain
-                    "redirect_uri=https://api.ditto.pics/api/v1/users/social-login/apple/callback"
+                    "redirect_uri=https://api.ditto.pics/api/v1/users/social-login/APPLE/callback"
             }
         }
 

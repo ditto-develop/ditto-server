@@ -20,7 +20,7 @@ ditto:
       client-ids: pics.ditto.app,pics.ditto.web
       # 웹 로그인용 Services ID 와 애플이 폼 POST 로 돌려보낼 우리 콜백 주소.
       web-client-id: pics.ditto.web
-      web-redirect-uri: http://localhost:8080/api/v1/users/social-login/apple/callback
+      web-redirect-uri: http://localhost:8080/api/v1/users/social-login/APPLE/callback
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s

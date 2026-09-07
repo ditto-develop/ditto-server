@@ -65,7 +65,7 @@ class OAuthController(
      */
     @Loggable
     @PostMapping(
-        "/api/v1/users/social-login/apple/callback",
+        "/api/v1/users/social-login/APPLE/callback",
         consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE],
     )
     fun appleCallback(

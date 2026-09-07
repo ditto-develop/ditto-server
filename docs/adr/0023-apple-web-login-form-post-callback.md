@@ -16,7 +16,7 @@
 
 ## Decision
 
-`POST /api/v1/users/social-login/apple/callback`을 추가한다. 응답은 **카카오 콜백과 같은 계약**이다 — FE 콜백 URL로 302, accessToken·signupRequired는 쿼리, refreshToken은 HttpOnly 쿠키([ADR 0004](0004-oauth-callback-redirect-and-cookie.md)).
+`POST /api/v1/users/social-login/APPLE/callback`을 추가한다. 응답은 **카카오 콜백과 같은 계약**이다 — FE 콜백 URL로 302, accessToken·signupRequired는 쿼리, refreshToken은 HttpOnly 쿠키([ADR 0004](0004-oauth-callback-redirect-and-cookie.md)).
 
 - **검증은 네이티브와 같은 `AppleIdTokenVerifier`를 쓴다.** 같은 ID 토큰이고 확인할 것도 같다. `aud`만 다르므로(Services ID) 허용 목록에 더한다. 인가 코드는 받아도 쓰지 않으며, 따라서 **클라이언트 시크릿(.p8)은 웹에서도 필요 없다.**
 - 인가 URL 생성을 `SocialAuthorizationUrlProvider`로 떼어낸다. 애플 웹은 인가 URL은 필요하지만 코드 교환·userinfo는 하지 않아, `OAuthClient`를 구현하면 두 메서드가 "지원하지 않음"이 된다(ADR 0022와 같은 이유).
