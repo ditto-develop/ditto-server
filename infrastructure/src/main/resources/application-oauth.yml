@@ -16,8 +16,11 @@ ditto:
       connect-timeout: 3s
       read-timeout: 5s
     apple:
-      # ID 토큰의 aud 로 허용할 값. 네이티브는 앱 번들 ID 다.
-      client-ids: pics.ditto.app
+      # ID 토큰의 aud 로 허용할 값 — 앱은 번들 ID, 웹은 Services ID 다.
+      client-ids: pics.ditto.app,pics.ditto.web
+      # 웹 로그인용 Services ID 와 애플이 폼 POST 로 돌려보낼 우리 콜백 주소.
+      web-client-id: pics.ditto.web
+      web-redirect-uri: http://localhost:8080/api/v1/users/social-login/apple/callback
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s
@@ -46,8 +49,12 @@ ditto:
       connect-timeout: 3s
       read-timeout: 5s
     apple:
-      # 앱 번들 ID. 값이 비면 모든 애플 토큰의 aud 검증이 실패하므로 배포 전 반드시 주입한다.
+      # 앱 번들 ID + 웹 Services ID 를 콤마로 나열한다.
+      # 값이 비면 모든 애플 토큰의 aud 검증이 실패하므로 배포 전 반드시 주입한다.
       client-ids: ${APPLE_CLIENT_IDS:pics.ditto.app}
+      # 웹 로그인을 쓰려면 둘 다 필요하다. 콘솔의 Services ID / Return URL 과 정확히 같아야 한다.
+      web-client-id: ${APPLE_WEB_CLIENT_ID:}
+      web-redirect-uri: ${APPLE_WEB_REDIRECT_URI:}
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s

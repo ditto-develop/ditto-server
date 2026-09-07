@@ -8,6 +8,7 @@ import com.ditto.infrastructure.oauth.NativeSocialAuthenticator
 import com.ditto.infrastructure.oauth.NativeSocialAuthenticatorFactory
 import com.ditto.infrastructure.oauth.NativeSocialCredential
 import com.ditto.infrastructure.oauth.OAuthClientFactory
+import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProviderFactory
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import java.time.LocalDateTime
 import org.springframework.stereotype.Service
@@ -18,10 +19,11 @@ import org.springframework.web.util.UriComponentsBuilder
 class OAuthService(
     private val oAuthClientFactory: OAuthClientFactory,
     private val nativeSocialAuthenticatorFactory: NativeSocialAuthenticatorFactory,
+    private val socialAuthorizationUrlProviderFactory: SocialAuthorizationUrlProviderFactory,
     private val frontProperties: FrontProperties,
 ) {
     fun getAuthorizationUrl(provider: SocialProvider): String =
-        oAuthClientFactory.getClient(provider).getAuthorizationUrl()
+        socialAuthorizationUrlProviderFactory.getProvider(provider).getAuthorizationUrl()
 
     fun getOAuthUserInfo(
         provider: SocialProvider,

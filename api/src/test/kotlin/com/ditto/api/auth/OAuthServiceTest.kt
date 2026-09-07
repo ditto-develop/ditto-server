@@ -12,6 +12,7 @@ import com.ditto.infrastructure.oauth.NativeSocialCredential
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthClientFactory
 import com.ditto.infrastructure.oauth.OAuthUserInfo
+import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProviderFactory
 import com.ditto.infrastructure.oauth.kakao.KakaoNativeAuthenticator
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -40,6 +41,9 @@ class OAuthServiceTest(
                 oAuthClientFactory = OAuthClientFactory(mapOf(SocialProvider.KAKAO to client)),
                 nativeSocialAuthenticatorFactory = NativeSocialAuthenticatorFactory(
                     mapOf(SocialProvider.KAKAO to KakaoNativeAuthenticator(client)),
+                ),
+                socialAuthorizationUrlProviderFactory = SocialAuthorizationUrlProviderFactory(
+                    mapOf(SocialProvider.KAKAO to client),
                 ),
                 frontProperties = frontProperties,
             )

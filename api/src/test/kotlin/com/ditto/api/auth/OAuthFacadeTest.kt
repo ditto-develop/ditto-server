@@ -20,6 +20,7 @@ import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.infrastructure.oauth.NativeSocialAuthenticatorFactory
 import com.ditto.infrastructure.oauth.NativeSocialCredential
 import com.ditto.infrastructure.oauth.OAuthClientFactory
+import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProviderFactory
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -60,6 +61,7 @@ class OAuthFacadeTest(
                     oAuthService = OAuthService(
                         oAuthClientFactory = OAuthClientFactory(emptyMap()),
                         nativeSocialAuthenticatorFactory = NativeSocialAuthenticatorFactory(emptyMap()),
+                        socialAuthorizationUrlProviderFactory = SocialAuthorizationUrlProviderFactory(emptyMap()),
                         frontProperties = frontProperties,
                     ),
                     memberSocialAccountService = memberSocialAccountService,

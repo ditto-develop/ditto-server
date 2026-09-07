@@ -33,9 +33,24 @@ class OAuthFacade(
     fun login(
         provider: SocialProvider,
         code: String,
-    ): OAuthLoginResult {
-        val member = findOrCreateMember(provider, oAuthService.getOAuthUserInfo(provider, code))
+    ): OAuthLoginResult = redirectLoginResult(
+        findOrCreateMember(provider, oAuthService.getOAuthUserInfo(provider, code)),
+    )
 
+    /**
+     * 웹 리다이렉트 로그인 — 콜백이 ID 토큰을 함께 준 경우(애플). 인가 코드 교환 없이 토큰을 검증한다.
+     *
+     * 검증은 네이티브와 같은 인증기를 쓴다 — 같은 ID 토큰이고 확인할 것도 같기 때문이다.
+     * 응답만 리다이렉트 계약을 따르므로 [login]과 결과 조립을 공유한다.
+     */
+    fun loginWithIdToken(
+        provider: SocialProvider,
+        credential: NativeSocialCredential,
+    ): OAuthLoginResult = redirectLoginResult(
+        findOrCreateMember(provider, oAuthService.authenticateNative(provider, credential)),
+    )
+
+    private fun redirectLoginResult(member: Member): OAuthLoginResult {
         // 제재 회원은 토큰을 발급하지 않고 콜백으로 제재 사실만 전달한다. (해제일 경과한 정지는 통과)
         blockingSanctionOf(member)?.let { return sanctionLoginResult(it, member) }
 
