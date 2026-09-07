@@ -41,6 +41,7 @@ class UserService(
     private val serverTimeProvider: ServerTimeProvider,
     private val leaveProgressChecker: LeaveProgressChecker,
     private val leftMemberRematchCanceller: LeftMemberRematchCanceller,
+    private val memberRatingService: MemberRatingService,
 ) {
 
     @Transactional
@@ -115,6 +116,24 @@ class UserService(
     }
 
     /**
+     * 타인 프로필(과 평점·답변 비교 같은 보조 정보) 열람 권한 검사.
+     * 매칭이 성사된 상대(또는 같은 그룹채팅 참여자)만 볼 수 있고, 차단 관계면 이력이 있어도 막는다.
+     * 본인 조회(viewerId == targetId)는 언제나 허용한다.
+     *
+     * 프로필 본문과 보조 정보가 같은 규칙을 쓰도록 판정을 여기 하나로 모은다.
+     */
+    fun checkProfileAccess(viewerId: Long, targetId: Long) {
+        if (viewerId == targetId) return
+
+        if (!matchAccessChecker.isMatched(viewerId, targetId)) {
+            throw WarnException(ErrorCode.FORBIDDEN)
+        }
+        if (memberBlockRepository.existsBetween(viewerId, targetId)) {
+            throw WarnException(ErrorCode.FORBIDDEN)
+        }
+    }
+
+    /**
      * 타인 공개 프로필 조회. 매칭이 성사된 상대(또는 같은 그룹채팅 참여자)만 조회 가능.
      * 민감정보(email·전화번호·실명)는 반환하지 않는다.
      *
@@ -123,12 +142,7 @@ class UserService(
      */
     @Transactional(readOnly = true)
     fun getPublicProfile(viewerId: Long, targetId: Long): PublicProfileResponse {
-        if (viewerId != targetId && !matchAccessChecker.isMatched(viewerId, targetId)) {
-            throw WarnException(ErrorCode.FORBIDDEN)
-        }
-        if (viewerId != targetId && memberBlockRepository.existsBetween(viewerId, targetId)) {
-            throw WarnException(ErrorCode.FORBIDDEN)
-        }
+        checkProfileAccess(viewerId, targetId)
 
         val member = memberRepository.findById(targetId).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
@@ -149,6 +163,8 @@ class UserService(
             location = member.location?.code,
             occupation = member.job?.code,
             interests = member.interests.map { it.code },
+            // 공개 기준(3건) 미달이면 null — 평가 카드와 같은 기준을 쓴다.
+            rating = memberRatingService.findPublicAverageScore(targetId),
         )
     }
 

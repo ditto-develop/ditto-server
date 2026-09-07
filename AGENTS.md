@@ -23,6 +23,7 @@ Gradle wrapper를 사용한다.
 
 - 빌드 + 전체 검증(Jacoco 포함): `./gradlew build check`
 - 테스트(REST Docs → OpenAPI 생성): `./gradlew test`
+  - `openapi.yaml`은 이 명령이 만드는 산출물이라 git이 추적하지 않는다. 새로 클론했다면 한 번 돌려야 `/docs` 스웨거가 뜬다.
 - 정적분석 업로드: `./gradlew sonarqube`
 - 로컬 실행: `./gradlew :api:bootRun`
 - 끝내기 전 **가장 좁은 관련 테스트부터** 실행한다.

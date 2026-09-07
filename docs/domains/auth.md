@@ -19,6 +19,7 @@
 - PENDING 게이트: 회원가입 미완료 회원은 `pendingAllowedPaths` 외 보호 API 접근 시 `SIGNUP_REQUIRED`.
 - 탈퇴 게이트: LEFT 회원은 보호 API 접근·토큰 갱신이 모두 `MEMBER_LEFT`(403)로 거부된다. 복구 경로는 재가입(소셜 로그인)뿐이다. `refresh`는 필터를 지나지 않으므로 `AuthService.refresh`에도 같은 게이트가 있다. [ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)
 - 제재 게이트: SUSPENDED(해제 전)/BANNED 회원은 `suspendedAllowedPaths` 외 보호 API 접근 시 `MEMBER_SUSPENDED`/`MEMBER_BANNED`(403). 해제 예정일 경과한 정지는 통과만(원복은 배치·로그인 — [ADR 0009](../adr/0009-sanction-ssot-and-lazy-expiry.md)). 우회 경로 봉쇄: `AuthService.refresh`(필터 미경유)도 동일 거부, 로그인은 아래 콜백 계약으로 안내.
+- 네이티브 앱 로그인: `POST /api/v1/users/social-login/kakao/native`는 소셜 SDK 액세스 토큰을 우리 토큰으로 교환해 JSON으로 답한다. 리다이렉트 로그인의 **추가**이지 대체가 아니며(웹은 그대로), 회원 생성·제재 판정·토큰 발급은 같은 `OAuthFacade` 경로를 타므로 `signupRequired`·`sanctioned` 의미가 콜백 계약과 같다. refreshToken은 동일하게 HttpOnly 쿠키. 체인은 API Key만 필요한 @Order(4). [ADR 0019](../adr/0019-native-social-login-token-exchange.md)
 - 제재 로그인 콜백 계약(FE): 제재 회원 로그인 시 토큰 없이 `?sanctioned=true&sanctionCode=MEMBER_SUSPENDED|MEMBER_BANNED&suspendedUntil=<ISO-8601, 정지만>`으로 리다이렉트. (`OAuthService.getSanctionCallbackUrl`)
 - 어드민 인가는 `@PreAuthorize`가 아니라 `JwtAuthenticationFilter`의 경로 prefix 검사: `/api/v1/admin` 경로는 `member.isAdmin()` 아니면 `403 FORBIDDEN`. [ADR 0006](../adr/0006-admin-authz-filter-path-check.md)
 - WebSocket(STOMP): `/ws` 핸드셰이크는 HTTP 계층 permitAll(브라우저 WS 헤더 제약), 인증·인가는 `StompAuthChannelInterceptor`(CONNECT: `X-API-Key`+JWT, SUBSCRIBE: 방 멤버십). deny-all 체인은 `@Order(7)`. [ADR 0009](../adr/0009-websocket-stomp-auth.md)
@@ -36,6 +37,7 @@
 - [0005](../adr/0005-kakao-consent-via-me-api.md) 카카오 동의항목 me API 전달
 - [0006](../adr/0006-admin-authz-filter-path-check.md) 어드민 인가 필터 경로 검사
 - [0009](../adr/0009-websocket-stomp-auth.md) WebSocket(STOMP) 인증 — 핸드셰이크 개방 + 프레임 레벨 인증·구독 인가
+- [0019](../adr/0019-native-social-login-token-exchange.md) 네이티브 소셜 로그인 토큰 교환 — 리다이렉트 유지 + 앱 전용 창구 추가
 - [0021](../adr/0021-kakao-general-app-profile-input.md) 카카오 일반 앱 전제 — 프로필 정보는 온보딩 입력
 
 ## 핵심 파일

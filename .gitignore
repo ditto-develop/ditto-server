@@ -28,3 +28,8 @@ Thumbs.db
 .claude/*
 !.claude/rules/
 !.claude/agents/
+
+### Generated API spec ###
+# 빌드가 만드는 산출물이다 (test → openapi3). 커밋하면 브랜치마다 충돌하고,
+# 배포 이미지는 Dockerfile 이 :api:test 로 다시 만든 것을 담으므로 추적할 이유가 없다.
+api/src/main/resources/static/docs/openapi.yaml

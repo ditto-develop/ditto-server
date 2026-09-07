@@ -13,6 +13,20 @@ import com.ditto.domain.intronote.repository.IntroNoteRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.quiz.QuizAnswerFixture
+import com.ditto.domain.quiz.QuizFixture
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.MemberReviewFixture
+import com.ditto.domain.review.ReviewAnswerFixture
+import com.ditto.domain.review.entity.MeetingStatus
+import com.ditto.domain.review.entity.ReviewAnswerContent
+import com.ditto.domain.review.repository.MemberReviewRepository
+import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -54,6 +68,24 @@ class UserControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var introNoteRepository: IntroNoteRepository
+
+    @Autowired
+    private lateinit var memberReviewRepository: MemberReviewRepository
+
+    @Autowired
+    private lateinit var reviewAnswerRepository: ReviewAnswerRepository
+
+    @Autowired
+    private lateinit var quizSetRepository: QuizSetRepository
+
+    @Autowired
+    private lateinit var quizRepository: QuizRepository
+
+    @Autowired
+    private lateinit var quizProgressRepository: QuizProgressRepository
+
+    @Autowired
+    private lateinit var quizAnswerRepository: QuizAnswerRepository
 
     @Test
     @DisplayName("introduction 을 포함해 가입하면 소개노트에 저장된다")
@@ -251,13 +283,11 @@ class UserControllerTest : RestDocsTest() {
             ).apply { activate() },
         )
         introNoteRepository.save(IntroNote.create(target.id, IntroQuestion.ONE_WORD, "안녕하세요, 만나서 반가워요!"))
-        personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = viewer.id,
-                receiverId = target.id,
-                status = PersonalMatchStatus.ACCEPTED,
-            ),
-        )
+        matchAccepted(viewer.id, target.id)
+        // 평점은 공개 기준(3건)을 넘겨야 값이 실린다.
+        saveReceivedAnswer(target.id, MeetingStatus.MET, rating = 5, comment = "대화가 편하고 좋았어요")
+        saveReceivedAnswer(target.id, MeetingStatus.MET, rating = 4, comment = null)
+        saveReceivedAnswer(target.id, MeetingStatus.MET, rating = 3, comment = null)
 
         mockMvc.perform(
             get("/api/v1/users/{id}/profile", target.id)
@@ -268,6 +298,7 @@ class UserControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.nickname").value("디토러버"))
             .andExpect(jsonPath("$.data.occupation").value("design"))
+            .andExpect(jsonPath("$.data.rating").value(4.0))
             .andDo(
                 document(
                     "user-public-profile",
@@ -296,9 +327,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.location").description("지역 code. 가능한 값: $LOCATION_CODES").optional(),
                                 fieldWithPath("data.occupation").description("직업 code. 가능한 값: $JOB_CODES").optional(),
                                 fieldWithPath("data.interests[]").description("관심사 code 목록. 가능한 값: $INTEREST_CODES").optional(),
+                                fieldWithPath("data.rating")
+                                    .description("받은 평가 평균 (공개 기준 3건 미만이면 null)").optional(),
                                 // 항상 null 인 필드는 type 을 명시해야 스키마에 실린다.
-                                fieldWithPath("data.rating").type(JsonFieldType.NUMBER)
-                                    .description("평점 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.preferredMinAge").type(JsonFieldType.NUMBER)
                                     .description("선호 최소 나이 (현재 미지원, null)").optional(),
                                 fieldWithPath("data.preferredMaxAge").type(JsonFieldType.NUMBER)
@@ -309,6 +340,159 @@ class UserControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("매칭된 상대가 받은 평가를 조회한다")
+    fun getUserRatings() {
+        val viewer = memberRepository.save(Member(nickname = "조회자R").apply { activate() })
+        val target = memberRepository.save(Member(nickname = "평가받은사람").apply { activate() })
+        matchAccepted(viewer.id, target.id)
+        saveReceivedAnswer(target.id, MeetingStatus.MET, rating = 5, comment = "대화가 편하고 좋았어요")
+        saveReceivedAnswer(target.id, MeetingStatus.MET, rating = 4, comment = "약속 시간 잘 지켜요")
+        saveReceivedAnswer(target.id, MeetingStatus.NO_SHOW, rating = 3, comment = null)
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/ratings", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.totalCount").value(3))
+            .andExpect(jsonPath("$.data.averageScore").value(4.0))
+            .andExpect(jsonPath("$.data.publicThreshold").value(3))
+            .andExpect(jsonPath("$.data.noShowCount").value(1))
+            .andDo(
+                document(
+                    "user-ratings",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("타인 받은 평가 조회")
+                            .description(
+                                "매칭된 상대가 받은 평가 요약입니다. `GET /users/me/ratings`와 같은 스키마·같은 공개 기준으로, " +
+                                    "총 평가가 publicThreshold(3)건 미만이면 totalCount만 실제 값이고 평균·노쇼는 0, 코멘트는 빈 배열입니다. " +
+                                    "권한은 공개 프로필과 동일합니다(매칭된 상대 또는 같은 그룹채팅 참여자, 차단 관계면 403).",
+                            )
+                            .pathParameters(
+                                parameterWithName("id").description("대상 사용자 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.averageScore").description("평균 별점 (비공개 시 0)"),
+                                fieldWithPath("data.totalCount").description("받은 평가 총 건수"),
+                                fieldWithPath("data.publicThreshold").description("공개 기준 건수 (3)"),
+                                fieldWithPath("data.noShowCount").description("노쇼 평가를 받은 횟수 (비공개 시 0)"),
+                                fieldWithPath("data.ratings").description("평가 목록 최신순 (비공개 시 빈 배열)"),
+                                fieldWithPath("data.ratings[].comment").description("한줄 코멘트 (미입력이면 null)").optional(),
+                                fieldWithPath("data.ratings[].createdAt").description("평가 확정 일시"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("매칭되지 않은 상대의 평가는 조회할 수 없다")
+    fun getUserRatingsWithoutMatch() {
+        val viewer = memberRepository.save(Member(nickname = "남남1").apply { activate() })
+        val target = memberRepository.save(Member(nickname = "남남2").apply { activate() })
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/ratings", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(403))
+    }
+
+    @Test
+    @DisplayName("상대와 나의 퀴즈 답변 일치 개수를 조회한다")
+    fun getUserAnswerMatch() {
+        val viewer = memberRepository.save(Member(nickname = "조회자A").apply { activate() })
+        val target = memberRepository.save(Member(nickname = "비교대상").apply { activate() })
+        matchAccepted(viewer.id, target.id)
+
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val quizIds = (1..3).map { order ->
+            quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = order)).id
+        }
+        completeQuizSet(viewer.id, quizSet.id, quizIds, choiceIds = listOf(1L, 2L, 3L))
+        // 3문항 중 앞 2개만 같은 선택지를 골랐다.
+        completeQuizSet(target.id, quizSet.id, quizIds, choiceIds = listOf(1L, 2L, 9L))
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/answers", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.quizSetId").value(quizSet.id))
+            .andExpect(jsonPath("$.data.matchedCount").value(2))
+            .andExpect(jsonPath("$.data.totalCount").value(3))
+            .andExpect(jsonPath("$.data.matchRate").value(66.7))
+            .andDo(
+                document(
+                    "user-answer-match",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("타인 답변 일치 조회 (\"나와 같은 답\")")
+                            .description(
+                                "상대와 나의 퀴즈 답변이 몇 개나 같은지 알려줍니다. 상대가 무엇을 골랐는지는 내려주지 않습니다. " +
+                                    "기준은 두 사람이 함께 완주한 가장 최근 퀴즈셋이며, 그런 퀴즈셋이 없으면 quizSetId=null에 나머지는 0입니다. " +
+                                    "matchRate는 매칭 점수와 같은 계산(일치 문항 ÷ 전체 문항 × 100, 소수점 1자리)입니다. " +
+                                    "등급 라벨 문구와 그룹 평균 계산은 클라이언트가 처리합니다. " +
+                                    "권한은 공개 프로필과 동일합니다(차단 관계면 403).",
+                            )
+                            .pathParameters(
+                                parameterWithName("id").description("대상 사용자 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.quizSetId").type(JsonFieldType.NUMBER)
+                                    .description("비교 기준 퀴즈셋 ID (함께 완주한 셋이 없으면 null)").optional(),
+                                fieldWithPath("data.matchedCount").description("같은 선택지를 고른 문항 수"),
+                                fieldWithPath("data.totalCount").description("비교한 전체 문항 수"),
+                                fieldWithPath("data.matchRate").description("일치율 0~100 (소수점 1자리)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("함께 완주한 퀴즈셋이 없으면 빈 일치 요약을 반환한다")
+    fun getUserAnswerMatchWithoutSharedQuizSet() {
+        val viewer = memberRepository.save(Member(nickname = "조회자B").apply { activate() })
+        val target = memberRepository.save(Member(nickname = "비교대상B").apply { activate() })
+        matchAccepted(viewer.id, target.id)
+
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val quizIds = listOf(quizRepository.save(QuizFixture.create(quizSetId = quizSet.id)).id)
+        // 나만 완주했다.
+        completeQuizSet(viewer.id, quizSet.id, quizIds, choiceIds = listOf(1L))
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/answers", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.quizSetId").doesNotExist())
+            .andExpect(jsonPath("$.data.matchedCount").value(0))
+            .andExpect(jsonPath("$.data.totalCount").value(0))
+            .andExpect(jsonPath("$.data.matchRate").value(0.0))
     }
 
     @Test
@@ -509,5 +693,56 @@ class UserControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+    }
+
+    private var reviewerSequence = 1
+
+    /** 두 회원을 매칭 성사(ACCEPTED) 상태로 만든다 — 프로필·보조 정보 열람 권한의 전제. */
+    private fun matchAccepted(viewerId: Long, targetId: Long) {
+        personalMatchRepository.save(
+            PersonalMatchFixture.create(
+                requesterId = viewerId,
+                receiverId = targetId,
+                status = PersonalMatchStatus.ACCEPTED,
+            ),
+        )
+    }
+
+    /** 다른 회원이 [reviewedMemberId]에게 남긴 확정 평가 하나를 만든다. */
+    private fun saveReceivedAnswer(
+        reviewedMemberId: Long,
+        meetingStatus: MeetingStatus,
+        rating: Int,
+        comment: String?,
+    ) {
+        val author = memberRepository.save(Member(nickname = "평가자${reviewerSequence++}").apply { activate() })
+        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = author.id))
+        val answer = reviewAnswerRepository.save(
+            ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
+        )
+        answer.answer(ReviewAnswerContent.of(meetingStatus, rating, comment), LocalDateTime.now())
+        reviewAnswerRepository.save(answer)
+    }
+
+    /** [memberId]가 퀴즈셋을 완주하고 각 문항에 [choiceIds]를 고른 상태로 만든다. */
+    private fun completeQuizSet(
+        memberId: Long,
+        quizSetId: Long,
+        quizIds: List<Long>,
+        choiceIds: List<Long>,
+    ) {
+        val progress = QuizProgressFixture.create(
+            memberId = memberId,
+            quizSetId = quizSetId,
+            totalCount = quizIds.size,
+        )
+        repeat(quizIds.size) { progress.recordAnswer() }
+        quizProgressRepository.save(progress)
+
+        quizIds.forEachIndexed { index, quizId ->
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = memberId, quizId = quizId, choiceId = choiceIds[index]),
+            )
+        }
     }
 }

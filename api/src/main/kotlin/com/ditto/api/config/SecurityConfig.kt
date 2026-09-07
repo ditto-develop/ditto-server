@@ -78,6 +78,11 @@ class SecurityConfig(
 
     /**
      * API Key만 필요 (토큰 갱신·닉네임 중복확인 등 JWT 불필요)
+     *
+     * 네이티브 소셜 로그인(social-login 하위 native 경로)도 여기 속한다 — 로그인 전 호출이라 JWT가 없고,
+     * 소셜 액세스 토큰을 우리 토큰으로 교환하는 것 외에는 아무것도 하지 않는다.
+     * 리다이렉트 로그인(@Order(3), permitAll)과 달리 브라우저 리다이렉트가 아니라 앱이 직접 호출하므로
+     * API Key를 실을 수 있어 한 단계 조인다.
      */
     @Bean
     @Order(4)
@@ -86,6 +91,7 @@ class SecurityConfig(
             .securityMatcher(
                 "/api/v1/users/auth/refresh",
                 "/api/v1/users/nickname/**",
+                "/api/v1/users/social-login/*/native",
             )
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }

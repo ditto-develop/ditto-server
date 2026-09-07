@@ -3,7 +3,7 @@ package com.ditto.api.user.dto
 import java.time.LocalDateTime
 
 /**
- * 내 프로필의 "받은 평가" 카드.
+ * "받은 평가" 카드. 내 프로필(`/users/me/ratings`)과 타인 프로필(`/users/{id}/ratings`)이 같은 스키마를 쓴다.
  *
  * 총 평가가 [publicThreshold]건 미만이면 비공개다 — 화면은 "평가가 충분하지 않아요"만 노출하므로
  * 평균·코멘트·노쇼를 내려보내지 않는다([totalCount]만 실제 값).

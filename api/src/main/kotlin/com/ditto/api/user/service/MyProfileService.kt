@@ -1,7 +1,6 @@
 package com.ditto.api.user.service
 
 import com.ditto.api.intronote.service.IntroNoteService
-import com.ditto.api.user.dto.MyRatingItem
 import com.ditto.api.user.dto.MyRatingsResponse
 import com.ditto.api.user.dto.MyStatsResponse
 import com.ditto.api.user.dto.PublicProfileResponse
@@ -33,6 +32,7 @@ class MyProfileService(
     private val quizProgressRepository: QuizProgressRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
+    private val memberRatingService: MemberRatingService,
 ) {
 
     @Transactional(readOnly = true)
@@ -79,40 +79,7 @@ class MyProfileService(
         ),
     )
 
+    /** 집계와 공개 기준은 [MemberRatingService]가 갖는다 — 타인 프로필도 같은 값을 봐야 한다. */
     @Transactional(readOnly = true)
-    fun getMyRatings(memberId: Long): MyRatingsResponse {
-        val received = reviewAnswerRepository
-            .findAllByReviewedMemberIdAndAnsweredAtIsNotNullOrderByAnsweredAtDesc(memberId)
-        val totalCount = received.size.toLong()
-
-        // 공개 기준 미달이면 총 건수만 알린다 — 화면이 평균·코멘트·노쇼를 렌더하지 않는다.
-        if (totalCount < PUBLIC_THRESHOLD) {
-            return MyRatingsResponse(
-                averageScore = 0.0,
-                totalCount = totalCount,
-                publicThreshold = PUBLIC_THRESHOLD,
-                noShowCount = 0,
-                ratings = emptyList(),
-            )
-        }
-
-        return MyRatingsResponse(
-            averageScore = received.mapNotNull { it.rating }.average(),
-            totalCount = totalCount,
-            publicThreshold = PUBLIC_THRESHOLD,
-            noShowCount = received.count { it.meetingStatus == MeetingStatus.NO_SHOW }.toLong(),
-            ratings = received.map { answer ->
-                MyRatingItem(
-                    comment = answer.comment,
-                    // 확정 평가만 조회했으므로 answeredAt은 항상 존재한다.
-                    createdAt = answer.answeredAt!!,
-                )
-            },
-        )
-    }
-
-    companion object {
-        /** 받은 평가 공개 기준 — 3건 미만이면 "평가가 충분하지 않아요"를 노출한다. */
-        const val PUBLIC_THRESHOLD = 3
-    }
+    fun getMyRatings(memberId: Long): MyRatingsResponse = memberRatingService.getRatings(memberId)
 }
