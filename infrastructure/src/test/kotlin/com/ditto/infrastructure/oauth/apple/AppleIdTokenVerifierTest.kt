@@ -103,6 +103,35 @@ class AppleIdTokenVerifierTest : FreeSpec(
                 payload.email shouldBe null
             }
 
+            "is_private_email 이 boolean 으로 와도 읽는다 (애플은 문자열로 주기도 한다)" {
+                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val token = Jwts.builder()
+                    .header().keyId(keyId).and()
+                    .issuer(AppleOAuthProperties.ISSUER)
+                    .subject("001234.apple-subject.0000")
+                    .audience().add(bundleId).and()
+                    .expiration(Date(System.currentTimeMillis() + 600_000))
+                    .claim("is_private_email", false)
+                    .signWith(keyPair.private as RSAPrivateKey)
+                    .compact()
+
+                verifier.verify(token).isPrivateEmail shouldBe false
+            }
+
+            "is_private_email 클레임이 아예 없으면 false 로 본다" {
+                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val token = Jwts.builder()
+                    .header().keyId(keyId).and()
+                    .issuer(AppleOAuthProperties.ISSUER)
+                    .subject("001234.apple-subject.0000")
+                    .audience().add(bundleId).and()
+                    .expiration(Date(System.currentTimeMillis() + 600_000))
+                    .signWith(keyPair.private as RSAPrivateKey)
+                    .compact()
+
+                verifier.verify(token).isPrivateEmail shouldBe false
+            }
+
             "aud 를 여러 개 허용하면 그중 하나만 맞아도 통과한다 (앱·웹이 한 애플 앱을 공유)" {
                 val verifier = verifier(
                     senderReturning(jwksJson(keyId, keyPair)),
@@ -146,6 +175,20 @@ class AppleIdTokenVerifierTest : FreeSpec(
                 shouldThrow<WarnException> {
                     verifier.verify(idToken(expiresAt = Date(System.currentTimeMillis() - 60_000)))
                 }
+            }
+
+            "sub 가 없으면 거부한다 — 소셜 계정 키가 없는 토큰이다" {
+                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val token = Jwts.builder()
+                    .header().keyId(keyId).and()
+                    .issuer(AppleOAuthProperties.ISSUER)
+                    .audience().add(bundleId).and()
+                    .expiration(Date(System.currentTimeMillis() + 600_000))
+                    .signWith(keyPair.private as RSAPrivateKey)
+                    .compact()
+
+                val exception = shouldThrow<WarnException> { verifier.verify(token) }
+                exception.errorCode shouldBe ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN
             }
 
             "JWT 형식이 아니면 거부한다" {
