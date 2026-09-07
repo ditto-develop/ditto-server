@@ -10,7 +10,7 @@ enum class ErrorCode(
     FORBIDDEN(403, "0003", "접근 권한이 없습니다."),
     NOT_FOUND(404, "0004", "존재하지 않는 리소스입니다."),
     UNSUPPORTED_PROVIDER(400, "1001", "지원하지 않는 소셜 로그인 제공자입니다."),
-    INVALID_SOCIAL_ACCESS_TOKEN(401, "1002", "유효하지 않은 소셜 액세스 토큰입니다."),
+    INVALID_SOCIAL_ACCESS_TOKEN(401, "1002", "유효하지 않은 소셜 로그인 토큰입니다."),
     REFRESH_TOKEN_NOT_FOUND(401, "2001", "리프레시 토큰이 존재하지 않습니다."),
     REFRESH_TOKEN_EXPIRED(401, "2002", "리프레시 토큰이 만료되었습니다."),
     SIGNUP_REQUIRED(403, "3001", "회원가입을 완료해야 이용할 수 있습니다."),

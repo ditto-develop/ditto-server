@@ -1,5 +1,6 @@
 package com.ditto.api.auth.controller
 
+import com.ditto.api.auth.dto.AppleNativeLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginResponse
 import com.ditto.api.auth.facade.OAuthFacade
@@ -7,6 +8,7 @@ import com.ditto.api.config.auth.RefreshTokenCookieFactory
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.infrastructure.oauth.NativeSocialCredential
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -62,7 +64,36 @@ class OAuthController(
         @Valid @RequestBody request: NativeSocialLoginRequest,
         response: HttpServletResponse,
     ): ApiResponse<NativeSocialLoginResponse> {
-        val result = oAuthFacade.loginWithNativeToken(SocialProvider.KAKAO, request.accessToken)
+        val result = oAuthFacade.loginWithNativeToken(
+            provider = SocialProvider.KAKAO,
+            credential = NativeSocialCredential(token = request.accessToken),
+        )
+        result.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
+
+        return ApiResponse.ok(result.response)
+    }
+
+    /**
+     * 애플 네이티브 SDK가 받아온 ID 토큰을 우리 토큰으로 교환한다(앱 전용).
+     * iOS 앱은 App Store 심사 지침 4.8에 따라 카카오와 함께 애플 로그인도 제공해야 한다.
+     *
+     * 카카오와 응답 스키마는 같고, 요청만 다르다 — 애플은 액세스 토큰이 아니라 ID 토큰(JWT)을 주고
+     * 이름은 최초 인가 1회만 클라이언트에 전달되기 때문이다.
+     */
+    @Loggable
+    @PostMapping("/api/v1/users/social-login/apple/native")
+    fun loginWithAppleNativeToken(
+        @Valid @RequestBody request: AppleNativeLoginRequest,
+        response: HttpServletResponse,
+    ): ApiResponse<NativeSocialLoginResponse> {
+        val result = oAuthFacade.loginWithNativeToken(
+            provider = SocialProvider.APPLE,
+            credential = NativeSocialCredential(
+                token = request.identityToken,
+                rawNonce = request.rawNonce,
+                name = request.name,
+            ),
+        )
         result.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
 
         return ApiResponse.ok(result.response)
