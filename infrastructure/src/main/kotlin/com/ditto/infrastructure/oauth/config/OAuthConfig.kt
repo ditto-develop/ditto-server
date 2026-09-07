@@ -5,11 +5,14 @@ import com.ditto.infrastructure.oauth.NativeSocialAuthenticator
 import com.ditto.infrastructure.oauth.NativeSocialAuthenticatorFactory
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthClientFactory
+import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProvider
+import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProviderFactory
 import com.ditto.infrastructure.oauth.apple.AppleIdTokenVerifier
 import com.ditto.infrastructure.oauth.apple.AppleJwksSender
 import com.ditto.infrastructure.oauth.apple.AppleNativeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleOAuthProperties
+import com.ditto.infrastructure.oauth.apple.AppleWebAuthorizationUrlProvider
 import com.ditto.infrastructure.oauth.kakao.KakaoNativeAuthenticator
 import com.ditto.infrastructure.oauth.kakao.KakaoApiSender
 import com.ditto.infrastructure.oauth.kakao.KakaoOAuthClient
@@ -45,6 +48,17 @@ class OAuthConfig {
         }
 
         @Bean
+        fun socialAuthorizationUrlProviderFactory(
+            oAuthClientFactory: OAuthClientFactory,
+            properties: AppleOAuthProperties,
+        ): SocialAuthorizationUrlProviderFactory = SocialAuthorizationUrlProviderFactory(
+            mapOf(
+                SocialProvider.KAKAO to oAuthClientFactory.getClient(SocialProvider.KAKAO),
+                SocialProvider.APPLE to AppleWebAuthorizationUrlProvider(properties),
+            ),
+        )
+
+        @Bean
         fun nativeSocialAuthenticatorFactory(
             oAuthClientFactory: OAuthClientFactory,
         ): NativeSocialAuthenticatorFactory = NativeSocialAuthenticatorFactory(
@@ -69,6 +83,21 @@ class OAuthConfig {
                 ),
             )
         }
+
+        /**
+         * 인가 URL 제공자. 카카오는 [OAuthClient] 가 겸하고, 애플 웹은 인가 URL만 만든다
+         * (코드 교환·userinfo 없이 콜백의 ID 토큰을 검증하기 때문).
+         */
+        @Bean
+        fun socialAuthorizationUrlProviderFactory(
+            oAuthClientFactory: OAuthClientFactory,
+            properties: AppleOAuthProperties,
+        ): SocialAuthorizationUrlProviderFactory = SocialAuthorizationUrlProviderFactory(
+            mapOf(
+                SocialProvider.KAKAO to oAuthClientFactory.getClient(SocialProvider.KAKAO),
+                SocialProvider.APPLE to AppleWebAuthorizationUrlProvider(properties),
+            ),
+        )
 
         /**
          * 네이티브 로그인 인증기. 카카오는 액세스 토큰으로 me API 를, 애플은 ID 토큰 서명을 검증한다 —

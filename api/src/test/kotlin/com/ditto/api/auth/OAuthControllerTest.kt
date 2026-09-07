@@ -197,6 +197,81 @@ class OAuthControllerTest : RestDocsTest() {
     }
 
     @Test
+    @DisplayName("애플 웹 로그인은 form_post 로 응답하도록 인가 URL을 만든다")
+    fun appleAuthorizationUrl() {
+        mockMvc.perform(get("/api/v1/users/social-login/{provider}", "APPLE").withApiKey())
+            .andExpect(status().isFound)
+            .andExpect(header().string("Location", startsWith("https://appleid.apple.com/auth/authorize")))
+            // scope(name·email)를 요청하려면 form_post 가 필수다 — 그래서 콜백이 POST 로 온다.
+            .andExpect(header().string("Location", containsString("response_mode=form_post")))
+            .andExpect(header().string("Location", containsString("response_type=code%20id_token")))
+            // 웹은 번들 ID가 아니라 Services ID를 쓴다.
+            .andExpect(header().string("Location", containsString("client_id=pics.ditto.web")))
+    }
+
+    @Test
+    @DisplayName("애플 웹 콜백은 폼 POST 로 받아 프론트 콜백으로 리다이렉트한다")
+    fun appleWebCallback() {
+        mockMvc.perform(
+            post("/api/v1/users/social-login/apple/callback")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("code", "apple-authorization-code")
+                .param("id_token", "apple-identity-token")
+                .param("user", """{"name":{"firstName":"철수","lastName":"김"},"email":"user@example.com"}"""),
+        )
+            .andExpect(status().isFound)
+            .andExpect(header().string("Location", startsWith("http://localhost:3000/auth/callback")))
+            .andExpect(header().string("Location", containsString("accessToken")))
+            .andExpect(header().string("Location", containsString("signupRequired")))
+            .andExpect(header().string("Set-Cookie", containsString("refreshToken=")))
+            .andDo(
+                document(
+                    "oauth-apple-web-callback",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("OAuth")
+                            .summary("애플 웹 로그인 콜백")
+                            .description(
+                                "애플이 인가 결과를 폼 POST(`application/x-www-form-urlencoded`)로 보내는 콜백이다. " +
+                                    "브라우저가 애플에서 이 주소로 직접 POST 하므로 FE가 호출하는 API가 아니다. " +
+                                    "서버는 함께 온 id_token 을 검증해(인가 코드 교환 없음) 카카오 콜백과 같은 계약으로 답한다 — " +
+                                    "프론트 콜백 URL 로 302, accessToken·signupRequired 는 쿼리, refreshToken 은 HttpOnly 쿠키.",
+                            )
+                            .formParameters(
+                                parameterWithName("code").description("인가 코드 (서버는 쓰지 않는다)").optional(),
+                                parameterWithName("id_token").description("애플이 서명한 ID 토큰(JWT). 인증의 근거"),
+                                parameterWithName("user")
+                                    .description("최초 인가 1회만 오는 JSON — 이름·이메일. 재로그인 때는 없다")
+                                    .optional(),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        // 최초 인가에서만 오는 이름을 저장한다.
+        memberRepository.findAll().first().name shouldBe "김철수"
+    }
+
+    @Test
+    @DisplayName("애플 웹 콜백에 user 가 없으면(재로그인) 이름 없이 진행한다")
+    fun appleWebCallbackWithoutUserField() {
+        mockMvc.perform(
+            post("/api/v1/users/social-login/apple/callback")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("id_token", "apple-identity-token"),
+        )
+            .andExpect(status().isFound)
+            .andExpect(header().string("Location", containsString("accessToken")))
+
+        memberRepository.findAll().first().name shouldBe null
+    }
+
+    @Test
     @DisplayName("애플 네이티브 로그인은 ID 토큰을 우리 토큰으로 교환한다")
     fun appleNativeLogin() {
         val request = AppleNativeLoginRequest(

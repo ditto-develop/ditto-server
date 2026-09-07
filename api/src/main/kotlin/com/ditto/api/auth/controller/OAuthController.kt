@@ -4,6 +4,7 @@ import com.ditto.api.auth.dto.AppleNativeLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginResponse
 import com.ditto.api.auth.facade.OAuthFacade
+import com.ditto.api.auth.service.AppleUserFieldReader
 import com.ditto.api.config.auth.RefreshTokenCookieFactory
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
@@ -12,6 +13,7 @@ import com.ditto.infrastructure.oauth.NativeSocialCredential
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -25,6 +27,7 @@ import java.net.URI
 class OAuthController(
     private val oAuthFacade: OAuthFacade,
     private val refreshTokenCookieFactory: RefreshTokenCookieFactory,
+    private val appleUserFieldReader: AppleUserFieldReader,
 ) {
 
     @GetMapping("/api/v1/users/social-login/{provider}")
@@ -48,6 +51,40 @@ class OAuthController(
 
         return ResponseEntity.status(HttpStatus.FOUND)
             .location(URI.create(oauthLoginResult.redirectUrl))
+            .build()
+    }
+
+    /**
+     * 애플 웹 로그인 콜백. 애플은 `scope`(name·email)를 요청하면 **`response_mode=form_post`** 로만 답하므로
+     * 카카오와 달리 **POST** 로 들어온다. 폼에는 `code`·`id_token`·`state`·`user` 가 실린다.
+     *
+     * 인가 코드는 쓰지 않는다 — 함께 온 `id_token` 을 검증하면 인증이 끝나고, 코드 교환에만 필요한
+     * 클라이언트 시크릿(.p8 키)을 들이지 않아도 된다.
+     *
+     * 응답은 카카오 콜백과 같은 계약이다: FE 콜백 URL 로 302 + refreshToken 은 HttpOnly 쿠키.
+     */
+    @Loggable
+    @PostMapping(
+        "/api/v1/users/social-login/apple/callback",
+        consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE],
+    )
+    fun appleCallback(
+        @RequestParam("id_token") idToken: String,
+        @RequestParam(required = false) user: String?,
+        response: HttpServletResponse,
+    ): ResponseEntity<Unit> {
+        val loginResult = oAuthFacade.loginWithIdToken(
+            provider = SocialProvider.APPLE,
+            credential = NativeSocialCredential(
+                token = idToken,
+                // 이름은 ID 토큰이 아니라 user 폼 필드에 최초 1회만 실려 온다.
+                name = appleUserFieldReader.readName(user),
+            ),
+        )
+        loginResult.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .location(URI.create(loginResult.redirectUrl))
             .build()
     }
 
