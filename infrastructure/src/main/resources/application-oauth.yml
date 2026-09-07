@@ -12,6 +12,12 @@ ditto:
       admin-redirect-uri: http://localhost:8080/admin/oauth/kakao/callback
       connect-timeout: 3s
       read-timeout: 5s
+    apple:
+      # ID 토큰의 aud 로 허용할 값. 네이티브는 앱 번들 ID 다.
+      client-ids: pics.ditto.app
+      jwks-cache-ttl: 6h
+      connect-timeout: 3s
+      read-timeout: 5s
 
 ---
 spring:
@@ -32,5 +38,11 @@ ditto:
       client-secret: ${KAKAO_CLIENT_SECRET}
       redirect-uri: ${KAKAO_REDIRECT_URI}
       admin-redirect-uri: ${KAKAO_ADMIN_REDIRECT_URI}
+      connect-timeout: 3s
+      read-timeout: 5s
+    apple:
+      # 앱 번들 ID. 값이 비면 모든 애플 토큰의 aud 검증이 실패하므로 배포 전 반드시 주입한다.
+      client-ids: ${APPLE_CLIENT_IDS:pics.ditto.app}
+      jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s

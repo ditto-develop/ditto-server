@@ -1,6 +1,7 @@
 package com.ditto.infrastructure.oauth.apple
 
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.jsonwebtoken.Claims
@@ -98,6 +99,12 @@ class AppleIdTokenVerifier(
      * 앱(번들 ID)과 웹(Services ID)이 같은 애플 앱을 공유할 수 있기 때문이다.
      */
     private fun verifyAudience(claims: Claims) {
+        // 설정이 비어 있으면 모든 토큰이 조용히 거부된다 — 클라이언트 잘못처럼 보이지만 서버 설정 문제다.
+        if (properties.clientIds.isEmpty()) {
+            log.error { "애플 clientIds 설정이 비어 있다 — ditto.oauth.apple.client-ids 를 주입해야 한다." }
+            throw ErrorException(ErrorCode.INTERNAL_ERROR)
+        }
+
         val audiences = claims.audience.orEmpty()
         if (properties.clientIds.none { it in audiences }) {
             log.warn { "애플 ID 토큰의 aud 불일치: $audiences" }

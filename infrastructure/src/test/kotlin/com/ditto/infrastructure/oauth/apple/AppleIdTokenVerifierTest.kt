@@ -1,6 +1,7 @@
 package com.ditto.infrastructure.oauth.apple
 
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import io.jsonwebtoken.Jwts
 import io.kotest.assertions.throwables.shouldThrow
@@ -189,6 +190,13 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
                 val exception = shouldThrow<WarnException> { verifier.verify(token) }
                 exception.errorCode shouldBe ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN
+            }
+
+            "clientIds 설정이 비어 있으면 서버 오류로 알린다 — 조용히 전부 거부되면 안 된다" {
+                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)), clientIds = emptyList())
+
+                val exception = shouldThrow<ErrorException> { verifier.verify(idToken()) }
+                exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
             }
 
             "JWT 형식이 아니면 거부한다" {
