@@ -33,6 +33,20 @@ class QuizSetForm(
     fun requiredEndDate(): LocalDateTime =
         endDate ?: throw WarnException(ErrorCode.BAD_REQUEST, "종료일시는 필수입니다.")
 
+    /** 제출된 문항은 모두 채워져 있어야 한다. 번호는 화면에 보이는 순서 그대로다. */
+    fun validatedQuizzes(): List<QuizForm> {
+        quizzes.forEachIndexed { index, quizForm ->
+            val blankField = quizForm.blankFieldName() ?: return@forEachIndexed
+            throw WarnException(ErrorCode.BAD_REQUEST, "${index + 1}번 문항의 $blankField 항목이 비어 있습니다.")
+        }
+
+        val duplicatedQuizIds = quizzes.mapNotNull { it.id }.groupBy { it }.filterValues { it.size > 1 }.keys
+        if (duplicatedQuizIds.isNotEmpty()) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "같은 문항이 두 번 제출됐습니다: $duplicatedQuizIds")
+        }
+        return quizzes
+    }
+
     companion object {
         fun from(
             quizSet: QuizSet,
@@ -50,9 +64,10 @@ class QuizSetForm(
                 QuizForm(
                     id = quiz.id,
                     question = quiz.question,
+                    // 개별 추가 UI 시절 선택지가 2개 미만인 문항이 남아 있다. 빈 칸을 채워 화면에서 고칠 수 있게 한다.
                     choices = choicesByQuiz[quiz.id].orEmpty()
                         .map { QuizChoiceForm(id = it.id, content = it.content) }
-                        .toMutableList(),
+                        .padToMinimumChoices(),
                 )
             }.toMutableList(),
         )
@@ -61,4 +76,9 @@ class QuizSetForm(
             quizzes = MutableList(quizRowCount) { QuizForm.blank() },
         )
     }
+}
+
+private fun List<QuizChoiceForm>.padToMinimumChoices(): MutableList<QuizChoiceForm> {
+    val missingCount = (QuizForm.NEW_QUIZ_CHOICE_COUNT - size).coerceAtLeast(0)
+    return (this + List(missingCount) { QuizChoiceForm() }).toMutableList()
 }

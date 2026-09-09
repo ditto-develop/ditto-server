@@ -11,6 +11,7 @@
     var errorBox = document.getElementById('formError');
     var countLabel = document.getElementById('quizCount');
     var dragging = null;
+    var MIN_CHOICE_COUNT = 2;
 
     function cards() {
         return Array.prototype.slice.call(list.querySelectorAll('.qcard'));
@@ -46,17 +47,23 @@
         return question !== '' || contents.some(function (text) { return text !== ''; });
     }
 
+    /** 기존 행(id 있음)이 아니면서 아무것도 안 채운 행. 서버는 빈 행을 거부하므로 제출 전에 뺀다. */
+    function isDiscardableNewRow(card) {
+        return card.querySelector('.quiz-id').value.trim() === '' && !isFilled(card);
+    }
+
     function incompleteRows() {
         return cards()
             .map(function (card, index) { return { card: card, no: index + 1 }; })
-            .filter(function (row) { return isFilled(row.card); })
             .filter(function (row) {
                 var question = row.card.querySelector('.qtext').value.trim();
-                var blank = Array.prototype.some.call(
+                var contents = Array.prototype.map.call(
                     row.card.querySelectorAll('.choice-content'),
-                    function (input) { return input.value.trim() === ''; }
+                    function (input) { return input.value.trim(); }
                 );
-                return question === '' || blank;
+                var tooFewChoices = contents.length < MIN_CHOICE_COUNT;
+                var blank = contents.some(function (text) { return text === ''; });
+                return question === '' || tooFewChoices || blank;
             })
             .map(function (row) { return row.no; });
     }
@@ -159,6 +166,7 @@
     });
 
     form.addEventListener('submit', function (event) {
+        cards().filter(isDiscardableNewRow).forEach(function (card) { card.remove(); });
         renumber();
 
         var incomplete = incompleteRows();
@@ -168,7 +176,8 @@
         }
 
         event.preventDefault();
-        errorBox.textContent = incomplete.join('번, ') + '번 문항의 질문과 선택지를 모두 채워야 합니다.';
+        errorBox.textContent = incomplete.join('번, ') + '번 문항의 질문과 선택지 2개를 모두 채워야 합니다.' +
+            ' 지우려면 문항 삭제를 누르세요.';
         errorBox.hidden = false;
         errorBox.scrollIntoView({ block: 'center' });
     });

@@ -1,6 +1,7 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -32,12 +33,30 @@ class AdminQuizController(
         return "quiz/form"
     }
 
+    /**
+     * 저장이 거부되면 리다이렉트하지 않고 폼을 그대로 다시 그린다.
+     * 문항 열 몇 개를 채운 뒤 한 칸 실수로 전부 다시 입력하게 만들지 않으려는 것이다.
+     */
     @PostMapping("/admin/quiz-sets")
-    fun create(@ModelAttribute("form") form: QuizSetForm, redirectAttributes: RedirectAttributes): String {
-        val created = adminQuizService.createQuizSet(form)
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋이 생성되었습니다.")
-        return "redirect:/admin/quiz-sets/${created.id}"
-    }
+    fun create(
+        @ModelAttribute("form") form: QuizSetForm,
+        model: Model,
+        redirectAttributes: RedirectAttributes,
+    ): String = runCatching { adminQuizService.createQuizSet(form) }
+        .fold(
+            onSuccess = { created ->
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋이 생성되었습니다.")
+                "redirect:/admin/quiz-sets/${created.id}"
+            },
+            onFailure = { exception ->
+                if (exception !is WarnException) throw exception
+                model.addAttribute("error", exception.message)
+                model.addAttribute("mode", "create")
+                model.addAttribute("answerCounts", emptyMap<Long, Long>())
+                model.addAttribute("active", "quiz")
+                "quiz/form"
+            },
+        )
 
     @GetMapping("/admin/quiz-sets/{id}")
     fun detail(@PathVariable id: Long, model: Model): String {
@@ -61,7 +80,7 @@ class AdminQuizController(
         model.addAttribute("form", form)
         model.addAttribute("mode", "edit")
         model.addAttribute("quizSetId", id)
-        model.addAttribute("answerCounts", adminQuizService.getAnswerCounts(quizIds))
+        model.addAttribute("answerCounts", adminQuizService.getAnswerCountsByQuizIds(quizIds))
         model.addAttribute("active", "quiz")
         return "quiz/form"
     }
@@ -70,12 +89,24 @@ class AdminQuizController(
     fun update(
         @PathVariable id: Long,
         @ModelAttribute("form") form: QuizSetForm,
+        model: Model,
         redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.updateQuizSet(id, form)
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋이 수정되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
+    ): String = runCatching { adminQuizService.updateQuizSet(id, form) }
+        .fold(
+            onSuccess = {
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋이 수정되었습니다.")
+                "redirect:/admin/quiz-sets/$id"
+            },
+            onFailure = { exception ->
+                if (exception !is WarnException) throw exception
+                model.addAttribute("error", exception.message)
+                model.addAttribute("mode", "edit")
+                model.addAttribute("quizSetId", id)
+                model.addAttribute("answerCounts", adminQuizService.getAnswerCountsByQuizIds(form.quizzes.mapNotNull { it.id }))
+                model.addAttribute("active", "quiz")
+                "quiz/form"
+            },
+        )
 
     @PostMapping("/admin/quiz-sets/{id}/activate")
     fun activate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {

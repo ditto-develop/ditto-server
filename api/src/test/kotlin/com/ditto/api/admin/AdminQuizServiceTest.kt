@@ -8,8 +8,10 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.QuizAnswerFixture
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -22,6 +24,7 @@ class AdminQuizServiceTest(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -125,15 +128,161 @@ class AdminQuizServiceTest(
                 .map { it.content to it.displayOrder } shouldBe listOf("아래부터" to 1, "중간부터" to 2)
         }
 
-        "질문과 선택지가 모두 빈 행은 저장하지 않는다" {
+        "빈 행이 섞여 있으면 저장을 거부한다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(
+                    formWithQuizzes(
+                        quizForm("치약 짤 때?", "아래부터", "중간부터"),
+                        quizForm("", "", ""),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            exception.message shouldBe "2번 문항의 질문 항목이 비어 있습니다."
+        }
+
+        "오류 메시지의 문항 번호는 화면에 보이는 번호와 같다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(
+                    formWithQuizzes(
+                        quizForm("1번 문항", "A", "B"),
+                        quizForm("2번 문항", "A", ""),
+                        quizForm("3번 문항", "A", "B"),
+                    ),
+                )
+            }
+
+            exception.message shouldBe "2번 문항의 선택지 항목이 비어 있습니다."
+        }
+
+        "같은 문항 id 를 두 번 보내면 거부한다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("원래 문항", "A", "B")),
+            )
+            val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.updateQuizSet(
+                    quizSet.id,
+                    formWithQuizzes(
+                        QuizForm(id = quiz.id, question = "첫 번째", choices = mutableListOf(QuizChoiceForm(content = "A"), QuizChoiceForm(content = "B"))),
+                        QuizForm(id = quiz.id, question = "두 번째", choices = mutableListOf(QuizChoiceForm(content = "C"), QuizChoiceForm(content = "D"))),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "답변이 달린 문항에 선택지를 더 붙이면 거부한다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("답변 달린 문항", "A", "B")),
+            )
+            val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+            val choices = quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id)
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = 1L, quizId = quiz.id, choiceId = choices[0].id),
+            )
+
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.updateQuizSet(
+                    quizSet.id,
+                    formWithQuizzes(
+                        QuizForm(
+                            id = quiz.id,
+                            question = "답변 달린 문항",
+                            choices = mutableListOf(
+                                QuizChoiceForm(id = choices[0].id, content = "A"),
+                                QuizChoiceForm(id = choices[1].id, content = "B"),
+                                QuizChoiceForm(content = "C"),
+                            ),
+                        ),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "참여가 시작되면 개수가 같아도 문항 교체를 거부한다" {
             val quizSet = adminQuizService.createQuizSet(
                 formWithQuizzes(
-                    quizForm("치약 짤 때?", "아래부터", "중간부터"),
-                    quizForm("", "", ""),
+                    quizForm("1번", "A", "B"),
+                    quizForm("2번", "C", "D"),
+                ),
+            )
+            val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 2))
+
+            // 2번 문항을 빼고 새 문항을 넣는다. 개수는 2 → 2 로 같다.
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.updateQuizSet(
+                    quizSet.id,
+                    formWithQuizzes(
+                        QuizForm(
+                            id = quizzes[0].id,
+                            question = "1번",
+                            choices = mutableListOf(QuizChoiceForm(content = "A"), QuizChoiceForm(content = "B")),
+                        ),
+                        quizForm("교체된 새 문항", "E", "F"),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).map { it.id } shouldBe quizzes.map { it.id }
+        }
+
+        "참여가 시작된 퀴즈셋은 문항 개수를 바꿀 수 없다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(
+                    quizForm("1번", "A", "B"),
+                    quizForm("2번", "C", "D"),
+                ),
+            )
+            val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 2))
+
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.updateQuizSet(
+                    quizSet.id,
+                    formWithQuizzes(
+                        QuizForm(
+                            id = quizzes[0].id,
+                            question = "1번",
+                            choices = mutableListOf(QuizChoiceForm(content = "A"), QuizChoiceForm(content = "B")),
+                        ),
+                    ),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "참여가 시작돼도 문구 수정은 된다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("원래 질문", "A", "B")),
+            )
+            val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+            val choices = quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id)
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 1))
+
+            adminQuizService.updateQuizSet(
+                quizSet.id,
+                formWithQuizzes(
+                    QuizForm(
+                        id = quiz.id,
+                        question = "고친 질문",
+                        choices = mutableListOf(
+                            QuizChoiceForm(id = choices[0].id, content = "A"),
+                            QuizChoiceForm(id = choices[1].id, content = "B"),
+                        ),
+                    ),
                 ),
             )
 
-            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first().question shouldBe "고친 질문"
         }
 
         "선택지 한 칸이 비면 저장을 거부한다" {
