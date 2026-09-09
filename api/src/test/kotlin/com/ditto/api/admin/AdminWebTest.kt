@@ -16,6 +16,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -94,50 +95,45 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 생성 후 상세를 조회한다")
-    fun createAndDetail() {
+    @DisplayName("퀴즈셋을 문항과 함께 생성하고 상세·수정 화면을 조회한다")
+    fun createWithQuizzesAndDetail() {
         mockMvc.perform(
             post("/admin/quiz-sets")
                 .with(authentication(admin())).with(csrf())
                 .param("category", "성격").param("title", "테스트 퀴즈셋")
                 .param("description", "설명")
                 .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
-                .param("matchingType", "ONE_TO_ONE").param("isActive", "true"),
+                .param("matchingType", "ONE_TO_ONE").param("isActive", "true")
+                .param("quizzes[0].question", "치약 짤 때?")
+                .param("quizzes[0].choices[0].content", "아래부터")
+                .param("quizzes[0].choices[1].content", "중간부터")
+                .param("quizzes[1].question", "여행 계획은?")
+                .param("quizzes[1].choices[0].content", "분 단위로")
+                .param("quizzes[1].choices[1].content", "즉흥적으로"),
         ).andExpect(status().is3xxRedirection)
 
-        val quizSet = quizSetRepository.save(QuizSetFixture.create())
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, displayOrder = 1))
+        val created = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc().first { it.title == "테스트 퀴즈셋" }
+        val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(created.id)
+        quizzes.map { it.displayOrder } shouldBe listOf(1, 2)
+        quizzes.map { it.question } shouldBe listOf("치약 짤 때?", "여행 계획은?")
+        quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizzes[0].id)
+            .map { it.displayOrder } shouldBe listOf(1, 2)
 
-        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+        mockMvc.perform(get("/admin/quiz-sets/{id}", created.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+        mockMvc.perform(get("/admin/quiz-sets/{id}/edit", created.id).with(authentication(admin())))
             .andExpect(status().isOk)
     }
 
     @Test
-    @DisplayName("퀴즈셋 활성/비활성/하위 추가/삭제")
-    fun quizMutations() {
+    @DisplayName("퀴즈셋 활성/비활성/삭제")
+    fun quizSetMutations() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create(isActive = false))
         val id = quizSet.id
 
         mockMvc.perform(post("/admin/quiz-sets/{id}/activate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
         mockMvc.perform(post("/admin/quiz-sets/{id}/deactivate", id).with(authentication(admin())).with(csrf()))
-            .andExpect(status().is3xxRedirection)
-        mockMvc.perform(
-            post("/admin/quiz-sets/{id}/quizzes", id).with(authentication(admin())).with(csrf())
-                .param("question", "질문?").param("displayOrder", "1"),
-        ).andExpect(status().is3xxRedirection)
-
-        val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(id).first()
-        mockMvc.perform(
-            post("/admin/quiz-sets/{id}/quizzes/{qid}/choices", id, quiz.id).with(authentication(admin())).with(csrf())
-                .param("content", "선택지").param("displayOrder", "1"),
-        ).andExpect(status().is3xxRedirection)
-        mockMvc.perform(
-            post("/admin/quiz-sets/{id}/quizzes/{qid}/update", id, quiz.id).with(authentication(admin())).with(csrf())
-                .param("question", "수정된 질문").param("displayOrder", "2"),
-        ).andExpect(status().is3xxRedirection)
-        mockMvc.perform(post("/admin/quiz-sets/{id}/quizzes/{qid}/delete", id, quiz.id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
         mockMvc.perform(post("/admin/quiz-sets/{id}/delete", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
@@ -281,10 +277,13 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 수정/편집 폼 + 선택지 수정/삭제 + 매칭 재생성")
+    @DisplayName("수정 폼이 문항·선택지를 함께 저장하고 좌우 순서가 뒤바뀐다")
     fun quizUpdateAndRegenerate() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         val id = quizSet.id
+        val quiz = quizRepository.save(QuizFixture.create(quizSetId = id, displayOrder = 1))
+        val first = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A", displayOrder = 1))
+        val second = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "B", displayOrder = 2))
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/edit", id).with(authentication(admin())))
             .andExpect(status().isOk)
@@ -292,20 +291,18 @@ class AdminWebTest {
             post("/admin/quiz-sets/{id}", id).with(authentication(admin())).with(csrf())
                 .param("category", "수정").param("title", "수정 제목").param("description", "d")
                 .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
-                .param("matchingType", "ONE_TO_ONE").param("isActive", "false"),
+                .param("matchingType", "ONE_TO_ONE").param("isActive", "false")
+                .param("quizzes[0].id", quiz.id.toString())
+                .param("quizzes[0].question", "수정된 질문")
+                .param("quizzes[0].choices[0].id", second.id.toString())
+                .param("quizzes[0].choices[0].content", "B")
+                .param("quizzes[0].choices[1].id", first.id.toString())
+                .param("quizzes[0].choices[1].content", "A로 수정"),
         ).andExpect(status().is3xxRedirection)
 
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = id, displayOrder = 1))
-        val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, displayOrder = 1))
-        mockMvc.perform(
-            post("/admin/quiz-sets/{id}/quizzes/{qid}/choices/{cid}/update", id, quiz.id, choice.id)
-                .with(authentication(admin())).with(csrf())
-                .param("content", "수정 선택지").param("displayOrder", "2"),
-        ).andExpect(status().is3xxRedirection)
-        mockMvc.perform(
-            post("/admin/quiz-sets/{id}/quizzes/{qid}/choices/{cid}/delete", id, quiz.id, choice.id)
-                .with(authentication(admin())).with(csrf()),
-        ).andExpect(status().is3xxRedirection)
+        quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(id).first().question shouldBe "수정된 질문"
+        quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id)
+            .map { it.id to it.content } shouldBe listOf(second.id to "B", first.id to "A로 수정")
 
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)

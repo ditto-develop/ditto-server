@@ -10,38 +10,134 @@
             <h1 class="page-title" th:text="${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정'">퀴즈셋</h1>
             <p class="page-desc">주차는 시작일시가 속한 주(월요일 시작)로 자동 결정됩니다. 수정 시에는 변경되지 않습니다.</p>
 
-            <form class="card"
-                  th:object="${form}"
+            <div th:replace="~{fragments :: alerts}"></div>
+            <div class="alert error" id="formError" hidden></div>
+
+            <form th:object="${form}"
                   th:action="${mode} == 'create' ? @{/admin/quiz-sets} : @{/admin/quiz-sets/{id}(id=${quizSetId})}"
-                  method="post">
-                <div class="field-row">
-                    <div class="field"><label>카테고리</label><input type="text" th:field="*{category}" placeholder="예: 성격"/></div>
-                    <div class="field">
-                        <label>매칭 타입</label>
-                        <select th:field="*{matchingType}">
-                            <option th:value="ONE_TO_ONE">ONE_TO_ONE</option>
-                            <option th:value="GROUP">GROUP</option>
-                        </select>
+                  method="post"
+                  id="quizSetForm">
+                <div class="card">
+                    <h2>퀴즈셋 정보</h2>
+                    <div class="field-row">
+                        <div class="field"><label>카테고리</label><input type="text" th:field="*{category}" placeholder="예: 성격"/></div>
+                        <div class="field">
+                            <label>매칭 타입</label>
+                            <select th:field="*{matchingType}">
+                                <option th:value="ONE_TO_ONE">ONE_TO_ONE</option>
+                                <option th:value="GROUP">GROUP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field"><label>제목</label><input type="text" th:field="*{title}" placeholder="예: 이번 주 1:1 매칭"/></div>
+                    <div class="field"><label>설명</label><textarea rows="2" th:field="*{description}"></textarea></div>
+                    <div class="field-row">
+                        <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}" required/></div>
+                        <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}" required/></div>
+                    </div>
+                    <div class="field check" style="margin-bottom:0">
+                        <input type="checkbox" id="isActive" th:field="*{isActive}"/>
+                        <label for="isActive" style="margin:0">활성화</label>
                     </div>
                 </div>
-                <div class="field"><label>제목</label><input type="text" th:field="*{title}" placeholder="예: 이번 주 1:1 매칭"/></div>
-                <div class="field"><label>설명</label><textarea rows="2" th:field="*{description}"></textarea></div>
-                <div class="field-row">
-                    <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}" required/></div>
-                    <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}" required/></div>
+
+                <h2 class="page-title" style="font-size:17px; margin:24px 0 6px;">문항</h2>
+                <p class="page-desc" style="margin-bottom:16px">
+                    번호는 위에서 아래 순서로 자동 부여됩니다. 번호 칸을 끌어 옮기거나 ▲▼ 를 누르세요.
+                    선택지는 문항마다 2개이고 ⇄ 로 좌우를 맞바꿉니다. 질문과 선택지가 모두 빈 행은 저장하지 않습니다.
+                </p>
+
+                <div class="qlist" id="quizList">
+                    <div class="qcard" th:each="quiz, stat : *{quizzes}"
+                         th:attr="data-answered=${answerCounts.containsKey(quiz.id)}">
+                        <div class="qnum" draggable="true" title="끌어서 순서 변경">
+                            <span class="grip" aria-hidden="true">&#10303;</span>
+                            <span class="n" th:text="${stat.index + 1}">1</span>
+                            <span class="arrows">
+                                <button type="button" class="move-up" title="위로">&#9650;</button>
+                                <button type="button" class="move-down" title="아래로">&#9660;</button>
+                            </span>
+                        </div>
+                        <div class="qbody">
+                            <input type="hidden" class="quiz-id" th:field="*{quizzes[__${stat.index}__].id}"/>
+                            <div class="qhead">
+                                <input type="text" class="qtext"
+                                       th:field="*{quizzes[__${stat.index}__].question}"
+                                       placeholder="질문을 입력하세요"/>
+                                <span class="badge locked"
+                                      th:if="${answerCounts.containsKey(quiz.id)}"
+                                      th:text="'답변 ' + ${answerCounts.get(quiz.id)} + '건'">답변</span>
+                            </div>
+                            <div class="choices2">
+                                <div class="cbox" th:each="choice, cstat : ${quiz.choices}">
+                                    <span class="cmark" th:text="${cstat.index + 1}">1</span>
+                                    <input type="hidden" class="choice-id"
+                                           th:field="*{quizzes[__${stat.index}__].choices[__${cstat.index}__].id}"/>
+                                    <input type="text" class="choice-content"
+                                           th:field="*{quizzes[__${stat.index}__].choices[__${cstat.index}__].content}"
+                                           th:placeholder="'선택지 ' + ${cstat.index + 1}"/>
+                                    <button type="button" class="swap" th:if="${cstat.index == 1}" title="좌우 맞바꾸기">&#8644;</button>
+                                </div>
+                            </div>
+                            <div class="qfoot">
+                                <span class="lockmsg" th:if="${answerCounts.containsKey(quiz.id)}">답변이 있어 삭제 불가 (문구 수정은 가능)</span>
+                                <button type="button" class="btn danger sm remove-quiz"
+                                        th:disabled="${answerCounts.containsKey(quiz.id)}">문항 삭제</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="field check">
-                    <input type="checkbox" id="isActive" th:field="*{isActive}"/>
-                    <label for="isActive" style="margin:0">활성화</label>
+
+                <div style="margin-top:14px">
+                    <button type="button" class="btn secondary" id="addQuiz">+ 문항 추가</button>
                 </div>
-                <hr class="sep"/>
-                <div class="btn-row">
-                    <button type="submit" class="btn">저장</button>
-                    <a class="btn secondary" th:href="@{/admin/quiz-sets}">취소</a>
+
+                <div class="savebar">
+                    <div class="counts">문항 <b id="quizCount">0</b>개</div>
+                    <div class="btn-row">
+                        <a class="btn secondary" th:href="${mode} == 'create' ? @{/admin/quiz-sets} : @{/admin/quiz-sets/{id}(id=${quizSetId})}">취소</a>
+                        <button type="submit" class="btn">전체 저장</button>
+                    </div>
                 </div>
             </form>
+
+            <template id="quizRowTemplate">
+                <div class="qcard" data-answered="false">
+                    <div class="qnum" draggable="true" title="끌어서 순서 변경">
+                        <span class="grip" aria-hidden="true">&#10303;</span>
+                        <span class="n">0</span>
+                        <span class="arrows">
+                            <button type="button" class="move-up" title="위로">&#9650;</button>
+                            <button type="button" class="move-down" title="아래로">&#9660;</button>
+                        </span>
+                    </div>
+                    <div class="qbody">
+                        <input type="hidden" class="quiz-id" value=""/>
+                        <div class="qhead">
+                            <input type="text" class="qtext" value="" placeholder="질문을 입력하세요"/>
+                        </div>
+                        <div class="choices2">
+                            <div class="cbox">
+                                <span class="cmark">1</span>
+                                <input type="hidden" class="choice-id" value=""/>
+                                <input type="text" class="choice-content" value="" placeholder="선택지 1"/>
+                            </div>
+                            <div class="cbox">
+                                <span class="cmark">2</span>
+                                <input type="hidden" class="choice-id" value=""/>
+                                <input type="text" class="choice-content" value="" placeholder="선택지 2"/>
+                                <button type="button" class="swap" title="좌우 맞바꾸기">&#8644;</button>
+                            </div>
+                        </div>
+                        <div class="qfoot">
+                            <button type="button" class="btn danger sm remove-quiz">문항 삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </main>
     </div>
 </div>
+<script th:src="@{/admin/js/quiz-form.js}"></script>
 </body>
 </html>

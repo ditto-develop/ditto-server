@@ -1,10 +1,16 @@
 package com.ditto.api.admin
 
 import com.ditto.api.admin.quiz.AdminQuizService
+import com.ditto.api.admin.quiz.dto.QuizChoiceForm
+import com.ditto.api.admin.quiz.dto.QuizForm
 import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.quiz.QuizAnswerFixture
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
+import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
@@ -13,6 +19,9 @@ import javax.sql.DataSource
 
 class AdminQuizServiceTest(
     private val adminQuizService: AdminQuizService,
+    private val quizRepository: QuizRepository,
+    private val quizChoiceRepository: QuizChoiceRepository,
+    private val quizAnswerRepository: QuizAnswerRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -21,6 +30,19 @@ class AdminQuizServiceTest(
         title = "주간 검증 테스트",
         startDate = startDate,
         endDate = endDate,
+    )
+
+    fun quizForm(question: String, vararg choices: String) = QuizForm(
+        question = question,
+        choices = choices.map { QuizChoiceForm(content = it) }.toMutableList(),
+    )
+
+    fun formWithQuizzes(vararg quizzes: QuizForm) = QuizSetForm(
+        category = "성격",
+        title = "문항 저장 테스트",
+        startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
+        endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
+        quizzes = quizzes.toMutableList(),
     )
 
     "퀴즈셋 기간 검증" - {
@@ -84,6 +106,133 @@ class AdminQuizServiceTest(
             )
 
             adminQuizService.getQuizSet(quizSet.id).weekStartedOn shouldBe LocalDate.of(2026, 8, 3)
+        }
+    }
+
+    "문항 일괄 저장" - {
+        "화면에 보인 순서가 displayOrder 로 매겨진다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(
+                    quizForm("치약 짤 때?", "아래부터", "중간부터"),
+                    quizForm("여행 계획은?", "분 단위로", "즉흥적으로"),
+                ),
+            )
+
+            val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)
+            quizzes.map { it.displayOrder } shouldBe listOf(1, 2)
+            quizzes.map { it.question } shouldBe listOf("치약 짤 때?", "여행 계획은?")
+            quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizzes[0].id)
+                .map { it.content to it.displayOrder } shouldBe listOf("아래부터" to 1, "중간부터" to 2)
+        }
+
+        "질문과 선택지가 모두 빈 행은 저장하지 않는다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(
+                    quizForm("치약 짤 때?", "아래부터", "중간부터"),
+                    quizForm("", "", ""),
+                ),
+            )
+
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1
+        }
+
+        "선택지 한 칸이 비면 저장을 거부한다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(
+                    formWithQuizzes(quizForm("치약 짤 때?", "아래부터", "")),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "제출에 없는 기존 문항은 선택지까지 삭제된다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(
+                    quizForm("남길 문항", "A", "B"),
+                    quizForm("지울 문항", "C", "D"),
+                ),
+            )
+            val kept = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+            val removedQuizId = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)[1].id
+
+            adminQuizService.updateQuizSet(
+                quizSet.id,
+                formWithQuizzes(
+                    QuizForm(
+                        id = kept.id,
+                        question = "남길 문항",
+                        choices = mutableListOf(QuizChoiceForm(content = "A"), QuizChoiceForm(content = "B")),
+                    ),
+                ),
+            )
+
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).map { it.id } shouldBe listOf(kept.id)
+            quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(removedQuizId).size shouldBe 0
+        }
+
+        "id 를 함께 보내면 새로 만들지 않고 그 문항을 수정한다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("원래 질문", "A", "B")),
+            )
+            val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+            val choices = quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id)
+
+            adminQuizService.updateQuizSet(
+                quizSet.id,
+                formWithQuizzes(
+                    QuizForm(
+                        id = quiz.id,
+                        question = "고친 질문",
+                        choices = mutableListOf(
+                            QuizChoiceForm(id = choices[0].id, content = "A"),
+                            QuizChoiceForm(id = choices[1].id, content = "B로 수정"),
+                        ),
+                    ),
+                ),
+            )
+
+            val updated = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)
+            updated.map { it.id } shouldBe listOf(quiz.id)
+            updated.first().question shouldBe "고친 질문"
+            quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id)
+                .map { it.id to it.content } shouldBe listOf(choices[0].id to "A", choices[1].id to "B로 수정")
+        }
+
+        "답변이 달린 문항은 삭제를 거부한다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("답변 달린 문항", "A", "B")),
+            )
+            val quiz = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).first()
+            val choice = quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id).first()
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = 1L, quizId = quiz.id, choiceId = choice.id),
+            )
+
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.updateQuizSet(
+                    quizSet.id,
+                    formWithQuizzes(quizForm("다른 문항으로 교체", "C", "D")),
+                )
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "quizzes 가 비어 있으면 기존 문항을 건드리지 않는다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("유지될 문항", "A", "B")),
+            )
+
+            adminQuizService.updateQuizSet(
+                quizSet.id,
+                quizSetForm(
+                    startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
+                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
+                ),
+            )
+
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1
         }
     }
 })

@@ -3,6 +3,8 @@ package com.ditto.api.admin.quiz.dto
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.entity.Quiz
+import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
 import org.springframework.format.annotation.DateTimeFormat
 import java.time.LocalDateTime
@@ -22,6 +24,8 @@ class QuizSetForm(
     var endDate: LocalDateTime? = null,
     var matchingType: MatchingType = MatchingType.ONE_TO_ONE,
     var isActive: Boolean = false,
+    // 비어 있으면 문항을 건드리지 않는다. 전체 삭제는 퀴즈셋 삭제로만 한다.
+    var quizzes: MutableList<QuizForm> = mutableListOf(),
 ) {
     fun requiredStartDate(): LocalDateTime =
         startDate ?: throw WarnException(ErrorCode.BAD_REQUEST, "시작일시는 필수입니다.")
@@ -30,7 +34,11 @@ class QuizSetForm(
         endDate ?: throw WarnException(ErrorCode.BAD_REQUEST, "종료일시는 필수입니다.")
 
     companion object {
-        fun from(quizSet: QuizSet) = QuizSetForm(
+        fun from(
+            quizSet: QuizSet,
+            quizzes: List<Quiz>,
+            choicesByQuiz: Map<Long, List<QuizChoice>>,
+        ) = QuizSetForm(
             category = quizSet.category,
             title = quizSet.title,
             description = quizSet.description,
@@ -38,6 +46,19 @@ class QuizSetForm(
             endDate = quizSet.endDate,
             matchingType = quizSet.matchingType,
             isActive = quizSet.isActive,
+            quizzes = quizzes.map { quiz ->
+                QuizForm(
+                    id = quiz.id,
+                    question = quiz.question,
+                    choices = choicesByQuiz[quiz.id].orEmpty()
+                        .map { QuizChoiceForm(id = it.id, content = it.content) }
+                        .toMutableList(),
+                )
+            }.toMutableList(),
+        )
+
+        fun blank(quizRowCount: Int) = QuizSetForm(
+            quizzes = MutableList(quizRowCount) { QuizForm.blank() },
         )
     }
 }

@@ -1,11 +1,14 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.QuizForm
+import com.ditto.api.admin.quiz.dto.QuizChoiceForm
 import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
@@ -22,6 +25,7 @@ class AdminQuizService(
     private val quizSetRepository: QuizSetRepository,
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
+    private val quizAnswerRepository: QuizAnswerRepository,
 ) {
     @Transactional(readOnly = true)
     fun listQuizSets(): List<QuizSet> = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
@@ -35,8 +39,13 @@ class AdminQuizService(
         quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId)
 
     @Transactional(readOnly = true)
-    fun getChoices(quizId: Long): List<QuizChoice> =
-        quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizId)
+    fun getChoicesByQuizIds(quizIds: List<Long>): Map<Long, List<QuizChoice>> {
+        if (quizIds.isEmpty()) return emptyMap()
+        return quizChoiceRepository.findByQuizIdInOrderByDisplayOrderAsc(quizIds).groupBy { it.quizId }
+    }
+
+    @Transactional(readOnly = true)
+    fun getAnswerCounts(quizIds: List<Long>): Map<Long, Long> = quizAnswerRepository.countAnswersPerQuiz(quizIds)
 
     fun createQuizSet(form: QuizSetForm): QuizSet {
         validatePeriodWithinOneWeek(form)
@@ -49,7 +58,9 @@ class AdminQuizService(
             isActive = form.isActive,
             matchingType = form.matchingType,
         )
-        return quizSetRepository.save(quizSet)
+        val saved = quizSetRepository.save(quizSet)
+        saveQuizzes(saved.id, form.quizzes)
+        return saved
     }
 
     fun updateQuizSet(id: Long, form: QuizSetForm) {
@@ -64,6 +75,98 @@ class AdminQuizService(
             matchingType = form.matchingType,
         )
         if (form.isActive) quizSet.activate() else quizSet.deactivate()
+        saveQuizzes(id, form.quizzes)
+    }
+
+    /**
+     * 화면에 보이는 순서대로 문항·선택지를 한 번에 반영한다.
+     * 답변이 달린 문항은 지우거나 선택지 수를 바꿀 수 없다. quiz_answer 가 quiz_id·choice_id 로만 연결돼
+     * 지우면 답변이 매칭 점수에서 조용히 빠진다.
+     */
+    private fun saveQuizzes(quizSetId: Long, quizForms: List<QuizForm>) {
+        val filledQuizForms = quizForms.filterNot { it.isEmpty() }
+        if (filledQuizForms.isEmpty()) return
+        validateNoBlankField(filledQuizForms)
+
+        val existingQuizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId)
+        val answerCountByQuizId = quizAnswerRepository.countAnswersPerQuiz(existingQuizzes.map { it.id })
+        deleteRemovedQuizzes(existingQuizzes, filledQuizForms, answerCountByQuizId)
+
+        filledQuizForms.forEachIndexed { index, quizForm ->
+            val quiz = updateOrCreateQuiz(quizSetId, quizForm, displayOrder = index + 1)
+            saveChoices(quiz.id, quizForm.choices, quizHasAnswers = answerCountByQuizId.containsKey(quiz.id))
+        }
+    }
+
+    private fun validateNoBlankField(quizForms: List<QuizForm>) {
+        quizForms.forEachIndexed { index, quizForm ->
+            val blankField = quizForm.blankFieldName() ?: return@forEachIndexed
+            throw WarnException(ErrorCode.BAD_REQUEST, "${index + 1}번 문항의 $blankField 항목이 비어 있습니다.")
+        }
+    }
+
+    private fun deleteRemovedQuizzes(
+        existingQuizzes: List<Quiz>,
+        submittedQuizForms: List<QuizForm>,
+        answerCountByQuizId: Map<Long, Long>,
+    ) {
+        val submittedQuizIds = submittedQuizForms.mapNotNull { it.id }.toSet()
+        val removedQuizzes = existingQuizzes.filterNot { it.id in submittedQuizIds }
+        if (removedQuizzes.isEmpty()) return
+
+        val answeredQuizzes = removedQuizzes.filter { answerCountByQuizId.containsKey(it.id) }
+        if (answeredQuizzes.isNotEmpty()) {
+            throw WarnException(
+                ErrorCode.BAD_REQUEST,
+                "답변이 등록된 문항은 삭제할 수 없습니다: ${answeredQuizzes.joinToString { it.question }}",
+            )
+        }
+
+        val removedQuizIds = removedQuizzes.map { it.id }
+        quizChoiceRepository.deleteByQuizIdIn(removedQuizIds)
+        quizRepository.deleteAllByIdInBatch(removedQuizIds)
+    }
+
+    private fun updateOrCreateQuiz(quizSetId: Long, quizForm: QuizForm, displayOrder: Int): Quiz {
+        val quizId = quizForm.id
+            ?: return quizRepository.save(
+                Quiz.create(quizSetId = quizSetId, question = quizForm.question, displayOrder = displayOrder),
+            )
+
+        val quiz = quizRepository.findById(quizId)
+            .orElseThrow { WarnException(ErrorCode.NOT_FOUND, "문항을 찾을 수 없습니다.") }
+        if (quiz.quizSetId != quizSetId) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "다른 퀴즈셋의 문항은 수정할 수 없습니다.")
+        }
+        quiz.update(quizForm.question, displayOrder)
+        return quiz
+    }
+
+    private fun saveChoices(quizId: Long, choiceForms: List<QuizChoiceForm>, quizHasAnswers: Boolean) {
+        val existingChoices = quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quizId)
+        val submittedChoiceIds = choiceForms.mapNotNull { it.id }.toSet()
+        val removedChoiceIds = existingChoices.map { it.id }.filterNot { it in submittedChoiceIds }
+
+        if (removedChoiceIds.isNotEmpty() && quizHasAnswers) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "답변이 등록된 문항의 선택지는 지울 수 없습니다.")
+        }
+        if (removedChoiceIds.isNotEmpty()) quizChoiceRepository.deleteAllByIdInBatch(removedChoiceIds)
+
+        val existingChoiceById = existingChoices.associateBy { it.id }
+        choiceForms.forEachIndexed { index, choiceForm ->
+            val displayOrder = index + 1
+            val choiceId = choiceForm.id
+                ?: run {
+                    quizChoiceRepository.save(
+                        QuizChoice.create(quizId = quizId, content = choiceForm.content, displayOrder = displayOrder),
+                    )
+                    return@forEachIndexed
+                }
+
+            val choice = existingChoiceById[choiceId]
+                ?: throw WarnException(ErrorCode.NOT_FOUND, "선택지를 찾을 수 없습니다.")
+            choice.update(choiceForm.content, displayOrder)
+        }
     }
 
     /** 기간이 두 운영 주에 걸치면 주간 식별자(weekStartedOn)와 실제 기간이 어긋나므로 유입 시점에 막는다. */
@@ -90,30 +193,4 @@ class AdminQuizService(
         quizSetRepository.deleteById(id)
     }
 
-    fun addQuiz(quizSetId: Long, question: String, displayOrder: Int): Quiz {
-        getQuizSet(quizSetId) // 존재 검증
-        return quizRepository.save(Quiz.create(quizSetId = quizSetId, question = question, displayOrder = displayOrder))
-    }
-
-    fun updateQuiz(quizId: Long, question: String, displayOrder: Int) {
-        val quiz = quizRepository.findById(quizId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-        quiz.update(question, displayOrder)
-    }
-
-    fun deleteQuiz(quizId: Long) {
-        quizChoiceRepository.deleteByQuizId(quizId)
-        quizRepository.deleteById(quizId)
-    }
-
-    fun addChoice(quizId: Long, content: String, displayOrder: Int): QuizChoice =
-        quizChoiceRepository.save(QuizChoice.create(quizId = quizId, content = content, displayOrder = displayOrder))
-
-    fun updateChoice(choiceId: Long, content: String, displayOrder: Int) {
-        val choice = quizChoiceRepository.findById(choiceId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-        choice.update(content, displayOrder)
-    }
-
-    fun deleteChoice(choiceId: Long) {
-        quizChoiceRepository.deleteById(choiceId)
-    }
 }

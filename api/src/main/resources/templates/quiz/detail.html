@@ -19,9 +19,9 @@
 
             <div class="card">
                 <div class="btn-row">
-                    <a class="btn secondary" th:href="@{/admin/quiz-sets/{id}/edit(id=${quizSet.id})}">정보 수정</a>
+                    <a class="btn" th:href="@{/admin/quiz-sets/{id}/edit(id=${quizSet.id})}">정보·문항 수정</a>
                     <form class="inline-form" th:if="${!quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/activate(id=${quizSet.id})}" method="post">
-                        <button class="btn" type="submit">활성화</button>
+                        <button class="btn secondary" type="submit">활성화</button>
                     </form>
                     <form class="inline-form" th:if="${quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/deactivate(id=${quizSet.id})}" method="post">
                         <button class="btn secondary" type="submit">비활성화</button>
@@ -33,47 +33,20 @@
                 </div>
             </div>
 
-            <h2 class="page-title" style="font-size:17px; margin:24px 0 12px;">퀴즈 목록</h2>
-
-            <div class="card" th:each="quiz : ${quizzes}">
-                <form class="field-row" style="align-items:flex-end" th:action="@{/admin/quiz-sets/{id}/quizzes/{qid}/update(id=${quizSet.id},qid=${quiz.id})}" method="post">
-                    <div class="field" style="flex:3"><label>질문</label><input type="text" name="question" th:value="${quiz.question}"/></div>
-                    <div class="field" style="flex:1"><label>순서</label><input type="number" name="displayOrder" th:value="${quiz.displayOrder}"/></div>
-                    <div class="field"><button class="btn sm" type="submit">수정</button></div>
-                </form>
-                <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/quizzes/{qid}/delete(id=${quizSet.id},qid=${quiz.id})}" method="post"
-                      onsubmit="return confirm('퀴즈와 선택지를 삭제할까요?');">
-                    <button class="btn danger sm" type="submit">퀴즈 삭제</button>
-                </form>
-
-                <hr class="sep"/>
-                <div class="field-row" style="align-items:flex-end; margin-bottom:8px"
-                     th:each="choice : ${choicesByQuiz.get(quiz.id)}">
-                    <form class="field-row" style="flex:1; align-items:flex-end; margin:0"
-                          th:action="@{/admin/quiz-sets/{id}/quizzes/{qid}/choices/{cid}/update(id=${quizSet.id},qid=${quiz.id},cid=${choice.id})}" method="post">
-                        <div class="field" style="flex:0 0 80px; margin:0"><input type="number" name="displayOrder" th:value="${choice.displayOrder}"/></div>
-                        <div class="field" style="flex:3; margin:0"><input type="text" name="content" th:value="${choice.content}"/></div>
-                        <div class="field" style="margin:0"><button class="btn secondary sm" type="submit">수정</button></div>
-                    </form>
-                    <form class="inline-form" style="margin:0"
-                          th:action="@{/admin/quiz-sets/{id}/quizzes/{qid}/choices/{cid}/delete(id=${quizSet.id},qid=${quiz.id},cid=${choice.id})}" method="post">
-                        <button class="btn danger sm" type="submit">삭제</button>
-                    </form>
-                </div>
-                <form class="field-row" style="align-items:flex-end; margin-top:12px" th:action="@{/admin/quiz-sets/{id}/quizzes/{qid}/choices(id=${quizSet.id},qid=${quiz.id})}" method="post">
-                    <div class="field" style="flex:3"><label>선택지 추가</label><input type="text" name="content" placeholder="선택지 내용"/></div>
-                    <div class="field" style="flex:1"><label>순서</label><input type="number" name="displayOrder" value="1"/></div>
-                    <div class="field"><button class="btn sm" type="submit">추가</button></div>
-                </form>
-            </div>
-
             <div class="card">
-                <h2>퀴즈 추가</h2>
-                <form class="field-row" style="align-items:flex-end" th:action="@{/admin/quiz-sets/{id}/quizzes(id=${quizSet.id})}" method="post">
-                    <div class="field" style="flex:3"><label>질문</label><input type="text" name="question" placeholder="질문 내용"/></div>
-                    <div class="field" style="flex:1"><label>순서</label><input type="number" name="displayOrder" value="1"/></div>
-                    <div class="field"><button class="btn" type="submit">추가</button></div>
-                </form>
+                <h2>문항 <span class="muted" th:text="'(' + ${#lists.size(quizzes)} + ')'">(0)</span></h2>
+                <p class="muted" th:if="${#lists.isEmpty(quizzes)}" style="margin:0">
+                    문항이 없습니다. 위 <b>정보·문항 수정</b>에서 추가하세요.
+                </p>
+                <div class="ro-quiz" th:each="quiz, stat : ${quizzes}">
+                    <span class="no" th:text="${stat.index + 1}">1</span>
+                    <div style="min-width:0">
+                        <div class="q" th:text="${quiz.question}">질문</div>
+                        <div class="cs">
+                            <span th:each="choice : ${choicesByQuiz.getOrDefault(quiz.id, {})}" th:text="${choice.content}">선택지</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>

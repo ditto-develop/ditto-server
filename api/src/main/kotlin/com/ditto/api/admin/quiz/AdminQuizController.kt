@@ -7,12 +7,10 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 퀴즈셋 주차별 CRUD + 하위 Quiz/QuizChoice 관리(서버 렌더링).
- * 하위 항목 라우트는 quizSetId 를 경로에 포함해 작업 후 상세로 복귀한다.
+ * 퀴즈셋 주차별 CRUD(서버 렌더링). 문항·선택지는 퀴즈셋 폼에 함께 실려 저장 한 번으로 반영된다.
  */
 @Controller
 class AdminQuizController(
@@ -27,8 +25,9 @@ class AdminQuizController(
 
     @GetMapping("/admin/quiz-sets/new")
     fun newPage(model: Model): String {
-        model.addAttribute("form", QuizSetForm())
+        model.addAttribute("form", QuizSetForm.blank(NEW_QUIZ_ROW_COUNT))
         model.addAttribute("mode", "create")
+        model.addAttribute("answerCounts", emptyMap<Long, Long>())
         model.addAttribute("active", "quiz")
         return "quiz/form"
     }
@@ -42,20 +41,27 @@ class AdminQuizController(
 
     @GetMapping("/admin/quiz-sets/{id}")
     fun detail(@PathVariable id: Long, model: Model): String {
-        val quizSet = adminQuizService.getQuizSet(id)
         val quizzes = adminQuizService.getQuizzes(id)
-        model.addAttribute("quizSet", quizSet)
+        model.addAttribute("quizSet", adminQuizService.getQuizSet(id))
         model.addAttribute("quizzes", quizzes)
-        model.addAttribute("choicesByQuiz", quizzes.associate { it.id to adminQuizService.getChoices(it.id) })
+        model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
 
     @GetMapping("/admin/quiz-sets/{id}/edit")
     fun editPage(@PathVariable id: Long, model: Model): String {
-        model.addAttribute("form", QuizSetForm.from(adminQuizService.getQuizSet(id)))
+        val quizzes = adminQuizService.getQuizzes(id)
+        val quizIds = quizzes.map { it.id }
+        val form = QuizSetForm.from(
+            quizSet = adminQuizService.getQuizSet(id),
+            quizzes = quizzes,
+            choicesByQuiz = adminQuizService.getChoicesByQuizIds(quizIds),
+        )
+        model.addAttribute("form", form)
         model.addAttribute("mode", "edit")
         model.addAttribute("quizSetId", id)
+        model.addAttribute("answerCounts", adminQuizService.getAnswerCounts(quizIds))
         model.addAttribute("active", "quiz")
         return "quiz/form"
     }
@@ -92,76 +98,7 @@ class AdminQuizController(
         return "redirect:/admin/quiz-sets"
     }
 
-    @PostMapping("/admin/quiz-sets/{id}/quizzes")
-    fun addQuiz(
-        @PathVariable id: Long,
-        @RequestParam question: String,
-        @RequestParam displayOrder: Int,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.addQuiz(id, question, displayOrder)
-        redirectAttributes.addFlashAttribute("message", "퀴즈가 추가되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
-
-    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/update")
-    fun updateQuiz(
-        @PathVariable id: Long,
-        @PathVariable quizId: Long,
-        @RequestParam question: String,
-        @RequestParam displayOrder: Int,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.updateQuiz(quizId, question, displayOrder)
-        redirectAttributes.addFlashAttribute("message", "퀴즈가 수정되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
-
-    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/delete")
-    fun deleteQuiz(
-        @PathVariable id: Long,
-        @PathVariable quizId: Long,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.deleteQuiz(quizId)
-        redirectAttributes.addFlashAttribute("message", "퀴즈가 삭제되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
-
-    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices")
-    fun addChoice(
-        @PathVariable id: Long,
-        @PathVariable quizId: Long,
-        @RequestParam content: String,
-        @RequestParam displayOrder: Int,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.addChoice(quizId, content, displayOrder)
-        redirectAttributes.addFlashAttribute("message", "선택지가 추가되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
-
-    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices/{choiceId}/update")
-    fun updateChoice(
-        @PathVariable id: Long,
-        @PathVariable choiceId: Long,
-        @RequestParam content: String,
-        @RequestParam displayOrder: Int,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.updateChoice(choiceId, content, displayOrder)
-        redirectAttributes.addFlashAttribute("message", "선택지가 수정되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
-    }
-
-    @PostMapping("/admin/quiz-sets/{id}/quizzes/{quizId}/choices/{choiceId}/delete")
-    fun deleteChoice(
-        @PathVariable id: Long,
-        @PathVariable choiceId: Long,
-        redirectAttributes: RedirectAttributes,
-    ): String {
-        adminQuizService.deleteChoice(choiceId)
-        redirectAttributes.addFlashAttribute("message", "선택지가 삭제되었습니다.")
-        return "redirect:/admin/quiz-sets/$id"
+    companion object {
+        private const val NEW_QUIZ_ROW_COUNT = 3
     }
 }
