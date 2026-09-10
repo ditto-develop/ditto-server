@@ -51,33 +51,42 @@ data class MatchScore(
 )
 
 /**
- * 점수화된 페어. memberId1 < memberId2 로 정규화하여 방향 무관하게 동일 페어를 표현한다.
+ * 점수화된 매칭 한 건. 1:1은 2명, 그룹은 3~6명으로 **인원 수만 다르고** 선발 파이프라인
+ * ([TopRatioSelector]·[HardLimitApplier])이 다루는 방식은 같아 한 타입으로 표현한다.
  *
- * @property score 매칭 점수 (0.0 ~ 100.0, 소수점 1자리)
- * @property matchedQuestionCount 같은 답을 고른 문항 수 (scoreBreakdown 노출용)
- * @property totalQuestionCount 비교한 전체 문항 수
+ * [memberIds]가 동일성 기준이다 — `Set` 비교라 순서가 달라도 같은 매칭으로 본다.
+ * 1:1의 (A,B)=(B,A) 정규화와 그룹의 "씨앗이 달라도 같은 조합이면 중복" 판정이 둘 다 이걸로 해결된다.
+ *
+ * @property score 매칭 점수 (0.0 ~ 100.0). 그룹은 구성원 모든 페어 점수의 평균.
+ * @property matchedQuestionCount 같은 답을 고른 문항 수. **1:1 전용**
+ * @property totalQuestionCount 비교한 전체 문항 수. **1:1 전용**
  */
-data class ScoredDuo(
-    val memberId1: Long,
-    val memberId2: Long,
+data class ScoredMatch private constructor(
+    val memberIds: Set<Long>,
     val score: Double,
-    val matchedQuestionCount: Int,
-    val totalQuestionCount: Int,
+    val matchedQuestionCount: Int?,
+    val totalQuestionCount: Int?,
 ) {
     companion object {
-        fun of(
-            memberA: Long,
-            memberB: Long,
-            score: Double,
-            matchedQuestionCount: Int,
-            totalQuestionCount: Int,
-        ): ScoredDuo =
-            ScoredDuo(
-                memberId1 = minOf(memberA, memberB),
-                memberId2 = maxOf(memberA, memberB),
+        /** 1:1 페어. 점수와 그 근거(문항 수)가 항상 함께 채워지도록 [MatchScore]째로 받는다. */
+        fun duo(memberAId: Long, memberBId: Long, matchScore: MatchScore): ScoredMatch =
+            ScoredMatch(
+                memberIds = setOf(memberAId, memberBId),
+                score = matchScore.score,
+                matchedQuestionCount = matchScore.matchedQuestionCount,
+                totalQuestionCount = matchScore.totalQuestionCount,
+            )
+
+        /**
+         * 그룹. 점수가 구성원 모든 페어 점수의 **평균**이라 대응하는 정수 문항 수가 없어
+         * 근거 필드를 비운다 — 그룹 화면은 평균 점수만 보여준다.
+         */
+        fun group(memberIds: Set<Long>, score: Double): ScoredMatch =
+            ScoredMatch(
+                memberIds = memberIds,
                 score = score,
-                matchedQuestionCount = matchedQuestionCount,
-                totalQuestionCount = totalQuestionCount,
+                matchedQuestionCount = null,
+                totalQuestionCount = null,
             )
     }
 }

@@ -3,9 +3,10 @@ package com.ditto.api.match.service
 import com.ditto.api.match.exclusion.MatchExclusionPolicy
 import com.ditto.api.match.matching.MatchParticipant
 import com.ditto.api.match.matching.MatchingProcessor
-import com.ditto.api.match.matching.ScoredDuo
+import com.ditto.api.match.matching.ScoredMatch
 import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.repository.MatchCandidateRepository
@@ -150,26 +151,39 @@ class MatchmakingService(
         return blockedIdsByMember
     }
 
-    /** 페어(A,B) 하나를 (A→B), (B→A) 두 방향 행으로 변환한다. */
-    private fun toCandidates(quizSetId: Long, duos: List<ScoredDuo>): List<MatchCandidate> =
-        duos.flatMap { duo ->
-            listOf(
-                MatchCandidate.create(
-                    ownerMemberId = duo.memberId1,
-                    otherMemberId = duo.memberId2,
-                    quizSetId = quizSetId,
-                    score = duo.score,
-                    matchedQuestionCount = duo.matchedQuestionCount,
-                    totalQuestionCount = duo.totalQuestionCount,
-                ),
-                MatchCandidate.create(
-                    ownerMemberId = duo.memberId2,
-                    otherMemberId = duo.memberId1,
-                    quizSetId = quizSetId,
-                    score = duo.score,
-                    matchedQuestionCount = duo.matchedQuestionCount,
-                    totalQuestionCount = duo.totalQuestionCount,
-                ),
-            )
-        }
+    private fun toCandidates(quizSetId: Long, duos: List<ScoredMatch>): List<MatchCandidate> =
+        duos.flatMap { duo -> toBidirectionalCandidates(quizSetId, duo) }
+
+    /**
+     * 페어(A,B) 하나를 (A→B), (B→A) 두 방향 행으로 변환한다.
+     *
+     * 1:1 프로세서 결과만 들어오므로 구성원은 2명이고 점수 근거(문항 수)도 채워져 있다.
+     * 비어 있으면 그룹 결과가 1:1 저장 경로로 흘러든 것이라 매칭 파이프라인 버그다.
+     */
+    private fun toBidirectionalCandidates(quizSetId: Long, duo: ScoredMatch): List<MatchCandidate> {
+        val (ownerMemberId, otherMemberId) = duo.memberIds.sorted()
+        val matchedQuestionCount = duo.matchedQuestionCount
+            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "1:1 후보에 점수 근거가 없습니다: $duo")
+        val totalQuestionCount = duo.totalQuestionCount
+            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "1:1 후보에 점수 근거가 없습니다: $duo")
+
+        return listOf(
+            MatchCandidate.create(
+                ownerMemberId = ownerMemberId,
+                otherMemberId = otherMemberId,
+                quizSetId = quizSetId,
+                score = duo.score,
+                matchedQuestionCount = matchedQuestionCount,
+                totalQuestionCount = totalQuestionCount,
+            ),
+            MatchCandidate.create(
+                ownerMemberId = otherMemberId,
+                otherMemberId = ownerMemberId,
+                quizSetId = quizSetId,
+                score = duo.score,
+                matchedQuestionCount = matchedQuestionCount,
+                totalQuestionCount = totalQuestionCount,
+            ),
+        )
+    }
 }
