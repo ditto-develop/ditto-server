@@ -53,4 +53,27 @@ class QuizAnswerRepositoryTest(
             quizAnswerRepository.findAll().size shouldBe 0
         }
     }
+
+    "countAnswersPerQuiz" - {
+        "문항별 답변 수를 돌려주고, 답변 없는 문항은 키에 없다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val answered = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
+            val untouched = quizRepository.save(
+                QuizFixture.create(quizSetId = quizSet.id, question = "답변 없는 문항", displayOrder = 2),
+            )
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = answered.id))
+
+            quizAnswerRepository.save(QuizAnswerFixture.create(memberId = 1L, quizId = answered.id, choiceId = choice.id))
+            quizAnswerRepository.save(QuizAnswerFixture.create(memberId = 2L, quizId = answered.id, choiceId = choice.id))
+
+            val counts = quizAnswerRepository.countAnswersPerQuiz(listOf(answered.id, untouched.id))
+
+            counts[answered.id] shouldBe 2L
+            counts.containsKey(untouched.id) shouldBe false
+        }
+
+        "빈 quizIds로 호출하면 쿼리 없이 빈 맵을 돌려준다" {
+            quizAnswerRepository.countAnswersPerQuiz(emptyList()) shouldBe emptyMap()
+        }
+    }
 })

@@ -19,4 +19,21 @@ class QuizAnswerRepositoryImpl(
             )
             .execute()
     }
+
+    override fun countAnswersPerQuiz(quizIds: List<Long>): Map<Long, Long> {
+        if (quizIds.isEmpty()) return emptyMap()
+
+        val answerCount = quizAnswer.count()
+        
+        return queryFactory
+            .select(quizAnswer.quizId, answerCount)
+            .from(quizAnswer)
+            .where(quizAnswer.quizId.`in`(quizIds))
+            .groupBy(quizAnswer.quizId)
+            .fetch()
+            .associate { row ->
+                val quizId = row.get(quizAnswer.quizId) ?: throw IllegalStateException("group by 키 quizId 가 비었다")
+                quizId to (row.get(answerCount) ?: 0L)
+            }
+    }
 }

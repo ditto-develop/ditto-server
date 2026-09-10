@@ -20,6 +20,9 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         quizSetIds: List<Long>,
     ): List<QuizProgress>
 
+    /** 참여가 시작됐는지. 시작된 퀴즈셋은 문항 개수를 바꿀 수 없다(totalCount 가 첫 답변 시점에 굳는다). */
+    fun existsByQuizSetId(quizSetId: Long): Boolean
+
     fun countByQuizSetIdInAndStatus(
         quizSetIds: List<Long>,
         status: QuizProgressStatus,
