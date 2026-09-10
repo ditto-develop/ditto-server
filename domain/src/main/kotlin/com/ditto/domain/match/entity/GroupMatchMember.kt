@@ -60,5 +60,13 @@ class GroupMatchMember private constructor(
                 memberId = memberId,
                 status = InvitationStatus.ACCEPTED,
             )
+
+        /** 배치가 후보 그룹에 앉히는 멤버. 본인이 응답하기 전까지 대기 상태다. */
+        fun candidate(roomId: Long, memberId: Long): GroupMatchMember =
+            GroupMatchMember(
+                roomId = roomId,
+                memberId = memberId,
+                status = InvitationStatus.PENDING,
+            )
     }
 }

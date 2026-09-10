@@ -26,9 +26,10 @@ import java.time.LocalDateTime
 /**
  * 한 퀴즈셋의 매칭 후보를 계산해 저장하는 배치 오케스트레이션.
  *
- * 흐름: 참여자(완료자) 풀 → 제외 정책 적용 → 답변 로드 → 매칭 전략 실행 → match_candidate 갱신.
- * 매칭 타입(1:1/그룹)별 차이는 [MatchingProcessor] 와 [MatchExclusionPolicy] 가 담당하며,
- * 해당 타입의 전략이 없으면(예: GROUP) 건너뛴다.
+ * 흐름: 참여자(완료자) 풀 → 제외 정책 적용 → 답변 로드 → 매칭 전략 실행 → 후보 저장.
+ * 매칭 타입(1:1/그룹)별 차이는 [MatchingProcessor] 와 [MatchExclusionPolicy] 가 담당한다.
+ * 저장 위치도 타입마다 다르다 — 1:1은 페어 테이블(`match_candidate`), 그룹은 [GroupCandidateWriter].
+ * 해당 타입의 전략이 없으면 건너뛴다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -41,6 +42,7 @@ class MatchmakingService(
     private val memberRepository: MemberRepository,
     private val memberBlockRepository: MemberBlockRepository,
     private val exclusionPolicies: List<MatchExclusionPolicy>,
+    private val groupCandidateWriter: GroupCandidateWriter,
     private val matchingProcessors: List<MatchingProcessor>,
     private val sanctionExpiryService: SanctionExpiryService,
 ) {
@@ -75,15 +77,28 @@ class MatchmakingService(
             quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
         val availableMemberIds = availableMemberIds(quizSetId, matchingType, completedProgresses)
         if (availableMemberIds.size < 2) {
-            matchCandidateRepository.deleteByQuizSetId(quizSetId)
+            replaceCandidates(quizSetId, matchingType, emptyList())
             return
         }
 
         val participants = loadParticipants(quizSetId, availableMemberIds, completedProgresses)
-        val survivingDuos = processor.match(participants)
+        replaceCandidates(quizSetId, matchingType, processor.match(participants))
+    }
 
-        matchCandidateRepository.deleteByQuizSetId(quizSetId)
-        matchCandidateRepository.saveAll(toCandidates(quizSetId, survivingDuos))
+    /** 후보를 담는 곳이 타입마다 다르다 — 1:1은 페어 2행, 그룹은 방 하나에 멤버 3~6행. */
+    private fun replaceCandidates(
+        quizSetId: Long,
+        matchingType: MatchingType,
+        matches: List<ScoredMatch>,
+    ) {
+        when (matchingType) {
+            MatchingType.ONE_TO_ONE -> {
+                matchCandidateRepository.deleteByQuizSetId(quizSetId)
+                matchCandidateRepository.saveAll(toCandidates(quizSetId, matches))
+            }
+
+            MatchingType.GROUP -> groupCandidateWriter.replace(quizSetId, matches)
+        }
     }
 
     /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */

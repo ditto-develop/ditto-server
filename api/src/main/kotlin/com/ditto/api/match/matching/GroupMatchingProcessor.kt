@@ -3,6 +3,7 @@ package com.ditto.api.match.matching
 import com.ditto.api.match.matching.GroupMatchingProcessor.Companion.HARD_LIMIT
 import com.ditto.api.match.matching.GroupMatchingProcessor.Companion.TOP_RATIO
 import com.ditto.domain.quiz.entity.MatchingType
+import org.springframework.stereotype.Component
 import kotlin.math.roundToInt
 
 /**
@@ -15,11 +16,8 @@ import kotlin.math.roundToInt
  * 1:1과 달리 **성별·나이 하드 필터가 없다.** 여럿이 대화하는 자리라 기획에 그런 조건이 없고,
  * 애초에 3명 이상이 서로 전부 이성인 조합은 성별이 둘뿐이라 존재할 수 없다.
  * 차단만 반영해 차단 관계인 두 사람이 같은 그룹에 들어가지 않게 한다.
- *
- * **아직 빈으로 등록하지 않는다.** 그룹 결과는 페어 테이블(`match_candidate`)에 담을 수 없어
- * [com.ditto.api.match.service.MatchmakingService]의 저장 경로가 그대로 받으면 실패한다.
- * 그룹 후보 저장이 붙는 시점에 `@Component`를 단다.
  */
+@Component
 class GroupMatchingProcessor : MatchingProcessor {
 
     override val matchingType: MatchingType = MatchingType.GROUP

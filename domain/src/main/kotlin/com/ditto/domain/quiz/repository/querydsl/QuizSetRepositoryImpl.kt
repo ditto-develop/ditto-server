@@ -1,5 +1,6 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.match.entity.QGroupMatch.groupMatch
 import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
@@ -27,9 +28,13 @@ class QuizSetRepositoryImpl(
         queryFactory
             .selectFrom(quizSet)
             .leftJoin(matchCandidate).on(matchCandidate.quizSetId.eq(quizSet.id))
+            .leftJoin(groupMatch).on(groupMatch.quizSetId.eq(quizSet.id))
             .where(
                 quizSet.endDate.lt(now),
-                matchCandidate.id.isNull, // 후보가 하나도 없는(아직 계산 안 된) 셋만
+                // 후보가 하나도 없는(아직 계산 안 된) 셋만. 후보를 담는 테이블이 타입마다 달라 둘 다 본다 —
+                // 그룹만 보고 빠뜨리면 그룹 퀴즈셋이 매주 다시 계산돼 후보 ID가 갈린다.
+                matchCandidate.id.isNull,
+                groupMatch.id.isNull,
             )
             .fetch()
 

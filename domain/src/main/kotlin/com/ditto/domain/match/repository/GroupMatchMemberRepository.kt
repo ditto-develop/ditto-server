@@ -12,6 +12,10 @@ interface GroupMatchMemberRepository : JpaRepository<GroupMatchMember, Long>, Gr
 
     fun findByRoomId(roomId: Long): List<GroupMatchMember>
 
+    fun findByRoomIdIn(roomIds: List<Long>): List<GroupMatchMember>
+
+    fun deleteByRoomIdIn(roomIds: List<Long>)
+
     /** 특정 퀴즈셋의 그룹 방에 참여한 멤버 레코드 조회 (GroupMatch JOIN) */
     @Query(
         """

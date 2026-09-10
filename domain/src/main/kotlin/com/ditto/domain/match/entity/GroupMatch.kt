@@ -60,6 +60,14 @@ class GroupMatch private constructor(
     }
 
     companion object {
+        /** 선착순 참여로 그 자리에서 만들어지는 방. 후보 그룹 흐름이 들어오면 대체된다. */
         fun create(quizSetId: Long): GroupMatch = GroupMatch(quizSetId = quizSetId)
+
+        /**
+         * 배치가 미리 짜는 후보 그룹. 아직 아무도 수락하지 않았으므로 비활성·수락자 0으로 시작한다.
+         * [score]는 구성원 모든 페어 일치율의 평균이다.
+         */
+        fun candidate(quizSetId: Long, score: Double): GroupMatch =
+            GroupMatch(quizSetId = quizSetId, score = score)
     }
 }
