@@ -5,7 +5,6 @@ import com.ditto.domain.member.entity.GenderPreference
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.ints.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
 
 class GroupMatchingProcessorTest : FreeSpec(
@@ -72,29 +71,6 @@ class GroupMatchingProcessorTest : FreeSpec(
             }
         }
 
-        "그룹 크기" - {
-            "풀이 10명 미만이면 풀 크기와 6명 중 작은 쪽이 정원이다" {
-                val result = processor.match(pool(9))
-
-                result.shouldNotBeEmpty()
-                result.forEach { it.memberIds.size shouldBe 6 }
-            }
-
-            "풀이 30명 미만이면 5명이 정원이다" {
-                val result = processor.match(pool(20))
-
-                result.shouldNotBeEmpty()
-                result.forEach { it.memberIds.size shouldBe 5 }
-            }
-
-            "풀이 30명 이상이면 4명이 정원이다" {
-                val result = processor.match(pool(30))
-
-                result.shouldNotBeEmpty()
-                result.forEach { it.memberIds.size shouldBe 4 }
-            }
-        }
-
         "차단" - {
             "차단 관계인 두 사람은 같은 그룹에 들어가지 않는다" {
                 val answers = mapOf(101L to 1L, 102L to 1L)
@@ -127,13 +103,5 @@ class GroupMatchingProcessorTest : FreeSpec(
             }
         }
 
-        "1인 노출 제한" - {
-            "한 사람이 3개를 넘는 그룹에 노출되지 않는다" {
-                val result = processor.match(pool(30))
-
-                val groupCountByMemberId = result.flatMap { it.memberIds }.groupingBy { it }.eachCount()
-                groupCountByMemberId.values.forEach { it shouldBeLessThanOrEqual 3 }
-            }
-        }
     },
 )

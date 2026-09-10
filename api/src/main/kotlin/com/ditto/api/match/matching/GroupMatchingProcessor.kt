@@ -1,7 +1,6 @@
 package com.ditto.api.match.matching
 
 import com.ditto.api.match.matching.GroupMatchingProcessor.Companion.HARD_LIMIT
-import com.ditto.api.match.matching.GroupMatchingProcessor.Companion.MIN_GROUP_SIZE
 import com.ditto.api.match.matching.GroupMatchingProcessor.Companion.TOP_RATIO
 import com.ditto.domain.quiz.entity.MatchingType
 import kotlin.math.roundToInt
@@ -26,10 +25,11 @@ class GroupMatchingProcessor : MatchingProcessor {
     override val matchingType: MatchingType = MatchingType.GROUP
 
     override fun match(participants: List<MatchParticipant>): List<ScoredMatch> {
-        if (participants.size < MIN_GROUP_SIZE) return emptyList()
+        if (participants.size < GroupSizePolicy.MIN_SIZE) return emptyList()
 
         val scoreByMemberPair = scoreAllPairs(participants)
-        val seedGroups = composeSeedGroups(participants, scoreByMemberPair, decideGroupSize(participants.size))
+        val seedGroups =
+            composeSeedGroups(participants, scoreByMemberPair, GroupSizePolicy.decide(participants.size))
 
         val selected = TopRatioSelector.select(seedGroups, TOP_RATIO)
         return HardLimitApplier.apply(selected, HARD_LIMIT)
@@ -50,17 +50,6 @@ class GroupMatchingProcessor : MatchingProcessor {
     }
 
     /**
-     * 풀이 작으면 크게 묶어 그룹이 성립하게 하고, 크면 작게 묶어 그룹 수를 늘린다.
-     * 기획이 준 범위(4~5명 / 3~4명)에서는 큰 쪽을 쓴다 — 성사가 3명 이상 수락이라
-     * 정원이 클수록 한 명이 빠져도 견딘다.
-     */
-    private fun decideGroupSize(poolSize: Int): Int = when {
-        poolSize < SMALL_POOL_SIZE -> minOf(MAX_GROUP_SIZE, poolSize)
-        poolSize < MEDIUM_POOL_SIZE -> MEDIUM_POOL_GROUP_SIZE
-        else -> LARGE_POOL_GROUP_SIZE
-    }
-
-    /**
      * 참여자 한 명씩을 씨앗으로 그룹을 만든다. 씨앗이 달라도 같은 조합이 나오면 하나로 합친다
      * — 점수는 멤버 구성에서만 나오므로 어느 쪽을 남겨도 같다.
      */
@@ -75,7 +64,7 @@ class GroupMatchingProcessor : MatchingProcessor {
 
     /**
      * 씨앗과 점수가 높은 순으로 멤버를 채운다. 이미 담긴 누군가와 차단 관계인 사람은 건너뛴다.
-     * 차단 때문에 [groupSize]를 못 채워도 [MIN_GROUP_SIZE]만 넘으면 그대로 쓰고, 못 넘으면 버린다.
+     * 차단 때문에 [groupSize]를 못 채워도 [GroupSizePolicy.MIN_SIZE]만 넘으면 그대로 쓰고, 못 넘으면 버린다.
      */
     private fun composeSeedGroup(
         seed: MatchParticipant,
@@ -96,7 +85,7 @@ class GroupMatchingProcessor : MatchingProcessor {
             members.add(candidate)
         }
 
-        if (members.size < MIN_GROUP_SIZE) return null
+        if (members.size < GroupSizePolicy.MIN_SIZE) return null
 
         val memberIds = members.map { it.memberId }
         return ScoredMatch.group(memberIds.toSet(), averagePairScore(memberIds, scoreByMemberPair))
@@ -118,13 +107,5 @@ class GroupMatchingProcessor : MatchingProcessor {
     companion object {
         private const val TOP_RATIO = 0.2 // 그룹 점수 상위 20% 선발
         private const val HARD_LIMIT = 3 // 1인 최대 노출 3개 그룹
-        private const val MIN_GROUP_SIZE = 3 // 성사 최소 인원
-        private const val MAX_GROUP_SIZE = 6
-
-        // 풀 크기 구간 — 작을수록 크게 묶는다.
-        private const val SMALL_POOL_SIZE = 10
-        private const val MEDIUM_POOL_SIZE = 30
-        private const val MEDIUM_POOL_GROUP_SIZE = 5
-        private const val LARGE_POOL_GROUP_SIZE = 4
     }
 }
