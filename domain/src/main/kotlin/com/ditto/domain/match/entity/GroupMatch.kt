@@ -30,16 +30,22 @@ class GroupMatch private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
+    score: Double = 0.0,
     isActive: Boolean = false,
     participantCount: Int = 0,
 ) : BaseEntity() {
+
+    @Comment("그룹 점수 (구성원 모든 페어 일치율의 평균, 0.0~100.0)")
+    @Column(nullable = false)
+    var score: Double = score
+        protected set
 
     @Comment("활성화 여부 (참가자 3명 이상)")
     @Column(name = "is_active", nullable = false)
     var isActive: Boolean = isActive
         protected set
 
-    @Comment("참가자 수")
+    @Comment("수락자 수")
     @Column(name = "participant_count", nullable = false)
     var participantCount: Int = participantCount
         protected set
