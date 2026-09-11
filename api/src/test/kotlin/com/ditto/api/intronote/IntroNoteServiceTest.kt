@@ -101,13 +101,30 @@ class IntroNoteServiceTest(
             "같은 그룹 채팅방 참여자의 소개노트는 조회할 수 있다" {
                 val targetId = 3L
                 introNoteService.saveAnswer(targetId, "one-word", "그룹원답변")
+                // 후보로 묶이기만 해서는 안 되고, 둘 다 수락해 그룹이 성사돼야 열람 권한이 생긴다.
                 val room = groupMatchRepository.save(GroupMatch.candidate(quizSetId = 1L, score = 80.0))
-                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = memberId))
-                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = targetId))
+                repeat(3) { room.recordAcceptance() }
+                groupMatchRepository.save(room)
+                listOf(memberId, targetId).forEach {
+                    groupMatchMemberRepository.save(
+                        GroupMatchMember.candidate(roomId = room.id, memberId = it).apply { accept() },
+                    )
+                }
 
                 val result = introNoteService.getIntroNotes(memberId, targetId)
 
                 answerOf(result, "one-word") shouldBe "그룹원답변"
+            }
+
+            "후보 그룹에 함께 묶이기만 한 사이는 소개노트를 조회할 수 없다" {
+                val targetId = 4L
+                introNoteService.saveAnswer(targetId, "one-word", "후보답변")
+                val room = groupMatchRepository.save(GroupMatch.candidate(quizSetId = 1L, score = 80.0))
+                listOf(memberId, targetId).forEach {
+                    groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = it))
+                }
+
+                shouldThrow<WarnException> { introNoteService.getIntroNotes(memberId, targetId) }
             }
 
             "매칭도 그룹 채팅도 없는 상대면 FORBIDDEN 예외가 발생한다" {
