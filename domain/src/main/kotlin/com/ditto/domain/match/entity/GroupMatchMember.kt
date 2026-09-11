@@ -54,12 +54,23 @@ class GroupMatchMember private constructor(
 
     /** 초대를 수락한다. 되돌릴 수 없다 — 화면에서도 "취소할 수 없어요"로 안내한다. */
     fun accept() {
+        requirePending("수락")
         status = InvitationStatus.ACCEPTED
     }
 
     /** 초대를 거절한다. 본인이 누른 거절과 다른 그룹 수락에 따른 자동 거절이 같은 상태를 쓴다. */
     fun decline() {
+        requirePending("거절")
         status = InvitationStatus.DECLINED
+    }
+
+    /**
+     * 응답은 한 번뿐이라는 불변식을 엔티티가 직접 지킨다.
+     * 지금은 호출자([com.ditto.domain.match.repository.GroupMatchMemberRepository] 사용처)가 대기 상태만
+     * 넘겨주지만, 다른 경로가 생겼을 때 잘못된 전이가 조용히 통과하면 안 된다.
+     */
+    private fun requirePending(action: String) {
+        check(status == InvitationStatus.PENDING) { "대기 중인 초대만 $action 할 수 있습니다: status=$status" }
     }
 
     fun isPending(): Boolean = status == InvitationStatus.PENDING

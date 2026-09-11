@@ -10,8 +10,6 @@ import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.Comment
 
-private const val ACTIVATION_THRESHOLD = 3
-
 @Entity
 @Table(
     name = "group_match",
@@ -68,6 +66,9 @@ class GroupMatch private constructor(
     }
 
     companion object {
+        /** 그룹이 성사되는 최소 수락 인원. 그룹 정원의 하한이기도 하다(`GroupSizePolicy.MIN_SIZE`). */
+        const val ACTIVATION_THRESHOLD = 3
+
         /**
          * 배치가 미리 짜는 후보 그룹. 아직 아무도 수락하지 않았으므로 비활성·수락자 0으로 시작한다.
          * [score]는 구성원 모든 페어 일치율의 평균이다.

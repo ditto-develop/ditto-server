@@ -63,6 +63,14 @@ class GroupMatchTest(
             invitation.isPending() shouldBe true
         }
 
+        "이미 응답한 초대는 다시 응답할 수 없다" {
+            val accepted = GroupMatchMember.candidate(roomId = 1L, memberId = 1L).apply { accept() }
+            val declined = GroupMatchMember.candidate(roomId = 1L, memberId = 2L).apply { decline() }
+
+            shouldThrow<IllegalStateException> { accepted.decline() }
+            shouldThrow<IllegalStateException> { declined.accept() }
+        }
+
         "수락하면 ACCEPTED, 거절하면 DECLINED 가 된다" {
             val accepted = GroupMatchMember.candidate(roomId = 1L, memberId = 1L).apply { accept() }
             val declined = GroupMatchMember.candidate(roomId = 1L, memberId = 2L).apply { decline() }

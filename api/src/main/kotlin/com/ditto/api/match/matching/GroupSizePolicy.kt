@@ -1,5 +1,7 @@
 package com.ditto.api.match.matching
 
+import com.ditto.domain.match.entity.GroupMatch
+
 /**
  * 풀 크기로 그룹 정원을 정하는 정책.
  *
@@ -9,8 +11,8 @@ package com.ditto.api.match.matching
  */
 object GroupSizePolicy {
 
-    /** 성사 최소 인원. 풀이 이보다 작으면 그룹을 만들 수 없다. */
-    const val MIN_SIZE = 3
+    /** 성사 최소 인원이 곧 정원의 하한이다 — 풀이 이보다 작으면 성사될 수 없는 그룹만 나온다. */
+    const val MIN_SIZE = GroupMatch.ACTIVATION_THRESHOLD
 
     fun decide(poolSize: Int): Int = when {
         poolSize < SMALL_POOL_SIZE -> minOf(MAX_SIZE, poolSize)
