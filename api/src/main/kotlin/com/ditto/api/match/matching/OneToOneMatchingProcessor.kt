@@ -21,7 +21,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
 
     override val matchingType: MatchingType = MatchingType.ONE_TO_ONE
 
-    override fun match(participants: List<MatchParticipant>): List<ScoredDuo> {
+    override fun match(participants: List<MatchParticipant>): List<ScoredMatch> {
         if (participants.size < 2) return emptyList()
 
         val scoredDuos = scoreAllDuos(participants)
@@ -29,17 +29,14 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         return HardLimitApplier.apply(selected, HARD_LIMIT)
     }
 
-    private fun scoreAllDuos(participants: List<MatchParticipant>): List<ScoredDuo> =
+    private fun scoreAllDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
         participants.flatMapIndexed { index, participant ->
             participants.drop(index + 1).mapNotNull { otherParticipant ->
                 if (!isValidPair(participant, otherParticipant)) return@mapNotNull null
-                val matchScore = MatchScoreCalculator.calculate(participant, otherParticipant)
-                ScoredDuo.of(
-                    memberA = participant.memberId,
-                    memberB = otherParticipant.memberId,
-                    score = matchScore.score,
-                    matchedQuestionCount = matchScore.matchedQuestionCount,
-                    totalQuestionCount = matchScore.totalQuestionCount,
+                ScoredMatch.duo(
+                    memberAId = participant.memberId,
+                    memberBId = otherParticipant.memberId,
+                    matchScore = MatchScoreCalculator.calculate(participant, otherParticipant),
                 )
             }
         }
@@ -50,8 +47,15 @@ class OneToOneMatchingProcessor : MatchingProcessor {
      */
     private fun isValidPair(a: MatchParticipant, b: MatchParticipant): Boolean =
         a.isMutuallyCompatibleWith(b) &&
-            abs(a.age - b.age) <= MAX_AGE_GAP &&
+            isWithinAgeGap(a, b) &&
             !a.isBlockedWith(b)
+
+    /** 나이 미상이면 나이차를 판단할 수 없으므로 자격 미달로 본다. */
+    private fun isWithinAgeGap(a: MatchParticipant, b: MatchParticipant): Boolean {
+        val ageA = a.age ?: return false
+        val ageB = b.age ?: return false
+        return abs(ageA - ageB) <= MAX_AGE_GAP
+    }
 
     companion object {
         private const val TOP_RATIO = 0.2 // 상위 20% 선발

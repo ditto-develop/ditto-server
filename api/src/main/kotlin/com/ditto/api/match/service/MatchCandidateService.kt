@@ -2,7 +2,7 @@ package com.ditto.api.match.service
 
 import com.ditto.api.match.dto.Candidate
 import com.ditto.api.match.dto.MatchCandidateResponse
-import com.ditto.api.match.dto.ScoreSummary
+import com.ditto.api.match.matching.MatchScore
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
@@ -72,34 +72,15 @@ class MatchCandidateService(
         matchCandidate: MatchCandidate,
         member: Member,
         introduction: String?,
-    ): Candidate {
-        // location·caricature 는 가입 완료 시 필수값이라 후보(ACTIVE 회원)에는 항상 존재해야 한다.
-        // 없으면 데이터 정합성 오류이므로 명시적으로 예외를 던진다.
-        val location = member.location
-            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "후보 회원의 사는곳이 비어 있습니다: memberId=${member.id}")
-        val profileImage = member.caricature
-            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "후보 회원의 캐리커쳐가 비어 있습니다: memberId=${member.id}")
-
-        return Candidate(
-            userId = member.id,
-            nickname = member.nickname,
-            gender = member.gender?.name,
-            age = member.age,
-            introduction = introduction,
-            location = location.code,
-            profileImageUrl = profileImage,
-            matchRate = matchCandidate.score,
-            scoreBreakdown = ScoreSummary(
-                quizMatchRate = matchCandidate.score,
-                matchedQuestions = matchCandidate.matchedQuestionCount,
-                totalQuestions = matchCandidate.totalQuestionCount,
-                reasons = listOf(reasonOf(matchCandidate)),
-            ),
-        )
-    }
-
-    private fun reasonOf(matchCandidate: MatchCandidate): String =
-        "전체 ${matchCandidate.totalQuestionCount}문항 중 ${matchCandidate.matchedQuestionCount}문항이 일치했어요"
+    ): Candidate = Candidate.of(
+        member = member,
+        introduction = introduction,
+        matchScore = MatchScore(
+            score = matchCandidate.score,
+            matchedQuestionCount = matchCandidate.matchedQuestionCount,
+            totalQuestionCount = matchCandidate.totalQuestionCount,
+        ),
+    )
 
     companion object {
         // TODO: 알고리즘 버전이 match_candidate 에 영속화되면 그 값을 사용한다. 현재는 고정 상수.

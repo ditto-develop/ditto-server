@@ -3,8 +3,8 @@ package com.ditto.api.match.service
 import com.ditto.api.match.dto.MatchingStatusResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.PersonalMatchStatus
-import com.ditto.domain.match.repository.GroupMatchDeclineRepository
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
@@ -18,7 +18,6 @@ class MatchingStatusService(
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
-    private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
 ) {
 
     fun getMatchingStatus(memberId: Long, quizSetId: Long): MatchingStatusResponse {
@@ -46,18 +45,27 @@ class MatchingStatusService(
         return accepted.counterpartOf(memberId)
     }
 
-    /** 그룹 매칭 상태: 거절 > (활성 방=joined / 비활성 방=pending) > 미참여 */
+    /**
+     * 그룹 매칭 상태. 초대 응답이 그룹별로 갈리므로 내 초대들을 모아 판단한다.
+     * - joined: 수락했고 그 그룹이 성사됨(채팅방이 열림)
+     * - pending: 수락했지만 아직 인원이 모자람
+     * - declined: 받은 초대를 모두 거절함
+     */
     private fun groupFlags(memberId: Long, quizSetId: Long): GroupFlags {
-        if (groupMatchDeclineRepository.existsByQuizSetIdAndMemberId(quizSetId, memberId)) {
-            return GroupFlags(declined = true, joined = false, pending = false)
+        val invitations = groupMatchMemberRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
+        if (invitations.isEmpty()) {
+            return GroupFlags(declined = false, joined = false, pending = false)
         }
 
-        val latestMembership = groupMatchMemberRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
-            .maxByOrNull { it.createdAt }
-            ?: return GroupFlags(declined = false, joined = false, pending = false)
+        val accepted = invitations.firstOrNull { it.status == InvitationStatus.ACCEPTED }
+            ?: return GroupFlags(
+                declined = invitations.all { it.status == InvitationStatus.DECLINED },
+                joined = false,
+                pending = false,
+            )
 
-        val room = groupMatchRepository.findById(latestMembership.roomId).orElseThrow {
-            ErrorException(ErrorCode.INTERNAL_ERROR, "참여 기록의 그룹 방이 없습니다: roomId=${latestMembership.roomId}")
+        val room = groupMatchRepository.findById(accepted.roomId).orElseThrow {
+            ErrorException(ErrorCode.INTERNAL_ERROR, "참여 기록의 그룹 방이 없습니다: roomId=${accepted.roomId}")
         }
         return GroupFlags(declined = false, joined = room.isActive, pending = !room.isActive)
     }

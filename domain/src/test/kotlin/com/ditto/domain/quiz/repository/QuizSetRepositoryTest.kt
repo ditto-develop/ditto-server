@@ -1,5 +1,9 @@
 package com.ditto.domain.quiz.repository
 
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.MatchCandidateFixture
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
@@ -11,6 +15,8 @@ import javax.sql.DataSource
 class QuizSetRepositoryTest(
     private val quizSetRepository: QuizSetRepository,
     private val quizProgressRepository: QuizProgressRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
+    private val groupMatchRepository: GroupMatchRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -154,6 +160,40 @@ class QuizSetRepositoryTest(
             val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
 
             result shouldBe null
+        }
+    }
+
+    "findEndedQuizSetsWithoutCandidates" - {
+
+        "마감됐고 후보가 하나도 없으면 배치 대상이다" {
+            quizSetRepository.save(QuizSetFixture.create(endDate = now.minusDays(1)))
+
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 1
+        }
+
+        "아직 마감 전이면 배치 대상이 아니다" {
+            quizSetRepository.save(QuizSetFixture.create(endDate = now.plusDays(1)))
+
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
+        }
+
+        "1:1 후보(match_candidate)가 이미 있으면 제외된다" {
+            val quizSetId = quizSetRepository.save(
+                QuizSetFixture.create(endDate = now.minusDays(1), matchingType = MatchingType.ONE_TO_ONE),
+            ).id
+            matchCandidateRepository.save(MatchCandidateFixture.create(quizSetId = quizSetId))
+
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
+        }
+
+        "그룹 후보(group_match)가 이미 있으면 제외된다" {
+            // 그룹은 후보를 group_match 에 담으므로 match_candidate 만 보면 매주 다시 계산돼 후보 ID 가 갈린다
+            val quizSetId = quizSetRepository.save(
+                QuizSetFixture.create(endDate = now.minusDays(1), matchingType = MatchingType.GROUP),
+            ).id
+            groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
+
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
         }
     }
 })

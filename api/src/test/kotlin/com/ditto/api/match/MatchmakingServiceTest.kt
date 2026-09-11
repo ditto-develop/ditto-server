@@ -4,6 +4,9 @@ import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
@@ -35,6 +38,8 @@ class MatchmakingServiceTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val memberBlockRepository: MemberBlockRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
@@ -265,6 +270,89 @@ class MatchmakingServiceTest(
                 matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(b, quizSetId)
                     .map { it.otherMemberId } shouldBe listOf(a)
                 matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(pending, quizSetId) shouldHaveSize 0
+            }
+        }
+
+        "generateCandidates — 그룹" - {
+
+            fun saveGroupQuizSetWithTwoQuizzes(): Triple<Long, Long, Long> {
+                val quizSetId = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP)).id
+                val quizId1 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 1)).id
+                val quizId2 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 2)).id
+                return Triple(quizSetId, quizId1, quizId2)
+            }
+
+            "완료자들을 후보 그룹으로 저장한다" {
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val members = listOf("그룹회원A", "그룹회원B", "그룹회원C").map { saveMember(it) }
+                // 셋 다 같은 답 → 모든 페어 100점 → 그룹 점수도 100점
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                // 풀이 3명이면 정원도 3명이라 그룹은 하나뿐이다
+                val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
+                rooms shouldHaveSize 1
+                rooms.first().score shouldBe 100.0
+                rooms.first().isActive shouldBe false
+                rooms.first().acceptedCount shouldBe 0
+
+                val roomMembers = groupMatchMemberRepository.findByRoomId(rooms.first().id)
+                roomMembers.map { it.memberId }.sorted() shouldBe members.sorted()
+                roomMembers.forEach { it.status shouldBe InvitationStatus.PENDING }
+            }
+
+            "그룹 퀴즈셋은 페어 후보(match_candidate)를 남기지 않는다" {
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val members = listOf("페어없음A", "페어없음B", "페어없음C").map { saveMember(it) }
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                members.forEach {
+                    matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(it, quizSetId) shouldHaveSize 0
+                }
+            }
+
+            "성별·나이 미상 회원도 후보 그룹에 들어간다" {
+                // 1:1은 성별 상호 선호와 나이차를 따져 제외하지만, 그룹은 두 조건을 쓰지 않는다.
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val known = saveMember("성별있음A")
+                val genderUnknown = saveMember("그룹성별미상", gender = null)
+                val ageUnknown = saveMember("그룹나이미상", age = null)
+                val members = listOf(known, genderUnknown, ageUnknown)
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
+                rooms shouldHaveSize 1
+                groupMatchMemberRepository.findByRoomId(rooms.first().id)
+                    .map { it.memberId }.sorted() shouldBe members.sorted()
+            }
+
+            "이미 응답이 시작된 퀴즈셋은 후보를 다시 만들지 않는다" {
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val members = listOf("재생성A", "재생성B", "재생성C").map { saveMember(it) }
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                // 수락이 임계값에 닿아 방이 활성화된 상태를 만든다 (채팅방이 이 방 ID를 가리키게 된다)
+                val activatedRoom = groupMatchRepository.findByQuizSetId(quizSetId).first()
+                repeat(3) { activatedRoom.recordAcceptance() }
+                groupMatchRepository.save(activatedRoom)
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                // 지워지지 않고 그대로 남아야 한다 — 지우면 열린 채팅방이 고아가 된다
+                val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
+                rooms shouldHaveSize 1
+                rooms.first().id shouldBe activatedRoom.id
+                rooms.first().isActive shouldBe true
             }
         }
     },

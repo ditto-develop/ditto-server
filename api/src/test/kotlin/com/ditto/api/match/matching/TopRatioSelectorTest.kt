@@ -15,7 +15,11 @@ class TopRatioSelectorTest : FreeSpec(
 
         // breakdown(일치/전체 문항 수)은 선발 로직과 무관하므로 0으로 둔다.
         fun duo(memberA: Long, memberB: Long, score: Double) =
-            ScoredDuo.of(memberA, memberB, score, matchedQuestionCount = 0, totalQuestionCount = 0)
+            ScoredMatch.duo(
+                memberAId = memberA,
+                memberBId = memberB,
+                matchScore = MatchScore(score = score, matchedQuestionCount = 0, totalQuestionCount = 0),
+            )
 
         "select" - {
             // 문서 3.2 선발 예시: 5명/10페어, 상위 20% = 2개, 커트라인 7점 → 7점 모두 포함

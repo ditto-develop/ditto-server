@@ -3,6 +3,8 @@ package com.ditto.api.notification.notifier
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Component
 @Component
 class MatchResultNotifier(
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val notificationAppender: NotificationAppender,
 ) {
     /**
@@ -44,7 +48,7 @@ class MatchResultNotifier(
         }
 
         val appended = quizSetIds.sumOf { quizSetId ->
-            val memberIds = matchCandidateRepository.findOwnerMemberIdsByQuizSetId(quizSetId)
+            val memberIds = notifiedMemberIds(quizSetId)
             notificationAppender.appendAll(
                 memberIds = memberIds,
                 content = NotificationMessages.matchResult(),
@@ -56,6 +60,19 @@ class MatchResultNotifier(
             logger.info { "매칭 결과 알림: ${appended}건 (퀴즈셋 ${quizSetIds.size}개)" }
         }
         return appended
+    }
+
+    /**
+     * 후보를 받은 회원. 후보를 담는 테이블이 매칭 타입마다 달라 양쪽을 모두 본다 —
+     * 그룹은 `match_candidate` 에 아무것도 쓰지 않아 1:1만 보면 알림 대상이 0명이 된다.
+     */
+    private fun notifiedMemberIds(quizSetId: Long): List<Long> {
+        val roomIds = groupMatchRepository.findByQuizSetId(quizSetId).map { it.id }
+        val groupMemberIds =
+            if (roomIds.isEmpty()) emptyList()
+            else groupMatchMemberRepository.findByRoomIdIn(roomIds).map { it.memberId }
+
+        return (matchCandidateRepository.findOwnerMemberIdsByQuizSetId(quizSetId) + groupMemberIds).distinct()
     }
 
     companion object {

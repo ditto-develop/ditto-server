@@ -1,5 +1,9 @@
 package com.ditto.api.match.dto
 
+import com.ditto.api.match.matching.MatchScore
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
+import com.ditto.domain.member.entity.Member
 import com.ditto.domain.quiz.entity.MatchingType
 
 /**
@@ -27,7 +31,34 @@ data class Candidate(
     /** 매칭 점수 (0~100) */
     val matchRate: Double,
     val scoreBreakdown: ScoreSummary,
-)
+) {
+    companion object {
+        /**
+         * 회원 프로필과 나와의 점수로 후보 카드를 만든다. 1:1 후보와 그룹 구성원이 같은 카드를 쓴다.
+         *
+         * location·caricature 는 가입 완료 시 필수값이라 후보(ACTIVE 회원)에는 항상 존재해야 한다.
+         * 없으면 데이터 정합성 오류이므로 명시적으로 예외를 던진다.
+         */
+        fun of(member: Member, introduction: String?, matchScore: MatchScore): Candidate {
+            val location = member.location
+                ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "후보 회원의 사는곳이 비어 있습니다: memberId=${member.id}")
+            val profileImage = member.caricature
+                ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "후보 회원의 캐리커쳐가 비어 있습니다: memberId=${member.id}")
+
+            return Candidate(
+                userId = member.id,
+                nickname = member.nickname,
+                gender = member.gender?.name,
+                age = member.age,
+                introduction = introduction,
+                location = location.code,
+                profileImageUrl = profileImage,
+                matchRate = matchScore.score,
+                scoreBreakdown = ScoreSummary.of(matchScore),
+            )
+        }
+    }
+}
 
 data class ScoreSummary(
     /** 퀴즈 답변 일치율 (0~100). 현재는 matchRate 와 동일 값 */
@@ -36,4 +67,15 @@ data class ScoreSummary(
     val totalQuestions: Int,
     /** 매칭 사유 문구. 현재는 일치 문항 수 기반 합성 문장 */
     val reasons: List<String>,
-)
+) {
+    companion object {
+        fun of(matchScore: MatchScore): ScoreSummary = ScoreSummary(
+            quizMatchRate = matchScore.score,
+            matchedQuestions = matchScore.matchedQuestionCount,
+            totalQuestions = matchScore.totalQuestionCount,
+            reasons = listOf(
+                "전체 ${matchScore.totalQuestionCount}문항 중 ${matchScore.matchedQuestionCount}문항이 일치했어요",
+            ),
+        )
+    }
+}

@@ -5,22 +5,16 @@ import com.ditto.domain.withId
 
 object GroupMatchFixture {
 
+    /**
+     * 후보 그룹. [acceptedCount]만큼 수락을 기록해 성사 전/후 상태를 만든다
+     * — 임계값에 닿으면 엔티티가 스스로 활성화하므로 isActive 를 따로 넣지 않는다.
+     */
     fun create(
         quizSetId: Long = 1L,
-        isActive: Boolean = false,
-        participantCount: Int = 0,
+        score: Double = 80.0,
+        acceptedCount: Int = 0,
         id: Long = 0L,
-    ): GroupMatch = GroupMatch.create(quizSetId = quizSetId)
-        .also { match ->
-            if (participantCount > 0) {
-                val countField = match::class.java.getDeclaredField("participantCount")
-                countField.isAccessible = true
-                countField.set(match, participantCount)
-            }
-            if (isActive) {
-                val isActiveField = match::class.java.getDeclaredField("isActive")
-                isActiveField.isAccessible = true
-                isActiveField.set(match, true)
-            }
-        }.withId(id)
+    ): GroupMatch = GroupMatch.candidate(quizSetId = quizSetId, score = score)
+        .also { room -> repeat(acceptedCount) { room.recordAcceptance() } }
+        .withId(id)
 }

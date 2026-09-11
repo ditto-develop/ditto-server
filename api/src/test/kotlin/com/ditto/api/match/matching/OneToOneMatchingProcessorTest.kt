@@ -11,6 +11,10 @@ class OneToOneMatchingProcessorTest : FreeSpec(
     {
         val processor = OneToOneMatchingProcessor()
 
+        // 결과 검증용: 구성원 2명을 (작은 ID, 큰 ID) 순서로 편다.
+        fun asPair(match: ScoredMatch): Pair<Long, Long> =
+            match.memberIds.sorted().let { (smallerId, largerId) -> smallerId to largerId }
+
         // 점수 파이프라인 검증용: 성별·나이 필터가 개입하지 않도록 모두 같은 성별·나이 + ANY 선호.
         fun scored(id: Long, answers: Map<Long, Long>) =
             MatchParticipant(id, answers, gender = Gender.MALE, age = 25, preferredGender = GenderPreference.ANY)
@@ -28,7 +32,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 // 점수(3문항): (1,2)=66.7, (1,3)=33.3, (2,3)=66.7 → 상위20%+동점으로 66.7 두 쌍 선발
                 val result = processor.match(listOf(p1, p2, p3))
 
-                result.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(
+                result.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(
                     1L to 2L,
                     2L to 3L,
                 )
@@ -45,7 +49,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
 
                 val result = processor.match(listOf(p1, p2))
 
-                result.map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                result.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
         }
 
@@ -55,7 +59,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
 
                 processor.match(listOf(male, female))
-                    .map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                    .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
 
             "한쪽 선호라도 어긋나면 페어에서 제외된다 (남(이성선호) ↔ 여(동성선호))" {
@@ -70,7 +74,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val m2 = participant(2L, Gender.MALE, GenderPreference.SAME)
 
                 processor.match(listOf(m1, m2))
-                    .map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                    .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
 
             "ANY 선호는 상대 성별과 무관하게 호환된다" {
@@ -78,7 +82,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val female = participant(2L, Gender.FEMALE, GenderPreference.ANY)
 
                 processor.match(listOf(anyPref, female))
-                    .map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                    .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
         }
 
@@ -95,7 +99,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val b = participant(2L, Gender.FEMALE, GenderPreference.ANY, age = 30) // 차이 10
 
                 processor.match(listOf(a, b))
-                    .map { it.memberId1 to it.memberId2 } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+                    .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
         }
     },

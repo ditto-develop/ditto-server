@@ -69,7 +69,7 @@ class EndedChatReviewOpenerTest(
     fun saveEndedGroupChat(vararg memberIds: Long): Long {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         val match = groupMatchRepository.save(
-            GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = memberIds.size),
+            GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = memberIds.size),
         )
         val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
         chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) })
@@ -176,7 +176,7 @@ class EndedChatReviewOpenerTest(
         "인원 미달로 해체된 방은 평가도 재매칭 쌍도 만들지 않는다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             val match = groupMatchRepository.save(
-                GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = 3),
+                GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3),
             )
             val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
             chatRoomMemberRepository.save(ChatRoomMember.of(roomId = room.id, memberId = MEMBER_A))
@@ -198,7 +198,7 @@ class EndedChatReviewOpenerTest(
         "이탈한 멤버는 평가와 재매칭 쌍에서 함께 빠진다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             val match = groupMatchRepository.save(
-                GroupMatchFixture.create(quizSetId = quizSet.id, isActive = true, participantCount = 3),
+                GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3),
             )
             val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
             chatRoomMemberRepository.saveAll(

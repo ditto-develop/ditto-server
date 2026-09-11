@@ -3,6 +3,8 @@ package com.ditto.domain.match.entity
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -25,6 +27,7 @@ import org.hibernate.annotations.Comment
     indexes = [
         Index(name = "group_match_member_index_1", columnList = "room_id"),
         Index(name = "group_match_member_index_2", columnList = "member_id"),
+        Index(name = "group_match_member_index_3", columnList = "member_id, status"),
     ],
 )
 class GroupMatchMember private constructor(
@@ -39,10 +42,46 @@ class GroupMatchMember private constructor(
     @Comment("회원 ID")
     @Column(name = "member_id", nullable = false)
     val memberId: Long,
+
+    status: InvitationStatus,
 ) : BaseEntity() {
 
+    @Comment("후보 응답 상태")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var status: InvitationStatus = status
+        protected set
+
+    /** 초대를 수락한다. 되돌릴 수 없다 — 화면에서도 "취소할 수 없어요"로 안내한다. */
+    fun accept() {
+        requirePending("수락")
+        status = InvitationStatus.ACCEPTED
+    }
+
+    /** 초대를 거절한다. 본인이 누른 거절과 다른 그룹 수락에 따른 자동 거절이 같은 상태를 쓴다. */
+    fun decline() {
+        requirePending("거절")
+        status = InvitationStatus.DECLINED
+    }
+
+    /**
+     * 응답은 한 번뿐이라는 불변식을 엔티티가 직접 지킨다.
+     * 지금은 호출자([com.ditto.domain.match.repository.GroupMatchMemberRepository] 사용처)가 대기 상태만
+     * 넘겨주지만, 다른 경로가 생겼을 때 잘못된 전이가 조용히 통과하면 안 된다.
+     */
+    private fun requirePending(action: String) {
+        check(status == InvitationStatus.PENDING) { "대기 중인 초대만 $action 할 수 있습니다: status=$status" }
+    }
+
+    fun isPending(): Boolean = status == InvitationStatus.PENDING
+
     companion object {
-        fun of(roomId: Long, memberId: Long): GroupMatchMember =
-            GroupMatchMember(roomId = roomId, memberId = memberId)
+        /** 배치가 후보 그룹에 앉히는 멤버. 본인이 응답하기 전까지 대기 상태다. */
+        fun candidate(roomId: Long, memberId: Long): GroupMatchMember =
+            GroupMatchMember(
+                roomId = roomId,
+                memberId = memberId,
+                status = InvitationStatus.PENDING,
+            )
     }
 }
