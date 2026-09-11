@@ -29,8 +29,41 @@ class GroupMatchingProcessor : MatchingProcessor {
         val seedGroups =
             composeSeedGroups(participants, scoreByMemberPair, GroupSizePolicy.decide(participants.size))
 
-        val selected = TopRatioSelector.select(seedGroups, TOP_RATIO)
-        return HardLimitApplier.apply(selected, HARD_LIMIT)
+        val selected = HardLimitApplier.apply(TopRatioSelector.select(seedGroups, TOP_RATIO), HARD_LIMIT)
+        return selected + coverUnselectedMembers(participants, seedGroups, selected)
+    }
+
+    /**
+     * 선발에서 밀려 어느 그룹에도 들지 못한 회원을 자기가 속한 최고점 씨앗 그룹으로 덮는다.
+     *
+     * 상위 [TOP_RATIO] 컷이 1:1에서는 넉넉하지만 그룹에서는 그렇지 않다. 1:1의 모집단은 페어
+     * N(N-1)/2개인데 그룹은 씨앗당 하나, 즉 약 N개뿐이라 같은 20%라도 남는 수가 훨씬 적고,
+     * 살아남은 그룹들은 고점수 회원을 공유해 크게 겹친다. 30명이면 그룹 ~30개 중 6개만 남고
+     * 실제로 덮이는 회원은 10명 안팎이다 — 나머지는 매칭 결과 화면이 빈 채로 남는다.
+     *
+     * 덮기가 [HARD_LIMIT]을 넘길 수 있다. 이미 3개를 받은 회원이 구제 그룹에 끼면 4개가 된다.
+     * 화면은 그중 하나만 보여주므로 실질 영향이 없고, 아무것도 못 받는 쪽이 훨씬 나쁘다.
+     */
+    private fun coverUnselectedMembers(
+        participants: List<MatchParticipant>,
+        seedGroups: List<ScoredMatch>,
+        selected: List<ScoredMatch>,
+    ): List<ScoredMatch> {
+        val uncoveredMemberIds =
+            participants.map { it.memberId }.toSet() - selected.flatMap { it.memberIds }.toSet()
+        if (uncoveredMemberIds.isEmpty()) return emptyList()
+
+        val rescued = linkedSetOf<ScoredMatch>()
+        uncoveredMemberIds.forEach { memberId ->
+            // 앞서 구제한 그룹이 이미 이 회원을 덮었으면 더 넣지 않는다.
+            if (rescued.any { memberId in it.memberIds }) return@forEach
+
+            seedGroups
+                .filter { memberId in it.memberIds }
+                .maxByOrNull { it.score }
+                ?.let { rescued.add(it) }
+        }
+        return rescued.toList()
     }
 
     /** 참여자 전원의 페어 점수를 양방향으로 미리 계산한다. 씨앗 정렬과 그룹 점수 계산이 반복 조회한다. */

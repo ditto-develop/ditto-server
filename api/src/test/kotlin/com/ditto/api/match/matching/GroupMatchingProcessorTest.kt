@@ -71,6 +71,25 @@ class GroupMatchingProcessorTest : FreeSpec(
             }
         }
 
+        "노출 보장" - {
+
+            "선발에서 밀린 회원도 그룹 하나는 받는다" {
+                // 상위 20% 컷만 쓰면 30명 중 10명 안팎만 덮인다. 나머지는 빈 화면이 된다.
+                val participants = pool(30)
+
+                val result = processor.match(participants)
+
+                val coveredMemberIds = result.flatMap { it.memberIds }.toSet()
+                coveredMemberIds shouldBe participants.map { it.memberId }.toSet()
+            }
+
+            "구제한 그룹도 정원을 지킨다" {
+                val result = processor.match(pool(30))
+
+                result.forEach { it.memberIds.size shouldBe GroupSizePolicy.decide(30) }
+            }
+        }
+
         "차단" - {
             "차단 관계인 두 사람은 같은 그룹에 들어가지 않는다" {
                 val answers = mapOf(101L to 1L, 102L to 1L)
