@@ -5,10 +5,17 @@ import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Member
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -36,6 +43,15 @@ class IntroNoteControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var personalMatchRepository: PersonalMatchRepository
+
+    @Autowired
+    private lateinit var matchCandidateRepository: MatchCandidateRepository
+
+    @Autowired
+    private lateinit var quizSetRepository: QuizSetRepository
+
+    @Autowired
+    private lateinit var quizProgressRepository: QuizProgressRepository
 
     @Test
     @DisplayName("소개노트 질문 하나의 답변을 저장한다")
@@ -154,7 +170,18 @@ class IntroNoteControllerTest : RestDocsTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Users")
                             .summary("타인 소개노트 조회")
-                            .description("매칭이 성사되었거나 같은 그룹 채팅에 참여한 상대의 소개노트를 조회합니다. 권한이 없으면 403.")
+                            .description(
+                                """
+                                상대의 소개노트를 조회합니다. 관계에 따라 공개 범위가 다릅니다.
+
+                                - 매칭 성사(ACCEPTED)·같은 그룹 채팅 참여자: 고정 질문 **전체**
+                                - 이번 주 매칭 후보(성사 전, `GET /api/v1/matches/1on1` 의 `candidates[].userId`):
+                                  **미리보기 3문항만** — 상대가 작성한 답변 중 무작위 2문항 + `one-word`(항상 포함, 마지막).
+                                  무작위 선택은 (조회자, 대상자) 기준으로 고정이라 재조회해도 같은 문항이 옵니다.
+                                  기준 퀴즈셋은 후보 목록과 같아 다음 주 퀴즈셋을 완료하면 지난 주 후보는 닫힙니다.
+                                - 그 외(차단 관계 포함): 403
+                                """.trimIndent(),
+                            )
                             .pathParameters(
                                 parameterWithName("id").description("대상 사용자 ID"),
                             )
@@ -163,12 +190,49 @@ class IntroNoteControllerTest : RestDocsTest() {
                                 fieldWithPath("data.answers[].questionCode").description("질문 code (가능한 값: $INTRO_QUESTION_CODES)"),
                                 fieldWithPath("data.answers[].question").description("질문 문구"),
                                 fieldWithPath("data.answers[].answer").description("답변 (미작성 시 빈 문자열)"),
-                                fieldWithPath("data.completedCount").description("작성 완료된 답변 수"),
+                                fieldWithPath("data.completedCount")
+                                    .description("이 응답에 담긴 답변 중 작성된 수 (후보 미리보기면 3문항 기준)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("성사 전 매칭 후보의 소개노트는 미리보기 3문항만 조회된다")
+    fun getIntroNotesAsMatchCandidate() {
+        val viewer = memberRepository.save(Member(nickname = "후보조회자").apply { activate() })
+        val target = memberRepository.save(Member(nickname = "이번주후보").apply { activate() })
+        IntroQuestion.entries.forEach { question ->
+            introNoteRepository.save(IntroNote.create(target.id, question, "${question.code} 답변"))
+        }
+        exposeAsCandidates(viewer.id, target.id)
+
+        mockMvc.perform(
+            get("/api/v1/users/{id}/intro-notes", target.id)
+                .withApiKey()
+                .withBearerToken(viewer.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.answers.length()").value(3))
+            .andExpect(jsonPath("$.data.answers[2].questionCode").value(IntroQuestion.ONE_WORD.code))
+            .andExpect(jsonPath("$.data.completedCount").value(3))
+    }
+
+    /** 두 회원을 이번 주(=조회자가 최근 완료한 1:1 퀴즈셋) 후보로 서로 노출시킨다. */
+    private fun exposeAsCandidates(viewerId: Long, targetId: Long) {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val progress = QuizProgressFixture.create(memberId = viewerId, quizSetId = quizSet.id, totalCount = 1)
+        progress.recordAnswer() // NOT_STARTED -> COMPLETED
+        quizProgressRepository.save(progress)
+        matchCandidateRepository.save(
+            MatchCandidateFixture.create(ownerMemberId = viewerId, otherMemberId = targetId, quizSetId = quizSet.id),
+        )
+        matchCandidateRepository.save(
+            MatchCandidateFixture.create(ownerMemberId = targetId, otherMemberId = viewerId, quizSetId = quizSet.id),
+        )
     }
 }

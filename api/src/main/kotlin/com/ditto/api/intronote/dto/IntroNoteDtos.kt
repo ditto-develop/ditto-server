@@ -20,7 +20,10 @@ data class IntroNoteResponse(
 )
 
 /**
- * 회원의 전체 소개노트 응답. 고정 질문 순서대로 항상 전체를 반환한다.
+ * 소개노트 응답. 항상 고정 질문 순서대로 담는다.
+ *
+ * 본인·매칭 성사 상대는 전체 질문이 오고, **성사 전 매칭 후보**는 미리보기 3문항만 온다
+ * (무작위 2문항 + `one-word`). [completedCount] 는 이 응답에 담긴 답변 중 작성된 수다.
  */
 data class IntroNotesResponse(
     val answers: List<IntroNoteResponse>,

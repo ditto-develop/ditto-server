@@ -15,7 +15,8 @@
 - 1:1 유니크: `PersonalMatch`는 `memberId1`=min/`memberId2`=max로 정규화 + `requesterId` 별도 보존. UK(`member_id_1`, `member_id_2`, `quiz_set_id`)로 방향 무관 중복 금지. 방향은 `receiverId()`/`counterpartOf()` 헬퍼로 복원.
 - `match_candidate`: 페어당 양방향 2행(`ownerMemberId`/`otherMemberId`)으로 저장(내 후보 조회 단순화). 재계산은 `deleteByQuizSetId` 후 대체, anti-join 단일 쿼리 멱등 스케줄러(기본 매주 목 05:00, `test` 프로필 비활성).
 - 그룹 유니크: `GroupMatchMember`(UK `room_id`+`member_id`) / `GroupMatchDecline`(UK `quiz_set_id`+`member_id`)로 분리. `GroupMatch`의 `quizSetId` UK 제거 → 퀴즈셋당 다수 그룹 허용(한 멤버가 같은 퀴즈셋 여러 방 참여 가능).
-- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리).
+- 후보 관계는 **성사 전 열람 권한**의 근거이기도 하다: `MatchAccessChecker.isMatchCandidate`가 "조회자가 최근 완료한 1:1 퀴즈셋"의 후보 행(방향 무관, `existsPairByQuizSetId`)으로 판정한다. 지난 주 후보 행이 남아 있어도 기준 퀴즈셋이 옮겨 가면 닫힌다. 공개 범위는 `docs/domains/intronote.md` 참고.
+- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리), `docs/adr/0025-intro-note-candidate-preview.md`(후보 기반 성사 전 열람).
 
 ## 상태 전이
 - 상태 enum: `match/entity/PersonalMatchStatus`(1:1). 그룹 참여/거절은 `GroupMatchMember`/`GroupMatchDecline` 두 테이블로 표현.

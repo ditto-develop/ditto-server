@@ -20,6 +20,7 @@
 - [0016 — 회원 탈퇴는 소프트 삭제로 처리하고 30일 안에 재가입하면 복구한다](0016-member-leave-soft-delete-and-restore.md)
 - [0018 — 알림은 문구를 확정해 적재하고, 적재는 비즈니스 트랜잭션을 되돌리지 않는다](0018-notification-center-append-and-read.md)
 - [0024 — 어드민 문항 편집은 폼 한 번으로 저장하고, 순서는 화면 순서로 매긴다](0024-admin-quiz-bulk-edit-implicit-order.md)
+- [0025 — 성사 전 소개노트는 후보에게 3문항만 연다](0025-intro-note-candidate-preview.md)
 
 ## 언제 ADR을 쓰는가
 
