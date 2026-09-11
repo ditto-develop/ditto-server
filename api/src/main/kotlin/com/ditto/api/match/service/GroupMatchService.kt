@@ -42,11 +42,14 @@ class GroupMatchService(
 
         val invitation = findPendingInvitation(groupMatchId, memberId)
         invitation.accept()
-        room.recordAcceptance()
+        val justFormed = room.recordAcceptance()
         declineOtherInvitations(memberId, room.quizSetId, acceptedGroupMatchId = groupMatchId)
 
-        if (room.isActive) {
-            openGroupChatAndNotify(groupMatchId)
+        // 정원이 최소 인원보다 커서 성사 뒤에도 수락이 들어온다. 그때는 방을 새로 여는 게 아니라
+        // 이미 열린 방에 이 사람만 붙여야 한다 — createGroupRoom 은 방이 있으면 곧바로 돌아간다.
+        when {
+            justFormed -> openGroupChatAndNotify(groupMatchId)
+            room.isActive -> joinFormedChatAndNotify(groupMatchId, memberId, room.participantCount)
         }
         return GroupMatchAcceptResponse.from(room)
     }
@@ -77,6 +80,17 @@ class GroupMatchService(
             InvitationStatus.ACCEPTED -> throw WarnException(ErrorCode.ALREADY_JOINED_GROUP)
             InvitationStatus.DECLINED -> throw WarnException(ErrorCode.ALREADY_DECLINED_GROUP)
         }
+    }
+
+    /** 성사 뒤에 수락한 사람을 이미 열린 방에 넣고 본인에게만 알린다. 기존 구성원에게는 다시 알리지 않는다. */
+    private fun joinFormedChatAndNotify(groupMatchId: Long, memberId: Long, memberCount: Int) {
+        val chatRoomId = chatService.addGroupRoomMember(groupMatchId, memberId) ?: return
+
+        notificationAppender.appendAll(
+            memberIds = listOf(memberId),
+            content = NotificationMessages.groupFormed(memberCount),
+            targetId = chatRoomId,
+        )
     }
 
     /**

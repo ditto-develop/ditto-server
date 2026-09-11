@@ -78,6 +78,24 @@ class ChatService(
     }
 
     /**
+     * 이미 열린 그룹 채팅방에 구성원 한 명을 넣는다. 이미 들어가 있으면 아무 것도 하지 않는다(멱등).
+     *
+     * 그룹 정원이 성사 최소 인원보다 커서 **방이 열린 뒤에도 수락이 더 들어온다.**
+     * [createGroupRoom]은 방이 있으면 곧바로 돌아가므로 그 경로로는 늦은 수락자가 방에 들어가지 못한다.
+     *
+     * @return 그 그룹의 채팅방 ID. 방이 아직 없으면 null — 성사 전에는 부를 일이 없다.
+     */
+    @Transactional
+    fun addGroupRoomMember(groupMatchId: Long, memberId: Long): Long? {
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId) ?: return null
+
+        if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(room.id, memberId)) {
+            chatRoomMemberRepository.save(ChatRoomMember.of(roomId = room.id, memberId = memberId))
+        }
+        return room.id
+    }
+
+    /**
      * 성사된 재매칭의 채팅방을 예약한다. 이미 있으면 아무 것도 하지 않는다(멱등).
      * 방 예약 스케줄러가 쌍마다 부르며, 방과 참여자가 한 트랜잭션이어야 한다 —
      * 방만 남고 참여자가 없으면 아무도 들어갈 수 없는데, 예약 조회는 방 존재로 완료를 판정해

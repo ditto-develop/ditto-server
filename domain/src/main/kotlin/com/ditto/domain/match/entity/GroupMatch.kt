@@ -53,12 +53,18 @@ class GroupMatch private constructor(
     /**
      * 구성원 한 명의 수락을 기록한다. 수락자가 [ACTIVATION_THRESHOLD]명에 닿으면 그룹이 성사되고,
      * 성사된 방은 금요일에 채팅방이 열린다. 되돌릴 수 없다 — 화면에서도 "취소할 수 없어요"로 안내한다.
+     *
+     * 정원이 최소 인원보다 크므로 **성사 뒤에도 수락이 더 들어온다.** 호출자가 "채팅방을 새로 열지,
+     * 이미 열린 방에 이 사람만 넣을지"를 가려야 해서 이번 수락으로 성사됐는지를 돌려준다.
+     *
+     * @return 이번 수락으로 막 성사됐으면 true. 이미 성사돼 있었거나 아직 인원이 모자라면 false.
      */
-    fun recordAcceptance() {
+    fun recordAcceptance(): Boolean {
         participantCount++
-        if (participantCount >= ACTIVATION_THRESHOLD) {
-            isActive = true
-        }
+        if (isActive) return false
+
+        isActive = participantCount >= ACTIVATION_THRESHOLD
+        return isActive
     }
 
     companion object {

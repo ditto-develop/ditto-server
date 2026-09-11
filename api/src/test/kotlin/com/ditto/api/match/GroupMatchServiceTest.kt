@@ -110,6 +110,22 @@ class GroupMatchServiceTest(
                     ?.sourceId shouldBe roomId
             }
 
+            "성사 뒤에 수락한 사람도 채팅방에 들어간다" {
+                // 정원(4)이 성사 최소 인원(3)보다 커서 4번째 수락이 정상 경로다.
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
+                groupMatchService.acceptGroupMatch(1L, roomId)
+                groupMatchService.acceptGroupMatch(2L, roomId)
+                groupMatchService.acceptGroupMatch(3L, roomId)
+
+                val result = groupMatchService.acceptGroupMatch(4L, roomId)
+
+                result.acceptedCount shouldBe 4
+                result.isFormed shouldBe true
+                val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId)!!
+                chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom.id))
+                    .map { it.memberId } shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L, 4L)
+            }
+
             "채팅방에는 수락한 사람만 들어간다" {
                 val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
                 groupMatchService.declineGroupMatch(4L, roomId)
