@@ -4,15 +4,27 @@ import com.ditto.api.intronote.service.IntroNoteService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.member.entity.MemberBlock
+import com.ditto.domain.member.repository.MemberBlockRepository
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
 
@@ -22,6 +34,10 @@ class IntroNoteServiceTest(
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
+    private val memberBlockRepository: MemberBlockRepository,
+    private val quizSetRepository: QuizSetRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -30,6 +46,30 @@ class IntroNoteServiceTest(
 
         fun answerOf(result: com.ditto.api.intronote.dto.IntroNotesResponse, code: String) =
             result.answers.first { it.questionCode == code }.answer
+
+        // 회원이 완료(COMPLETED)한 1:1 퀴즈셋. 후보 열람 권한의 기준 퀴즈셋이 된다.
+        fun completeOneToOneQuizSet(memberId: Long): QuizSet {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+            val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 1)
+            progress.recordAnswer() // NOT_STARTED -> COMPLETED
+            quizProgressRepository.save(progress)
+            return quizSet
+        }
+
+        fun exposeAsCandidates(quizSetId: Long, oneId: Long, otherId: Long) {
+            matchCandidateRepository.save(
+                MatchCandidateFixture.create(ownerMemberId = oneId, otherMemberId = otherId, quizSetId = quizSetId),
+            )
+            matchCandidateRepository.save(
+                MatchCandidateFixture.create(ownerMemberId = otherId, otherMemberId = oneId, quizSetId = quizSetId),
+            )
+        }
+
+        fun answerAll(memberId: Long) {
+            IntroQuestion.entries.forEach { question ->
+                introNoteService.saveAnswer(memberId, question.code, "${question.code} 답변")
+            }
+        }
 
         "소개노트 저장(upsert)" - {
             "질문 하나의 답변을 저장하면 해당 답변과 completedCount가 반영된다" {
@@ -134,6 +174,100 @@ class IntroNoteServiceTest(
                     introNoteService.getIntroNotes(memberId, targetId)
                 }
                 exception.errorCode shouldBe ErrorCode.FORBIDDEN
+            }
+
+            "매칭 후보(성사 전)의 소개노트는 미리보기 3문항만 조회된다" {
+                val targetId = 5L
+                answerAll(targetId)
+                val quizSet = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(quizSet.id, memberId, targetId)
+
+                val result = introNoteService.getIntroNotes(memberId, targetId)
+
+                result.answers.size shouldBe 3
+                result.answers.map { it.questionCode } shouldContain IntroQuestion.ONE_WORD.code
+                result.completedCount shouldBe 3
+            }
+
+            "미리보기 문항은 다시 조회해도 같다 — 새로고침마다 바뀌면 반복 호출로 전체를 긁을 수 있다" {
+                val targetId = 6L
+                answerAll(targetId)
+                val quizSet = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(quizSet.id, memberId, targetId)
+
+                val first = introNoteService.getIntroNotes(memberId, targetId).answers.map { it.questionCode }
+                val second = introNoteService.getIntroNotes(memberId, targetId).answers.map { it.questionCode }
+
+                first shouldBe second
+            }
+
+            "미리보기의 무작위 2문항은 작성된 답변에서만 뽑고, 고정 문항(one-word)은 미작성이어도 포함된다" {
+                val targetId = 7L
+                introNoteService.saveAnswer(targetId, "travel-items", "이어폰")
+                val quizSet = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(quizSet.id, memberId, targetId)
+
+                val result = introNoteService.getIntroNotes(memberId, targetId)
+
+                result.answers.map { it.questionCode } shouldBe listOf("travel-items", "one-word")
+                answerOf(result, "one-word") shouldBe ""
+                result.completedCount shouldBe 1
+            }
+
+            "매칭 후보라도 차단 관계면 FORBIDDEN 예외가 발생한다" {
+                val targetId = 8L
+                answerAll(targetId)
+                val quizSet = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(quizSet.id, memberId, targetId)
+                memberBlockRepository.save(MemberBlock.create(blockerId = memberId, blockedMemberId = targetId))
+
+                val exception = shouldThrow<WarnException> {
+                    introNoteService.getIntroNotes(memberId, targetId)
+                }
+                exception.errorCode shouldBe ErrorCode.FORBIDDEN
+            }
+
+            "후보 행이 최근 완료한 퀴즈셋의 것이 아니면 조회할 수 없다 — 지난 주 후보는 닫힌다" {
+                val targetId = 9L
+                answerAll(targetId)
+                val lastWeek = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(lastWeek.id, memberId, targetId)
+                // 다음 주 퀴즈셋을 완료하면 기준 퀴즈셋이 옮겨 가고, 그 셋에는 이 후보가 없다.
+                quizSetRepository.save(
+                    QuizSetFixture.create(
+                        matchingType = MatchingType.ONE_TO_ONE,
+                        startDate = lastWeek.endDate.plusDays(1),
+                        endDate = lastWeek.endDate.plusDays(8),
+                    ),
+                ).also { thisWeek ->
+                    val progress =
+                        QuizProgressFixture.create(memberId = memberId, quizSetId = thisWeek.id, totalCount = 1)
+                    progress.recordAnswer()
+                    quizProgressRepository.save(progress)
+                }
+
+                val exception = shouldThrow<WarnException> {
+                    introNoteService.getIntroNotes(memberId, targetId)
+                }
+                exception.errorCode shouldBe ErrorCode.FORBIDDEN
+            }
+
+            "매칭이 성사된 상대는 후보 미리보기가 아니라 전체 문항이 조회된다" {
+                val targetId = 10L
+                answerAll(targetId)
+                val quizSet = completeOneToOneQuizSet(memberId)
+                exposeAsCandidates(quizSet.id, memberId, targetId)
+                personalMatchRepository.save(
+                    PersonalMatchFixture.create(
+                        requesterId = memberId,
+                        receiverId = targetId,
+                        status = PersonalMatchStatus.ACCEPTED,
+                    ),
+                )
+
+                val result = introNoteService.getIntroNotes(memberId, targetId)
+
+                result.answers.size shouldBe IntroQuestion.entries.size
             }
 
             "매칭 상태가 PENDING이면 조회할 수 없다" {
