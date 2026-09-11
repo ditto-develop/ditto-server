@@ -46,4 +46,21 @@ class GroupMatchMemberRepositoryImpl(
             )
             .fetchFirst() != null
     }
+
+    override fun existsSharedCandidateGroup(memberId: Long, otherMemberId: Long, quizSetId: Long): Boolean {
+        val other = QGroupMatchMember("other")
+        return queryFactory
+            .selectOne()
+            .from(groupMatchMember)
+            .join(other).on(groupMatchMember.roomId.eq(other.roomId))
+            .join(groupMatch).on(groupMatchMember.roomId.eq(groupMatch.id))
+            .where(
+                groupMatchMember.memberId.eq(memberId),
+                other.memberId.eq(otherMemberId),
+                groupMatch.quizSetId.eq(quizSetId),
+                groupMatchMember.status.ne(InvitationStatus.DECLINED),
+                other.status.ne(InvitationStatus.DECLINED),
+            )
+            .fetchFirst() != null
+    }
 }

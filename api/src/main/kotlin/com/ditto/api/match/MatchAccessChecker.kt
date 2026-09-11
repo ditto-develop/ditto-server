@@ -35,17 +35,27 @@ class MatchAccessChecker(
     /**
      * 상대가 **이번 주 매칭 후보로 서로에게 노출된 상대**인지 판단한다.
      *
-     * 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`)과 같다 — "조회자가 최근 완료한 1:1 퀴즈셋".
-     * 후보 행은 지난 주 것도 남으므로 퀴즈셋으로 좁히지 않으면 열람 권한이 영구히 열린다.
-     * 다음 주 퀴즈셋을 완료하는 순간 지난 주 후보는 자연히 닫힌다.
-     *
-     * **1:1 전용이다.** 그룹은 후보를 `match_candidate` 가 아니라 `group_match` 에 담아 이 판정에
-     * 걸리지 않고, [isMatched] 의 `existsSharedRoom` 은 양쪽 수락 + 성사를 요구한다.
-     * 즉 그룹 후보끼리는 성사 전 소개노트를 볼 수 없다 — 열려면 그룹용 판정을 따로 두어야 한다.
+     * 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`·`/matches/group`)과 같다 —
+     * "조회자가 최근 완료한 퀴즈셋". 후보는 지난 주 것도 남으므로 퀴즈셋으로 좁히지 않으면 열람 권한이
+     * 영구히 열린다. 다음 주 퀴즈셋을 완료하는 순간 지난 주 후보는 자연히 닫힌다.
      */
-    fun isMatchCandidate(memberId: Long, otherMemberId: Long): Boolean {
+    fun isMatchCandidate(memberId: Long, otherMemberId: Long): Boolean =
+        isOneToOneCandidate(memberId, otherMemberId) || isGroupCandidate(memberId, otherMemberId)
+
+    private fun isOneToOneCandidate(memberId: Long, otherMemberId: Long): Boolean {
         val quizSet = quizSetRepository.findLatestCompletedQuizSet(memberId, MatchingType.ONE_TO_ONE)
             ?: return false
         return matchCandidateRepository.existsPairByQuizSetId(memberId, otherMemberId, quizSet.id)
+    }
+
+    /**
+     * 그룹은 후보를 `match_candidate` 가 아니라 `group_match` 에 담아 1:1 판정에 걸리지 않는다.
+     * [isMatched] 의 `existsSharedRoom` 은 양쪽 수락 + 성사를 요구하므로 후보 단계도 통과하지 못한다.
+     * 그룹 후보 화면(프로필 선택 → 소개노트)도 참여 여부를 정하는 화면이라 1:1과 같은 구간이 필요하다.
+     */
+    private fun isGroupCandidate(memberId: Long, otherMemberId: Long): Boolean {
+        val quizSet = quizSetRepository.findLatestCompletedQuizSet(memberId, MatchingType.GROUP)
+            ?: return false
+        return groupMatchMemberRepository.existsSharedCandidateGroup(memberId, otherMemberId, quizSet.id)
     }
 }

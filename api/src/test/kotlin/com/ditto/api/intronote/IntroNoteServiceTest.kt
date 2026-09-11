@@ -56,6 +56,21 @@ class IntroNoteServiceTest(
             return quizSet
         }
 
+        // 회원이 완료한 그룹 퀴즈셋. 그룹 후보 열람 권한의 기준 퀴즈셋이 된다.
+        fun completeGroupQuizSet(memberId: Long): QuizSet {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP))
+            val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 1)
+            progress.recordAnswer()
+            quizProgressRepository.save(progress)
+            return quizSet
+        }
+
+        fun putInSameCandidateGroup(quizSetId: Long, vararg memberIds: Long): Long {
+            val room = groupMatchRepository.save(GroupMatch.candidate(quizSetId, score = 80.0))
+            memberIds.forEach { groupMatchMemberRepository.save(GroupMatchMember.candidate(room.id, it)) }
+            return room.id
+        }
+
         fun exposeAsCandidates(quizSetId: Long, oneId: Long, otherId: Long) {
             matchCandidateRepository.save(
                 MatchCandidateFixture.create(ownerMemberId = oneId, otherMemberId = otherId, quizSetId = quizSetId),
@@ -156,13 +171,37 @@ class IntroNoteServiceTest(
                 answerOf(result, "one-word") shouldBe "그룹원답변"
             }
 
-            "후보 그룹에 함께 묶이기만 한 사이는 소개노트를 조회할 수 없다" {
-                val targetId = 4L
-                introNoteService.saveAnswer(targetId, "one-word", "후보답변")
-                val room = groupMatchRepository.save(GroupMatch.candidate(quizSetId = 1L, score = 80.0))
-                listOf(memberId, targetId).forEach {
-                    groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = it))
-                }
+            "같은 후보 그룹의 상대는 성사 전에도 미리보기 3문항을 조회할 수 있다" {
+                // 그룹 프로필 선택 → 소개노트도 참여 여부를 정하는 화면이라 1:1과 같은 구간이다.
+                val targetId = 11L
+                answerAll(targetId)
+                val quizSet = completeGroupQuizSet(memberId)
+                putInSameCandidateGroup(quizSet.id, memberId, targetId)
+
+                val result = introNoteService.getIntroNotes(memberId, targetId)
+
+                result.answers.size shouldBe 3
+                result.answers.map { it.questionCode } shouldContain IntroQuestion.ONE_WORD.code
+            }
+
+            "내가 거절한 후보 그룹의 상대는 조회할 수 없다" {
+                val targetId = 12L
+                answerAll(targetId)
+                val quizSet = completeGroupQuizSet(memberId)
+                val roomId = putInSameCandidateGroup(quizSet.id, memberId, targetId)
+                val mine = groupMatchMemberRepository.findByRoomIdAndMemberId(roomId, memberId)!!
+                mine.decline()
+                groupMatchMemberRepository.save(mine)
+
+                shouldThrow<WarnException> { introNoteService.getIntroNotes(memberId, targetId) }
+            }
+
+            "다른 후보 그룹의 상대는 조회할 수 없다" {
+                val targetId = 13L
+                answerAll(targetId)
+                val quizSet = completeGroupQuizSet(memberId)
+                putInSameCandidateGroup(quizSet.id, memberId, 99L)
+                putInSameCandidateGroup(quizSet.id, targetId, 98L)
 
                 shouldThrow<WarnException> { introNoteService.getIntroNotes(memberId, targetId) }
             }

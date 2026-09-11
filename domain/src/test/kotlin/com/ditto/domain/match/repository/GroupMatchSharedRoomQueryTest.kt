@@ -69,4 +69,50 @@ class GroupMatchSharedRoomQueryTest(
             groupMatchMemberRepository.existsSharedRoom(1L, 2L) shouldBe false
         }
     }
+
+    "existsSharedCandidateGroup" - {
+
+        "같은 후보 그룹에 남아 있으면 응답 전이어도 true 다" {
+            // 성사 전 소개노트 미리보기의 근거 — 참여 여부를 정하려면 상대를 볼 수 있어야 한다.
+            val roomId = saveGroup()
+            saveMember(roomId, 1L, accepted = false)
+            saveMember(roomId, 2L, accepted = false)
+
+            groupMatchMemberRepository.existsSharedCandidateGroup(1L, 2L, quizSetId = 1L) shouldBe true
+        }
+
+        "조회자가 그 그룹을 거절했으면 false 다" {
+            val roomId = saveGroup()
+            val mine = GroupMatchMember.candidate(roomId, 1L).apply { decline() }
+            groupMatchMemberRepository.save(mine)
+            saveMember(roomId, 2L, accepted = false)
+
+            groupMatchMemberRepository.existsSharedCandidateGroup(1L, 2L, quizSetId = 1L) shouldBe false
+        }
+
+        "상대가 그 그룹을 거절했으면 false 다" {
+            val roomId = saveGroup()
+            saveMember(roomId, 1L, accepted = false)
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId, 2L).apply { decline() })
+
+            groupMatchMemberRepository.existsSharedCandidateGroup(1L, 2L, quizSetId = 1L) shouldBe false
+        }
+
+        "다른 퀴즈셋의 그룹이면 false 다" {
+            val roomId = groupMatchRepository.save(
+                GroupMatchFixture.create(quizSetId = 2L),
+            ).id
+            saveMember(roomId, 1L, accepted = false)
+            saveMember(roomId, 2L, accepted = false)
+
+            groupMatchMemberRepository.existsSharedCandidateGroup(1L, 2L, quizSetId = 1L) shouldBe false
+        }
+
+        "서로 다른 후보 그룹이면 false 다" {
+            saveMember(saveGroup(), 1L, accepted = false)
+            saveMember(saveGroup(), 2L, accepted = false)
+
+            groupMatchMemberRepository.existsSharedCandidateGroup(1L, 2L, quizSetId = 1L) shouldBe false
+        }
+    }
 })
