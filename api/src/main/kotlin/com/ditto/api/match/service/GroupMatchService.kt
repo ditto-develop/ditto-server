@@ -31,19 +31,25 @@ class GroupMatchService(
     /**
      * 그룹 초대를 수락한다.
      *
-     * **방 행을 잠그고 시작한다**(ADR 0011). 동시 수락이 각자 낡은 수락자 수를 보면 성사 판정이 어긋나고,
-     * 둘 다 임계값에 닿았다고 판단해 채팅방을 만들면 `chat_room` 유일키 충돌로 한쪽 트랜잭션이 통째로
-     * 롤백돼 그 사람의 수락이 사라진다. 잠금 조회는 이 트랜잭션의 첫 접근이어야 하므로 맨 앞에 둔다(규칙 5).
+     * **잠금을 방 → 내 초대 순서로 건다**(ADR 0011 규칙 3).
+     *
+     * 방 잠금은 같은 그룹에 대한 동시 수락을 직렬화한다. 없으면 둘 다 낡은 수락자 수를 보고 임계값에
+     * 닿았다고 판단해 채팅방을 만들려다 `chat_room` 유일키 충돌로 한쪽이 통째로 롤백된다.
+     * 내 초대 잠금은 한 회원이 **서로 다른 두 그룹**을 동시에 수락하는 경쟁을 막는다 — 방만 잠그면
+     * 각자 다른 행을 잠그므로 둘 다 통과해 "한 주에 채팅방 하나"가 깨진다.
+     *
+     * 두 잠금 모두 이 트랜잭션에서 해당 엔티티의 첫 접근이다(규칙 5).
      */
     @Transactional
     fun acceptGroupMatch(memberId: Long, groupMatchId: Long): GroupMatchAcceptResponse {
         val room = groupMatchRepository.findWithLockById(groupMatchId)
             ?: throw WarnException(ErrorCode.NOT_FOUND)
+        val myInvitations = groupMatchMemberRepository.findWithLockByMemberId(memberId)
 
-        val invitation = findPendingInvitation(groupMatchId, memberId)
+        val invitation = pendingInvitationIn(myInvitations, groupMatchId)
         invitation.accept()
         val justFormed = room.recordAcceptance()
-        declineOtherInvitations(memberId, room.quizSetId, acceptedGroupMatchId = groupMatchId)
+        declineOtherInvitations(myInvitations, room.quizSetId, acceptedGroupMatchId = groupMatchId)
 
         // 정원이 최소 인원보다 커서 성사 뒤에도 수락이 들어온다. 그때는 방을 새로 여는 게 아니라
         // 이미 열린 방에 이 사람만 붙여야 한다 — createGroupRoom 은 방이 있으면 곧바로 돌아간다.
@@ -54,33 +60,49 @@ class GroupMatchService(
         return GroupMatchAcceptResponse.from(room)
     }
 
-    /** 그룹 초대를 거절한다. 수락자 수를 건드리지 않으므로 방 행을 잠글 필요가 없다. */
+    /** 그룹 초대를 거절한다. 내 초대 한 행만 바꾸고 수락자 수도 건드리지 않으므로 잠그지 않는다. */
     @Transactional
     fun declineGroupMatch(memberId: Long, groupMatchId: Long) {
-        findPendingInvitation(groupMatchId, memberId).decline()
+        val invitation = groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)
+            ?: throw WarnException(ErrorCode.FORBIDDEN)
+
+        requirePending(invitation).decline()
     }
 
     /**
      * 한 주에 열리는 채팅방은 하나뿐이라, 한 그룹을 수락하면 같은 퀴즈셋의 남은 초대는 자동 거절한다.
      * 거절당한 그룹의 다른 구성원에게는 알리지 않는다 — 그들에게는 성사 가능성이 낮아졌을 뿐이다.
      */
-    private fun declineOtherInvitations(memberId: Long, quizSetId: Long, acceptedGroupMatchId: Long) {
-        groupMatchMemberRepository
-            .findByMemberIdAndQuizSetId(memberId, quizSetId)
-            .filter { it.roomId != acceptedGroupMatchId && it.isPending() }
-            .forEach { it.decline() }
+    private fun declineOtherInvitations(
+        myInvitations: List<GroupMatchMember>,
+        quizSetId: Long,
+        acceptedGroupMatchId: Long,
+    ) {
+        val otherPending = myInvitations.filter { it.roomId != acceptedGroupMatchId && it.isPending() }
+        if (otherPending.isEmpty()) return
+
+        // 잠긴 초대는 회원 전체(여러 주)라 이번 퀴즈셋 것만 골라낸다. quizSetId 는 불변이라 잠그지 않고 읽는다.
+        val sameQuizSetRoomIds = groupMatchRepository.findAllById(otherPending.map { it.roomId })
+            .filter { it.quizSetId == quizSetId }
+            .map { it.id }
+            .toSet()
+
+        otherPending.filter { it.roomId in sameQuizSetRoomIds }.forEach { it.decline() }
     }
 
-    private fun findPendingInvitation(groupMatchId: Long, memberId: Long): GroupMatchMember {
-        val invitation = groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)
+    private fun pendingInvitationIn(myInvitations: List<GroupMatchMember>, groupMatchId: Long): GroupMatchMember {
+        val invitation = myInvitations.firstOrNull { it.roomId == groupMatchId }
             ?: throw WarnException(ErrorCode.FORBIDDEN)
 
-        return when (invitation.status) {
+        return requirePending(invitation)
+    }
+
+    private fun requirePending(invitation: GroupMatchMember): GroupMatchMember =
+        when (invitation.status) {
             InvitationStatus.PENDING -> invitation
             InvitationStatus.ACCEPTED -> throw WarnException(ErrorCode.ALREADY_JOINED_GROUP)
             InvitationStatus.DECLINED -> throw WarnException(ErrorCode.ALREADY_DECLINED_GROUP)
         }
-    }
 
     /** 성사 뒤에 수락한 사람을 이미 열린 방에 넣고 본인에게만 알린다. 기존 구성원에게는 다시 알리지 않는다. */
     private fun joinFormedChatAndNotify(groupMatchId: Long, memberId: Long, memberCount: Int) {
