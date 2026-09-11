@@ -47,8 +47,15 @@ class OneToOneMatchingProcessor : MatchingProcessor {
      */
     private fun isValidPair(a: MatchParticipant, b: MatchParticipant): Boolean =
         a.isMutuallyCompatibleWith(b) &&
-            abs(a.age - b.age) <= MAX_AGE_GAP &&
+            isWithinAgeGap(a, b) &&
             !a.isBlockedWith(b)
+
+    /** 나이 미상이면 나이차를 판단할 수 없으므로 자격 미달로 본다. */
+    private fun isWithinAgeGap(a: MatchParticipant, b: MatchParticipant): Boolean {
+        val ageA = a.age ?: return false
+        val ageB = b.age ?: return false
+        return abs(ageA - ageB) <= MAX_AGE_GAP
+    }
 
     companion object {
         private const val TOP_RATIO = 0.2 // 상위 20% 선발

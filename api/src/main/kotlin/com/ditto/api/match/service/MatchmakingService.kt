@@ -133,15 +133,14 @@ class MatchmakingService(
         val preferenceByMember = completedProgresses.associate { it.memberId to it.preferredGender }
         val blockedIdsByMember = loadBlockedIdsByMember(memberIds)
         return memberIds.mapNotNull { memberId ->
-            // 성별·나이 미상 회원은 성별·나이 기반 매칭이 불가하므로 후보 풀에서 제외한다.
+            // 성별·나이 미상 회원도 풀에 넣는다. 그 조건을 쓰는 1:1은 프로세서가 자격 미달로 걸러내고,
+            // 쓰지 않는 그룹은 그대로 후보가 된다.
             val member = membersById[memberId] ?: return@mapNotNull null
-            val gender = member.gender ?: return@mapNotNull null
-            val age = member.age ?: return@mapNotNull null
             MatchParticipant(
                 memberId = memberId,
                 answers = answersByMember[memberId].orEmpty(),
-                gender = gender,
-                age = age,
+                gender = member.gender,
+                age = member.age,
                 // memberIds 는 completedProgresses 에서 유래하므로 선호값은 항상 존재한다(기본값은 QuizProgress 가 보유).
                 preferredGender = preferenceByMember.getValue(memberId),
                 blockedMemberIds = blockedIdsByMember[memberId].orEmpty(),

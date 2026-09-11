@@ -316,6 +316,24 @@ class MatchmakingServiceTest(
                 }
             }
 
+            "성별·나이 미상 회원도 후보 그룹에 들어간다" {
+                // 1:1은 성별 상호 선호와 나이차를 따져 제외하지만, 그룹은 두 조건을 쓰지 않는다.
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val known = saveMember("성별있음A")
+                val genderUnknown = saveMember("그룹성별미상", gender = null)
+                val ageUnknown = saveMember("그룹나이미상", age = null)
+                val members = listOf(known, genderUnknown, ageUnknown)
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+
+                matchmakingService.generateMatchingCandidates(quizSetId)
+
+                val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
+                rooms shouldHaveSize 1
+                groupMatchMemberRepository.findByRoomId(rooms.first().id)
+                    .map { it.memberId }.sorted() shouldBe members.sorted()
+            }
+
             "이미 응답이 시작된 퀴즈셋은 후보를 다시 만들지 않는다" {
                 val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
                 val members = listOf("재생성A", "재생성B", "재생성C").map { saveMember(it) }
