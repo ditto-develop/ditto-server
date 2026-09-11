@@ -15,7 +15,7 @@ data class GroupMatchAcceptResponse(
         fun from(room: GroupMatch): GroupMatchAcceptResponse = GroupMatchAcceptResponse(
             groupMatchId = room.id,
             quizSetId = room.quizSetId,
-            acceptedCount = room.participantCount,
+            acceptedCount = room.acceptedCount,
             isFormed = room.isActive,
         )
     }

@@ -30,7 +30,7 @@ class GroupMatch private constructor(
 
     score: Double = 0.0,
     isActive: Boolean = false,
-    participantCount: Int = 0,
+    acceptedCount: Int = 0,
 ) : BaseEntity() {
 
     @Comment("그룹 점수 (구성원 모든 페어 일치율의 평균, 0.0~100.0)")
@@ -44,8 +44,8 @@ class GroupMatch private constructor(
         protected set
 
     @Comment("수락자 수")
-    @Column(name = "participant_count", nullable = false)
-    var participantCount: Int = participantCount
+    @Column(name = "accepted_count", nullable = false)
+    var acceptedCount: Int = acceptedCount
         protected set
 
     /**
@@ -58,10 +58,10 @@ class GroupMatch private constructor(
      * @return 이번 수락으로 막 성사됐으면 true. 이미 성사돼 있었거나 아직 인원이 모자라면 false.
      */
     fun recordAcceptance(): Boolean {
-        participantCount++
+        acceptedCount++
         if (isActive) return false
 
-        isActive = participantCount >= ACTIVATION_THRESHOLD
+        isActive = acceptedCount >= ACTIVATION_THRESHOLD
         return isActive
     }
 

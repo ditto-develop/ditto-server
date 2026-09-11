@@ -23,7 +23,7 @@ class GroupMatchTest(
             room.quizSetId shouldBe 1L
             room.score shouldBe 92.5
             room.isActive shouldBe false
-            room.participantCount shouldBe 0
+            room.acceptedCount shouldBe 0
         }
 
         "한 퀴즈셋에 여러 후보 그룹을 만들 수 있다" {
@@ -41,7 +41,7 @@ class GroupMatchTest(
             room.recordAcceptance()
             room.recordAcceptance()
 
-            room.participantCount shouldBe 2
+            room.acceptedCount shouldBe 2
             room.isActive shouldBe false
         }
 
@@ -50,7 +50,7 @@ class GroupMatchTest(
 
             repeat(3) { room.recordAcceptance() }
 
-            room.participantCount shouldBe 3
+            room.acceptedCount shouldBe 3
             room.isActive shouldBe true
         }
     }

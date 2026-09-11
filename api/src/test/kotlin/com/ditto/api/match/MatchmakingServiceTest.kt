@@ -296,7 +296,7 @@ class MatchmakingServiceTest(
                 rooms shouldHaveSize 1
                 rooms.first().score shouldBe 100.0
                 rooms.first().isActive shouldBe false
-                rooms.first().participantCount shouldBe 0
+                rooms.first().acceptedCount shouldBe 0
 
                 val roomMembers = groupMatchMemberRepository.findByRoomId(rooms.first().id)
                 roomMembers.map { it.memberId }.sorted() shouldBe members.sorted()

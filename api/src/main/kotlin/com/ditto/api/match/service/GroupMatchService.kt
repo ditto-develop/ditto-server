@@ -55,7 +55,7 @@ class GroupMatchService(
         // 이미 열린 방에 이 사람만 붙여야 한다 — createGroupRoom 은 방이 있으면 곧바로 돌아간다.
         when {
             justFormed -> openGroupChatAndNotify(groupMatchId)
-            room.isActive -> joinFormedChatAndNotify(groupMatchId, memberId, room.participantCount)
+            room.isActive -> joinFormedChatAndNotify(groupMatchId, memberId, room.acceptedCount)
         }
         return GroupMatchAcceptResponse.from(room)
     }

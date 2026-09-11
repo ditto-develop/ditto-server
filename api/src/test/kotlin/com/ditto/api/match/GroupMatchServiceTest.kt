@@ -171,7 +171,7 @@ class GroupMatchServiceTest(
                 groupMatchService.declineGroupMatch(1L, roomId)
 
                 statusOf(roomId, 1L) shouldBe InvitationStatus.DECLINED
-                groupMatchRepository.findById(roomId).get().participantCount shouldBe 0
+                groupMatchRepository.findById(roomId).get().acceptedCount shouldBe 0
             }
 
             "이미 응답한 초대는 거절할 수 없다" {
