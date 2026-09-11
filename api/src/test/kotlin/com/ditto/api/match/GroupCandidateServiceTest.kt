@@ -149,6 +149,24 @@ class GroupCandidateServiceTest(
                 group.isFormed shouldBe false
             }
 
+            "거절한 그룹은 목록에서 빠진다" {
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val me = saveMember("거절나")
+                val peers = listOf("거절A", "거절B", "거절C", "거절D").map { saveMember(it) }
+                (listOf(me) + peers).forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                saveCompletedProgress(me, quizSetId, total = 2)
+                val declinedRoomId = saveCandidateGroup(quizSetId, 90.0, listOf(me, peers[0], peers[1]))
+                val keptRoomId = saveCandidateGroup(quizSetId, 40.0, listOf(me, peers[2], peers[3]))
+
+                val declined = groupMatchMemberRepository.findByRoomIdAndMemberId(declinedRoomId, me)!!
+                declined.decline()
+                groupMatchMemberRepository.save(declined)
+
+                val result = groupCandidateService.getGroupCandidates(me)
+
+                result.groups.map { it.groupMatchId } shouldBe listOf(keptRoomId)
+            }
+
             "배정받은 그룹이 없으면 빈 목록이다" {
                 val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
                 val me = saveMember("미배정나")

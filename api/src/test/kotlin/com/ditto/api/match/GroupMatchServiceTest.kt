@@ -1,7 +1,5 @@
 package com.ditto.api.match
 
-import com.ditto.api.match.dto.GroupMatchDeclineRequest
-import com.ditto.api.match.dto.GroupMatchJoinRequest
 import com.ditto.api.match.service.GroupMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -9,140 +7,165 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.match.GroupMatchFixture
-import com.ditto.domain.match.entity.GroupMatchDecline
-import com.ditto.domain.match.repository.GroupMatchDeclineRepository
+import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import javax.sql.DataSource
 
 class GroupMatchServiceTest(
     private val groupMatchService: GroupMatchService,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
-    private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
-) : IntegrationTest(dataSource, {
+) : IntegrationTest(
+    dataSource,
+    {
 
-    val memberId = 1L
-    val quizSetId = 10L
+        val quizSetId = 10L
 
-    "빈 방이 없으면 새 방을 생성하고 참여자 수가 1이 된다" {
-        // when
-        val result = groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
+        fun saveCandidateGroup(memberIds: List<Long>, quizSet: Long = quizSetId, score: Double = 80.0): Long {
+            val room = groupMatchRepository.save(GroupMatch.candidate(quizSet, score))
+            groupMatchMemberRepository.saveAll(memberIds.map { GroupMatchMember.candidate(room.id, it) })
+            return room.id
+        }
 
-        // then
-        result.quizSetId shouldBe quizSetId
-        result.participantCount shouldBe 1
-        result.isActive shouldBe false
-        result.roomId shouldNotBe 0L
-    }
+        fun statusOf(roomId: Long, memberId: Long): InvitationStatus =
+            groupMatchMemberRepository.findByRoomIdAndMemberId(roomId, memberId)!!.status
 
-    "비활성 방이 있으면 기존 방에 배정된다" {
-        // given
-        val room = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
+        "수락" - {
 
-        // when
-        val result = groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
+            "수락하면 내 상태가 ACCEPTED 가 되고 수락자 수가 늘어난다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
 
-        // then
-        result.roomId shouldBe room.id
-        result.participantCount shouldBe 1
-    }
+                val result = groupMatchService.acceptGroupMatch(1L, roomId)
 
-    "3번째 멤버가 참여하면 방이 활성화된다" {
-        // given
-        groupMatchService.joinGroupMatch(1L, GroupMatchJoinRequest(quizSetId))
-        groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
+                result.acceptedCount shouldBe 1
+                result.isFormed shouldBe false
+                statusOf(roomId, 1L) shouldBe InvitationStatus.ACCEPTED
+            }
 
-        // when
-        val result = groupMatchService.joinGroupMatch(3L, GroupMatchJoinRequest(quizSetId))
+            "후보로 배정되지 않은 그룹은 수락할 수 없다" {
+                val roomId = saveCandidateGroup(listOf(2L, 3L, 4L))
 
-        // then
-        result.isActive shouldBe true
-        result.participantCount shouldBe 3
-    }
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
 
-    "3번째 참여로 방이 활성화되면 참가자 전원의 채팅방이 생성된다" {
-        // given
-        groupMatchService.joinGroupMatch(1L, GroupMatchJoinRequest(quizSetId))
-        groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
+                exception.errorCode shouldBe ErrorCode.FORBIDDEN
+            }
 
-        // when
-        val result = groupMatchService.joinGroupMatch(3L, GroupMatchJoinRequest(quizSetId))
+            "없는 그룹은 수락할 수 없다" {
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, 999L) }
 
-        // then
-        val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, result.roomId)
-        chatRoom shouldNotBe null
-        chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom!!.id))
-            .map { it.memberId }.toSet() shouldBe setOf(1L, 2L, 3L)
-    }
+                exception.errorCode shouldBe ErrorCode.NOT_FOUND
+            }
 
-    "3명 미만이면 채팅방이 생성되지 않는다" {
-        // given
-        groupMatchService.joinGroupMatch(1L, GroupMatchJoinRequest(quizSetId))
+            "이미 수락한 초대는 다시 수락할 수 없다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                groupMatchService.acceptGroupMatch(1L, roomId)
 
-        // when
-        val result = groupMatchService.joinGroupMatch(2L, GroupMatchJoinRequest(quizSetId))
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
 
-        // then
-        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, result.roomId) shouldBe null
-    }
+                exception.errorCode shouldBe ErrorCode.ALREADY_JOINED_GROUP
+            }
 
-    "활성화된 방만 있으면 새 방이 생성된다" {
-        // given
-        val activeRoom = groupMatchRepository.save(
-            GroupMatchFixture.create(quizSetId = quizSetId, isActive = true, participantCount = 3)
-        )
+            "이미 거절한 초대는 수락할 수 없다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                groupMatchService.declineGroupMatch(1L, roomId)
 
-        // when
-        val result = groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
 
-        // then
-        result.roomId shouldNotBe activeRoom.id
-        result.isActive shouldBe false
-    }
+                exception.errorCode shouldBe ErrorCode.ALREADY_DECLINED_GROUP
+            }
+        }
 
-    "이미 참여한 퀴즈셋에 다시 참여하면 ALREADY_JOINED_GROUP 예외가 발생한다" {
-        // given
-        groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
+        "성사" - {
 
-        // when & then
-        shouldThrow<WarnException> {
-            groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
-        }.errorCode shouldBe ErrorCode.ALREADY_JOINED_GROUP
-    }
+            "수락자가 최소 인원에 닿기 전에는 채팅방이 열리지 않는다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
 
-    "거절한 퀴즈셋에 참여하려 하면 ALREADY_DECLINED_GROUP 예외가 발생한다" {
-        // given
-        groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
+                groupMatchService.acceptGroupMatch(1L, roomId)
+                groupMatchService.acceptGroupMatch(2L, roomId)
 
-        // when & then
-        shouldThrow<WarnException> {
-            groupMatchService.joinGroupMatch(memberId, GroupMatchJoinRequest(quizSetId))
-        }.errorCode shouldBe ErrorCode.ALREADY_DECLINED_GROUP
-    }
+                groupMatchRepository.findById(roomId).get().isActive shouldBe false
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId) shouldBe null
+            }
 
-    "그룹 매칭을 거절하면 GroupMatchDecline 레코드가 생성된다" {
-        // when
-        groupMatchService.declineGroupMatch(memberId, GroupMatchDeclineRequest(quizSetId))
+            "수락자가 최소 인원에 닿으면 성사되고 채팅방이 열린다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
 
-        // then
-        groupMatchDeclineRepository.existsByQuizSetIdAndMemberId(quizSetId, memberId) shouldBe true
-    }
+                groupMatchService.acceptGroupMatch(1L, roomId)
+                groupMatchService.acceptGroupMatch(2L, roomId)
+                val result = groupMatchService.acceptGroupMatch(3L, roomId)
 
-    "이미 거절한 퀴즈셋을 다시 거절하면 ALREADY_DECLINED_GROUP 예외가 발생한다" {
-        // given
-        groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
+                result.isFormed shouldBe true
+                result.acceptedCount shouldBe 3
+                groupMatchRepository.findById(roomId).get().isActive shouldBe true
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId)
+                    ?.sourceId shouldBe roomId
+            }
 
-        // when & then
-        shouldThrow<WarnException> {
-            groupMatchService.declineGroupMatch(memberId, GroupMatchDeclineRequest(quizSetId))
-        }.errorCode shouldBe ErrorCode.ALREADY_DECLINED_GROUP
-    }
-})
+            "채팅방에는 수락한 사람만 들어간다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
+                groupMatchService.declineGroupMatch(4L, roomId)
+
+                groupMatchService.acceptGroupMatch(1L, roomId)
+                groupMatchService.acceptGroupMatch(2L, roomId)
+                groupMatchService.acceptGroupMatch(3L, roomId)
+
+                val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId)!!
+                chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom.id))
+                    .map { it.memberId } shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L)
+            }
+        }
+
+        "자동 거절" - {
+
+            "한 그룹을 수락하면 같은 퀴즈셋의 남은 초대는 자동 거절된다" {
+                val acceptedRoomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                val otherRoomId = saveCandidateGroup(listOf(1L, 4L, 5L))
+
+                groupMatchService.acceptGroupMatch(1L, acceptedRoomId)
+
+                statusOf(otherRoomId, 1L) shouldBe InvitationStatus.DECLINED
+                // 그 그룹의 다른 구성원은 그대로 대기한다 — 성사 가능성만 낮아진다
+                statusOf(otherRoomId, 4L) shouldBe InvitationStatus.PENDING
+            }
+
+            "다른 퀴즈셋의 초대는 건드리지 않는다" {
+                val acceptedRoomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                val otherQuizSetRoomId = saveCandidateGroup(listOf(1L, 4L, 5L), quizSet = 99L)
+
+                groupMatchService.acceptGroupMatch(1L, acceptedRoomId)
+
+                statusOf(otherQuizSetRoomId, 1L) shouldBe InvitationStatus.PENDING
+            }
+        }
+
+        "거절" - {
+
+            "거절하면 내 상태가 DECLINED 가 된다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+
+                groupMatchService.declineGroupMatch(1L, roomId)
+
+                statusOf(roomId, 1L) shouldBe InvitationStatus.DECLINED
+                groupMatchRepository.findById(roomId).get().participantCount shouldBe 0
+            }
+
+            "이미 응답한 초대는 거절할 수 없다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                groupMatchService.declineGroupMatch(1L, roomId)
+
+                val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
+
+                exception.errorCode shouldBe ErrorCode.ALREADY_DECLINED_GROUP
+            }
+        }
+    },
+)

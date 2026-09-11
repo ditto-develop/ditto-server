@@ -325,7 +325,7 @@ class MatchmakingServiceTest(
 
                 // 수락이 임계값에 닿아 방이 활성화된 상태를 만든다 (채팅방이 이 방 ID를 가리키게 된다)
                 val activatedRoom = groupMatchRepository.findByQuizSetId(quizSetId).first()
-                repeat(3) { activatedRoom.addParticipant() }
+                repeat(3) { activatedRoom.recordAcceptance() }
                 groupMatchRepository.save(activatedRoom)
 
                 matchmakingService.generateMatchingCandidates(quizSetId)

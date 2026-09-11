@@ -52,15 +52,19 @@ class GroupMatchMember private constructor(
     var status: InvitationStatus = status
         protected set
 
-    companion object {
-        /** 선착순 참여로 곧바로 확정된 멤버. 후보 그룹 흐름이 들어오면 대체된다. */
-        fun of(roomId: Long, memberId: Long): GroupMatchMember =
-            GroupMatchMember(
-                roomId = roomId,
-                memberId = memberId,
-                status = InvitationStatus.ACCEPTED,
-            )
+    /** 초대를 수락한다. 되돌릴 수 없다 — 화면에서도 "취소할 수 없어요"로 안내한다. */
+    fun accept() {
+        status = InvitationStatus.ACCEPTED
+    }
 
+    /** 초대를 거절한다. 본인이 누른 거절과 다른 그룹 수락에 따른 자동 거절이 같은 상태를 쓴다. */
+    fun decline() {
+        status = InvitationStatus.DECLINED
+    }
+
+    fun isPending(): Boolean = status == InvitationStatus.PENDING
+
+    companion object {
         /** 배치가 후보 그룹에 앉히는 멤버. 본인이 응답하기 전까지 대기 상태다. */
         fun candidate(roomId: Long, memberId: Long): GroupMatchMember =
             GroupMatchMember(

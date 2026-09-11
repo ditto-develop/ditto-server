@@ -101,9 +101,9 @@ class IntroNoteServiceTest(
             "같은 그룹 채팅방 참여자의 소개노트는 조회할 수 있다" {
                 val targetId = 3L
                 introNoteService.saveAnswer(targetId, "one-word", "그룹원답변")
-                val room = groupMatchRepository.save(GroupMatch.create(quizSetId = 1L))
-                groupMatchMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = memberId))
-                groupMatchMemberRepository.save(GroupMatchMember.of(roomId = room.id, memberId = targetId))
+                val room = groupMatchRepository.save(GroupMatch.candidate(quizSetId = 1L, score = 80.0))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = memberId))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = room.id, memberId = targetId))
 
                 val result = introNoteService.getIntroNotes(memberId, targetId)
 

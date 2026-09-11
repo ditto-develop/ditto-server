@@ -10,6 +10,8 @@ interface GroupMatchMemberRepository : JpaRepository<GroupMatchMember, Long>, Gr
 
     fun existsByRoomIdAndMemberId(roomId: Long, memberId: Long): Boolean
 
+    fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): GroupMatchMember?
+
     fun findByRoomId(roomId: Long): List<GroupMatchMember>
 
     fun findByRoomIdIn(roomIds: List<Long>): List<GroupMatchMember>

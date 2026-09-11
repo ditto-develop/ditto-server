@@ -11,6 +11,8 @@ import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
 import io.kotest.matchers.shouldBe
@@ -34,6 +36,8 @@ class NotifierFailureTest {
     private val chatRoomMemberRepository = mockk<ChatRoomMemberRepository>()
     private val memberRepository = mockk<MemberRepository>()
     private val matchCandidateRepository = mockk<MatchCandidateRepository>()
+    private val groupMatchRepository = mockk<GroupMatchRepository>()
+    private val groupMatchMemberRepository = mockk<GroupMatchMemberRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -47,7 +51,12 @@ class NotifierFailureTest {
         memberRepository,
         notificationAppender,
     )
-    private val matchResultNotifier = MatchResultNotifier(matchCandidateRepository, notificationAppender)
+    private val matchResultNotifier = MatchResultNotifier(
+        matchCandidateRepository,
+        groupMatchRepository,
+        groupMatchMemberRepository,
+        notificationAppender,
+    )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(
         chatRoomRepository,
         chatRoomMemberRepository,

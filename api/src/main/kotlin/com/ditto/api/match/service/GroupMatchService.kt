@@ -1,80 +1,95 @@
 package com.ditto.api.match.service
 
 import com.ditto.api.chat.service.ChatService
-import com.ditto.api.match.dto.GroupMatchDeclineRequest
-import com.ditto.api.match.dto.GroupMatchJoinRequest
-import com.ditto.api.match.dto.GroupMatchJoinResponse
+import com.ditto.api.match.dto.GroupMatchAcceptResponse
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.match.entity.GroupMatch
-import com.ditto.domain.match.entity.GroupMatchDecline
 import com.ditto.domain.match.entity.GroupMatchMember
-import com.ditto.domain.match.repository.GroupMatchDeclineRepository
+import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * 후보 그룹 초대에 대한 회원의 응답(수락·거절)을 처리한다.
+ *
+ * 그룹은 배치가 미리 짜두고([GroupCandidateWriter]) 구성원이 각자 응답한다. 수락 인원이 최소 인원에
+ * 닿는 순간 성사되고 채팅방이 열린다. 수락·거절 모두 되돌릴 수 없다.
+ */
 @Service
 @Transactional(readOnly = true)
 class GroupMatchService(
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
-    private val groupMatchDeclineRepository: GroupMatchDeclineRepository,
     private val chatService: ChatService,
     private val notificationAppender: NotificationAppender,
 ) {
 
-    /** 그룹 매칭 참여 */
+    /**
+     * 그룹 초대를 수락한다.
+     *
+     * **방 행을 잠그고 시작한다**(ADR 0011). 동시 수락이 각자 낡은 수락자 수를 보면 성사 판정이 어긋나고,
+     * 둘 다 임계값에 닿았다고 판단해 채팅방을 만들면 `chat_room` 유일키 충돌로 한쪽 트랜잭션이 통째로
+     * 롤백돼 그 사람의 수락이 사라진다. 잠금 조회는 이 트랜잭션의 첫 접근이어야 하므로 맨 앞에 둔다(규칙 5).
+     */
     @Transactional
-    fun joinGroupMatch(memberId: Long, request: GroupMatchJoinRequest): GroupMatchJoinResponse {
-        val quizSetId = request.quizSetId
+    fun acceptGroupMatch(memberId: Long, groupMatchId: Long): GroupMatchAcceptResponse {
+        val room = groupMatchRepository.findWithLockById(groupMatchId)
+            ?: throw WarnException(ErrorCode.NOT_FOUND)
 
-        if (groupMatchDeclineRepository.existsByQuizSetIdAndMemberId(quizSetId, memberId)) {
-            throw WarnException(ErrorCode.ALREADY_DECLINED_GROUP)
-        }
+        val invitation = findPendingInvitation(groupMatchId, memberId)
+        invitation.accept()
+        room.recordAcceptance()
+        declineOtherInvitations(memberId, room.quizSetId, acceptedGroupMatchId = groupMatchId)
 
-        if (groupMatchMemberRepository.existsByMemberIdAndQuizSetId(memberId, quizSetId)) {
-            throw WarnException(ErrorCode.ALREADY_JOINED_GROUP)
-        }
-
-        val room = findOrCreateRoom(quizSetId)
-        room.addParticipant()
-        groupMatchMemberRepository.save(GroupMatchMember.of(room.id, memberId))
-
-        // 방이 막 활성화(참가자 임계값 도달)됐다면 참가자 전원의 채팅방을 생성한다.
-        // findOrCreateRoom 은 비활성 방만 반환하므로, isActive == true 는 이번 참여로 활성화됐음을 뜻한다.
         if (room.isActive) {
-            openGroupChatAndNotify(room.id)
+            openGroupChatAndNotify(groupMatchId)
         }
-
-        return GroupMatchJoinResponse.from(room)
+        return GroupMatchAcceptResponse.from(room)
     }
 
-    /** 그룹 매칭 거절 */
+    /** 그룹 초대를 거절한다. 수락자 수를 건드리지 않으므로 방 행을 잠글 필요가 없다. */
     @Transactional
-    fun declineGroupMatch(memberId: Long, request: GroupMatchDeclineRequest) {
-        val quizSetId = request.quizSetId
-
-        if (groupMatchDeclineRepository.existsByQuizSetIdAndMemberId(quizSetId, memberId)) {
-            throw WarnException(ErrorCode.ALREADY_DECLINED_GROUP)
-        }
-
-        groupMatchDeclineRepository.save(GroupMatchDecline.of(quizSetId, memberId))
+    fun declineGroupMatch(memberId: Long, groupMatchId: Long) {
+        findPendingInvitation(groupMatchId, memberId).decline()
     }
 
     /**
-     * 구성이 끝난 그룹의 채팅방을 열고 참가자 전원에게 알린다.
+     * 한 주에 열리는 채팅방은 하나뿐이라, 한 그룹을 수락하면 같은 퀴즈셋의 남은 초대는 자동 거절한다.
+     * 거절당한 그룹의 다른 구성원에게는 알리지 않는다 — 그들에게는 성사 가능성이 낮아졌을 뿐이다.
+     */
+    private fun declineOtherInvitations(memberId: Long, quizSetId: Long, acceptedGroupMatchId: Long) {
+        groupMatchMemberRepository
+            .findByMemberIdAndQuizSetId(memberId, quizSetId)
+            .filter { it.roomId != acceptedGroupMatchId && it.isPending() }
+            .forEach { it.decline() }
+    }
+
+    private fun findPendingInvitation(groupMatchId: Long, memberId: Long): GroupMatchMember {
+        val invitation = groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)
+            ?: throw WarnException(ErrorCode.FORBIDDEN)
+
+        return when (invitation.status) {
+            InvitationStatus.PENDING -> invitation
+            InvitationStatus.ACCEPTED -> throw WarnException(ErrorCode.ALREADY_JOINED_GROUP)
+            InvitationStatus.DECLINED -> throw WarnException(ErrorCode.ALREADY_DECLINED_GROUP)
+        }
+    }
+
+    /**
+     * 성사된 그룹의 채팅방을 열고 참가자 전원에게 알린다. **수락한 사람만** 방에 넣는다.
      *
-     * 그룹이 구성됐다는 사실을 아는 곳이 여기뿐이라 알림도 이 트랜잭션 안에서 남긴다. 적재는 자기
+     * 그룹이 성사됐다는 사실을 아는 곳이 여기뿐이라 알림도 이 트랜잭션 안에서 남긴다. 적재는 자기
      * 트랜잭션에서 즉시 커밋되므로, 그 뒤 커밋 시점 flush 가 실패해 이 트랜잭션이 롤백되면 그룹도
-     * 채팅방도 없이 알림만 남는다(`createGroupRoom` 은 REQUIRED 라 같은 트랜잭션이다).
-     * 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
+     * 채팅방도 없이 알림만 남는다. 통지 하나가 유실되는 쪽보다 낫다고 보고 감수한다.
      */
     private fun openGroupChatAndNotify(groupMatchId: Long) {
-        val memberIds = groupMatchMemberRepository.findByRoomId(groupMatchId).map { it.memberId }
+        val memberIds = groupMatchMemberRepository.findByRoomId(groupMatchId)
+            .filter { it.status == InvitationStatus.ACCEPTED }
+            .map { it.memberId }
         val chatRoomId = chatService.createGroupRoom(groupMatchId, memberIds)
 
         notificationAppender.appendAll(
@@ -82,13 +97,5 @@ class GroupMatchService(
             content = NotificationMessages.groupFormed(memberIds.size),
             targetId = chatRoomId,
         )
-    }
-
-    /** 참여 가능한 방이 있으면 반환, 없으면 새 방 생성 */
-    private fun findOrCreateRoom(quizSetId: Long): GroupMatch {
-        val existingRoom = groupMatchRepository
-            .findFirstByQuizSetIdAndIsActiveFalseOrderByCreatedAtAsc(quizSetId)
-
-        return existingRoom ?: groupMatchRepository.save(GroupMatch.create(quizSetId))
     }
 }

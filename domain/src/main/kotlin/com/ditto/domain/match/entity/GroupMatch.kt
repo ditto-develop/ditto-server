@@ -50,9 +50,11 @@ class GroupMatch private constructor(
     var participantCount: Int = participantCount
         protected set
 
-    fun hasCapacity(): Boolean = !isActive
-
-    fun addParticipant() {
+    /**
+     * 구성원 한 명의 수락을 기록한다. 수락자가 [ACTIVATION_THRESHOLD]명에 닿으면 그룹이 성사되고,
+     * 성사된 방은 금요일에 채팅방이 열린다. 되돌릴 수 없다 — 화면에서도 "취소할 수 없어요"로 안내한다.
+     */
+    fun recordAcceptance() {
         participantCount++
         if (participantCount >= ACTIVATION_THRESHOLD) {
             isActive = true
@@ -60,9 +62,6 @@ class GroupMatch private constructor(
     }
 
     companion object {
-        /** 선착순 참여로 그 자리에서 만들어지는 방. 후보 그룹 흐름이 들어오면 대체된다. */
-        fun create(quizSetId: Long): GroupMatch = GroupMatch(quizSetId = quizSetId)
-
         /**
          * 배치가 미리 짜는 후보 그룹. 아직 아무도 수락하지 않았으므로 비활성·수락자 0으로 시작한다.
          * [score]는 구성원 모든 페어 일치율의 평균이다.
