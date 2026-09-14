@@ -55,7 +55,7 @@ class GroupCandidateServiceTest(
             ).id
 
         fun saveGroupQuizSetWithTwoQuizzes(): Triple<Long, Long, Long> {
-            val quizSetId = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP)).id
+            val quizSetId = quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.GROUP)).id
             val quizId1 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 1)).id
             val quizId2 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 2)).id
             return Triple(quizSetId, quizId1, quizId2)

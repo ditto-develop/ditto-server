@@ -12,9 +12,14 @@ import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
 import javax.sql.DataSource
 
 class GroupMatchServiceTest(
@@ -23,14 +28,34 @@ class GroupMatchServiceTest(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val quizSetRepository: QuizSetRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
     {
 
-        val quizSetId = 10L
+        // 수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 테스트마다 DB가 비므로 그때그때 깔고,
+        // 같은 테스트 안에서는 이미 깔린 것을 재사용해 "같은 퀴즈셋의 두 그룹"을 만들 수 있게 한다.
+        fun thisWeekQuizSetId(): Long {
+            val monday = OperationWeek.containing(LocalDate.now()).startedOn
+            val existing = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
+                .firstOrNull { it.weekStartedOn == monday && it.matchingType == MatchingType.GROUP }
+            return existing?.id
+                ?: quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.GROUP)).id
+        }
 
-        fun saveCandidateGroup(memberIds: List<Long>, quizSet: Long = quizSetId, score: Double = 80.0): Long {
+        fun lastWeekQuizSetId(): Long {
+            val monday = OperationWeek.containing(LocalDate.now()).startedOn.minusWeeks(1)
+            return quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = monday.atStartOfDay(),
+                    endDate = monday.plusDays(2).atTime(23, 59, 59),
+                    matchingType = MatchingType.GROUP,
+                ),
+            ).id
+        }
+
+        fun saveCandidateGroup(memberIds: List<Long>, quizSet: Long = thisWeekQuizSetId(), score: Double = 80.0): Long {
             val room = groupMatchRepository.save(GroupMatch.candidate(quizSet, score))
             groupMatchMemberRepository.saveAll(memberIds.map { GroupMatchMember.candidate(room.id, it) })
             return room.id
@@ -181,6 +206,27 @@ class GroupMatchServiceTest(
                 val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
 
                 exception.errorCode shouldBe ErrorCode.ALREADY_DECLINED_GROUP
+            }
+        }
+
+        "지난 주 후보" - {
+
+            "지난 주 후보 그룹은 수락할 수 없다 — 지난 사이클 그룹이 오늘 성사되면 안 된다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L), quizSet = lastWeekQuizSetId())
+
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
+
+                exception.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+                statusOf(roomId, 1L) shouldBe InvitationStatus.PENDING
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId) shouldBe null
+            }
+
+            "지난 주 후보 그룹은 거절할 수도 없다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L), quizSet = lastWeekQuizSetId())
+
+                val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
+
+                exception.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
             }
         }
     },

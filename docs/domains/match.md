@@ -17,9 +17,11 @@
 - 1:1 유니크: `PersonalMatch`는 `memberId1`=min/`memberId2`=max로 정규화 + `requesterId` 별도 보존. UK(`member_id_1`, `member_id_2`, `quiz_set_id`)로 방향 무관 중복 금지. 방향은 `receiverId()`/`counterpartOf()` 헬퍼로 복원.
 - `match_candidate`: 페어당 양방향 2행(`ownerMemberId`/`otherMemberId`)으로 저장(내 후보 조회 단순화). 재계산은 `deleteByQuizSetId` 후 대체, anti-join 단일 쿼리 멱등 스케줄러(기본 매주 목 05:00, `test` 프로필 비활성).
 - 그룹 유니크: `GroupMatchMember`(UK `room_id`+`member_id`). `GroupMatch`의 `quizSetId` UK 없음 → 퀴즈셋당 다수 그룹, 한 멤버가 같은 퀴즈셋의 여러 후보 그룹에 속할 수 있다(최대 3개 노출).
-- 후보 관계는 **성사 전 열람 권한**의 근거이기도 하다: `MatchAccessChecker.isMatchCandidate`가 "조회자가 최근 완료한 퀴즈셋"의 후보로 판정한다. 1:1은 `match_candidate` 페어 행(방향 무관, `existsPairByQuizSetId`), 그룹은 같은 후보 그룹에 양쪽이 거절하지 않고 남아 있는지(`existsSharedCandidateGroup`). 지난 주 후보가 남아 있어도 기준 퀴즈셋이 옮겨 가면 닫힌다. 공개 범위는 `docs/domains/intronote.md` 참고.
+- **매칭이 다루는 퀴즈셋은 이번 운영 주 것뿐이다**(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 기준은 "조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋"(`findCompletedQuizSetInWeek`)이며, 주차 무관 조회는 레포에 없다. 후보 행은 지난 주 것도 남으므로 주차로 좁히지 않으면 지난 사이클 후보가 계속 노출된다 — 1:1·그룹이 타입별로 독립해 최신 셋을 찾기 때문에 한쪽만 이번 주인 응답이 섞인다. 후보 응답은 `weekStartedOn` + `year`/`month`/`week`를 함께 내려준다(ADR 0010 규약).
+- **응답 경로도 이번 주만 받는다.** 그룹 수락·거절, 1:1 요청·수락·거절은 대상 퀴즈셋이 이번 주가 아니면 `NOT_MATCHING_PERIOD`(5008) — 화면에서 감추는 것만으로는 지난 주 그룹이 오늘 성사돼 채팅방이 열리는 것을 못 막는다. 그룹 수락 마감이 사실상 일요일 자정이 된다.
+- 후보 관계는 **성사 전 열람 권한**의 근거이기도 하다: `MatchAccessChecker.isMatchCandidate`가 위와 같은 기준 퀴즈셋의 후보로 판정한다. 1:1은 `match_candidate` 페어 행(방향 무관, `existsPairByQuizSetId`), 그룹은 같은 후보 그룹에 양쪽이 거절하지 않고 남아 있는지(`existsSharedCandidateGroup`). 세 경로가 같은 판정을 써야 한다 — 어긋나면 후보 카드는 보이는데 소개노트는 403이 된다. 공개 범위는 `docs/domains/intronote.md` 참고.
 
-- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리), `docs/adr/0025-intro-note-candidate-preview.md`(후보 기반 성사 전 열람).
+- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리), `docs/adr/0025-intro-note-candidate-preview.md`(후보 기반 성사 전 열람), `docs/adr/0026-matching-scoped-to-operation-week.md`(이번 운영 주로 고정).
 
 ### 그룹 매칭
 

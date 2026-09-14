@@ -10,17 +10,24 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDate
 import javax.sql.DataSource
 
 class PersonalMatchServiceTest(
     private val personalMatchService: PersonalMatchService,
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val quizSetRepository: QuizSetRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
+
+    // 요청·수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 조회 경로는 주차를 보지 않는다.
+    fun thisWeekQuizSetId(): Long = quizSetRepository.save(QuizSetFixture.currentWeek()).id
 
     "보낸/받은 요청이 모두 있을 때 퀴즈셋 기준으로 분리하여 반환한다" {
         // given
@@ -63,7 +70,8 @@ class PersonalMatchServiceTest(
 
     "정상적인 매칭 요청 시 PENDING 상태의 매칭이 생성된다" {
         // given
-        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = 10L)
+        val quizSetId = thisWeekQuizSetId()
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when
         val result = personalMatchService.requestMatch(requesterId = 1L, request = request)
@@ -71,7 +79,7 @@ class PersonalMatchServiceTest(
         // then
         result.requesterId shouldBe 1L
         result.receiverId shouldBe 2L
-        result.quizSetId shouldBe 10L
+        result.quizSetId shouldBe quizSetId
         result.status shouldBe PersonalMatchStatus.PENDING
     }
 
@@ -87,10 +95,11 @@ class PersonalMatchServiceTest(
 
     "이미 PENDING 요청이 있는 동일 페어가 다시 요청하면 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
+        val quizSetId = thisWeekQuizSetId()
         personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = 10L)
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
         )
-        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = 10L)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when & then
         shouldThrow<WarnException> {
@@ -100,10 +109,11 @@ class PersonalMatchServiceTest(
 
     "역방향 PENDING 요청이 있을 때 반대 방향으로 요청해도 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
+        val quizSetId = thisWeekQuizSetId()
         personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = 2L, receiverId = 1L, quizSetId = 10L)
+            PersonalMatchFixture.create(requesterId = 2L, receiverId = 1L, quizSetId = quizSetId)
         )
-        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = 10L)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when & then
         shouldThrow<WarnException> {
@@ -113,13 +123,14 @@ class PersonalMatchServiceTest(
 
     "이미 ACCEPTED 매칭이 있는 페어가 다시 요청하면 ALREADY_MATCHED 예외가 발생한다" {
         // given
+        val quizSetId = thisWeekQuizSetId()
         personalMatchRepository.save(
             PersonalMatchFixture.create(
-                requesterId = 1L, receiverId = 2L, quizSetId = 10L,
+                requesterId = 1L, receiverId = 2L, quizSetId = quizSetId,
                 status = PersonalMatchStatus.ACCEPTED,
             )
         )
-        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = 10L)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when & then
         shouldThrow<WarnException> {
@@ -130,7 +141,7 @@ class PersonalMatchServiceTest(
     "수신자가 수락하면 상태가 ACCEPTED 로 변경되고 respondedAt 이 기록된다" {
         // given
         val match = personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = 10L)
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
         )
 
         // when
@@ -144,7 +155,7 @@ class PersonalMatchServiceTest(
     "수신자가 수락하면 두 회원의 1:1 채팅방이 생성된다" {
         // given
         val match = personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = 10L)
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
         )
 
         // when
@@ -176,7 +187,7 @@ class PersonalMatchServiceTest(
     "수신자가 거절하면 상태가 REJECTED 로 변경된다" {
         // given
         val match = personalMatchRepository.save(
-            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = 10L)
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
         )
 
         // when
@@ -190,7 +201,7 @@ class PersonalMatchServiceTest(
         // given
         val match = personalMatchRepository.save(
             PersonalMatchFixture.create(
-                requesterId = 1L, receiverId = 2L, quizSetId = 10L,
+                requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId(),
                 status = PersonalMatchStatus.ACCEPTED,
             )
         )
@@ -199,5 +210,41 @@ class PersonalMatchServiceTest(
         shouldThrow<WarnException> {
             personalMatchService.rejectMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+    }
+
+    "지난 주 퀴즈셋으로는 매칭을 요청할 수 없다" {
+        // given — 지난 주에 마감된 퀴즈셋
+        val lastWeek = quizSetRepository.save(
+            QuizSetFixture.create(
+                startDate = LocalDate.now().minusWeeks(1).atStartOfDay(),
+                endDate = LocalDate.now().minusWeeks(1).plusDays(2).atTime(23, 59, 59),
+            )
+        )
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = lastWeek.id)
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchService.requestMatch(requesterId = 1L, request = request)
+        }.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+    }
+
+    "지난 주에 받은 요청은 이제 수락할 수 없다 — 지난 사이클 채팅방이 열리면 안 된다" {
+        // given
+        val lastWeek = quizSetRepository.save(
+            QuizSetFixture.create(
+                startDate = LocalDate.now().minusWeeks(1).atStartOfDay(),
+                endDate = LocalDate.now().minusWeeks(1).plusDays(2).atTime(23, 59, 59),
+            )
+        )
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = lastWeek.id)
+        )
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        }.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null
     }
 })

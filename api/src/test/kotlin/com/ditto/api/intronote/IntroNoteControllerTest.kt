@@ -224,7 +224,7 @@ class IntroNoteControllerTest : RestDocsTest() {
 
     /** 두 회원을 이번 주(=조회자가 최근 완료한 1:1 퀴즈셋) 후보로 서로 노출시킨다. */
     private fun exposeAsCandidates(viewerId: Long, targetId: Long) {
-        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.ONE_TO_ONE))
         val progress = QuizProgressFixture.create(memberId = viewerId, quizSetId = quizSet.id, totalCount = 1)
         progress.recordAnswer() // NOT_STARTED -> COMPLETED
         quizProgressRepository.save(progress)
