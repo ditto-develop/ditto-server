@@ -1,16 +1,39 @@
 package com.ditto.api.match.dto
 
 import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.system.OperationWeek
+import java.time.LocalDate
 
 /**
  * 그룹 매칭 후보 목록 응답.
- * 회원이 최근 완료한 그룹 퀴즈셋에서 배정받은 후보 그룹을 그룹 점수 내림차순으로 담는다.
+ * 회원이 **이번 운영 주에** 완주한 그룹 퀴즈셋에서 배정받은 후보 그룹을 그룹 점수 내림차순으로 담는다.
  * 이미 거절한 그룹은 담지 않는다.
+ *
+ * 주차 필드의 의미는 [MatchCandidateResponse] 와 같다 — 식별자는 [weekStartedOn], 나머지는 파생 표시값.
  */
 data class GroupCandidateResponse(
     val quizSetId: Long,
+    val weekStartedOn: LocalDate,
+    val year: Int,
+    val month: Int,
+    val week: Int,
     val groups: List<CandidateGroup>,
-)
+) {
+    companion object {
+        fun of(
+            quizSetId: Long,
+            operationWeek: OperationWeek,
+            groups: List<CandidateGroup>,
+        ) = GroupCandidateResponse(
+            quizSetId = quizSetId,
+            weekStartedOn = operationWeek.startedOn,
+            year = operationWeek.year,
+            month = operationWeek.month,
+            week = operationWeek.weekOfMonth,
+            groups = groups,
+        )
+    }
+}
 
 /**
  * 후보 그룹 하나.

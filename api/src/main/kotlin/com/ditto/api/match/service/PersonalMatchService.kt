@@ -1,6 +1,7 @@
 package com.ditto.api.match.service
 
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.api.match.dto.PersonalMatchListResponse
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 class PersonalMatchService(
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatService: ChatService,
+    private val matchWeekPolicy: MatchWeekPolicy,
 ) {
 
     /** 보낸/받은 1:1 매칭 요청 목록 조회 */
@@ -29,7 +31,11 @@ class PersonalMatchService(
         )
     }
 
-    /** 1:1 매칭 요청 생성 */
+    /**
+     * 1:1 매칭 요청 생성.
+     *
+     * 퀴즈셋을 클라이언트가 보내므로 지난 주 후보에게도 요청이 들어올 수 있다 — 이번 주 퀴즈셋만 받는다.
+     */
     @Transactional
     fun requestMatch(requesterId: Long, request: PersonalMatchRequest): PersonalMatchResponse {
         val (receiverId, quizSetId) = request
@@ -37,6 +43,7 @@ class PersonalMatchService(
         if (requesterId == receiverId) {
             throw WarnException(ErrorCode.CANNOT_REQUEST_SELF)
         }
+        matchWeekPolicy.validateCurrentWeek(quizSetId)
 
         val memberId1 = minOf(requesterId, receiverId)
         val memberId2 = maxOf(requesterId, receiverId)
@@ -61,11 +68,12 @@ class PersonalMatchService(
         return PersonalMatchResponse.from(match)
     }
 
-    /** 1:1 매칭 수락 */
+    /** 1:1 매칭 수락. 지난 주 요청을 오늘 수락해 채팅방이 열리지 않도록 주차를 함께 본다. */
     @Transactional
     fun acceptMatch(memberId: Long, matchId: Long): PersonalMatchResponse {
         val match = findMatchOrThrow(matchId)
         validateReceiver(match, memberId)
+        matchWeekPolicy.validateCurrentWeek(match.quizSetId)
         match.accept()
         chatService.createPersonalRoom(match.id, match.memberId1, match.memberId2)
         return PersonalMatchResponse.from(match)
@@ -76,6 +84,7 @@ class PersonalMatchService(
     fun rejectMatch(memberId: Long, matchId: Long): PersonalMatchResponse {
         val match = findMatchOrThrow(matchId)
         validateReceiver(match, memberId)
+        matchWeekPolicy.validateCurrentWeek(match.quizSetId)
         match.reject()
         return PersonalMatchResponse.from(match)
     }

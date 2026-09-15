@@ -17,9 +17,11 @@
 - 1:1 유니크: `PersonalMatch`는 `memberId1`=min/`memberId2`=max로 정규화 + `requesterId` 별도 보존. UK(`member_id_1`, `member_id_2`, `quiz_set_id`)로 방향 무관 중복 금지. 방향은 `receiverId()`/`counterpartOf()` 헬퍼로 복원.
 - `match_candidate`: 페어당 양방향 2행(`ownerMemberId`/`otherMemberId`)으로 저장(내 후보 조회 단순화). 재계산은 `deleteByQuizSetId` 후 대체, anti-join 단일 쿼리 멱등 스케줄러(기본 매주 목 05:00, `test` 프로필 비활성).
 - 그룹 유니크: `GroupMatchMember`(UK `room_id`+`member_id`). `GroupMatch`의 `quizSetId` UK 없음 → 퀴즈셋당 다수 그룹, 한 멤버가 같은 퀴즈셋의 여러 후보 그룹에 속할 수 있다(최대 3개 노출).
-- 후보 관계는 **성사 전 열람 권한**의 근거이기도 하다: `MatchAccessChecker.isMatchCandidate`가 "조회자가 최근 완료한 퀴즈셋"의 후보로 판정한다. 1:1은 `match_candidate` 페어 행(방향 무관, `existsPairByQuizSetId`), 그룹은 같은 후보 그룹에 양쪽이 거절하지 않고 남아 있는지(`existsSharedCandidateGroup`). 지난 주 후보가 남아 있어도 기준 퀴즈셋이 옮겨 가면 닫힌다. 공개 범위는 `docs/domains/intronote.md` 참고.
+- **매칭이 다루는 퀴즈셋은 이번 운영 주 것뿐이다**(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 기준은 "조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋"(`findCompletedQuizSetInWeek`)이며, 주차 무관 조회는 레포에 없다. 후보 행은 지난 주 것도 남으므로 주차로 좁히지 않으면 지난 사이클 후보가 계속 노출된다 — 1:1·그룹이 타입별로 독립해 최신 셋을 찾기 때문에 한쪽만 이번 주인 응답이 섞인다. 후보 응답은 `weekStartedOn` + `year`/`month`/`week`를 함께 내려준다(ADR 0010 규약).
+- **응답 경로도 이번 주만 받는다.** 그룹 수락·거절, 1:1 요청·수락·거절은 대상 퀴즈셋이 이번 주가 아니면 `NOT_MATCHING_PERIOD`(5008) — 화면에서 감추는 것만으로는 지난 주 그룹이 오늘 성사돼 채팅방이 열리는 것을 못 막는다. 그룹 수락 마감이 사실상 일요일 자정이 된다.
+- 후보 관계는 **성사 전 열람 권한**의 근거이기도 하다: `MatchAccessChecker.isMatchCandidate`가 위와 같은 기준 퀴즈셋의 후보로 판정한다. 1:1은 `match_candidate` 페어 행(방향 무관, `existsPairByQuizSetId`), 그룹은 같은 후보 그룹에 양쪽이 거절하지 않고 남아 있는지(`existsSharedCandidateGroup`). 세 경로가 같은 판정을 써야 한다 — 어긋나면 후보 카드는 보이는데 소개노트는 403이 된다. 공개 범위는 `docs/domains/intronote.md` 참고.
 
-- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리), `docs/adr/0025-intro-note-candidate-preview.md`(후보 기반 성사 전 열람).
+- 근거 ADR: `docs/adr/0007-matching-pure-pipeline.md`(순수 파이프라인·대칭 필터·동점 무작위), `docs/adr/0008-matching-entity-uniqueness-modeling.md`(페어 정규화·참여/거절 분리), `docs/adr/0025-intro-note-candidate-preview.md`(후보 기반 성사 전 열람), `docs/adr/0026-matching-scoped-to-operation-week.md`(이번 운영 주로 고정).
 
 ### 그룹 매칭
 
@@ -32,7 +34,7 @@
 - **자동 거절**: 한 그룹을 수락하면 같은 퀴즈셋의 남은 `PENDING` 초대가 모두 `DECLINED`가 된다. 한 주에 열리는 채팅방이 하나뿐이라서다. 거절당한 그룹의 다른 구성원에게는 알리지 않는다.
 - **수락 경로는 방 행을 비관적 잠금**한다([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)). 잠금이 없으면 동시 수락이 각자 낡은 수락자 수를 보고 둘 다 채팅방을 만들려다 `chat_room (source_type, source_id)` 유일키에 걸려 한쪽 트랜잭션이 통째로 롤백된다. 잠금 조회가 트랜잭션 **첫 접근**이어야 한다(규칙 5).
 - **후보 재생성은 응답이 시작되면 거부한다**(`GroupCandidateWriter` → `MATCH_CANDIDATES_ALREADY_RESPONDED`, 기존 후보는 그대로). `group_match` 하나가 후보이자 성사 상태라, 지우면 열린 채팅방이 가리킬 곳을 잃는다. 조용히 건너뛰지 않고 예외로 알리는 이유: 어드민이 재생성을 눌렀는데 성공처럼 보이면 안 된다.
-- **후보 생성은 퀴즈셋마다 자기 트랜잭션**이다 — `generateMatchingCandidates`(`@Transactional`)를 배치(`MatchingBatchFacade.runScheduledMatching`)가 **트랜잭션 없이** 프록시로 부른다. facade 나 그 호출자에 `@Transactional`을 붙이면 격리가 깨진다. 배치는 셋을 돌며 실패는 경고 로그만 남기고 계속한다([ADR 0026](../adr/0026-matching-batch-per-quiz-set-transaction.md)). 후보가 없는 셋만 고르지만(anti-join) 대상 선정 직후 어드민 재생성·수락이 끼어들면 위 예외를 만날 수 있고, 그때 다른 셋의 후보까지 롤백되면 안 된다. 실패한 셋은 다음 배치가 다시 집고, 반환하는 ID(알림 대상)는 성공한 셋만이다.
+- **후보 생성은 퀴즈셋마다 자기 트랜잭션**이다 — `generateMatchingCandidates`(`@Transactional`)를 배치(`MatchingBatchFacade.runScheduledMatching`)가 **트랜잭션 없이** 프록시로 부른다. facade 나 그 호출자에 `@Transactional`을 붙이면 격리가 깨진다. 배치는 셋을 돌며 실패는 경고 로그만 남기고 계속한다([ADR 0027](../adr/0027-matching-batch-per-quiz-set-transaction.md)). 후보가 없는 셋만 고르지만(anti-join) 대상 선정 직후 어드민 재생성·수락이 끼어들면 위 예외를 만날 수 있고, 그때 다른 셋의 후보까지 롤백되면 안 된다. 실패한 셋은 다음 배치가 다시 집고, 반환하는 ID(알림 대상)는 성공한 셋만이다.
 - **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
 - `group_match_decline` 테이블은 남아 있으나 코드가 쓰지 않는다 — 거절은 `InvitationStatus.DECLINED`로 그룹별로 남는다.
 

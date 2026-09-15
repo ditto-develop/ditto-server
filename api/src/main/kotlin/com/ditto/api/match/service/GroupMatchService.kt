@@ -1,6 +1,7 @@
 package com.ditto.api.match.service
 
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.api.match.dto.GroupMatchAcceptResponse
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
@@ -26,6 +27,7 @@ class GroupMatchService(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val chatService: ChatService,
     private val notificationAppender: NotificationAppender,
+    private val matchWeekPolicy: MatchWeekPolicy,
 ) {
 
     /**
@@ -38,12 +40,15 @@ class GroupMatchService(
      * 내 초대 잠금은 한 회원이 **서로 다른 두 그룹**을 동시에 수락하는 경쟁을 막는다 — 방만 잠그면
      * 각자 다른 행을 잠그므로 둘 다 통과해 "한 주에 채팅방 하나"가 깨진다.
      *
-     * 두 잠금 모두 이 트랜잭션에서 해당 엔티티의 첫 접근이다(규칙 5).
+     * 두 잠금 모두 이 트랜잭션에서 해당 엔티티의 첫 접근이다(규칙 5). 주차 검사는 방을 잠근 **뒤**에
+     * 한다 — 잠금 조회가 트랜잭션의 첫 문장이면 이후 비잠금 조회도 경쟁 커밋을 본다(규칙 7).
      */
     @Transactional
     fun acceptGroupMatch(memberId: Long, groupMatchId: Long): GroupMatchAcceptResponse {
         val room = groupMatchRepository.findWithLockById(groupMatchId)
             ?: throw WarnException(ErrorCode.NOT_FOUND)
+        matchWeekPolicy.validateCurrentWeek(room.quizSetId)
+
         val myInvitations = groupMatchMemberRepository.findWithLockByMemberId(memberId)
 
         val invitation = pendingInvitationIn(myInvitations, groupMatchId)
@@ -65,6 +70,10 @@ class GroupMatchService(
     fun declineGroupMatch(memberId: Long, groupMatchId: Long) {
         val invitation = groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)
             ?: throw WarnException(ErrorCode.FORBIDDEN)
+
+        val room = groupMatchRepository.findById(groupMatchId)
+            .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        matchWeekPolicy.validateCurrentWeek(room.quizSetId)
 
         requirePending(invitation).decline()
     }

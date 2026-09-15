@@ -5,7 +5,6 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.quiz.entity.MatchingType
-import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Component
 
 /**
@@ -20,7 +19,7 @@ class MatchAccessChecker(
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
-    private val quizSetRepository: QuizSetRepository,
+    private val matchWeekPolicy: MatchWeekPolicy,
 ) {
     fun isMatched(memberId: Long, otherMemberId: Long): Boolean {
         val matched = personalMatchRepository.existsByMemberId1AndMemberId2AndStatus(
@@ -36,14 +35,14 @@ class MatchAccessChecker(
      * 상대가 **이번 주 매칭 후보로 서로에게 노출된 상대**인지 판단한다.
      *
      * 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`·`/matches/group`)과 같다 —
-     * "조회자가 최근 완료한 퀴즈셋". 후보는 지난 주 것도 남으므로 퀴즈셋으로 좁히지 않으면 열람 권한이
-     * 영구히 열린다. 다음 주 퀴즈셋을 완료하는 순간 지난 주 후보는 자연히 닫힌다.
+     * "조회자가 **이번 운영 주에** 완주한 퀴즈셋"([MatchWeekPolicy]). 후보 행은 지난 주 것도 남으므로
+     * 주차로 좁히지 않으면 열람 권한이 영구히 열린다. 주가 바뀌면 지난 주 후보는 함께 닫힌다.
      */
     fun isMatchCandidate(memberId: Long, otherMemberId: Long): Boolean =
         isOneToOneCandidate(memberId, otherMemberId) || isGroupCandidate(memberId, otherMemberId)
 
     private fun isOneToOneCandidate(memberId: Long, otherMemberId: Long): Boolean {
-        val quizSet = quizSetRepository.findLatestCompletedQuizSet(memberId, MatchingType.ONE_TO_ONE)
+        val quizSet = matchWeekPolicy.findCompletedQuizSet(memberId, MatchingType.ONE_TO_ONE)
             ?: return false
         return matchCandidateRepository.existsPairByQuizSetId(memberId, otherMemberId, quizSet.id)
     }
@@ -54,7 +53,7 @@ class MatchAccessChecker(
      * 그룹 후보 화면(프로필 선택 → 소개노트)도 참여 여부를 정하는 화면이라 1:1과 같은 구간이 필요하다.
      */
     private fun isGroupCandidate(memberId: Long, otherMemberId: Long): Boolean {
-        val quizSet = quizSetRepository.findLatestCompletedQuizSet(memberId, MatchingType.GROUP)
+        val quizSet = matchWeekPolicy.findCompletedQuizSet(memberId, MatchingType.GROUP)
             ?: return false
         return groupMatchMemberRepository.existsSharedCandidateGroup(memberId, otherMemberId, quizSet.id)
     }

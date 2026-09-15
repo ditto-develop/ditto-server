@@ -47,7 +47,7 @@ class MatchmakingService(
     /**
      * 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다.
      *
-     * 퀴즈셋 하나가 트랜잭션 하나다 — 배치([MatchingBatchFacade])가 셋별로 격리해 부른다. 배경: ADR 0026.
+     * 퀴즈셋 하나가 트랜잭션 하나다 — 배치([MatchingBatchFacade])가 셋별로 격리해 부른다. 배경: ADR 0027.
      *
      * @return 생성 결과 요약. 어드민 화면·REST 응답에 실리고 로그에도 남지만 저장하지는 않는다.
      * @throws WarnException 응답이 시작된 그룹 퀴즈셋처럼 대체할 수 없는 상태면 아무것도 바꾸지 않고 던진다

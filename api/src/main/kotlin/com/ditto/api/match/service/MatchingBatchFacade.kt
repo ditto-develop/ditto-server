@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  * 한 셋이 실패해도 나머지 셋의 후보는 그대로 커밋된다. 이 클래스나 호출자에 `@Transactional`을 붙이면 셋 트랜잭션이
  * 거기에 합류해 격리가 깨진다. `REQUIRES_NEW`로 강제하지 않는 이유: 어드민 단건 재생성 경로와 `@Transactional`
  * 테스트가 같은 메서드를 바깥 트랜잭션 안에서 쓰는데, 그때 바깥의 미커밋 데이터를 못 보게 된다.
- * 배치 로직을 [MatchmakingService] 안에 두면 자기 호출이 프록시를 거치지 않아 이 격리를 만들 수 없다. 배경: ADR 0026.
+ * 배치 로직을 [MatchmakingService] 안에 두면 자기 호출이 프록시를 거치지 않아 이 격리를 만들 수 없다. 배경: ADR 0027.
  */
 @Component
 class MatchingBatchFacade(

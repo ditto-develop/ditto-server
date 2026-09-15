@@ -23,9 +23,11 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
 import javax.sql.DataSource
 
 class IntroNoteServiceTest(
@@ -49,7 +51,7 @@ class IntroNoteServiceTest(
 
         // 회원이 완료(COMPLETED)한 1:1 퀴즈셋. 후보 열람 권한의 기준 퀴즈셋이 된다.
         fun completeOneToOneQuizSet(memberId: Long): QuizSet {
-            val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+            val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.ONE_TO_ONE))
             val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 1)
             progress.recordAnswer() // NOT_STARTED -> COMPLETED
             quizProgressRepository.save(progress)
@@ -58,7 +60,7 @@ class IntroNoteServiceTest(
 
         // 회원이 완료한 그룹 퀴즈셋. 그룹 후보 열람 권한의 기준 퀴즈셋이 된다.
         fun completeGroupQuizSet(memberId: Long): QuizSet {
-            val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP))
+            val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.GROUP))
             val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 1)
             progress.recordAnswer()
             quizProgressRepository.save(progress)
@@ -266,24 +268,23 @@ class IntroNoteServiceTest(
                 exception.errorCode shouldBe ErrorCode.FORBIDDEN
             }
 
-            "후보 행이 최근 완료한 퀴즈셋의 것이 아니면 조회할 수 없다 — 지난 주 후보는 닫힌다" {
+            "지난 주 후보는 조회할 수 없다 — 기준은 이번 운영 주에 완주한 퀴즈셋이다" {
                 val targetId = 9L
                 answerAll(targetId)
-                val lastWeek = completeOneToOneQuizSet(memberId)
-                exposeAsCandidates(lastWeek.id, memberId, targetId)
-                // 다음 주 퀴즈셋을 완료하면 기준 퀴즈셋이 옮겨 가고, 그 셋에는 이 후보가 없다.
-                quizSetRepository.save(
+                // 이번 주에 이 퀴즈를 풀지 않았어도, 지난 주 후보 행은 그대로 남아 있다.
+                val lastWeekMonday = OperationWeek.containing(LocalDate.now()).startedOn.minusWeeks(1)
+                val lastWeek = quizSetRepository.save(
                     QuizSetFixture.create(
                         matchingType = MatchingType.ONE_TO_ONE,
-                        startDate = lastWeek.endDate.plusDays(1),
-                        endDate = lastWeek.endDate.plusDays(8),
+                        startDate = lastWeekMonday.atStartOfDay(),
+                        endDate = lastWeekMonday.plusDays(2).atTime(23, 59, 59),
                     ),
-                ).also { thisWeek ->
-                    val progress =
-                        QuizProgressFixture.create(memberId = memberId, quizSetId = thisWeek.id, totalCount = 1)
-                    progress.recordAnswer()
-                    quizProgressRepository.save(progress)
-                }
+                )
+                val progress =
+                    QuizProgressFixture.create(memberId = memberId, quizSetId = lastWeek.id, totalCount = 1)
+                progress.recordAnswer()
+                quizProgressRepository.save(progress)
+                exposeAsCandidates(lastWeek.id, memberId, targetId)
 
                 val exception = shouldThrow<WarnException> {
                     introNoteService.getIntroNotes(memberId, targetId)
