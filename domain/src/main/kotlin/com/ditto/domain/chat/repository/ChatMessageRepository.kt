@@ -13,4 +13,7 @@ interface ChatMessageRepository : JpaRepository<ChatMessage, Long>, ChatMessageR
     fun countByRoomIdAndIdGreaterThan(roomId: Long, id: Long): Long
 
     fun countByRoomId(roomId: Long): Long
+
+    /** 읽음 커서로 보낸 id 가 이 방의 메시지인지. 다른 방 id 나 없는 id 로 커서가 전진하면 되돌릴 수 없다. */
+    fun existsByIdAndRoomId(id: Long, roomId: Long): Boolean
 }

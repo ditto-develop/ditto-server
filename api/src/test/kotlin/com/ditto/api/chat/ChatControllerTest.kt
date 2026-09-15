@@ -8,6 +8,7 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatLeaveResult
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
+import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.api.chat.service.ChatRoomEndService
@@ -22,8 +23,8 @@ import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
@@ -65,6 +66,7 @@ class ChatControllerTest : ControllerUnitTest() {
         content = if (imageUrl != null) "chat/2/photo.png" else "안녕하세요",
         imageUrl = imageUrl,
         createdAt = LocalDateTime.of(2026, 7, 25, 12, 0),
+        unreadCount = 1,
     )
 
     @Test
@@ -132,6 +134,8 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].lastMessage.content").description("메시지 내용 (IMAGE 는 S3 key)").optional(),
                                 fieldWithPath("data[].lastMessage.imageUrl").description("IMAGE 열람용 presigned URL (아니면 null)").optional(),
                                 fieldWithPath("data[].lastMessage.createdAt").description("메시지 생성일시").optional(),
+                                fieldWithPath("data[].lastMessage.unreadCount")
+                                    .description("이 메시지를 아직 읽지 않은, 발신자를 뺀 현재 참여자 수 (SYSTEM 은 항상 0)").optional(),
                                 fieldWithPath("data[].unreadCount").description("안읽음 수"),
                                 fieldWithPath("data[].createdAt").description("채팅방 생성일시"),
                                 fieldWithPath("data[].opensAt").description("채팅 개방 시각 (금요일 00:00)"),
@@ -208,6 +212,8 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.messages[].content").description("메시지 내용 (IMAGE 는 S3 key)"),
                                 fieldWithPath("data.messages[].imageUrl").description("IMAGE 열람용 presigned URL (아니면 null)").optional(),
                                 fieldWithPath("data.messages[].createdAt").description("메시지 생성일시"),
+                                fieldWithPath("data.messages[].unreadCount")
+                                    .description("이 메시지를 아직 읽지 않은, 발신자를 뺀 현재 참여자 수. 0 이면 모두 읽음 (SYSTEM 은 항상 0)"),
                                 fieldWithPath("data.nextCursor").description("다음 페이지 커서 (더 없으면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
@@ -218,9 +224,10 @@ class ChatControllerTest : ControllerUnitTest() {
     }
 
     @Test
-    @DisplayName("채팅방을 읽음 처리한다")
+    @DisplayName("채팅방을 읽음 처리하고 커서가 전진했으면 READ 이벤트를 발행한다")
     fun read() {
-        justRun { chatService.markAsRead(any(), any(), any()) }
+        val event = ChatReadEvent(roomId = 1L, memberId = 1L, previousLastReadMessageId = 7L, lastReadMessageId = 10L)
+        every { chatService.markAsRead(any(), 1L, 10L) } returns event
 
         mockMvc.perform(
             post("/api/v1/chat/rooms/{roomId}/read", 1L)
@@ -241,7 +248,11 @@ class ChatControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Chat")
                             .summary("읽음 처리")
-                            .description("채팅방의 읽음 위치를 lastReadMessageId 까지 전진시킵니다.")
+                            .description(
+                                "채팅방의 읽음 위치를 lastReadMessageId 까지 전진시킵니다. " +
+                                    "커서가 실제로 전진하면 방 토픽(/sub/chat/rooms/{roomId})에 " +
+                                    "{type: \"READ\", roomId, memberId, previousLastReadMessageId, lastReadMessageId} 프레임을 발행합니다.",
+                            )
                             .pathParameters(
                                 parameterWithName("roomId").description("채팅방 ID"),
                             )
@@ -257,6 +268,24 @@ class ChatControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        verify { messagingTemplate.convertAndSend("/sub/chat/rooms/1", event) }
+    }
+
+    @Test
+    @DisplayName("커서가 전진하지 않은 읽음 처리는 READ 이벤트를 발행하지 않는다")
+    fun readWithoutAdvance() {
+        every { chatService.markAsRead(any(), 1L, 10L) } returns null
+
+        mockMvc.perform(
+            post("/api/v1/chat/rooms/{roomId}/read", 1L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(ChatReadRequest(lastReadMessageId = 10L))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+
+        verify(exactly = 0) { messagingTemplate.convertAndSend(any<String>(), any<Any>()) }
     }
 
     @Test

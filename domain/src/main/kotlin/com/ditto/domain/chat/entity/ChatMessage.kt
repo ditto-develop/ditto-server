@@ -43,6 +43,18 @@ class ChatMessage private constructor(
     val content: String,
 ) : BaseEntity() {
 
+    /**
+     * 이 메시지를 아직 안 읽은 참여자 수. 발신자와 이탈자는 세지 않는다.
+     * 발신자 커서는 본인 메시지를 안 가리킬 수 있어 넣으면 1이 남고, 이탈자는 영영 안 읽어 숫자가 줄지 않는다.
+     * SYSTEM 메시지는 0. 조회자와 무관한 값이라 REST 와 STOMP 가 같은 수를 낸다.
+     */
+    fun unreadCountAmong(roomMembers: Collection<ChatRoomMember>): Int {
+        if (messageType == ChatMessageType.SYSTEM) {
+            return 0
+        }
+        return roomMembers.count { it.memberId != senderId && !it.hasLeft && !it.hasRead(id) }
+    }
+
     companion object {
         fun of(
             roomId: Long,

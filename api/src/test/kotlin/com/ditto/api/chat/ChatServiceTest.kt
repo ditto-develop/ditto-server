@@ -2,6 +2,7 @@ package com.ditto.api.chat
 
 import com.ditto.api.chat.dto.ChatImageUploadFileRequest
 import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
+import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -18,6 +19,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 /** 개방된 주말 한가운데. 이 시각으로 만든 방은 곧바로 ACTIVE 다. */
@@ -132,6 +135,37 @@ class ChatServiceTest(
         secondPage.messages.map { it.id } shouldBe listOf(saved[2].id, saved[1].id)
     }
 
+    "메시지별 unreadCount 는 발신자를 뺀 안 읽은 참여자 수다. 읽음 커서와 이탈자를 반영한다" {
+        // given: 그룹 방 1(나)·2·3·4. 1이 두 개 보냄, 2는 첫 메시지까지 읽음, 4는 이탈
+        val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY)).also { room ->
+            chatRoomMemberRepository.saveAll(listOf(1L, 2L, 3L, 4L).map { ChatRoomMember.of(roomId = room.id, memberId = it) })
+        }
+        val first = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "첫 메시지"))
+        val second = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "둘째 메시지"))
+        chatService.markAsRead(memberId = 2L, roomId = room.id, lastReadMessageId = first.id)
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 4L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        // when
+        val page = chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 30)
+
+        // then: 첫 메시지는 3만 안 읽음(2는 읽음·4는 이탈), 둘째는 2·3이 안 읽음
+        page.messages.associate { it.id to it.unreadCount } shouldBe mapOf(first.id to 1, second.id to 2)
+    }
+
+    "방 목록의 lastMessage 에도 unreadCount 가 실린다" {
+        // given: 1:1 방, 내(1) 메시지를 상대(2)가 아직 안 읽음
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        chatMessageRepository.save(ChatMessage.of(room.id, 1L, "안녕"))
+
+        // when
+        val response = chatService.getMyRooms(memberId = 1L).single()
+
+        // then
+        response.lastMessage?.unreadCount shouldBe 1
+    }
+
     "방 참여자가 아니면 메시지 조회 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
         // given
         val room = saveOpenedRoom(100L, 1L, 2L)
@@ -161,6 +195,95 @@ class ChatServiceTest(
         // then: 앞으로만 전진, 3번째 유지
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)!!
         roomMember.lastReadMessageId shouldBe messages[2].id
+    }
+
+    "읽음 처리는 커서가 실제로 전진했을 때만 직전 커서를 담은 READ 이벤트를 돌려준다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        val messages = (1..3).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
+
+        // when: 처음 읽음, 더 앞으로, 같은 값 재시도, 뒤로
+        val first = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[1].id)
+        val advanced = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
+        val retried = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
+        val backward = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[0].id)
+
+        // then
+        first shouldBe ChatReadEvent(
+            roomId = room.id, memberId = 1L, previousLastReadMessageId = null, lastReadMessageId = messages[1].id,
+        )
+        advanced shouldBe ChatReadEvent(
+            roomId = room.id, memberId = 1L, previousLastReadMessageId = messages[1].id, lastReadMessageId = messages[2].id,
+        )
+        retried shouldBe null
+        backward shouldBe null
+    }
+
+    "이 방의 메시지가 아닌 id 로 읽음 처리하면 BAD_REQUEST 이고 커서는 그대로다" {
+        // given: 내 방과 다른 방, 다른 방에만 메시지가 있다
+        val myRoom = saveOpenedRoom(100L, 1L, 2L)
+        val otherRoom = saveOpenedRoom(200L, 1L, 3L)
+        val otherRoomMessage = chatMessageRepository.save(ChatMessage.of(otherRoom.id, 3L, "다른 방"))
+
+        // when & then: 다른 방 메시지 id, 존재하지 않는 id 모두 거부
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 1L, roomId = myRoom.id, lastReadMessageId = otherRoomMessage.id)
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 1L, roomId = myRoom.id, lastReadMessageId = Long.MAX_VALUE)
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        chatRoomMemberRepository.findByRoomIdAndMemberId(myRoom.id, 1L)?.lastReadMessageId shouldBe null
+    }
+
+    "이탈자의 읽음은 커서만 전진하고 READ 이벤트는 내지 않는다" {
+        // given: 3명 방에서 3L 이 이탈한 뒤 지난 대화를 읽는다
+        val room = saveOpenedRoom(100L, 1L, 2L, 3L)
+        val message = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "안녕"))
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        // when
+        val event = chatService.markAsRead(memberId = 3L, roomId = room.id, lastReadMessageId = message.id)
+
+        // then
+        event shouldBe null
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)?.lastReadMessageId shouldBe message.id
+    }
+
+    // 잠금 없이 읽으면 두 요청이 둘 다 옛 커서를 보고 늦게 커밋된 쪽이 덮어 커서가 뒤로 갈 수 있다.
+    // H2 라 잠금 계약 위반은 잡지만 InnoDB 시맨틱까지 보장하지는 않는다.
+    "같은 회원의 읽음 요청이 겹쳐도 커서는 더 큰 값으로 수렴한다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        val messages = (1..2).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
+        val startLatch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+
+        // when: 1번째·2번째까지 읽음이 동시에 들어온다
+        val requests = messages.map { message ->
+            executor.submit<ChatReadEvent?> {
+                startLatch.await()
+                chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = message.id)
+            }
+        }
+        startLatch.countDown()
+        val events = requests.map { it.get() }
+        executor.shutdown()
+
+        // then: 커서는 뒤로 가지 않고, 이벤트의 previous 도 겹치지 않는다
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)?.lastReadMessageId shouldBe messages[1].id
+        events.filterNotNull().map { it.previousLastReadMessageId }.toSet().size shouldBe events.filterNotNull().size
+    }
+
+    "방 참여자가 아니면 읽음 처리 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        // when & then
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 99L, roomId = room.id, lastReadMessageId = 1L)
+        }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
     }
 
     "이미지 업로드 URL은 방 멤버에게 내 소유 접두사(chat/{memberId}/) 키로 발급된다" {
@@ -231,6 +354,7 @@ class ChatServiceTest(
         // then
         sent.senderId shouldBe 1L
         sent.content shouldBe "안녕하세요" // trim 됨
+        sent.unreadCount shouldBe 1 // 상대(2)가 아직 안 읽음
         chatMessageRepository.countByRoomId(room.id) shouldBe 1L
     }
 

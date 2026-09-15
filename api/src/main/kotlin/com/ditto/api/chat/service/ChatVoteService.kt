@@ -95,7 +95,7 @@ class ChatVoteService(
                 options = options,
                 activeMemberIds = activeMemberIds(roomId),
             ),
-            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+            systemMessage = ChatMessageResponse.system(systemMessage),
         )
     }
 
@@ -130,7 +130,7 @@ class ChatVoteService(
         )
         return ChatVoteChangeResult(
             detail = toDetail(vote, activeMemberIds, memberId),
-            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+            systemMessage = ChatMessageResponse.system(systemMessage),
         )
     }
 
@@ -377,7 +377,7 @@ class ChatVoteService(
         )
 
     private fun activeMemberIds(roomId: Long): Set<Long> =
-        chatRoomMemberRepository.findByRoomIdIn(listOf(roomId))
+        chatRoomMemberRepository.findByRoomId(roomId)
             .filter { !it.hasLeft }
             .map { it.memberId }
             .toSet()

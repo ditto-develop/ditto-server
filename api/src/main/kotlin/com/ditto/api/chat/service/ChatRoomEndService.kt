@@ -148,7 +148,7 @@ class ChatRoomEndService(
             )
         }
         return ChatLeaveResult(
-            systemMessages = messages.map { ChatMessageResponse.of(it, imageUrl = null) },
+            systemMessages = messages.map { ChatMessageResponse.system(it) },
             isRoomEnded = shouldDissolve,
         )
     }
@@ -163,7 +163,7 @@ class ChatRoomEndService(
         val message = chatMessageRepository.save(
             ChatMessage.system(roomId = room.id, senderId = memberId, content = USER_LEFT),
         )
-        return ChatMessageResponse.of(message, imageUrl = null)
+        return ChatMessageResponse.system(message)
     }
 
     /**

@@ -92,6 +92,7 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         content = content,
         imageUrl = null,
         createdAt = LocalDateTime.of(2026, 3, 24, 21, 3, 12),
+        unreadCount = 0,
     )
 
     private fun detailResponseFields(prefix: String) = arrayOf(

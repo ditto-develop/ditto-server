@@ -38,6 +38,7 @@ class ChatStompControllerTest {
             content = "안녕",
             imageUrl = null,
             createdAt = LocalDateTime.of(2026, 7, 16, 12, 0),
+            unreadCount = 1,
         )
         every { chatService.sendMessage(2L, 1L, "안녕", ChatMessageType.TEXT) } returns response
         val principal = UsernamePasswordAuthenticationToken(MemberPrincipal(2L), null, emptyList())

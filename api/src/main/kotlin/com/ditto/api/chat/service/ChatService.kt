@@ -5,6 +5,7 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
 import com.ditto.api.chat.dto.ChatImageUploadUrlsResponse
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
+import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -169,9 +170,10 @@ class ChatService(
         val pageSize = size.coerceIn(1, MAX_PAGE_SIZE)
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor, pageSize)
         val nextCursor = if (messages.size == pageSize) messages.last().id else null
+        val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
 
         return ChatMessagesResponse(
-            messages = messages.map { toMessageResponse(it) },
+            messages = messages.map { toMessageResponse(it, roomMembers) },
             nextCursor = nextCursor,
         )
     }
@@ -190,7 +192,7 @@ class ChatService(
         val message = chatMessageRepository.save(
             ChatMessage.of(roomId = roomId, senderId = senderId, content = body, messageType = messageType),
         )
-        return toMessageResponse(message)
+        return toMessageResponse(message, chatRoomMemberRepository.findByRoomId(roomId))
     }
 
     /**
@@ -220,22 +222,37 @@ class ChatService(
             }
         }
 
-    /** 읽음 처리 — 내 last_read_message_id 를 전진시킨다. */
+    /**
+     * 읽음 처리. 커서가 실제로 전진했을 때만 브로드캐스트용 이벤트를 돌려준다(재시도·후진은 null).
+     * 이탈자는 커서만 기록하고 이벤트는 내지 않는다. unreadCount 에 세지 않는 사람이라 이벤트가 나가면 상대가 하나 더 뺀다.
+     */
     @Transactional
-    fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long) {
-        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+    fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long): ChatReadEvent? {
+        val roomMember = chatRoomMemberRepository.findWithLockByRoomIdAndMemberId(roomId, memberId)
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
-        roomMember.readUpTo(lastReadMessageId)
+        if (!chatMessageRepository.existsByIdAndRoomId(lastReadMessageId, roomId)) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "이 방의 메시지가 아닙니다: messageId=$lastReadMessageId")
+        }
+        val previousLastReadMessageId = roomMember.lastReadMessageId
+        if (!roomMember.readUpTo(lastReadMessageId) || roomMember.hasLeft) {
+            return null
+        }
+        return ChatReadEvent(
+            roomId = roomId,
+            memberId = memberId,
+            previousLastReadMessageId = previousLastReadMessageId,
+            lastReadMessageId = lastReadMessageId,
+        )
     }
 
     /** 저장된 메시지를 응답으로. IMAGE 는 content(S3 key)를 presigned GET URL 로 해석해 imageUrl 에 담는다. */
-    fun toMessageResponse(message: ChatMessage): ChatMessageResponse {
+    private fun toMessageResponse(message: ChatMessage, roomMembers: Collection<ChatRoomMember>): ChatMessageResponse {
         val imageUrl = if (message.messageType == ChatMessageType.IMAGE) {
             objectStorage.issueViewUrl(message.content)
         } else {
             null
         }
-        return ChatMessageResponse.of(message, imageUrl)
+        return ChatMessageResponse.of(message, imageUrl, roomMembers)
     }
 
     private fun toRoomResponse(
@@ -252,7 +269,7 @@ class ChatService(
         return ChatRoomResponse.of(
             room = room,
             counterpartMemberIds = counterpartMemberIds,
-            lastMessage = lastMessage?.let { toMessageResponse(it) },
+            lastMessage = lastMessage?.let { toMessageResponse(it, roomMembers) },
             unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
             hasLeft = myRoomMember.hasLeft,
         )
