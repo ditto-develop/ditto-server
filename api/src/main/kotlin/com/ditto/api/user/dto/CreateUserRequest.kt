@@ -35,7 +35,7 @@ data class CreateUserRequest(
     @field:Max(100)
     val age: Int,
 
-    // 아래 4개(생년월일·이름·전화번호·이메일)는 일반 앱에서 카카오가 주지 않는 값이라 비워둘 수 있다.
+    // 생년월일·이름·전화번호는 일반 앱에서 카카오가 안 주고, 이메일은 미동의면 없어서 비워둘 수 있다.
     // 가입 후 `PATCH /api/v1/users/me/personal-info`로 언제든 채울 수 있다.
     val birthDate: LocalDateTime? = null,
 
