@@ -102,7 +102,7 @@ class AdminWebTest {
                 .with(authentication(admin())).with(csrf())
                 .param("category", "성격").param("title", "테스트 퀴즈셋")
                 .param("description", "설명")
-                .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
+                .param("weekStartedOn", "2026-06-15")
                 .param("matchingType", "ONE_TO_ONE").param("isActive", "true")
                 .param("quizzes[0].question", "치약 짤 때?")
                 .param("quizzes[0].choices[0].content", "아래부터")
@@ -266,14 +266,13 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 수정 폼의 시작/종료일시가 datetime-local 형식으로 렌더링된다")
-    fun editFormRendersDateTimeLocalValues() {
+    @DisplayName("퀴즈셋 수정 폼은 저장된 주차(월요일)를 ISO 날짜로 렌더링한다")
+    fun editFormRendersStoredWeek() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/edit", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("value=\"2026-04-06T00:00\"")))
-            .andExpect(content().string(containsString("value=\"2026-04-12T23:59\"")))
+            .andExpect(content().string(containsString("name=\"weekStartedOn\" value=\"2026-04-06\"")))
     }
 
     @Test
@@ -290,7 +289,7 @@ class AdminWebTest {
         mockMvc.perform(
             post("/admin/quiz-sets/{id}", id).with(authentication(admin())).with(csrf())
                 .param("category", "수정").param("title", "수정 제목").param("description", "d")
-                .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
+                .param("weekStartedOn", "2026-06-15")
                 .param("matchingType", "ONE_TO_ONE").param("isActive", "false")
                 .param("quizzes[0].id", quiz.id.toString())
                 .param("quizzes[0].question", "수정된 질문")

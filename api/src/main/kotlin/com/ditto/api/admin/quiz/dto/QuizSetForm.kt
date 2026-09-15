@@ -6,32 +6,32 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.system.OperationWeek
 import org.springframework.format.annotation.DateTimeFormat
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 /**
  * 퀴즈셋 생성·수정 폼 바인딩(스프링 MVC 폼 백킹 빈이라 주생성자는 public 으로 둔다 — 바인딩 시 스프링이 인스턴스화).
- * 일시 형식은 datetime-local 인풋과 맞춰야 한다 — 형식 지정이 없으면 수정 폼 렌더링 시
- * 로캘 형식으로 출력돼 브라우저가 값을 버리고 빈 칸으로 표시된다(#93).
+ * 기간은 직접 받지 않는다. 주차(그 주 월요일)만 고르게 하고 응답 기간은 서버가 월~수로 고정한다.
+ * 날짜 형식을 지정하지 않으면 수정 폼 렌더링 시 로캘 형식으로 출력돼 select 값과 어긋난다(#93과 같은 문제).
  */
 class QuizSetForm(
     var category: String = "",
     var title: String = "",
     var description: String? = null,
-    @field:DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
-    var startDate: LocalDateTime? = null,
-    @field:DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
-    var endDate: LocalDateTime? = null,
+    @field:DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    var weekStartedOn: LocalDate? = null,
     var matchingType: MatchingType = MatchingType.ONE_TO_ONE,
     var isActive: Boolean = false,
     // 비어 있으면 문항을 건드리지 않는다. 전체 삭제는 퀴즈셋 삭제로만 한다.
     var quizzes: MutableList<QuizForm> = mutableListOf(),
 ) {
-    fun requiredStartDate(): LocalDateTime =
-        startDate ?: throw WarnException(ErrorCode.BAD_REQUEST, "시작일시는 필수입니다.")
-
-    fun requiredEndDate(): LocalDateTime =
-        endDate ?: throw WarnException(ErrorCode.BAD_REQUEST, "종료일시는 필수입니다.")
+    /** select 값이 조작돼 월요일이 아닌 날짜가 오면 [OperationWeek]의 검사에 걸린다 — 요청 잘못으로 바꿔 던진다. */
+    fun requiredWeek(): OperationWeek {
+        val monday = weekStartedOn ?: throw WarnException(ErrorCode.BAD_REQUEST, "주차는 필수입니다.")
+        return runCatching { OperationWeek(monday) }
+            .getOrElse { throw WarnException(ErrorCode.BAD_REQUEST, "주차는 월요일 날짜여야 합니다: $monday") }
+    }
 
     /** 제출된 문항은 모두 채워져 있어야 한다. 번호는 화면에 보이는 순서 그대로다. */
     fun validatedQuizzes(): List<QuizForm> {
@@ -56,8 +56,7 @@ class QuizSetForm(
             category = quizSet.category,
             title = quizSet.title,
             description = quizSet.description,
-            startDate = quizSet.startDate,
-            endDate = quizSet.endDate,
+            weekStartedOn = quizSet.weekStartedOn,
             matchingType = quizSet.matchingType,
             isActive = quizSet.isActive,
             quizzes = quizzes.map { quiz ->

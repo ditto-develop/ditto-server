@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments :: head('퀴즈셋 ' + (${mode} == 'create' ? '생성' : '수정'))}"></head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"/>
 <body>
 <div class="layout">
     <aside th:replace="~{fragments :: sidebar('quiz')}"></aside>
@@ -8,7 +9,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title" th:text="${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정'">퀴즈셋</h1>
-            <p class="page-desc">주차는 시작일시가 속한 주(월요일 시작)로 자동 결정됩니다. 수정 시에는 변경되지 않습니다.</p>
+            <p class="page-desc">주차를 고르면 응답 기간은 그 주 월요일 00:00 ~ 수요일 23:59:59로 고정됩니다. 일시는 직접 입력하지 않습니다.</p>
 
             <div th:replace="~{fragments :: alerts}"></div>
             <div class="alert error" id="formError" hidden></div>
@@ -32,8 +33,15 @@
                     <div class="field"><label>제목</label><input type="text" th:field="*{title}" placeholder="예: 이번 주 1:1 매칭"/></div>
                     <div class="field"><label>설명</label><textarea rows="2" th:field="*{description}"></textarea></div>
                     <div class="field-row">
-                        <div class="field"><label>시작일시</label><input type="datetime-local" th:field="*{startDate}" required/></div>
-                        <div class="field"><label>종료일시</label><input type="datetime-local" th:field="*{endDate}" required/></div>
+                        <div class="field">
+                            <label>주차 (월요일 선택)</label>
+                            <input type="text" th:field="*{weekStartedOn}" id="weekStartedOn"
+                                   placeholder="달력에서 월요일을 고르세요" autocomplete="off" required/>
+                        </div>
+                        <div class="field">
+                            <label>응답 기간</label>
+                            <input type="text" id="weekPeriodLabel" value="주차를 고르면 표시됩니다" disabled/>
+                        </div>
                     </div>
                     <div class="field check" style="margin-bottom:0">
                         <input type="checkbox" id="isActive" th:field="*{isActive}"/>
@@ -138,6 +146,9 @@
         </main>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ko.js"></script>
+<script th:src="@{/admin/js/quiz-week-picker.js}"></script>
 <script th:src="@{/admin/js/quiz-form.js}"></script>
 </body>
 </html>

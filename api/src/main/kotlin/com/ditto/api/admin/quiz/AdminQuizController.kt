@@ -12,6 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
  * 퀴즈셋 주차별 CRUD(서버 렌더링). 문항·선택지는 퀴즈셋 폼에 함께 실려 저장 한 번으로 반영된다.
+ * 기간은 주차(월요일 날짜) 하나로만 받는다 — 일시를 직접 치게 두면 한 주를 벗어나거나 요일이 어긋나는 실수가 잦았다.
  */
 @Controller
 class AdminQuizController(

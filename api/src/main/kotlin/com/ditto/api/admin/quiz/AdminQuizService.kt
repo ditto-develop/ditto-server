@@ -7,13 +7,13 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
+import com.ditto.domain.quiz.entity.QuizResponsePeriod
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -51,13 +51,13 @@ class AdminQuizService(
         quizAnswerRepository.countAnswersPerQuiz(quizIds)
 
     fun createQuizSet(form: QuizSetForm): QuizSet {
-        validatePeriodWithinOneWeek(form)
+        val period = QuizResponsePeriod(form.requiredWeek())
         val quizSet = QuizSet.create(
             category = form.category,
             title = form.title,
             description = form.description,
-            startDate = form.requiredStartDate(),
-            endDate = form.requiredEndDate(),
+            startDate = period.startsAt,
+            endDate = period.endsAt,
             isActive = form.isActive,
             matchingType = form.matchingType,
         )
@@ -66,15 +66,16 @@ class AdminQuizService(
         return saved
     }
 
+    /** 자유 입력 시절에 만든 퀴즈셋도 수정 저장 순간 기간이 월~수로 다시 맞춰진다. */
     fun updateQuizSet(id: Long, form: QuizSetForm) {
-        validatePeriodWithinOneWeek(form)
+        val period = QuizResponsePeriod(form.requiredWeek())
         val quizSet = getQuizSet(id)
         quizSet.update(
             category = form.category,
             title = form.title,
             description = form.description,
-            startDate = form.requiredStartDate(),
-            endDate = form.requiredEndDate(),
+            startDate = period.startsAt,
+            endDate = period.endsAt,
             matchingType = form.matchingType,
         )
         if (form.isActive) quizSet.activate() else quizSet.deactivate()
@@ -195,15 +196,6 @@ class AdminQuizService(
         }
     }
 
-
-    /** 기간이 두 운영 주에 걸치면 주간 식별자(weekStartedOn)와 실제 기간이 어긋나므로 유입 시점에 막는다. */
-    private fun validatePeriodWithinOneWeek(form: QuizSetForm) {
-        val startWeek = OperationWeek.containing(form.requiredStartDate().toLocalDate())
-        val endWeek = OperationWeek.containing(form.requiredEndDate().toLocalDate())
-        if (startWeek != endWeek) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "퀴즈셋 기간은 한 운영 주(월~일) 안에 있어야 합니다.")
-        }
-    }
 
     fun activate(id: Long) {
         getQuizSet(id).activate()
