@@ -28,11 +28,10 @@ class AdminQuizServiceTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    fun quizSetForm(startDate: LocalDateTime, endDate: LocalDateTime) = QuizSetForm(
+    fun quizSetForm(weekStartedOn: LocalDate) = QuizSetForm(
         category = "성격",
         title = "주간 검증 테스트",
-        startDate = startDate,
-        endDate = endDate,
+        weekStartedOn = weekStartedOn,
     )
 
     fun quizForm(question: String, vararg choices: String) = QuizForm(
@@ -43,72 +42,44 @@ class AdminQuizServiceTest(
     fun formWithQuizzes(vararg quizzes: QuizForm) = QuizSetForm(
         category = "성격",
         title = "문항 저장 테스트",
-        startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
-        endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
+        weekStartedOn = LocalDate.of(2026, 7, 27),
         quizzes = quizzes.toMutableList(),
     )
 
-    "퀴즈셋 기간 검증" - {
-        "기간이 한 운영 주 안이면 생성되고 weekStartedOn이 시작일의 월요일로 파생된다" {
-            val quizSet = adminQuizService.createQuizSet(
-                quizSetForm(
-                    startDate = LocalDateTime.of(2026, 7, 29, 0, 0),
-                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
-                ),
-            )
+    "퀴즈셋 기간" - {
+        "주차를 고르면 기간이 그 주 월요일 00:00:00 ~ 수요일 23:59:59로 고정된다" {
+            val quizSet = adminQuizService.createQuizSet(quizSetForm(weekStartedOn = LocalDate.of(2026, 7, 27)))
 
             quizSet.weekStartedOn shouldBe LocalDate.of(2026, 7, 27)
+            quizSet.startDate shouldBe LocalDateTime.of(2026, 7, 27, 0, 0, 0)
+            quizSet.endDate shouldBe LocalDateTime.of(2026, 7, 29, 23, 59, 59)
         }
 
-        "기간이 두 운영 주에 걸치면 생성이 거부된다" {
+        "주차가 비어 있으면 생성이 거부된다" {
             val exception = shouldThrow<WarnException> {
-                adminQuizService.createQuizSet(
-                    quizSetForm(
-                        startDate = LocalDateTime.of(2026, 7, 24, 0, 0),
-                        endDate = LocalDateTime.of(2026, 7, 28, 23, 59),
-                    ),
-                )
+                adminQuizService.createQuizSet(QuizSetForm(category = "성격", title = "주차 없음"))
             }
 
             exception.errorCode shouldBe ErrorCode.BAD_REQUEST
         }
 
-        "수정 기간이 두 운영 주에 걸치면 수정이 거부된다" {
-            val quizSet = adminQuizService.createQuizSet(
-                quizSetForm(
-                    startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
-                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
-                ),
-            )
-
-            shouldThrow<WarnException> {
-                adminQuizService.updateQuizSet(
-                    quizSet.id,
-                    quizSetForm(
-                        startDate = LocalDateTime.of(2026, 7, 31, 0, 0),
-                        endDate = LocalDateTime.of(2026, 8, 3, 23, 59),
-                    ),
-                )
+        "월요일이 아닌 날짜가 오면 생성이 거부된다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(quizSetForm(weekStartedOn = LocalDate.of(2026, 7, 29)))
             }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
         }
 
-        "수정으로 시작일을 다른 주로 옮기면 weekStartedOn이 재파생된다" {
-            val quizSet = adminQuizService.createQuizSet(
-                quizSetForm(
-                    startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
-                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
-                ),
-            )
+        "수정으로 주차를 옮기면 weekStartedOn과 기간이 함께 바뀐다" {
+            val quizSet = adminQuizService.createQuizSet(quizSetForm(weekStartedOn = LocalDate.of(2026, 7, 27)))
 
-            adminQuizService.updateQuizSet(
-                quizSet.id,
-                quizSetForm(
-                    startDate = LocalDateTime.of(2026, 8, 3, 0, 0),
-                    endDate = LocalDateTime.of(2026, 8, 9, 23, 59),
-                ),
-            )
+            adminQuizService.updateQuizSet(quizSet.id, quizSetForm(weekStartedOn = LocalDate.of(2026, 8, 3)))
 
-            adminQuizService.getQuizSet(quizSet.id).weekStartedOn shouldBe LocalDate.of(2026, 8, 3)
+            val updated = adminQuizService.getQuizSet(quizSet.id)
+            updated.weekStartedOn shouldBe LocalDate.of(2026, 8, 3)
+            updated.startDate shouldBe LocalDateTime.of(2026, 8, 3, 0, 0, 0)
+            updated.endDate shouldBe LocalDateTime.of(2026, 8, 5, 23, 59, 59)
         }
     }
 
@@ -375,10 +346,7 @@ class AdminQuizServiceTest(
 
             adminQuizService.updateQuizSet(
                 quizSet.id,
-                quizSetForm(
-                    startDate = LocalDateTime.of(2026, 7, 27, 0, 0),
-                    endDate = LocalDateTime.of(2026, 8, 2, 23, 59),
-                ),
+                quizSetForm(weekStartedOn = LocalDate.of(2026, 7, 27)),
             )
 
             quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1

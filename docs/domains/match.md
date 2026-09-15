@@ -33,7 +33,9 @@
 - **상태 전이**: 배치가 `group_match`(비활성·score) + `group_match_member`(`PENDING`)로 깔고, 각자 수락·거절한다. 수락자가 3명에 닿으면 성사(`isActive`)되고 금요일에 채팅방이 열린다. 채팅방에는 **수락한 사람만** 들어간다. 수락·거절 모두 되돌릴 수 없다.
 - **자동 거절**: 한 그룹을 수락하면 같은 퀴즈셋의 남은 `PENDING` 초대가 모두 `DECLINED`가 된다. 한 주에 열리는 채팅방이 하나뿐이라서다. 거절당한 그룹의 다른 구성원에게는 알리지 않는다.
 - **수락 경로는 방 행을 비관적 잠금**한다([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)). 잠금이 없으면 동시 수락이 각자 낡은 수락자 수를 보고 둘 다 채팅방을 만들려다 `chat_room (source_type, source_id)` 유일키에 걸려 한쪽 트랜잭션이 통째로 롤백된다. 잠금 조회가 트랜잭션 **첫 접근**이어야 한다(규칙 5).
-- **후보 재생성은 응답이 시작되면 건너뛴다**(`GroupCandidateWriter`). `group_match` 하나가 후보이자 성사 상태라, 지우면 열린 채팅방이 가리킬 곳을 잃는다.
+- **후보 재생성은 응답이 시작되면 거부한다**(`GroupCandidateWriter` → `MATCH_CANDIDATES_ALREADY_RESPONDED`, 기존 후보는 그대로). `group_match` 하나가 후보이자 성사 상태라, 지우면 열린 채팅방이 가리킬 곳을 잃는다. 조용히 건너뛰지 않고 예외로 알리는 이유: 어드민이 재생성을 눌렀는데 성공처럼 보이면 안 된다.
+- **후보 생성은 퀴즈셋마다 자기 트랜잭션**이다 — `generateMatchingCandidates`(`@Transactional`)를 배치(`MatchingBatchFacade.runScheduledMatching`)가 **트랜잭션 없이** 프록시로 부른다. facade 나 그 호출자에 `@Transactional`을 붙이면 격리가 깨진다. 배치는 셋을 돌며 실패는 경고 로그만 남기고 계속한다([ADR 0027](../adr/0027-matching-batch-per-quiz-set-transaction.md)). 후보가 없는 셋만 고르지만(anti-join) 대상 선정 직후 어드민 재생성·수락이 끼어들면 위 예외를 만날 수 있고, 그때 다른 셋의 후보까지 롤백되면 안 된다. 실패한 셋은 다음 배치가 다시 집고, 반환하는 ID(알림 대상)는 성공한 셋만이다.
+- **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
 - `group_match_decline` 테이블은 남아 있으나 코드가 쓰지 않는다 — 거절은 `InvitationStatus.DECLINED`로 그룹별로 남는다.
 
 ## 상태 전이

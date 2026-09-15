@@ -104,7 +104,11 @@ class QuizProgressControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("QuizProgress")
                             .summary("퀴즈 진행률 조회")
-                            .description("현재 주차의 퀴즈 진행 상태를 조회합니다.")
+                            .description(
+                                "현재 주차의 퀴즈 진행 상태를 조회합니다. " +
+                                    "활성 퀴즈셋이 없으면(응답 기간 월~수 밖이거나 이번 주 퀴즈셋이 아직 없는 경우) " +
+                                    "오류가 아니라 status=NOT_STARTED, participantCount=0 으로 응답합니다.",
+                            )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.status").description("진행 상태 (NOT_STARTED, IN_PROGRESS, COMPLETED)"),

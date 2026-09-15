@@ -71,8 +71,10 @@ class QuizProgressService(
     ): QuizProgressResponse {
         val quizSets = quizSetRepository.findCurrentWeekActive(now)
 
+        // 응답 기간(월~수) 밖이거나 이번 주 퀴즈셋이 아직 없는 상태는 정상 운영이다 — 서버 오류로 다루지 않는다.
+        // 이웃 API(quiz-sets/current-week)가 빈 목록을 주는 것과 같은 결이다.
         if (quizSets.isEmpty()) {
-            throw ErrorException(ErrorCode.NOT_FOUND)
+            return QuizProgressResponse.notStarted(participantCount = 0)
         }
 
         val progress = findActiveProgress(memberId, quizSets)

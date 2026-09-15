@@ -297,13 +297,14 @@ class QuizProgressServiceTest(
             result.participantCount shouldBe 2
         }
 
-        "활성 퀴즈셋이 없으면 예외가 발생한다" {
+        "활성 퀴즈셋이 없으면 오류 대신 NOT_STARTED·참여자 0으로 응답한다" {
             val memberId = setupMember()
 
-            val exception = shouldThrow<ErrorException> {
-                quizProgressService.getProgress(memberId, now)
-            }
-            exception.errorCode shouldBe ErrorCode.NOT_FOUND
+            val result = quizProgressService.getProgress(memberId, now)
+
+            result.status shouldBe QuizProgressStatus.NOT_STARTED
+            result.quizSetId shouldBe null
+            result.participantCount shouldBe 0
         }
     }
 

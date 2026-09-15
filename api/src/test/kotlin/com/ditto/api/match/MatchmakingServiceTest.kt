@@ -2,6 +2,8 @@ package com.ditto.api.match
 
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.support.IntegrationTest
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.InvitationStatus
@@ -25,8 +27,10 @@ import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import javax.sql.DataSource
 
 class MatchmakingServiceTest(
@@ -101,7 +105,13 @@ class MatchmakingServiceTest(
                 saveAnswers(c, quizId1 to 1L, quizId2 to 2L)
                 listOf(a, b, c).forEach { saveCompletedProgress(it, quizSetId, total = 2) }
 
-                matchmakingService.generateMatchingCandidates(quizSetId)
+                val summary = matchmakingService.generateMatchingCandidates(quizSetId)
+
+                // 요약은 어드민 화면·REST 응답에 그대로 실린다 — 풀 3명, 페어 1건, 처음이라 삭제 0행·양방향 2행 저장
+                summary.participantCount shouldBe 3
+                summary.matches.map { it.memberIds } shouldBe listOf(setOf(a, b))
+                summary.rowCounts.deletedCount shouldBe 0
+                summary.rowCounts.savedCount shouldBe 2
 
                 // 상위 20%(+동점) → A-B(100) 만 선발 → (A→B), (B→A) 양방향 2행
                 matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId)
@@ -289,7 +299,12 @@ class MatchmakingServiceTest(
                 members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
                 members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
 
-                matchmakingService.generateMatchingCandidates(quizSetId)
+                val summary = matchmakingService.generateMatchingCandidates(quizSetId)
+
+                // 방 1행 + 멤버 3행 저장
+                summary.rowCounts.deletedCount shouldBe 0
+                summary.rowCounts.savedCount shouldBe 4
+                summary.matches.map { it.memberIds } shouldBe listOf(members.toSet())
 
                 // 풀이 3명이면 정원도 3명이라 그룹은 하나뿐이다
                 val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
@@ -334,7 +349,25 @@ class MatchmakingServiceTest(
                     .map { it.memberId }.sorted() shouldBe members.sorted()
             }
 
-            "이미 응답이 시작된 퀴즈셋은 후보를 다시 만들지 않는다" {
+            "아무도 응답하지 않았으면 재생성이 기존 방·멤버를 지우고 다시 깐다" {
+                val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
+                val members = listOf("무응답A", "무응답B", "무응답C").map { saveMember(it) }
+                members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                members.forEach { saveCompletedProgress(it, quizSetId, total = 2) }
+                matchmakingService.generateMatchingCandidates(quizSetId)
+                val firstRoomIds = groupMatchRepository.findByQuizSetId(quizSetId).map { it.id }
+
+                val summary = matchmakingService.generateMatchingCandidates(quizSetId)
+
+                summary.rowCounts.deletedCount shouldBe 4
+                summary.rowCounts.savedCount shouldBe 4
+                val regeneratedRoomIds = groupMatchRepository.findByQuizSetId(quizSetId).map { it.id }
+                firstRoomIds shouldHaveSize 1
+                regeneratedRoomIds shouldHaveSize 1
+                regeneratedRoomIds shouldNotBe firstRoomIds
+            }
+
+            "이미 응답이 시작된 퀴즈셋은 거부하고 기존 후보를 건드리지 않는다" {
                 val (quizSetId, quizId1, quizId2) = saveGroupQuizSetWithTwoQuizzes()
                 val members = listOf("재생성A", "재생성B", "재생성C").map { saveMember(it) }
                 members.forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
@@ -346,7 +379,9 @@ class MatchmakingServiceTest(
                 repeat(3) { activatedRoom.recordAcceptance() }
                 groupMatchRepository.save(activatedRoom)
 
-                matchmakingService.generateMatchingCandidates(quizSetId)
+                // 조용히 건너뛰면 어드민에게 성공처럼 보이므로 예외로 알린다
+                val exception = shouldThrow<WarnException> { matchmakingService.generateMatchingCandidates(quizSetId) }
+                exception.errorCode shouldBe ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED
 
                 // 지워지지 않고 그대로 남아야 한다 — 지우면 열린 채팅방이 고아가 된다
                 val rooms = groupMatchRepository.findByQuizSetId(quizSetId)

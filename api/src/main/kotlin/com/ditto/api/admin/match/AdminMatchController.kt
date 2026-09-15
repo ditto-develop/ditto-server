@@ -1,8 +1,10 @@
 package com.ditto.api.admin.match
 
+import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -18,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminMatchController(
     private val matchmakingService: MatchmakingService,
+    private val matchingBatchFacade: MatchingBatchFacade,
     private val serverTimeProvider: ServerTimeProvider,
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
@@ -32,21 +35,37 @@ class AdminMatchController(
 
     @PostMapping("/admin/matching/run-scheduled")
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
-        val quizSetIds = matchmakingService.runScheduledMatching(serverTimeProvider.now())
+        val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
         matchResultNotifier.notifyFor(quizSetIds)
         redirectAttributes.addFlashAttribute("message", "마감된 퀴즈셋의 매칭 배치를 실행했습니다.")
         return "redirect:/admin/matching"
     }
 
     /**
-     * 후보 재생성. 알림도 함께 남긴다 — 이번에 처음 후보를 받은 회원에게는 알려야 한다.
+     * 후보 재생성. 성공하면 알림도 함께 남긴다 — 이번에 처음 후보를 받은 회원에게는 알려야 한다.
      * 이미 알린 회원에게 다시 가지 않는 것은 알림 쪽 중복 정책이 보장한다(퀴즈셋당 한 번).
+     * 대체할 수 없어 거부되면(응답이 시작된 그룹 퀴즈셋) 실패로 보여주고 알림도 남기지 않는다.
+     * 결과 요약은 저장하지 않고 이번 화면에만 한 번 보여준다.
      */
     @PostMapping("/admin/matching/quiz-sets/{id}/regenerate")
     fun regenerate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
-        matchmakingService.generateMatchingCandidates(id)
-        matchResultNotifier.notifyFor(listOf(id))
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋 #$id 의 매칭 후보를 재생성했습니다.")
+        runCatching { matchmakingService.generateMatchingCandidates(id) }
+            .fold(
+                onSuccess = { summary ->
+                    matchResultNotifier.notifyFor(listOf(id))
+                    redirectAttributes.addFlashAttribute(
+                        "message",
+                        "퀴즈셋 #$id 의 매칭 후보를 재생성했습니다. " +
+                            "참여자 ${summary.participantCount}명, 매칭 ${summary.matches.size}건, " +
+                            "삭제 ${summary.rowCounts.deletedCount}행 · 저장 ${summary.rowCounts.savedCount}행",
+                    )
+                    redirectAttributes.addFlashAttribute("regeneration", summary)
+                },
+                onFailure = { exception ->
+                    if (exception !is WarnException) throw exception
+                    redirectAttributes.addFlashAttribute("error", "퀴즈셋 #$id 매칭 재생성 실패: ${exception.message}")
+                },
+            )
         return "redirect:/admin/matching"
     }
 }

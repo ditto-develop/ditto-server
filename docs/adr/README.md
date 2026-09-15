@@ -22,6 +22,7 @@
 - [0024 — 어드민 문항 편집은 폼 한 번으로 저장하고, 순서는 화면 순서로 매긴다](0024-admin-quiz-bulk-edit-implicit-order.md)
 - [0025 — 성사 전 소개노트는 후보에게 3문항만 연다](0025-intro-note-candidate-preview.md)
 - [0026 — 매칭이 다루는 퀴즈셋을 이번 운영 주로 고정](0026-matching-scoped-to-operation-week.md)
+- [0027 — 매칭 배치는 퀴즈셋마다 별도 트랜잭션으로 돈다](0027-matching-batch-per-quiz-set-transaction.md)
 
 ## 언제 ADR을 쓰는가
 

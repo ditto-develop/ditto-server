@@ -1,6 +1,12 @@
 package com.ditto.api.admin
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.match.matching.MatchScore
+import com.ditto.api.match.matching.ScoredMatch
+import com.ditto.api.match.service.CandidateGenerationSummary
+import com.ditto.api.match.service.CandidateRowCounts
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
@@ -10,6 +16,7 @@ import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
@@ -34,6 +41,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -64,6 +72,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var memberReportRepository: MemberReportRepository
+
+    @Autowired
+    lateinit var groupMatchRepository: GroupMatchRepository
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
@@ -102,7 +113,7 @@ class AdminWebTest {
                 .with(authentication(admin())).with(csrf())
                 .param("category", "성격").param("title", "테스트 퀴즈셋")
                 .param("description", "설명")
-                .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
+                .param("weekStartedOn", "2026-06-15")
                 .param("matchingType", "ONE_TO_ONE").param("isActive", "true")
                 .param("quizzes[0].question", "치약 짤 때?")
                 .param("quizzes[0].choices[0].content", "아래부터")
@@ -266,14 +277,13 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 수정 폼의 시작/종료일시가 datetime-local 형식으로 렌더링된다")
-    fun editFormRendersDateTimeLocalValues() {
+    @DisplayName("퀴즈셋 수정 폼은 저장된 주차(월요일)를 ISO 날짜로 렌더링한다")
+    fun editFormRendersStoredWeek() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/edit", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("value=\"2026-04-06T00:00\"")))
-            .andExpect(content().string(containsString("value=\"2026-04-12T23:59\"")))
+            .andExpect(content().string(containsString("name=\"weekStartedOn\" value=\"2026-04-06\"")))
     }
 
     @Test
@@ -290,7 +300,7 @@ class AdminWebTest {
         mockMvc.perform(
             post("/admin/quiz-sets/{id}", id).with(authentication(admin())).with(csrf())
                 .param("category", "수정").param("title", "수정 제목").param("description", "d")
-                .param("startDate", "2026-06-15T00:00").param("endDate", "2026-06-21T23:59")
+                .param("weekStartedOn", "2026-06-15")
                 .param("matchingType", "ONE_TO_ONE").param("isActive", "false")
                 .param("quizzes[0].id", quiz.id.toString())
                 .param("quizzes[0].question", "수정된 질문")
@@ -306,6 +316,39 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
+            .andExpect(flash().attributeExists("message", "regeneration"))
+            .andExpect(flash().attributeCount(2))
+    }
+
+    @Test
+    @DisplayName("매칭 화면은 재생성 결과 flash 가 있으면 후보 풀·행 수·매칭 표를 그린다")
+    fun matchingPageRendersRegenerationSummary() {
+        val summary = CandidateGenerationSummary(
+            quizSetId = 7L,
+            matchingType = MatchingType.ONE_TO_ONE,
+            participantCount = 3,
+            rowCounts = CandidateRowCounts(deletedCount = 4, savedCount = 2),
+            matches = listOf(ScoredMatch.duo(12L, 5L, MatchScore(score = 100.0, matchedQuestionCount = 2, totalQuestionCount = 2))),
+        )
+
+        mockMvc.perform(get("/admin/matching").with(authentication(admin())).flashAttr("regeneration", summary))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("재생성 결과")))
+            .andExpect(content().string(containsString("5, 12")))
+            .andExpect(content().string(containsString("2 / 2")))
+    }
+
+    @Test
+    @DisplayName("응답이 시작된 그룹 퀴즈셋의 매칭 재생성은 성공 메시지 대신 실패 메시지를 남긴다")
+    fun regenerateRejectedWhenGroupAlreadyResponded() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP))
+        groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3))
+
+        mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/matching"))
+            .andExpect(flash().attribute("error", containsString("이미 응답이 시작된 퀴즈셋")))
+            .andExpect(flash().attribute("message", null))
     }
 
     @Test
