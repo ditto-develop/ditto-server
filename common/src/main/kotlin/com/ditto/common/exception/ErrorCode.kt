@@ -11,6 +11,8 @@ enum class ErrorCode(
     NOT_FOUND(404, "0004", "존재하지 않는 리소스입니다."),
     UNSUPPORTED_PROVIDER(400, "1001", "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_SOCIAL_ACCESS_TOKEN(401, "1002", "유효하지 않은 소셜 로그인 토큰입니다."),
+    INVALID_SOCIAL_AUTH_CODE(401, "1003", "유효하지 않거나 만료된 소셜 로그인 인가 코드입니다."),
+    SOCIAL_PROVIDER_ERROR(502, "1004", "소셜 로그인 제공자 요청에 실패했습니다."),
     REFRESH_TOKEN_NOT_FOUND(401, "2001", "리프레시 토큰이 존재하지 않습니다."),
     REFRESH_TOKEN_EXPIRED(401, "2002", "리프레시 토큰이 만료되었습니다."),
     SIGNUP_REQUIRED(403, "3001", "회원가입을 완료해야 이용할 수 있습니다."),

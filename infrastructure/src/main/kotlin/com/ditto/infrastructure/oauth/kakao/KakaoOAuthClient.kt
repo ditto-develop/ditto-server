@@ -1,12 +1,21 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
+import com.ditto.common.exception.WarnException
+import com.ditto.common.serialization.ObjectMapperFactory
 import com.ditto.domain.member.entity.Gender
 import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthUserInfo
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
+import com.ditto.infrastructure.oauth.kakao.dto.KakaoTokenErrorResponse
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.http.HttpStatus
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestClientException
 import java.time.LocalDate
 
 class KakaoOAuthClient(
@@ -30,12 +39,21 @@ class KakaoOAuthClient(
 
     override fun getAccessToken(code: String): String {
         val params = buildTokenRequestParams(code)
+        val response = try {
+            client.getToken(params)
+        } catch (e: RestClientException) {
+            throw translateTokenExchangeFailure(e)
+        }
 
-        return client.getToken(params).accessToken
+        return response.accessToken
     }
 
     override fun getUserInfo(accessToken: String): OAuthUserInfo {
-        val response = client.getUserInfo("Bearer $accessToken")
+        val response = try {
+            client.getUserInfo("Bearer $accessToken")
+        } catch (e: RestClientException) {
+            throw translateUserInfoFailure(e)
+        }
         val kakaoAccount = response.kakaoAccount
 
         return OAuthUserInfo(
@@ -51,6 +69,34 @@ class KakaoOAuthClient(
             gender = parseGender(kakaoAccount?.gender),
         )
     }
+
+    /**
+     * invalid_grant(KOE320 등)는 인가 코드가 만료됐거나 다시 쓴 것이라 클라이언트 잘못이다.
+     * 그 외 4xx는 client_id·redirect_uri·scope 같은 우리 앱 설정 문제라 제공자 오류로 묶는다.
+     */
+    private fun translateTokenExchangeFailure(e: RestClientException): RuntimeException {
+        if (e is HttpClientErrorException && parseErrorBody(e).isInvalidGrant()) {
+            log.warn { "카카오 토큰 교환 거부: ${e.responseBodyAsString}" }
+            return WarnException(ErrorCode.INVALID_SOCIAL_AUTH_CODE)
+        }
+        return providerFailure(e)
+    }
+
+    private fun translateUserInfoFailure(e: RestClientException): RuntimeException {
+        if (e is HttpClientErrorException && e.statusCode == HttpStatus.UNAUTHORIZED) {
+            log.warn { "카카오 사용자 조회 거부: ${e.responseBodyAsString}" }
+            return WarnException(ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN)
+        }
+        return providerFailure(e)
+    }
+
+    // 5xx·타임아웃·앱 설정 오류. 카카오 응답 원문은 cause 에 있어 GlobalExceptionHandler 가 스택과 함께 찍는다.
+    private fun providerFailure(e: RestClientException): ErrorException =
+        ErrorException(ErrorCode.SOCIAL_PROVIDER_ERROR, cause = e)
+
+    private fun parseErrorBody(e: HttpClientErrorException): KakaoTokenErrorResponse =
+        runCatching { errorBodyMapper.readValue<KakaoTokenErrorResponse>(e.responseBodyAsString) }
+            .getOrElse { KakaoTokenErrorResponse() }
 
     /**
      * 카카오 전화번호("+82 10-1234-5678" 등)를 국내 표준 "010-XXXX-XXXX" 포맷으로 변환한다.
@@ -138,6 +184,7 @@ class KakaoOAuthClient(
 
     companion object {
         private val log = KotlinLogging.logger {}
+        private val errorBodyMapper = ObjectMapperFactory.create()
         private const val AUTHORIZATION_URI = "https://kauth.kakao.com/oauth/authorize"
         private const val BIRTHDAY_LENGTH = 4 // MMDD
 
