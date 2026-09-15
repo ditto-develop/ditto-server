@@ -97,7 +97,7 @@ class ChatRoomMemberTest(
             }
 
             "when: 같은 값 readUpTo(5) 를 다시 하면" - {
-                "then: 전진하지 않았다고 답한다 — 재시도가 읽음 이벤트를 두 번 내지 않게" {
+                "then: 전진하지 않았다고 답한다" {
                     val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
                     roomMember.readUpTo(5L)
 

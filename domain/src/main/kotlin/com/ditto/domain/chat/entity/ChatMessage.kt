@@ -44,13 +44,9 @@ class ChatMessage private constructor(
 ) : BaseEntity() {
 
     /**
-     * 이 메시지를 아직 읽지 않은 참여자 수 — 발신자를 뺀 **현재 참여자**([roomMembers] 중 이탈하지 않은 회원) 기준이다.
-     *
-     * - 발신자를 빼는 이유: 발신자 커서는 본인 메시지를 가리키지 않을 수 있어 넣으면 항상 1이 남는다.
-     * - 이탈자를 빼는 이유: 나간 사람은 영영 읽지 않으므로 넣으면 숫자가 줄지 않아 "아무도 안 읽는다"로 보인다.
-     * - SYSTEM 메시지는 읽음 표시 대상이 아니라 항상 0 이다.
-     *
-     * 조회자와 무관한 값이라 REST 응답과 STOMP 브로드캐스트가 같은 수를 낸다.
+     * 이 메시지를 아직 안 읽은 참여자 수. 발신자와 이탈자는 세지 않는다.
+     * 발신자 커서는 본인 메시지를 안 가리킬 수 있어 넣으면 1이 남고, 이탈자는 영영 안 읽어 숫자가 줄지 않는다.
+     * SYSTEM 메시지는 0. 조회자와 무관한 값이라 REST 와 STOMP 가 같은 수를 낸다.
      */
     fun unreadCountAmong(roomMembers: Collection<ChatRoomMember>): Int {
         if (messageType == ChatMessageType.SYSTEM) {

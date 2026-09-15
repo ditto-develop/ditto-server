@@ -133,7 +133,7 @@ class ChatServiceTest(
         secondPage.messages.map { it.id } shouldBe listOf(saved[2].id, saved[1].id)
     }
 
-    "메시지별 unreadCount 는 발신자를 뺀 안 읽은 현재 참여자 수다 — 커서·이탈자를 반영한다" {
+    "메시지별 unreadCount 는 발신자를 뺀 안 읽은 참여자 수다. 읽음 커서와 이탈자를 반영한다" {
         // given: 그룹 방 1(나)·2·3·4. 1이 두 개 보냄, 2는 첫 메시지까지 읽음, 4는 이탈
         val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY)).also { room ->
             chatRoomMemberRepository.saveAll(listOf(1L, 2L, 3L, 4L).map { ChatRoomMember.of(roomId = room.id, memberId = it) })
@@ -200,7 +200,7 @@ class ChatServiceTest(
         val room = saveOpenedRoom(100L, 1L, 2L)
         val messages = (1..3).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
 
-        // when: 처음 읽음 → 더 앞으로 → 같은 값 재시도 → 뒤로
+        // when: 처음 읽음, 더 앞으로, 같은 값 재시도, 뒤로
         val first = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[1].id)
         val advanced = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
         val retried = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
@@ -295,7 +295,7 @@ class ChatServiceTest(
         // then
         sent.senderId shouldBe 1L
         sent.content shouldBe "안녕하세요" // trim 됨
-        sent.unreadCount shouldBe 1 // 상대(2)가 아직 안 읽음 — 브로드캐스트 프레임에도 그대로 실린다
+        sent.unreadCount shouldBe 1 // 상대(2)가 아직 안 읽음
         chatMessageRepository.countByRoomId(room.id) shouldBe 1L
     }
 

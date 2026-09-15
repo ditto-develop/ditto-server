@@ -222,12 +222,7 @@ class ChatService(
             }
         }
 
-    /**
-     * 읽음 처리 — 내 last_read_message_id 를 전진시킨다.
-     *
-     * @return 실제로 전진했을 때만 브로드캐스트할 이벤트. 같은 값 재시도·뒤로 가는 요청은 null —
-     *   그래도 발행하면 상대 화면이 같은 읽음을 두 번 반영한다.
-     */
+    /** 읽음 처리. 커서가 실제로 전진했을 때만 브로드캐스트용 이벤트를 돌려준다(재시도·후진은 null). */
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long): ChatReadEvent? {
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)

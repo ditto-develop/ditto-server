@@ -47,7 +47,7 @@ class ChatMessageTest(
                 if (left) leave(LocalDateTime.of(2026, 3, 13, 12, 0))
             }
 
-        "발신자는 세지 않는다 — 1:1 방에서 상대가 안 읽었으면 1" {
+        "발신자는 세지 않는다. 1:1 방에서 상대가 안 읽었으면 1" {
             val message = ChatMessageFixture.create(senderId = 1L, id = 10L)
 
             message.unreadCountAmong(listOf(member(1L), member(2L))) shouldBe 1
@@ -67,14 +67,14 @@ class ChatMessageTest(
             message.unreadCountAmong(members) shouldBe 2
         }
 
-        "이탈자는 분모에서 뺀다 — 안 빼면 나간 사람 때문에 숫자가 영영 줄지 않는다" {
+        "이탈자는 세지 않는다" {
             val message = ChatMessageFixture.create(senderId = 1L, id = 10L)
             val members = listOf(member(1L), member(2L, readUpTo = 10L), member(3L, left = true))
 
             message.unreadCountAmong(members) shouldBe 0
         }
 
-        "SYSTEM 메시지는 읽음 표시 대상이 아니라 항상 0" {
+        "SYSTEM 메시지는 항상 0" {
             val message = ChatMessageFixture.create(senderId = 1L, id = 10L, messageType = ChatMessageType.SYSTEM)
 
             message.unreadCountAmong(listOf(member(1L), member(2L), member(3L))) shouldBe 0

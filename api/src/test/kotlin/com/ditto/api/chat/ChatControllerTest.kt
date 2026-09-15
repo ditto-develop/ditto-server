@@ -224,7 +224,7 @@ class ChatControllerTest : ControllerUnitTest() {
     }
 
     @Test
-    @DisplayName("채팅방을 읽음 처리하고, 커서가 전진했으면 READ 이벤트를 방 토픽에 발행한다")
+    @DisplayName("채팅방을 읽음 처리하고 커서가 전진했으면 READ 이벤트를 발행한다")
     fun read() {
         val event = ChatReadEvent(roomId = 1L, memberId = 1L, previousLastReadMessageId = 7L, lastReadMessageId = 10L)
         every { chatService.markAsRead(any(), 1L, 10L) } returns event
