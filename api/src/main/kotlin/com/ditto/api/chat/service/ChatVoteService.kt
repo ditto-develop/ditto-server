@@ -11,6 +11,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.ChatVote
 import com.ditto.domain.chat.entity.ChatVoteChoice
@@ -88,14 +89,15 @@ class ChatVoteService(
         val systemMessage = chatMessageRepository.save(
             ChatMessage.system(roomId = roomId, senderId = memberId, content = "$VOTE_CREATED:${vote.id}"),
         )
+        val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
 
         return ChatVoteChangeResult(
             detail = ChatVoteDetailResponse.beforeAnyVote(
                 vote = vote,
                 options = options,
-                activeMemberIds = activeMemberIds(roomId),
+                activeMemberIds = activeMemberIds(roomMembers),
             ),
-            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null, roomMembers = roomMembers),
         )
     }
 
@@ -117,7 +119,8 @@ class ChatVoteService(
         }
         // 방 해체가 투표를 자동 마감한 뒤의 재요청도 성공이어야 해서, 멱등 반환이 방 상태 검사보다 먼저다.
         validateVoterMembership(room, memberId)
-        val activeMemberIds = activeMemberIds(roomId)
+        val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
+        val activeMemberIds = activeMemberIds(roomMembers)
         if (vote.isClosed) {
             return ChatVoteChangeResult(detail = toDetail(vote, activeMemberIds, memberId), systemMessage = null)
         }
@@ -130,7 +133,7 @@ class ChatVoteService(
         )
         return ChatVoteChangeResult(
             detail = toDetail(vote, activeMemberIds, memberId),
-            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null),
+            systemMessage = ChatMessageResponse.of(systemMessage, imageUrl = null, roomMembers = roomMembers),
         )
     }
 
@@ -377,7 +380,10 @@ class ChatVoteService(
         )
 
     private fun activeMemberIds(roomId: Long): Set<Long> =
-        chatRoomMemberRepository.findByRoomIdIn(listOf(roomId))
+        activeMemberIds(chatRoomMemberRepository.findByRoomId(roomId))
+
+    private fun activeMemberIds(roomMembers: List<ChatRoomMember>): Set<Long> =
+        roomMembers
             .filter { !it.hasLeft }
             .map { it.memberId }
             .toSet()

@@ -123,6 +123,7 @@ class NotifierFailureTest {
         content = "안녕",
         imageUrl = null,
         createdAt = LocalDateTime.of(2026, 7, 16, 12, 0),
+        unreadCount = 1,
     )
 
     companion object {

@@ -2,6 +2,7 @@ package com.ditto.api.chat
 
 import com.ditto.api.chat.dto.ChatImageUploadFileRequest
 import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
+import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -132,6 +133,37 @@ class ChatServiceTest(
         secondPage.messages.map { it.id } shouldBe listOf(saved[2].id, saved[1].id)
     }
 
+    "메시지별 unreadCount 는 발신자를 뺀 안 읽은 현재 참여자 수다 — 커서·이탈자를 반영한다" {
+        // given: 그룹 방 1(나)·2·3·4. 1이 두 개 보냄, 2는 첫 메시지까지 읽음, 4는 이탈
+        val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = FRIDAY)).also { room ->
+            chatRoomMemberRepository.saveAll(listOf(1L, 2L, 3L, 4L).map { ChatRoomMember.of(roomId = room.id, memberId = it) })
+        }
+        val first = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "첫 메시지"))
+        val second = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "둘째 메시지"))
+        chatService.markAsRead(memberId = 2L, roomId = room.id, lastReadMessageId = first.id)
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 4L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        // when
+        val page = chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 30)
+
+        // then: 첫 메시지는 3만 안 읽음(2는 읽음·4는 이탈), 둘째는 2·3이 안 읽음
+        page.messages.associate { it.id to it.unreadCount } shouldBe mapOf(first.id to 1, second.id to 2)
+    }
+
+    "방 목록의 lastMessage 에도 unreadCount 가 실린다" {
+        // given: 1:1 방, 내(1) 메시지를 상대(2)가 아직 안 읽음
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        chatMessageRepository.save(ChatMessage.of(room.id, 1L, "안녕"))
+
+        // when
+        val response = chatService.getMyRooms(memberId = 1L).single()
+
+        // then
+        response.lastMessage?.unreadCount shouldBe 1
+    }
+
     "방 참여자가 아니면 메시지 조회 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
         // given
         val room = saveOpenedRoom(100L, 1L, 2L)
@@ -161,6 +193,38 @@ class ChatServiceTest(
         // then: 앞으로만 전진, 3번째 유지
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)!!
         roomMember.lastReadMessageId shouldBe messages[2].id
+    }
+
+    "읽음 처리는 커서가 실제로 전진했을 때만 직전 커서를 담은 READ 이벤트를 돌려준다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        val messages = (1..3).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
+
+        // when: 처음 읽음 → 더 앞으로 → 같은 값 재시도 → 뒤로
+        val first = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[1].id)
+        val advanced = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
+        val retried = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[2].id)
+        val backward = chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = messages[0].id)
+
+        // then
+        first shouldBe ChatReadEvent(
+            roomId = room.id, memberId = 1L, previousLastReadMessageId = null, lastReadMessageId = messages[1].id,
+        )
+        advanced shouldBe ChatReadEvent(
+            roomId = room.id, memberId = 1L, previousLastReadMessageId = messages[1].id, lastReadMessageId = messages[2].id,
+        )
+        retried shouldBe null
+        backward shouldBe null
+    }
+
+    "방 참여자가 아니면 읽음 처리 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        // when & then
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 99L, roomId = room.id, lastReadMessageId = 1L)
+        }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
     }
 
     "이미지 업로드 URL은 방 멤버에게 내 소유 접두사(chat/{memberId}/) 키로 발급된다" {
@@ -231,6 +295,7 @@ class ChatServiceTest(
         // then
         sent.senderId shouldBe 1L
         sent.content shouldBe "안녕하세요" // trim 됨
+        sent.unreadCount shouldBe 1 // 상대(2)가 아직 안 읽음 — 브로드캐스트 프레임에도 그대로 실린다
         chatMessageRepository.countByRoomId(room.id) shouldBe 1L
     }
 

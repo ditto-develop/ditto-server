@@ -41,6 +41,7 @@ class ChatMessageNotifierTest(
         content = content,
         imageUrl = null,
         createdAt = LocalDateTime.now(),
+        unreadCount = 1,
     )
 
     "새 메시지를 상대에게 알린다" - {

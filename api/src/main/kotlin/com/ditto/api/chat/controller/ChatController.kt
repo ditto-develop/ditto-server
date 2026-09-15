@@ -48,6 +48,10 @@ class ChatController(
     ): ApiResponse<ChatMessagesResponse> =
         ApiResponse.ok(chatService.getMessages(principal.memberId, roomId, cursor, size))
 
+    /**
+     * 읽음 처리. 커서가 실제로 전진했을 때만 READ 이벤트를 방 토픽에 발행한다 — 상대 화면의
+     * 안읽음 숫자가 재조회 없이 실시간으로 줄어야 하기 때문이다. 서비스 트랜잭션이 커밋된 뒤에 발행한다.
+     */
     @PostMapping("/api/v1/chat/rooms/{roomId}/read")
     fun read(
         @AuthenticationPrincipal principal: MemberPrincipal,
@@ -55,6 +59,7 @@ class ChatController(
         @RequestBody request: ChatReadRequest,
     ): ApiResponse<Unit> {
         chatService.markAsRead(principal.memberId, roomId, request.lastReadMessageId)
+            ?.let { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it) }
         return ApiResponse.ok(Unit)
     }
 
