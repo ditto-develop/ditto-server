@@ -4,11 +4,11 @@
 
 ## 용어
 - `ChatRoom` — 채팅방. `source_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
-- `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서) + `left_at`(이탈 시각, 참여 중이면 NULL).
+- `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서) + `left_at`(이탈 시각, 참여 중이면 NULL). `hasRead(messageId)`가 읽음 판단의 기준이다.
 - `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키.
 - `ChatPeriod` — 채팅이 열려 있는 주말 구간(금 00:00 ~ 월 00:00). 값 객체.
 - `ChatRoomStatus`(SCHEDULED/ACTIVE/ENDED), `ChatEndReason`(EXPIRED/USER_ENDED/INSUFFICIENT_MEMBERS).
-- destination — 전송 `/pub/chat/rooms/{roomId}`, 구독 `/sub/chat/rooms/{roomId}`.
+- destination — 전송 `/pub/chat/rooms/{roomId}`, 구독 `/sub/chat/rooms/{roomId}`. 구독 토픽에는 메시지 프레임과 READ 이벤트 두 종류가 흐른다([STOMP 프레임](#stomp-프레임-fe-계약)).
 
 ## 생명주기
 ```text
@@ -50,10 +50,30 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 
 값 추가 전용이다 — 채팅 연장([#121](https://github.com/ditto-develop/ditto-server/issues/121)) 등은 해당 기능을 만들 때 코드를 추가한다.
 
+## STOMP 프레임 (FE 계약)
+
+구독 토픽 `/sub/chat/rooms/{roomId}`에는 두 종류의 프레임이 흐른다. 클라이언트는 `type` 유무로 가른다 — 메시지 프레임에는 `type`이 없고 `messageType`이 있다.
+
+| 프레임 | 페이로드 | 언제 |
+|---|---|---|
+| 메시지 | `ChatMessageResponse`(REST 메시지 조회와 같은 모양, `unreadCount` 포함) | 전송·SYSTEM 사건(종료·이탈·투표) 직후 |
+| READ 이벤트 | `{ "type": "READ", "roomId", "memberId", "previousLastReadMessageId", "lastReadMessageId" }` | `POST /read`로 그 회원의 커서가 **실제로 전진**했을 때 |
+
+- READ 이벤트는 **저장하지 않는다.** 읽음의 원본은 `chat_room_member.last_read_message_id`이고, 재접속하면 메시지 조회의 `unreadCount`가 최신 상태를 준다. 그래서 유실돼도 재조회로 복구된다.
+- **전진했을 때만 발행한다.** 같은 값 재시도·뒤로 가는 요청까지 발행하면 수신 측이 같은 읽음을 두 번 반영한다. 같은 사람이라도 새 메시지를 읽어 커서가 앞으로 갈 때마다 다시 발행된다 — 읽음은 한 번 일어나는 사건이 아니라 계속 전진하는 상태다.
+- **`previousLastReadMessageId`(처음 읽음이면 null)를 함께 준다.** 수신 측은 `previous < id <= last` 구간의 자기 메시지 `unreadCount`만 1 줄여야 한다. 구간 없이 `id <= last` 전체를 줄이면 앞선 READ 로 이미 줄인 메시지가 다시 줄어든다(40까지 읽은 뒤 42까지 읽으면 1~40이 두 번 빠진다).
+- 발행 빈도는 클라이언트가 `POST /read`를 부르는 빈도와 같다 — 메시지마다 부르면 그만큼 나가고, 화면에 보이는 마지막 메시지 기준으로 묶어 부르면 줄어든다.
+- FE 배포 순서: FE 가 `type: "READ"` 분기를 갖기 전에는 READ 프레임이 메시지로 파싱된다. 이벤트 발행([#182](https://github.com/ditto-develop/ditto-server/issues/182))은 FE 분기와 함께 나가야 한다.
+
 ## 핵심 규칙·불변식
 - 방 생성: `PersonalMatch` 수락(ACCEPT) 시, 그룹은 `GroupMatch` 활성화 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op).
 - 페이징: `id` 커서(`id < cursor` DESC), OFFSET 금지. 응답 `nextCursor` = 반환된 가장 과거 메시지 id(페이지가 가득 찼을 때만, 아니면 null).
-- 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 안읽음 수 = `id > last_read` 카운트.
+- 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 방 안읽음 수(`ChatRoomResponse.unreadCount`, 내가 안 읽은 수) = `id > last_read` 카운트.
+- **메시지별 안읽음 수**(`ChatMessageResponse.unreadCount`, 카카오톡의 `1`) = 발신자를 뺀 **현재 참여자**(`left_at IS NULL`) 중 커서가 그 메시지 앞에 있는(`last_read < id` 또는 NULL) 수. 규칙은 `ChatMessage.unreadCountAmong` 한 곳에 있다.
+  - 발신자를 빼는 이유: 발신자 커서는 본인 메시지를 가리키지 않을 수 있어 넣으면 항상 1이 남는다. 조회자가 아니라 발신자를 빼므로 **조회자와 무관한 값**이고, REST 응답과 STOMP 브로드캐스트가 같은 수를 낸다.
+  - 이탈자를 빼는 이유: 나간 사람은 영영 읽지 않아 넣으면 숫자가 줄지 않는다.
+  - SYSTEM 메시지는 읽음 표시 대상이 아니라 항상 0.
+  - 스키마 변경 없이 방 멤버 목록(≤ 그룹 정원)을 한 번 읽어 메모리에서 센다 — 메시지당 쿼리를 내지 않는다.
 - 인가: 방 멤버만 조회·구독·전송 가능. STOMP 구독 인가는 `StompAuthChannelInterceptor`. WS 인증 배경: [ADR 0009](../adr/0009-websocket-stomp-auth.md).
 - 전송 내용: trim 후 공백 불가, 최대 1000자(컬럼 상한).
 
