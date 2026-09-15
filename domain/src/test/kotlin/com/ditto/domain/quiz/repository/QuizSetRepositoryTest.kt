@@ -9,6 +9,7 @@ import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -103,61 +104,113 @@ class QuizSetRepositoryTest(
         }
     }
 
-    "findLatestCompletedQuizSet" - {
+    "findCompletedQuizSetInWeek" - {
+        // now(2026-04-10, 금)가 속한 운영 주는 4/6(월) 시작이다.
+        val thisWeek = LocalDate.of(2026, 4, 6)
+        val lastWeek = LocalDate.of(2026, 3, 30)
+
         fun saveCompletedProgress(memberId: Long, quizSetId: Long) {
             val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 1)
             progress.recordAnswer() // NOT_STARTED -> COMPLETED
             quizProgressRepository.save(progress)
         }
 
-        "완료한 해당 타입 퀴즈셋이 여러 개면 endDate 가 가장 최근인 것을 반환한다" {
-            val older = quizSetRepository.save(
-                QuizSetFixture.create(startDate = now.minusDays(14), endDate = now.minusDays(8)),
+        "그 주에 완주한 해당 타입 퀴즈셋을 반환한다" {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                ),
             )
-            val latest = quizSetRepository.save(
-                QuizSetFixture.create(startDate = now.minusDays(7), endDate = now.minusDays(1)),
-            )
-            saveCompletedProgress(memberId = 1L, quizSetId = older.id)
-            saveCompletedProgress(memberId = 1L, quizSetId = latest.id)
+            saveCompletedProgress(memberId = 1L, quizSetId = quizSet.id)
 
-            val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
 
-            result?.id shouldBe latest.id
+            result?.id shouldBe quizSet.id
         }
 
-        "완료(COMPLETED)하지 않은 진행 기록만 있으면 제외된다" {
-            val quizSet = quizSetRepository.save(QuizSetFixture.create(endDate = now.minusDays(1)))
-            quizProgressRepository.save(
-                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 5),
+        "지난 주에 완주한 퀴즈셋은 제외된다" {
+            val previous = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = lastWeek.atStartOfDay(),
+                    endDate = lastWeek.plusDays(2).atTime(23, 59, 59),
+                ),
             )
+            saveCompletedProgress(memberId = 1L, quizSetId = previous.id)
 
-            val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
 
             result shouldBe null
         }
 
-        "요청한 매칭 타입과 다른 퀴즈셋은 제외된다" {
+        "지난 주 것과 이번 주 것이 모두 있으면 이번 주 것을 반환한다" {
+            val previous = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = lastWeek.atStartOfDay(),
+                    endDate = lastWeek.plusDays(2).atTime(23, 59, 59),
+                ),
+            )
+            val current = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                ),
+            )
+            saveCompletedProgress(memberId = 1L, quizSetId = previous.id)
+            saveCompletedProgress(memberId = 1L, quizSetId = current.id)
+
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
+
+            result?.id shouldBe current.id
+        }
+
+        "완료(COMPLETED)하지 않은 진행 기록만 있으면 제외된다" {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                ),
+            )
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 5),
+            )
+
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
+
+            result shouldBe null
+        }
+
+        "같은 주라도 요청한 매칭 타입과 다른 퀴즈셋은 제외된다" {
             val groupSet = quizSetRepository.save(
-                QuizSetFixture.create(endDate = now.minusDays(1), matchingType = MatchingType.GROUP),
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                    matchingType = MatchingType.GROUP,
+                ),
             )
             saveCompletedProgress(memberId = 1L, quizSetId = groupSet.id)
 
-            val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
 
             result shouldBe null
         }
 
         "다른 회원의 완료 기록은 제외된다" {
-            val quizSet = quizSetRepository.save(QuizSetFixture.create(endDate = now.minusDays(1)))
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                ),
+            )
             saveCompletedProgress(memberId = 2L, quizSetId = quizSet.id)
 
-            val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
 
             result shouldBe null
         }
 
-        "완료한 퀴즈셋이 없으면 null 을 반환한다" {
-            val result = quizSetRepository.findLatestCompletedQuizSet(1L, MatchingType.ONE_TO_ONE)
+        "완주한 퀴즈셋이 없으면 null 을 반환한다" {
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
 
             result shouldBe null
         }

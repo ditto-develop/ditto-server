@@ -1,5 +1,6 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.api.match.dto.Candidate
 import com.ditto.api.match.dto.CandidateGroup
 import com.ditto.api.match.dto.GroupCandidateResponse
@@ -19,7 +20,6 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizRepository
-import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import kotlin.math.roundToInt
@@ -27,13 +27,13 @@ import kotlin.math.roundToInt
 /**
  * 회원에게 노출할 그룹 매칭 후보 조회.
  *
- * 후보 그룹은 마감된 퀴즈셋에만 생성되므로, 1:1과 같은 방식으로 회원이 최근 완료(COMPLETED)한
- * 그룹 퀴즈셋을 기준으로 찾는다. 참여한 그룹 퀴즈셋이 없으면 NOT_FOUND.
+ * 후보 그룹은 마감된 퀴즈셋에만 생성되므로, 1:1과 같은 방식으로 회원이 **이번 운영 주에**
+ * 완주(COMPLETED)한 그룹 퀴즈셋을 기준으로 찾는다. 이번 주에 그룹 퀴즈를 풀지 않았으면 NOT_FOUND.
  */
 @Service
 @Transactional(readOnly = true)
 class GroupCandidateService(
-    private val quizSetRepository: QuizSetRepository,
+    private val matchWeekPolicy: MatchWeekPolicy,
     private val quizRepository: QuizRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val groupMatchRepository: GroupMatchRepository,
@@ -43,13 +43,13 @@ class GroupCandidateService(
 ) {
 
     fun getGroupCandidates(memberId: Long): GroupCandidateResponse {
-        val quizSet = quizSetRepository.findLatestCompletedQuizSet(memberId, MatchingType.GROUP)
+        val quizSet = matchWeekPolicy.findCompletedQuizSet(memberId, MatchingType.GROUP)
             ?: throw WarnException(ErrorCode.NOT_FOUND)
 
         val myMemberships = groupMatchMemberRepository
             .findByMemberIdAndQuizSetId(memberId, quizSet.id)
             .filterNot { it.status == InvitationStatus.DECLINED }
-        if (myMemberships.isEmpty()) return GroupCandidateResponse(quizSet.id, emptyList())
+        if (myMemberships.isEmpty()) return GroupCandidateResponse.of(quizSet.id, quizSet.operationWeek, emptyList())
 
         val roomIds = myMemberships.map { it.roomId }
         val roomsById = groupMatchRepository.findAllById(roomIds).associateBy { it.id }
@@ -59,8 +59,9 @@ class GroupCandidateService(
         val scoreByPeerId = scoreAgainstMe(memberId, peerIds, quizSet.id)
         val peerCards = toCandidateCards(peerIds, scoreByPeerId)
 
-        return GroupCandidateResponse(
+        return GroupCandidateResponse.of(
             quizSetId = quizSet.id,
+            operationWeek = quizSet.operationWeek,
             groups = myMemberships
                 .mapNotNull { membership ->
                     val room = roomsById[membership.roomId] ?: return@mapNotNull null

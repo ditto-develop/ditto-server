@@ -2,6 +2,7 @@ package com.ditto.domain.quiz.repository.querydsl
 
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 interface QuizSetRepositoryCustom {
@@ -13,5 +14,12 @@ interface QuizSetRepositoryCustom {
      */
     fun findEndedQuizSetsWithoutCandidates(now: LocalDateTime): List<QuizSet>
 
-    fun findLatestCompletedQuizSet(memberId: Long, matchingType: MatchingType): QuizSet?
+    /**
+     * 회원이 **그 운영 주에** 완주(COMPLETED)한 해당 타입 퀴즈셋. 후보 조회·성사 전 열람 권한의 기준이다.
+     *
+     * 주차로 좁히지 않으면 "가장 최근에 완주한 셋"이 잡혀 지난 사이클 후보가 계속 노출된다 —
+     * 후보 행(`match_candidate`·`group_match`)은 지난 주 것도 남기 때문이다.
+     * 한 주에 같은 타입 퀴즈셋은 하나뿐이라 단건으로 돌려준다.
+     */
+    fun findCompletedQuizSetInWeek(memberId: Long, matchingType: MatchingType, weekStartedOn: LocalDate): QuizSet?
 }

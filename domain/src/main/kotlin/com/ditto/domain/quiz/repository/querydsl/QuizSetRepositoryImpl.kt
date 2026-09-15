@@ -8,6 +8,7 @@ import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
 import com.querydsl.jpa.impl.JPAQueryFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 class QuizSetRepositoryImpl(
@@ -38,7 +39,11 @@ class QuizSetRepositoryImpl(
             )
             .fetch()
 
-    override fun findLatestCompletedQuizSet(memberId: Long, matchingType: MatchingType): QuizSet? =
+    override fun findCompletedQuizSetInWeek(
+        memberId: Long,
+        matchingType: MatchingType,
+        weekStartedOn: LocalDate,
+    ): QuizSet? =
         queryFactory
             .select(quizSet)
             .from(quizProgress)
@@ -47,7 +52,9 @@ class QuizSetRepositoryImpl(
                 quizProgress.memberId.eq(memberId),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 quizSet.matchingType.eq(matchingType),
+                quizSet.weekStartedOn.eq(weekStartedOn),
             )
+            // 한 주에 같은 타입은 하나라는 전제지만, 어드민 실수로 둘이 생겨도 결정적으로 하나를 고른다.
             .orderBy(quizSet.endDate.desc())
             .fetchFirst()
 }

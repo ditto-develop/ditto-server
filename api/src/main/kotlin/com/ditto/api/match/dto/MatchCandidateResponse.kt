@@ -5,17 +5,45 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.system.OperationWeek
+import java.time.LocalDate
 
 /**
  * 1:1 매칭 추천 후보 목록 응답.
- * 회원이 최근 완료한 1:1 퀴즈셋에서 노출받는 후보들을 매칭 점수 내림차순으로 담는다.
+ * 회원이 **이번 운영 주에** 완주한 1:1 퀴즈셋에서 노출받는 후보들을 매칭 점수 내림차순으로 담는다.
+ *
+ * 주차를 함께 내려준다 — FE 홈이 `GET /api/v1/system/state` 와 대조해 어느 트랙이 이번 주 것인지
+ * 가린다. 식별자는 [weekStartedOn](그 주 월요일)이고 year/month/week 는 파생 표시값이다(ADR 0010).
  */
 data class MatchCandidateResponse(
     val quizSetId: Long,
+    val weekStartedOn: LocalDate,
+    val year: Int,
+    val month: Int,
+    val week: Int,
     val matchingType: MatchingType,
     val algorithmVersion: String,
     val candidates: List<Candidate>,
-)
+) {
+    companion object {
+        fun of(
+            quizSetId: Long,
+            operationWeek: OperationWeek,
+            matchingType: MatchingType,
+            algorithmVersion: String,
+            candidates: List<Candidate>,
+        ) = MatchCandidateResponse(
+            quizSetId = quizSetId,
+            weekStartedOn = operationWeek.startedOn,
+            year = operationWeek.year,
+            month = operationWeek.month,
+            week = operationWeek.weekOfMonth,
+            matchingType = matchingType,
+            algorithmVersion = algorithmVersion,
+            candidates = candidates,
+        )
+    }
+}
 
 data class Candidate(
     val userId: Long,

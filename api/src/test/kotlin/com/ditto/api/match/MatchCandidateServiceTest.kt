@@ -55,7 +55,7 @@ class MatchCandidateServiceTest(
 
     // 회원이 완료(COMPLETED)한 1:1 퀴즈셋을 만든다. 후보는 마감된 셋에만 생기므로 노출 기준이 된다.
     fun completeOneToOneQuizSet(ownerId: Long): QuizSet {
-        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.ONE_TO_ONE))
         val progress = QuizProgressFixture.create(memberId = ownerId, quizSetId = quizSet.id, totalCount = 1)
         progress.recordAnswer() // NOT_STARTED -> COMPLETED
         quizProgressRepository.save(progress)

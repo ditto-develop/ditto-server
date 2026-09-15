@@ -22,6 +22,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 
 class GroupCandidateControllerTest : ControllerUnitTest() {
 
@@ -34,6 +35,10 @@ class GroupCandidateControllerTest : ControllerUnitTest() {
     fun getGroupCandidates() {
         every { groupCandidateService.getGroupCandidates(any()) } returns GroupCandidateResponse(
             quizSetId = 10L,
+            weekStartedOn = LocalDate.of(2026, 9, 14),
+            year = 2026,
+            month = 9,
+            week = 3,
             groups = listOf(
                 CandidateGroup(
                     groupMatchId = 5L,
@@ -67,6 +72,7 @@ class GroupCandidateControllerTest : ControllerUnitTest() {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.quizSetId").value(10))
+            .andExpect(jsonPath("$.data.weekStartedOn").value("2026-09-14"))
             .andExpect(jsonPath("$.data.groups.length()").value(1))
             .andExpect(jsonPath("$.data.groups[0].groupMatchId").value(5))
             .andExpect(jsonPath("$.data.groups[0].averageMatchedQuestions").value(8))
@@ -80,13 +86,17 @@ class GroupCandidateControllerTest : ControllerUnitTest() {
                             .tag("Matching")
                             .summary("그룹 매칭 후보 그룹 목록 조회")
                             .description(
-                                "회원이 최근 완료한 그룹 퀴즈셋에서 배정받은 후보 그룹을 그룹 점수 내림차순으로 조회합니다. " +
-                                    "대상 퀴즈셋은 서버가 결정하며, 응답의 quizSetId 로 확인합니다. " +
-                                    "이미 거절한 그룹은 목록에 포함되지 않습니다.",
+                                "회원이 이번 운영 주에 완주한 그룹 퀴즈셋에서 배정받은 후보 그룹을 그룹 점수 내림차순으로 조회합니다. " +
+                                    "대상 퀴즈셋은 서버가 결정하며, 응답의 quizSetId·weekStartedOn 으로 확인합니다. " +
+                                    "이번 주에 그룹 퀴즈를 완주하지 않았으면 404(0004) 이고, 이미 거절한 그룹은 목록에 포함되지 않습니다.",
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.quizSetId").description("후보 그룹이 속한 퀴즈 세트 ID"),
+                                fieldWithPath("data.weekStartedOn").description("대상 퀴즈셋의 운영 주 시작일(월요일). FE 는 이 값을 GET /api/v1/system/state 의 weekStartedOn 과 대조한다"),
+                                fieldWithPath("data.year").description("운영 주 연도 (weekStartedOn 파생 표시값)"),
+                                fieldWithPath("data.month").description("운영 주 월 (weekStartedOn 파생 표시값)"),
+                                fieldWithPath("data.week").description("운영 주 주차 (weekStartedOn 파생 표시값)"),
                                 fieldWithPath("data.groups[]").description("후보 그룹 목록 (그룹 점수 내림차순)"),
                                 fieldWithPath("data.groups[].groupMatchId").description("그룹 ID (수락·거절 요청에 사용)"),
                                 fieldWithPath("data.groups[].myStatus").description("이 그룹에 대한 내 응답 상태 (PENDING / ACCEPTED)"),

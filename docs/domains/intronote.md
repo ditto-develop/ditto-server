@@ -22,7 +22,7 @@
 
 - 미리보기 = 상대가 **작성한** 답변 중 무작위 2문항 + `ONE_WORD`(미작성이어도 항상 포함, 화면 마지막 칸 고정).
 - 무작위 선택은 (조회자, 대상자) 기준 **결정적**이다 — 재조회로 문항이 바뀌면 반복 호출로 전체를 긁을 수 있다.
-- 후보 판정의 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`)과 같다: 조회자가 최근 완료한 1:1 퀴즈셋.
+- 후보 판정의 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`·`/matches/group`)과 같다: 조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 지난 주 후보 행이 남아 있어도 주가 바뀌면 닫힌다.
 - `completedCount`는 "이 응답에 담긴 답변 중 작성된 수"다 — 미리보기에서는 최대 3.
 - 근거 ADR: `docs/adr/0025-intro-note-candidate-preview.md`.
 
