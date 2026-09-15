@@ -49,7 +49,6 @@
     }
 
     input.type = 'date';
-    input.step = 7;
     input.addEventListener('change', function () {
         if (!input.value) { showPeriod(''); return; }
         input.value = toIsoDate(snapToMonday(fromIsoDate(input.value)));
