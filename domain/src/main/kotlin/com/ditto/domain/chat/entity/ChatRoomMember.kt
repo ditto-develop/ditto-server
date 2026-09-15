@@ -61,12 +61,24 @@ class ChatRoomMember private constructor(
     val hasLeft: Boolean
         get() = leftAt != null
 
-    /** 읽음 위치를 messageId 까지 전진시킨다. 이미 더 앞을 읽었다면 그대로 둔다(단조 증가). */
-    fun readUpTo(messageId: Long) {
-        val current = lastReadMessageId
-        if (current == null || messageId > current) {
-            lastReadMessageId = messageId
+    /**
+     * 읽음 위치를 messageId 까지 전진시킨다. 이미 더 앞을 읽었다면 그대로 둔다(단조 증가).
+     *
+     * @return 실제로 전진했으면 true. 호출자는 이 값으로 읽음 이벤트 발행 여부를 정한다 —
+     *   같은 값 재시도·뒤로 가는 요청까지 발행하면 수신 측이 같은 읽음을 두 번 반영한다.
+     */
+    fun readUpTo(messageId: Long): Boolean {
+        if (hasRead(messageId)) {
+            return false
         }
+        lastReadMessageId = messageId
+        return true
+    }
+
+    /** 이 메시지까지 읽었는지. 아무것도 안 읽었으면(null) 항상 false. */
+    fun hasRead(messageId: Long): Boolean {
+        val current = lastReadMessageId ?: return false
+        return current >= messageId
     }
 
     /**

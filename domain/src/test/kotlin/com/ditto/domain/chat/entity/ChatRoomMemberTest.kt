@@ -60,11 +60,12 @@ class ChatRoomMemberTest(
     "readUpTo — 읽음 커서 전진(단조 증가)" - {
         "given: 아직 아무것도 안 읽었을 때(null)" - {
             "when: readUpTo(5) 하면" - {
-                "then: 5 로 세팅된다" {
+                "then: 5 로 세팅되고 전진했다고 답한다" {
                     val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
 
-                    roomMember.readUpTo(5L)
+                    val advanced = roomMember.readUpTo(5L)
 
+                    advanced shouldBe true
                     roomMember.lastReadMessageId shouldBe 5L
                 }
             }
@@ -76,22 +77,48 @@ class ChatRoomMemberTest(
                     val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
                     roomMember.readUpTo(5L)
 
-                    roomMember.readUpTo(9L)
+                    val advanced = roomMember.readUpTo(9L)
 
+                    advanced shouldBe true
                     roomMember.lastReadMessageId shouldBe 9L
                 }
             }
 
             "when: 더 작은 값 readUpTo(3) 하면" - {
-                "then: 뒤로 가지 않고 5 를 유지한다" {
+                "then: 뒤로 가지 않고 5 를 유지하며 전진하지 않았다고 답한다" {
                     val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
                     roomMember.readUpTo(5L)
 
-                    roomMember.readUpTo(3L)
+                    val advanced = roomMember.readUpTo(3L)
 
+                    advanced shouldBe false
                     roomMember.lastReadMessageId shouldBe 5L
                 }
             }
+
+            "when: 같은 값 readUpTo(5) 를 다시 하면" - {
+                "then: 전진하지 않았다고 답한다 — 재시도가 읽음 이벤트를 두 번 내지 않게" {
+                    val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
+                    roomMember.readUpTo(5L)
+
+                    roomMember.readUpTo(5L) shouldBe false
+                }
+            }
+        }
+    }
+
+    "hasRead — 특정 메시지까지 읽었는지" - {
+        "아무것도 안 읽었으면 어떤 메시지도 읽지 않은 것이다" {
+            ChatRoomMember.of(roomId = 1L, memberId = 2L).hasRead(1L) shouldBe false
+        }
+
+        "커서 이하는 읽은 것, 커서 초과는 안 읽은 것이다" {
+            val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
+            roomMember.readUpTo(5L)
+
+            roomMember.hasRead(4L) shouldBe true
+            roomMember.hasRead(5L) shouldBe true
+            roomMember.hasRead(6L) shouldBe false
         }
     }
 })
