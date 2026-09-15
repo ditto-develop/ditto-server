@@ -222,13 +222,19 @@ class ChatService(
             }
         }
 
-    /** 읽음 처리. 커서가 실제로 전진했을 때만 브로드캐스트용 이벤트를 돌려준다(재시도·후진은 null). */
+    /**
+     * 읽음 처리. 커서가 실제로 전진했을 때만 브로드캐스트용 이벤트를 돌려준다(재시도·후진은 null).
+     * 이탈자는 커서만 기록하고 이벤트는 내지 않는다. unreadCount 에 세지 않는 사람이라 이벤트가 나가면 상대가 하나 더 뺀다.
+     */
     @Transactional
     fun markAsRead(memberId: Long, roomId: Long, lastReadMessageId: Long): ChatReadEvent? {
-        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+        val roomMember = chatRoomMemberRepository.findWithLockByRoomIdAndMemberId(roomId, memberId)
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
+        if (!chatMessageRepository.existsByIdAndRoomId(lastReadMessageId, roomId)) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "이 방의 메시지가 아닙니다: messageId=$lastReadMessageId")
+        }
         val previousLastReadMessageId = roomMember.lastReadMessageId
-        if (!roomMember.readUpTo(lastReadMessageId)) {
+        if (!roomMember.readUpTo(lastReadMessageId) || roomMember.hasLeft) {
             return null
         }
         return ChatReadEvent(

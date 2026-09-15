@@ -19,6 +19,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 /** 개방된 주말 한가운데. 이 시각으로 만든 방은 곧바로 ACTIVE 다. */
@@ -215,6 +217,63 @@ class ChatServiceTest(
         )
         retried shouldBe null
         backward shouldBe null
+    }
+
+    "이 방의 메시지가 아닌 id 로 읽음 처리하면 BAD_REQUEST 이고 커서는 그대로다" {
+        // given: 내 방과 다른 방, 다른 방에만 메시지가 있다
+        val myRoom = saveOpenedRoom(100L, 1L, 2L)
+        val otherRoom = saveOpenedRoom(200L, 1L, 3L)
+        val otherRoomMessage = chatMessageRepository.save(ChatMessage.of(otherRoom.id, 3L, "다른 방"))
+
+        // when & then: 다른 방 메시지 id, 존재하지 않는 id 모두 거부
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 1L, roomId = myRoom.id, lastReadMessageId = otherRoomMessage.id)
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        shouldThrow<WarnException> {
+            chatService.markAsRead(memberId = 1L, roomId = myRoom.id, lastReadMessageId = Long.MAX_VALUE)
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        chatRoomMemberRepository.findByRoomIdAndMemberId(myRoom.id, 1L)?.lastReadMessageId shouldBe null
+    }
+
+    "이탈자의 읽음은 커서만 전진하고 READ 이벤트는 내지 않는다" {
+        // given: 3명 방에서 3L 이 이탈한 뒤 지난 대화를 읽는다
+        val room = saveOpenedRoom(100L, 1L, 2L, 3L)
+        val message = chatMessageRepository.save(ChatMessage.of(room.id, 1L, "안녕"))
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        // when
+        val event = chatService.markAsRead(memberId = 3L, roomId = room.id, lastReadMessageId = message.id)
+
+        // then
+        event shouldBe null
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)?.lastReadMessageId shouldBe message.id
+    }
+
+    // 잠금 없이 읽으면 두 요청이 둘 다 옛 커서를 보고 늦게 커밋된 쪽이 덮어 커서가 뒤로 갈 수 있다.
+    // H2 라 잠금 계약 위반은 잡지만 InnoDB 시맨틱까지 보장하지는 않는다.
+    "같은 회원의 읽음 요청이 겹쳐도 커서는 더 큰 값으로 수렴한다" {
+        // given
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        val messages = (1..2).map { chatMessageRepository.save(ChatMessage.of(room.id, 2L, "메시지 $it")) }
+        val startLatch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+
+        // when: 1번째·2번째까지 읽음이 동시에 들어온다
+        val requests = messages.map { message ->
+            executor.submit<ChatReadEvent?> {
+                startLatch.await()
+                chatService.markAsRead(memberId = 1L, roomId = room.id, lastReadMessageId = message.id)
+            }
+        }
+        startLatch.countDown()
+        val events = requests.map { it.get() }
+        executor.shutdown()
+
+        // then: 커서는 뒤로 가지 않고, 이벤트의 previous 도 겹치지 않는다
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 1L)?.lastReadMessageId shouldBe messages[1].id
+        events.filterNotNull().map { it.previousLastReadMessageId }.toSet().size shouldBe events.filterNotNull().size
     }
 
     "방 참여자가 아니면 읽음 처리 시 NOT_CHAT_ROOM_MEMBER 예외가 발생한다" {

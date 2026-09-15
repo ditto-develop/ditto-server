@@ -60,6 +60,7 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 | READ 이벤트 | `{ "type": "READ", "roomId", "memberId", "previousLastReadMessageId", "lastReadMessageId" }` | `POST /read`로 그 회원의 커서가 **실제로 전진**했을 때 |
 
 - READ 이벤트는 **저장하지 않는다.** 읽음의 원본은 `chat_room_member.last_read_message_id`이고, 재접속하면 메시지 조회의 `unreadCount`가 최신 상태를 준다. 그래서 유실돼도 재조회로 복구된다.
+- **이탈자의 읽음은 발행하지 않는다.** 이탈자는 `unreadCount`에 세지 않으므로 이벤트가 나가면 수신 측이 하나 더 뺀다. 커서는 기록한다(읽기 전용 규칙대로 읽음 처리는 허용).
 - **전진했을 때만 발행한다.** 같은 값 재시도·뒤로 가는 요청까지 발행하면 수신 측이 같은 읽음을 두 번 반영한다. 같은 사람이라도 새 메시지를 읽어 커서가 앞으로 갈 때마다 다시 발행된다 — 읽음은 한 번 일어나는 사건이 아니라 계속 전진하는 상태다.
 - **`previousLastReadMessageId`(처음 읽음이면 null)를 함께 준다.** 수신 측은 `previous < id <= last` 구간의 자기 메시지 `unreadCount`만 1 줄여야 한다. 구간 없이 `id <= last` 전체를 줄이면 앞선 READ 로 이미 줄인 메시지가 다시 줄어든다(40까지 읽은 뒤 42까지 읽으면 1~40이 두 번 빠진다).
 - 발행 빈도는 클라이언트가 `POST /read`를 부르는 빈도와 같다 — 메시지마다 부르면 그만큼 나가고, 화면에 보이는 마지막 메시지 기준으로 묶어 부르면 줄어든다.
@@ -69,6 +70,8 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 - 방 생성: `PersonalMatch` 수락(ACCEPT) 시, 그룹은 `GroupMatch` 활성화 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op).
 - 페이징: `id` 커서(`id < cursor` DESC), OFFSET 금지. 응답 `nextCursor` = 반환된 가장 과거 메시지 id(페이지가 가득 찼을 때만, 아니면 null).
 - 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 방 안읽음 수(`ChatRoomResponse.unreadCount`, 내가 안 읽은 수) = `id > last_read` 카운트.
+  - `lastReadMessageId`는 **그 방의 메시지**여야 한다(아니면 `BAD_REQUEST`). `chat_message.id`는 방 구분 없는 전역 값이라 다른 방 id 가 오면 커서가 안 본 메시지를 건너뛰어 전진하고, 커서를 되돌리는 경로가 없어 복구할 수 없다.
+  - 갱신은 **멤버 행을 잠그고** 한다. FE 는 메시지가 들어올 때마다 `POST /read`를 응답을 기다리지 않고 부르므로 같은 회원의 요청이 겹친다. 잠금 없이 읽으면 둘 다 옛 커서를 보고 늦게 커밋된 쪽이 덮어 커서가 뒤로 간다. 잠그는 건 내 행 하나라 다른 회원과는 경합하지 않지만, 그래서 `markAsRead` 트랜잭션은 짧아야 한다. 외부 호출은 READ 이벤트 발행처럼 커밋 뒤 컨트롤러에서 한다.
 - **메시지별 안읽음 수**(`ChatMessageResponse.unreadCount`, 카카오톡의 `1`) = 발신자를 뺀 **현재 참여자**(`left_at IS NULL`) 중 커서가 그 메시지 앞에 있는(`last_read < id` 또는 NULL) 수. 규칙은 `ChatMessage.unreadCountAmong` 한 곳에 있다.
   - 발신자를 빼는 이유: 발신자 커서는 본인 메시지를 가리키지 않을 수 있어 넣으면 항상 1이 남는다. 조회자가 아니라 발신자를 빼므로 **조회자와 무관한 값**이고, REST 응답과 STOMP 브로드캐스트가 같은 수를 낸다.
   - 이탈자를 빼는 이유: 나간 사람은 영영 읽지 않아 넣으면 숫자가 줄지 않는다.

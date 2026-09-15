@@ -22,6 +22,15 @@ interface ChatRoomMemberRepository : JpaRepository<ChatRoomMember, Long> {
 
     fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): ChatRoomMember?
 
+    /**
+     * 내 멤버 행을 잠그고 읽는다. 읽음 커서 갱신용.
+     * 잠금 없이 읽으면 겹친 읽음 요청(10, 20)이 둘 다 옛 커서를 보고 늦게 커밋된 쪽이 덮어 커서가 뒤로 간다.
+     * 멤버 행 하나만 잠그므로 방 → 멤버 잠금 순서와 어긋나지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findWithLockByRoomIdAndMemberId(roomId: Long, memberId: Long): ChatRoomMember?
+
     fun existsByRoomIdAndMemberId(roomId: Long, memberId: Long): Boolean
 
     /**
