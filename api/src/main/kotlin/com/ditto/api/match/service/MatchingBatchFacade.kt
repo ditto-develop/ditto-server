@@ -37,15 +37,15 @@ class MatchingBatchFacade(
 
         return quizSetRepository
             .findEndedQuizSetsWithoutCandidates(now)
-            .map { it.id }
-            .filter { quizSetId -> generateCandidatesOrLog(quizSetId) }
+            .mapNotNull { quizSet -> generatedQuizSetIdOrNull(quizSet.id) }
     }
 
-    /** @return 성공 여부 */
-    private fun generateCandidatesOrLog(quizSetId: Long): Boolean =
+    /** 후보를 생성하고 그 퀴즈셋 ID를 돌려준다. 실패하면 경고 로그만 남기고 null. */
+    private fun generatedQuizSetIdOrNull(quizSetId: Long): Long? =
         runCatchingExceptions { matchmakingService.generateMatchingCandidates(quizSetId) }
             .onFailure { logger.warn(it) { "매칭 후보 생성 실패 — 이 퀴즈셋만 건너뛰고 계속한다: quizSetId=$quizSetId" } }
-            .isSuccess
+            .map { quizSetId }
+            .getOrNull()
 
     companion object {
         private val logger = KotlinLogging.logger {}
