@@ -11,6 +11,31 @@
             <p class="page-desc">실시간 스케줄러(매주 목 05:00)와 별개로, 매칭 배치를 수동 실행합니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
+            <div class="card" th:if="${regeneration}">
+                <h2>재생성 결과 — 퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span>
+                    <span class="badge cat" th:text="${regeneration.matchingType}">type</span></h2>
+                <p class="muted">
+                    후보 풀 <b th:text="${regeneration.participantCount}">0</b>명 ·
+                    매칭 <b th:text="${regeneration.matches.size()}">0</b>건 ·
+                    삭제 <b th:text="${regeneration.rowCounts.deletedCount}">0</b>행 ·
+                    저장 <b th:text="${regeneration.rowCounts.savedCount}">0</b>행
+                    (저장하지 않는 값이라 새로 고치면 사라집니다)
+                </p>
+                <p class="muted" th:if="${regeneration.matches.isEmpty()}">매칭된 후보가 없습니다 — 후보 풀이 2명 미만이거나 조건에 맞는 조합이 없습니다.</p>
+                <table class="tbl" th:unless="${regeneration.matches.isEmpty()}">
+                    <thead><tr><th>#</th><th>구성원 ID</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
+                    <tbody>
+                    <tr th:each="match, stat : ${regeneration.matches}">
+                        <td class="num" th:text="${stat.count}">1</td>
+                        <td th:text="${#strings.listJoin(#lists.sort(#lists.toList(match.memberIds)), ', ')}">1, 2</td>
+                        <td class="num" th:text="${match.score}">100.0</td>
+                        <td class="num"
+                            th:text="${match.matchedQuestionCount != null} ? ${match.matchedQuestionCount} + ' / ' + ${match.totalQuestionCount} : '-'">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <div class="card">
                 <h2>스케줄러 배치 수동 실행</h2>
                 <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로

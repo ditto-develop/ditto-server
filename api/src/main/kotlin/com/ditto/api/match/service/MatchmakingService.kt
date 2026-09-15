@@ -19,6 +19,7 @@ import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -29,7 +30,6 @@ import java.time.LocalDateTime
  * 흐름: 참여자(완료자) 풀 → 제외 정책 적용 → 답변 로드 → 매칭 전략 실행 → 후보 저장.
  * 매칭 타입(1:1/그룹)별 차이는 [MatchingProcessor] 와 [MatchExclusionPolicy] 가 담당한다.
  * 저장 위치도 타입마다 다르다 — 1:1은 페어 테이블(`match_candidate`), 그룹은 [GroupCandidateWriter].
- * 해당 타입의 전략이 없으면 건너뛴다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -65,24 +65,45 @@ class MatchmakingService(
             .onEach { generateMatchingCandidates(it) }
     }
 
-    /** 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다. */
+    /**
+     * 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다.
+     *
+     * @return 생성 결과 요약. 어드민 화면·REST 응답에 실리고 로그에도 남지만 저장하지는 않는다.
+     * @throws WarnException 응답이 시작된 그룹 퀴즈셋처럼 대체할 수 없는 상태면 아무것도 바꾸지 않고 던진다
+     */
     @Transactional
-    fun generateMatchingCandidates(quizSetId: Long) {
+    fun generateMatchingCandidates(quizSetId: Long): CandidateGenerationSummary {
         val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
         val matchingType = quizSet.matchingType
-        val processor = matchingProcessors.firstOrNull { it.matchingType == matchingType } ?: return
+        val processor = matchingProcessors.firstOrNull { it.matchingType == matchingType }
+            ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "매칭 전략이 없는 타입입니다: $matchingType")
 
         // 완료자 진행 기록을 한 번만 조회해 성별 선호까지 함께 활용한다.
         val completedProgresses =
             quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
         val availableMemberIds = availableMemberIds(quizSetId, matchingType, completedProgresses)
-        if (availableMemberIds.size < 2) {
-            replaceCandidates(quizSetId, matchingType, emptyList())
-            return
-        }
+        val matches =
+            if (availableMemberIds.size < 2) emptyList()
+            else processor.match(loadParticipants(quizSetId, availableMemberIds, completedProgresses))
 
-        val participants = loadParticipants(quizSetId, availableMemberIds, completedProgresses)
-        replaceCandidates(quizSetId, matchingType, processor.match(participants))
+        val summary = CandidateGenerationSummary(
+            quizSetId = quizSetId,
+            matchingType = matchingType,
+            participantCount = availableMemberIds.size,
+            rowCounts = replaceCandidates(quizSetId, matchingType, matches),
+            matches = matches,
+        )
+        logGeneration(summary)
+        return summary
+    }
+
+    private fun logGeneration(summary: CandidateGenerationSummary) {
+        logger.info {
+            "매칭 후보 생성: quizSetId=${summary.quizSetId} type=${summary.matchingType} " +
+                "참여자=${summary.participantCount}명 삭제=${summary.rowCounts.deletedCount}행 " +
+                "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건 " +
+                summary.matches.joinToString(prefix = "[", postfix = "]") { "${it.memberIds.sorted()}:${it.score}" }
+        }
     }
 
     /** 후보를 담는 곳이 타입마다 다르다 — 1:1은 페어 2행, 그룹은 방 하나에 멤버 3~6행. */
@@ -90,15 +111,14 @@ class MatchmakingService(
         quizSetId: Long,
         matchingType: MatchingType,
         matches: List<ScoredMatch>,
-    ) {
-        when (matchingType) {
-            MatchingType.ONE_TO_ONE -> {
-                matchCandidateRepository.deleteByQuizSetId(quizSetId)
-                matchCandidateRepository.saveAll(toCandidates(quizSetId, matches))
-            }
-
-            MatchingType.GROUP -> groupCandidateWriter.replace(quizSetId, matches)
+    ): CandidateRowCounts = when (matchingType) {
+        MatchingType.ONE_TO_ONE -> {
+            val deletedCount = matchCandidateRepository.deleteByQuizSetId(quizSetId)
+            val saved = matchCandidateRepository.saveAll(toCandidates(quizSetId, matches))
+            CandidateRowCounts(deletedCount = deletedCount, savedCount = saved.size)
         }
+
+        MatchingType.GROUP -> groupCandidateWriter.replace(quizSetId, matches)
     }
 
     /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
@@ -199,5 +219,9 @@ class MatchmakingService(
                 totalQuestionCount = totalQuestionCount,
             ),
         )
+    }
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
     }
 }
