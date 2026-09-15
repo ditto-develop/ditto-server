@@ -4,7 +4,6 @@ import com.ditto.api.match.exclusion.MatchExclusionPolicy
 import com.ditto.api.match.matching.MatchParticipant
 import com.ditto.api.match.matching.MatchingProcessor
 import com.ditto.api.match.matching.ScoredMatch
-import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
@@ -25,14 +24,13 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 /**
- * 한 퀴즈셋의 매칭 후보를 계산해 저장하는 배치 오케스트레이션.
+ * 한 퀴즈셋의 매칭 후보를 계산해 저장한다. 여러 셋을 도는 배치는 [MatchingBatchFacade]가 맡는다.
  *
  * 흐름: 참여자(완료자) 풀 → 제외 정책 적용 → 답변 로드 → 매칭 전략 실행 → 후보 저장.
  * 매칭 타입(1:1/그룹)별 차이는 [MatchingProcessor] 와 [MatchExclusionPolicy] 가 담당한다.
  * 저장 위치도 타입마다 다르다 — 1:1은 페어 테이블(`match_candidate`), 그룹은 [GroupCandidateWriter].
  */
 @Service
-@Transactional(readOnly = true)
 class MatchmakingService(
     private val quizSetRepository: QuizSetRepository,
     private val quizRepository: QuizRepository,
@@ -44,29 +42,13 @@ class MatchmakingService(
     private val exclusionPolicies: List<MatchExclusionPolicy>,
     private val groupCandidateWriter: GroupCandidateWriter,
     private val matchingProcessors: List<MatchingProcessor>,
-    private val sanctionExpiryService: SanctionExpiryService,
 ) {
 
     /**
-     * 마감([now] 기준)됐고 아직 후보가 없는 퀴즈셋의 매칭 후보를 일괄 생성한다(멱등).
-     * 실시간 스케줄러와 어드민 수동 실행이 공유하는 배치 진입점이다.
-     *
-     * @return 이번 호출로 후보를 생성한 퀴즈셋 ID. 알림은 이 트랜잭션이 커밋된 뒤에 남겨야 하므로
-     *   (`MatchResultNotifier`) 대상 목록을 여기서 흘려보낸다.
-     */
-    @Transactional
-    fun runScheduledMatching(now: LocalDateTime): List<Long> {
-        // 만료 정지 원복을 후보 생성보다 먼저 — 원복된 회원이 이번 매칭 대상에 포함되게 한다 (ADR 0009).
-        sanctionExpiryService.expireDue(now)
-
-        return quizSetRepository
-            .findEndedQuizSetsWithoutCandidates(now)
-            .map { it.id }
-            .onEach { generateMatchingCandidates(it) }
-    }
-
-    /**
      * 해당 퀴즈셋의 매칭 후보를 계산해 저장한다. 재계산 시 기존 후보를 모두 대체한다.
+     *
+     * 퀴즈셋 하나가 트랜잭션 하나다. 배치([MatchingBatchFacade])는 트랜잭션 없이 이 메서드를 프록시로 부르므로
+     * 셋마다 독립된 트랜잭션이 되고, 한 셋의 실패가 다른 셋의 후보를 롤백시키지 않는다. 배경: ADR 0026.
      *
      * @return 생성 결과 요약. 어드민 화면·REST 응답에 실리고 로그에도 남지만 저장하지는 않는다.
      * @throws WarnException 응답이 시작된 그룹 퀴즈셋처럼 대체할 수 없는 상태면 아무것도 바꾸지 않고 던진다

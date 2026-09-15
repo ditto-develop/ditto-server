@@ -1,5 +1,6 @@
 package com.ditto.api.admin.match
 
+import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminMatchController(
     private val matchmakingService: MatchmakingService,
+    private val matchingBatchFacade: MatchingBatchFacade,
     private val serverTimeProvider: ServerTimeProvider,
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
@@ -33,7 +35,7 @@ class AdminMatchController(
 
     @PostMapping("/admin/matching/run-scheduled")
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
-        val quizSetIds = matchmakingService.runScheduledMatching(serverTimeProvider.now())
+        val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
         matchResultNotifier.notifyFor(quizSetIds)
         redirectAttributes.addFlashAttribute("message", "마감된 퀴즈셋의 매칭 배치를 실행했습니다.")
         return "redirect:/admin/matching"
