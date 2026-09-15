@@ -1,9 +1,13 @@
 package com.ditto.infrastructure.oauth.kakao
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
 import com.ditto.infrastructure.oauth.constants.OAuthConstants
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoTokenResponse
 import com.ditto.infrastructure.oauth.kakao.dto.KakaoUserResponse
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -11,7 +15,13 @@ import io.kotest.matchers.string.shouldNotContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.util.MultiValueMap
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
+import java.io.IOException
 import java.time.LocalDate
 
 class KakaoOAuthClientTest : FreeSpec(
@@ -110,6 +120,95 @@ class KakaoOAuthClientTest : FreeSpec(
 
                 val params = capturedParams.first()
                 params.containsKey(OAuthConstants.PARAM_CLIENT_SECRET) shouldBe false
+            }
+        }
+
+        "카카오 API 실패 변환" - {
+            fun clientError(status: HttpStatus, body: String) = HttpClientErrorException.create(
+                status, status.reasonPhrase, HttpHeaders.EMPTY, body.toByteArray(), Charsets.UTF_8,
+            )
+
+            fun serverError(status: HttpStatus) = HttpServerErrorException.create(
+                status, status.reasonPhrase, HttpHeaders.EMPTY, ByteArray(0), Charsets.UTF_8,
+            )
+
+            "토큰 교환이 invalid_grant 로 거부되면 INVALID_SOCIAL_AUTH_CODE" {
+                every { apiSender.getToken(any<MultiValueMap<String, String>>()) } throws clientError(
+                    HttpStatus.BAD_REQUEST,
+                    """{"error":"invalid_grant","error_description":"authorization code not found","error_code":"KOE320"}""",
+                )
+
+                val e = shouldThrow<WarnException> { client.getAccessToken("used-code") }
+
+                e.errorCode shouldBe ErrorCode.INVALID_SOCIAL_AUTH_CODE
+            }
+
+            "토큰 교환이 앱 설정 문제(invalid_client 등)로 거부되면 SOCIAL_PROVIDER_ERROR" {
+                every { apiSender.getToken(any<MultiValueMap<String, String>>()) } throws clientError(
+                    HttpStatus.UNAUTHORIZED,
+                    """{"error":"invalid_client","error_description":"not exist client_id","error_code":"KOE101"}""",
+                )
+
+                val e = shouldThrow<ErrorException> { client.getAccessToken("auth-code") }
+
+                e.errorCode shouldBe ErrorCode.SOCIAL_PROVIDER_ERROR
+            }
+
+            "토큰 교환 에러 바디가 JSON 이 아니어도 SOCIAL_PROVIDER_ERROR 로 떨어진다" {
+                every { apiSender.getToken(any<MultiValueMap<String, String>>()) } throws clientError(
+                    HttpStatus.BAD_REQUEST,
+                    "<html>Bad Gateway</html>",
+                )
+
+                val e = shouldThrow<ErrorException> { client.getAccessToken("auth-code") }
+
+                e.errorCode shouldBe ErrorCode.SOCIAL_PROVIDER_ERROR
+            }
+
+            "카카오 5xx 는 SOCIAL_PROVIDER_ERROR 이고 원인 예외를 cause 로 남긴다" {
+                val kakaoFailure = serverError(HttpStatus.SERVICE_UNAVAILABLE)
+                every { apiSender.getToken(any<MultiValueMap<String, String>>()) } throws kakaoFailure
+
+                val e = shouldThrow<ErrorException> { client.getAccessToken("auth-code") }
+
+                e.errorCode shouldBe ErrorCode.SOCIAL_PROVIDER_ERROR
+                e.cause shouldBe kakaoFailure
+            }
+
+            "타임아웃·연결 실패는 SOCIAL_PROVIDER_ERROR" {
+                every { apiSender.getUserInfo(any()) } throws ResourceAccessException("read timed out", IOException())
+
+                val e = shouldThrow<ErrorException> { client.getUserInfo("test-token") }
+
+                e.errorCode shouldBe ErrorCode.SOCIAL_PROVIDER_ERROR
+            }
+
+            "사용자 조회가 401 이면 INVALID_SOCIAL_ACCESS_TOKEN" {
+                every { apiSender.getUserInfo("Bearer expired-token") } throws clientError(
+                    HttpStatus.UNAUTHORIZED,
+                    """{"msg":"this access token does not exist","code":-401}""",
+                )
+
+                val e = shouldThrow<WarnException> { client.getUserInfo("expired-token") }
+
+                e.errorCode shouldBe ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN
+            }
+
+            "사용자 조회가 401 외 4xx 면 SOCIAL_PROVIDER_ERROR" {
+                every { apiSender.getUserInfo(any()) } throws clientError(
+                    HttpStatus.FORBIDDEN,
+                    """{"msg":"insufficient scopes","code":-402}""",
+                )
+
+                val e = shouldThrow<ErrorException> { client.getUserInfo("test-token") }
+
+                e.errorCode shouldBe ErrorCode.SOCIAL_PROVIDER_ERROR
+            }
+
+            "카카오 호출과 무관한 예외는 그대로 올라간다" {
+                every { apiSender.getToken(any<MultiValueMap<String, String>>()) } throws IllegalStateException("bug")
+
+                shouldThrow<IllegalStateException> { client.getAccessToken("auth-code") }
             }
         }
 
