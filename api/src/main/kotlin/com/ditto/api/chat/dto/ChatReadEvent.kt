@@ -15,7 +15,8 @@ data class ChatReadEvent(
     val previousLastReadMessageId: Long?,
     val lastReadMessageId: Long,
 ) {
-    val type: String = TYPE
+    val type: String
+        get() = TYPE
 
     companion object {
         const val TYPE = "READ"

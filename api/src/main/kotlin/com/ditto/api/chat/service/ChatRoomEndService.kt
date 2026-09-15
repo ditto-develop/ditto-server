@@ -86,7 +86,7 @@ class ChatRoomEndService(
         if (!room.canEndByUser()) {
             throw WarnException(ErrorCode.NOT_CHAT_ROOM_MEMBER, "그룹 채팅은 이 경로로 종료할 수 없습니다.")
         }
-        return endLockedRoomByUser(room, chatRoomMemberRepository.findByRoomId(roomId), memberId, now)
+        return endLockedRoomByUser(room, memberId, now)
     }
 
     /**
@@ -113,7 +113,7 @@ class ChatRoomEndService(
             ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
 
         if (room.canEndByUser()) {
-            val message = endLockedRoomByUser(room, roomMembers, memberId, now)
+            val message = endLockedRoomByUser(room, memberId, now)
             return ChatLeaveResult(
                 systemMessages = listOfNotNull(message),
                 isRoomEnded = message != null,
@@ -148,18 +148,13 @@ class ChatRoomEndService(
             )
         }
         return ChatLeaveResult(
-            systemMessages = messages.map { ChatMessageResponse.of(it, imageUrl = null, roomMembers = roomMembers) },
+            systemMessages = messages.map { ChatMessageResponse.system(it) },
             isRoomEnded = shouldDissolve,
         )
     }
 
     /** 잠근 방을 사용자 종료로 전이시킨다. 이미 끝났으면 `null` — 멱등 재요청이다. */
-    private fun endLockedRoomByUser(
-        room: ChatRoom,
-        roomMembers: List<ChatRoomMember>,
-        memberId: Long,
-        now: LocalDateTime,
-    ): ChatMessageResponse? {
+    private fun endLockedRoomByUser(room: ChatRoom, memberId: Long, now: LocalDateTime): ChatMessageResponse? {
         if (room.isEnded) {
             return null
         }
@@ -168,7 +163,7 @@ class ChatRoomEndService(
         val message = chatMessageRepository.save(
             ChatMessage.system(roomId = room.id, senderId = memberId, content = USER_LEFT),
         )
-        return ChatMessageResponse.of(message, imageUrl = null, roomMembers = roomMembers)
+        return ChatMessageResponse.system(message)
     }
 
     /**
