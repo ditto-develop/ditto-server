@@ -30,6 +30,11 @@
 - 비용: 성별·나이가 카카오 검증값이 아닌 **자가신고**가 된다. 신고·제재 대응 시 신원 식별 근거(이름·전화번호)가 기본적으로 없다 — 피그마 `1.2 로그인`의 PASS 본인인증이 원래 그 경로이나 "순서 및 방법 미정, 화면만 구현" 상태다.
 - 계약 변경: `POST /api/v1/users`가 `gender`·`age` 없이 오면 이제 `0001`(400)이다. FE는 이미 두 값을 필수로 막고 있어 영향이 없다.
 
+## 후속 (2026-09-15)
+
+카카오계정(이메일) 동의항목은 일반 앱에서도 콘솔에서 켤 수 있었다. "이메일조차 비즈 앱이 필요하다"는 위 전제는 이메일에 한해 틀렸고, 나머지 항목은 여전히 비즈 앱 전용이다.
+결정대로 코드는 그대로 두고 prod 환경변수 `KAKAO_SCOPES`(`.aws/task-definition.json`)에 `account_email`만 추가했다. 이메일 파싱·저장과 재로그인 갱신(`updateEmail`)은 PR #65 때 만든 게 남아 있어 그대로 쓴다. [#179](https://github.com/ditto-develop/ditto-server/issues/179)
+
 ## Links
 
 - 이슈: [#161](https://github.com/ditto-develop/ditto-server/issues/161)

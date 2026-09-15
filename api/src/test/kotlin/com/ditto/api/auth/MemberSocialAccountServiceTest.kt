@@ -135,7 +135,7 @@ class MemberSocialAccountServiceTest(
                 )
                 created.birthDate shouldBe null
 
-                // 비즈 앱 전환으로 동의항목이 열린 뒤 재로그인하면 값이 들어온다.
+                // 재로그인 때 값이 들어오면 채워진다.
                 val birthDate = LocalDateTime.of(1995, 3, 15, 0, 0)
                 val found = memberSocialAccountService.findOrCreateMember(
                     SocialProvider.KAKAO, "kakao-123", "test@kakao.com", birthDate,
