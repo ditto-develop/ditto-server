@@ -27,7 +27,7 @@ class FirebaseFcmSenderTest : FreeSpec({
         every { exception } returns null
     }
 
-    fun failure(code: MessagingErrorCode): SendResponse = mockk {
+    fun failure(code: MessagingErrorCode?): SendResponse = mockk {
         every { exception } returns mockk<FirebaseMessagingException> {
             every { messagingErrorCode } returns code
         }
@@ -86,10 +86,23 @@ class FirebaseFcmSenderTest : FreeSpec({
                 FirebaseFcmSender(firebaseMessaging).send(message(listOf("abcd-token-bad"), type = "CHAT_MESSAGE"))
             }
 
+            logs.single() shouldContain "푸시 일부 실패 1건"
             logs.single() shouldContain "type=CHAT_MESSAGE"
             logs.single() shouldContain "SENDER_ID_MISMATCH(…oken-bad)"
             // 토큰 전체는 비밀값이라 앞부분이 로그에 남으면 안 된다.
             logs.single() shouldNotContain "abcd"
+        }
+
+        "에러코드가 없는 실패는 UNKNOWN 으로 남긴다" {
+            val firebaseMessaging = mockk<FirebaseMessaging> {
+                every { sendEachForMulticastAsync(any()) } returns ApiFutures.immediateFuture(batchOf(failure(null)))
+            }
+
+            val logs = capturedLogs {
+                FirebaseFcmSender(firebaseMessaging).send(message(listOf("token-bad")))
+            }
+
+            logs.single() shouldContain "UNKNOWN(…oken-bad)"
         }
 
         "무효 토큰(UNREGISTERED)만 실패하면 경고를 남기지 않는다" {

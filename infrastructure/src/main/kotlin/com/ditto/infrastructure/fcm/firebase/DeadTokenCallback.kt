@@ -28,7 +28,10 @@ internal class DeadTokenCallback(
             .partition { (_, errorCode) -> errorCode == MessagingErrorCode.UNREGISTERED }
 
         if (others.isNotEmpty()) {
-            logger.warn { "푸시 일부 실패: type=${notificationType ?: "-"}, ${others.joinToString(transform = ::describe)}" }
+            logger.warn {
+                "푸시 일부 실패 ${others.size}건: type=${notificationType ?: "-"}, " +
+                    others.joinToString(transform = ::describe)
+            }
         }
 
         val deadTokens = unregistered.map { (token, _) -> token }
@@ -38,12 +41,13 @@ internal class DeadTokenCallback(
     }
 
     override fun onFailure(t: Throwable) {
-        logger.warn(t) { "푸시 발송 실패 — 무시한다: tokens=${tokens.size}개" }
+        logger.warn(t) { "푸시 발송 실패 — 무시한다: type=${notificationType ?: "-"}, tokens=${tokens.size}개" }
     }
 
     private fun describe(failure: Pair<String, MessagingErrorCode?>): String {
         val (token, errorCode) = failure
-        return "$errorCode(…${token.takeLast(TOKEN_LOG_SUFFIX_LENGTH)})"
+        // 코드가 null 인 실패도 있다(SDK 가 모르는 새 에러 상태). "null" 이 찍히면 로깅 버그로 읽힌다.
+        return "${errorCode?.name ?: "UNKNOWN"}(…${token.takeLast(TOKEN_LOG_SUFFIX_LENGTH)})"
     }
 
     companion object {
