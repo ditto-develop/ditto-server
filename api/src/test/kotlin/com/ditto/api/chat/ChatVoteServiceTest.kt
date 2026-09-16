@@ -4,6 +4,7 @@ import com.ditto.api.chat.dto.ChatVoteCastRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.PlaceOptionRequest
 import com.ditto.api.chat.dto.ChatVoteCreateRequest.TimeOptionRequest
+import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -12,6 +13,7 @@ import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.ChatVoteFixture
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatVoteCloseReason
 import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
@@ -32,6 +34,7 @@ private val WEDNESDAY = LocalDateTime.of(2026, 3, 11, 9, 0)
 
 class ChatVoteServiceTest(
     private val chatVoteService: ChatVoteService,
+    private val chatRoomEndService: ChatRoomEndService,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatVoteRepository: ChatVoteRepository,
@@ -467,6 +470,9 @@ class ChatVoteServiceTest(
             val result = chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = FRIDAY.plusHours(2))
 
             result.detail.status shouldBe ChatVoteStatus.CLOSED
+            // 마감 경로를 FE 가 문구로 가른다 — 멤버 마감이면 마감자가 있고, 방 종료 동반 마감이면 없다
+            result.detail.closedReason shouldBe ChatVoteCloseReason.MEMBER
+            result.detail.closedBy shouldBe 2L
             result.systemMessage?.content shouldBe "VOTE_CLOSED:${detail.voteId}"
             // 마감자는 senderId 가 들고 있다 — 권한이 멤버 누구나라 생성자가 아닐 수 있다
             result.systemMessage?.senderId shouldBe 2L
@@ -495,6 +501,36 @@ class ChatVoteServiceTest(
 
             again.detail.status shouldBe ChatVoteStatus.CLOSED
             again.systemMessage shouldBe null
+        }
+
+        // BUG-083 완료 조건 — 어떤 경로로도 "열린 채 아무도 닫을 수 없는 투표"가 생기지 않는다.
+        // 방이 먼저 끝나면 투표는 ROOM_ENDED 로 이미 닫혀 있고, 뒤늦은 마감 버튼은 멱등 성공으로 받는다
+        // (멱등 반환이 방 상태 검사보다 먼저라서 CHAT_ROOM_ENDED 로 튕기지 않는다).
+        "방이 만료되며 자동 마감된 투표는 뒤늦은 마감 요청도 성공한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatRoomEndService.endExpired(room.expiresAt.plusMinutes(1))
+
+            val result = chatVoteService.close(room.id, detail.voteId, memberId = 2L, now = room.expiresAt.plusHours(1))
+
+            result.detail.status shouldBe ChatVoteStatus.CLOSED
+            // 실제로 닫은 것은 방 종료라 사유가 덮이지 않고, 마감 메시지도 다시 남지 않는다
+            result.detail.closedReason shouldBe ChatVoteCloseReason.ROOM_ENDED
+            result.detail.closedBy shouldBe null
+            result.systemMessage shouldBe null
+        }
+
+        "방이 해체되며 자동 마감된 투표는 뒤늦은 마감 요청도 성공한다" {
+            val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
+            val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
+            chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY.plusHours(1))
+            chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY.plusHours(2))
+
+            val result = chatVoteService.close(room.id, detail.voteId, memberId = 3L, now = FRIDAY.plusHours(3))
+
+            result.detail.status shouldBe ChatVoteStatus.CLOSED
+            result.detail.closedReason shouldBe ChatVoteCloseReason.ROOM_ENDED
+            result.systemMessage shouldBe null
         }
 
         "방을 나간 멤버는 마감할 수 없다" {

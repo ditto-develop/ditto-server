@@ -2,6 +2,7 @@ package com.ditto.api.chat.dto
 
 import com.ditto.domain.chat.entity.ChatVote
 import com.ditto.domain.chat.entity.ChatVoteChoice
+import com.ditto.domain.chat.entity.ChatVoteCloseReason
 import com.ditto.domain.chat.entity.ChatVoteOption
 import com.ditto.domain.chat.entity.ChatVoteOptionType
 import com.ditto.domain.chat.entity.ChatVoteStatus
@@ -22,6 +23,11 @@ data class ChatVoteDetailResponse(
     val createdBy: Long,
     val createdAt: LocalDateTime,
     val closedAt: LocalDateTime?,
+    // 마감 경로를 FE 가 문구로 가른다 — "○○님이 마감"과 "방이 끝나 자동 마감"이 다른 카드다.
+    // closedBy 의 null 을 사유로 해석하게 두지 않으려고 사유를 함께 낸다(도메인의 ChatVoteCloseReason 과 같은 취지).
+    val closedReason: ChatVoteCloseReason?,
+    // 마감한 회원 ID — MEMBER 마감일 때만 값이고 ROOM_ENDED 마감은 마감자가 없어 null 이다.
+    val closedBy: Long?,
     // 분모·분자 모두 활성(이탈하지 않은) 멤버 기준 — 이탈로 분자·분모가 함께 줄어 방향이 일관된다.
     val totalMembers: Int,
     // 장소·시간 중 하나라도 표를 던진 활성 멤버 수.
@@ -99,6 +105,8 @@ data class ChatVoteDetailResponse(
                 createdBy = vote.createdBy,
                 createdAt = vote.createdAt,
                 closedAt = vote.closedAt,
+                closedReason = vote.closedReason,
+                closedBy = vote.closedBy,
                 totalMembers = activeMemberIds.size,
                 votedCount = activeChoices.map { it.memberId }.distinct().size,
                 placeOptions = options.filter { it.optionType == ChatVoteOptionType.PLACE }.map { option ->
