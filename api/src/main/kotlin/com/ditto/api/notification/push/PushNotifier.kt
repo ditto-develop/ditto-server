@@ -74,7 +74,7 @@ class PushNotifier(
     private fun buildMessage(notification: Notification, tokens: List<String>, deepLink: String?): PushMessage {
         val data = buildMap {
             put("notificationId", notification.id.toString())
-            put("type", notification.type.name)
+            put(PushMessage.DATA_KEY_TYPE, notification.type.name)
             deepLink?.let { put("deepLink", it) }
         }
         return PushMessage(

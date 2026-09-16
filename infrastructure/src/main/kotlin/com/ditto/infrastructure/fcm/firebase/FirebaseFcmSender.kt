@@ -18,7 +18,8 @@ class FirebaseFcmSender(
         // FCM 멀티캐스트는 호출당 토큰 500개 제한. 실제로는 회원당 기기 몇 개라 한 조각이다.
         message.tokens.chunked(MULTICAST_MAX_TOKENS).forEach { tokens ->
             val future = firebaseMessaging.sendEachForMulticastAsync(FcmMessageComposer.toMulticast(message, tokens))
-            ApiFutures.addCallback(future, DeadTokenCallback(tokens, onDeadTokens), MoreExecutors.directExecutor())
+            val callback = DeadTokenCallback(tokens, message.notificationType, onDeadTokens)
+            ApiFutures.addCallback(future, callback, MoreExecutors.directExecutor())
         }
     }
 

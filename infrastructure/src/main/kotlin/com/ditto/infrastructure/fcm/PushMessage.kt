@@ -20,4 +20,14 @@ data class PushMessage(
     val unreadCount: Int? = null,
     /** 배달 유효 시간. 지나면 FCM 이 버린다. null 이면 기본(4주) — 시효가 있는 알림(채팅 등)은 짧게 준다. */
     val ttl: Duration? = null,
-)
+) {
+
+    /** 발송 실패 로그가 "무슨 알림이었나"를 적을 때 쓴다. 앱도 같은 값을 [data]에서 읽어 화면을 고른다. */
+    val notificationType: String?
+        get() = data[DATA_KEY_TYPE]
+
+    companion object {
+        /** 알림 유형을 싣는 [data] 키. 넣는 쪽과 읽는 쪽이 모듈을 넘어 갈리므로 여기 한 곳에 둔다. */
+        const val DATA_KEY_TYPE = "type"
+    }
+}
