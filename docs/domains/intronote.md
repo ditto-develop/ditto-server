@@ -25,6 +25,7 @@
 - 후보 판정의 기준 퀴즈셋은 후보 목록(`GET /api/v1/matches/1on1`·`/matches/group`)과 같다: 조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 지난 주 후보 행이 남아 있어도 주가 바뀌면 닫힌다.
 - `completedCount`는 "이 응답에 담긴 답변 중 작성된 수"다 — 미리보기에서는 최대 3.
 - 근거 ADR: `docs/adr/0025-intro-note-candidate-preview.md`.
+- 같은 관계 모델을 프로필·평점도 쓴다(`UserService.checkProfileAccess` → `ProfileAccessLevel`): 후보는 평점을 요약본으로만 본다. [ADR 0029](../adr/0029-peer-profile-candidate-summary-tier.md).
 
 ## 상태 전이
 - 별도 상태 enum 없음. 답변은 `updateAnswer`로 갱신만 한다.

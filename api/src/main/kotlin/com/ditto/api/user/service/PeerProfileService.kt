@@ -15,6 +15,10 @@ import org.springframework.transaction.annotation.Transactional
  *
  * 열람 권한은 공개 프로필과 같은 규칙을 쓴다([UserService.checkProfileAccess]) — 프로필 본문은 못 보는데
  * 평점·답변 비교만 보이는 구멍이 생기지 않게 한 지점에서 판정한다.
+ *
+ * 성사 전 후보([ProfileAccessLevel.SUMMARY])는 평가를 요약본으로만 본다. 답변 일치는 등급을 가리지
+ * 않는다 — 후보 목록(`MatchCandidateResponse.matchRate`)이 이미 같은 수치를 내리고 있고,
+ * 상대가 무엇을 골랐는지는 어느 등급에서도 나가지 않는다.
  */
 @Service
 class PeerProfileService(
@@ -27,9 +31,10 @@ class PeerProfileService(
 
     @Transactional(readOnly = true)
     fun getRatings(viewerId: Long, targetId: Long): MyRatingsResponse {
-        userService.checkProfileAccess(viewerId, targetId)
+        val access = userService.checkProfileAccess(viewerId, targetId)
 
-        return memberRatingService.getRatings(targetId)
+        return if (access.isFull) memberRatingService.getRatings(targetId)
+        else memberRatingService.getRatingsSummary(targetId)
     }
 
     /**

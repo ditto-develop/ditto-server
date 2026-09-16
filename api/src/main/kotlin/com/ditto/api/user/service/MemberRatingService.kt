@@ -49,6 +49,15 @@ class MemberRatingService(
     }
 
     /**
+     * 성사 전 후보에게 보여 줄 요약본 — 평균 점수와 평가 건수까지만 남긴다.
+     * 개별 코멘트와 노쇼 횟수는 "누가 무엇을 겪었는지"에 가까워 성사 후로 미룬다.
+     * 공개 기준(3건) 판정은 [getRatings]가 이미 했으므로 여기서 다시 세지 않는다.
+     */
+    @Transactional(readOnly = true)
+    fun getRatingsSummary(memberId: Long): MyRatingsResponse =
+        getRatings(memberId).copy(noShowCount = null, ratings = emptyList())
+
+    /**
      * 프로필 카드에 실을 평균 별점. 공개 기준 미달이면 null이다 —
      * 평가 카드가 "평가가 충분하지 않아요"인데 프로필 상단에만 점수가 뜨면 안 된다.
      */
