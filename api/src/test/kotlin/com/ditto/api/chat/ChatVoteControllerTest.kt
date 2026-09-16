@@ -15,6 +15,7 @@ import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatMessageType
+import com.ditto.domain.chat.entity.ChatVoteCloseReason
 import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -52,6 +53,8 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         voteId: Long = 41L,
         status: ChatVoteStatus = ChatVoteStatus.OPEN,
         closedAt: LocalDateTime? = null,
+        closedReason: ChatVoteCloseReason? = null,
+        closedBy: Long? = null,
         myVote: MyVoteResponse? = MyVoteResponse(placeIds = listOf(301L), timeIds = listOf(311L)),
     ) = ChatVoteDetailResponse(
         voteId = voteId,
@@ -61,6 +64,8 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         createdBy = 12L,
         createdAt = LocalDateTime.of(2026, 3, 24, 21, 3, 11),
         closedAt = closedAt,
+        closedReason = closedReason,
+        closedBy = closedBy,
         totalMembers = 4,
         votedCount = 2,
         placeOptions = listOf(
@@ -103,6 +108,10 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         fieldWithPath("${prefix}createdBy").description("투표를 만든 회원 ID"),
         fieldWithPath("${prefix}createdAt").description("생성일시"),
         fieldWithPath("${prefix}closedAt").description("마감 시각 (진행 중이면 null)").optional(),
+        fieldWithPath("${prefix}closedReason")
+            .description("마감 사유 (MEMBER=멤버가 마감, ROOM_ENDED=방이 끝나 자동 마감. 진행 중이면 null)").optional(),
+        fieldWithPath("${prefix}closedBy")
+            .description("마감한 회원 ID (MEMBER 마감일 때만 값. ROOM_ENDED 마감·진행 중이면 null)").optional(),
         fieldWithPath("${prefix}totalMembers").description("방의 활성(이탈하지 않은) 멤버 수 — 진행 카운터의 분모"),
         fieldWithPath("${prefix}votedCount").description("장소·시간 중 하나라도 표를 던진 활성 멤버 수"),
         fieldWithPath("${prefix}placeOptions[]").description("장소 선택지 (입력 순 — 동표 노출 순서)"),
@@ -202,7 +211,13 @@ class ChatVoteControllerTest : ControllerUnitTest() {
         every { chatVoteService.getVotes(any(), any()) } returns listOf(
             sampleDetail(),
             // 마감된 투표를 하나 섞는다 — closedAt 이 전부 null 이면 스키마에서 그 필드가 빠진다(#140).
-            sampleDetail(voteId = 40L, status = ChatVoteStatus.CLOSED, closedAt = LocalDateTime.of(2026, 3, 20, 21, 0)),
+            sampleDetail(
+                voteId = 40L,
+                status = ChatVoteStatus.CLOSED,
+                closedAt = LocalDateTime.of(2026, 3, 20, 21, 0),
+                closedReason = ChatVoteCloseReason.MEMBER,
+                closedBy = 33L,
+            ),
         )
 
         mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/votes", 87L))
@@ -401,13 +416,20 @@ class ChatVoteControllerTest : ControllerUnitTest() {
     @DisplayName("투표를 마감한다 — 멱등, 실제로 닫은 요청만 브로드캐스트")
     fun close() {
         every { chatVoteService.close(any(), any(), any(), any()) } returns ChatVoteChangeResult(
-            detail = sampleDetail(status = ChatVoteStatus.CLOSED, closedAt = LocalDateTime.of(2026, 3, 26, 21, 0)),
+            detail = sampleDetail(
+                status = ChatVoteStatus.CLOSED,
+                closedAt = LocalDateTime.of(2026, 3, 26, 21, 0),
+                closedReason = ChatVoteCloseReason.MEMBER,
+                closedBy = 12L,
+            ),
             systemMessage = sampleSystemMessage("VOTE_CLOSED:41"),
         )
 
         mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/votes/{voteId}/close", 87L, 41L))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.status").value("CLOSED"))
+            .andExpect(jsonPath("$.data.closedReason").value("MEMBER"))
+            .andExpect(jsonPath("$.data.closedBy").value(12L))
             .andDo(
                 document(
                     "chat-vote-close",
