@@ -20,6 +20,9 @@ ditto:
       # 웹 로그인용 Services ID 와 애플이 폼 POST 로 돌려보낼 우리 콜백 주소.
       web-client-id: pics.ditto.web
       web-redirect-uri: http://localhost:8080/api/v1/users/social-login/APPLE/callback
+      # 어드민 로그인의 Return URL. 애플은 https 만 Return URL 로 받으므로 로컬에서는 실제로 동작하지 않는다
+      # (로컬 어드민 로그인은 /admin/oauth/dev 를 쓴다). 형식 확인용으로만 채워 둔다.
+      admin-web-redirect-uri: http://localhost:8080/admin/oauth/apple/callback
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s
@@ -54,6 +57,8 @@ ditto:
       # 웹 로그인을 쓰려면 둘 다 필요하다. 콘솔의 Services ID / Return URL 과 정확히 같아야 한다.
       web-client-id: ${APPLE_WEB_CLIENT_ID:}
       web-redirect-uri: ${APPLE_WEB_REDIRECT_URI:}
+      # 어드민 Return URL 도 콘솔의 같은 Services ID 에 함께 등록해야 한다.
+      admin-web-redirect-uri: ${APPLE_ADMIN_REDIRECT_URI:}
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s

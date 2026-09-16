@@ -23,6 +23,7 @@
 - [0025 — 성사 전 소개노트는 후보에게 3문항만 연다](0025-intro-note-candidate-preview.md)
 - [0026 — 매칭이 다루는 퀴즈셋을 이번 운영 주로 고정](0026-matching-scoped-to-operation-week.md)
 - [0027 — 매칭 배치는 퀴즈셋마다 별도 트랜잭션으로 돈다](0027-matching-batch-per-quiz-set-transaction.md)
+- [0028 — 어드민 애플 로그인은 폼 POST 콜백 한 경로만 CSRF 예외](0028-admin-apple-login-csrf-exemption.md)
 
 ## 언제 ADR을 쓰는가
 

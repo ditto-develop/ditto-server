@@ -13,6 +13,8 @@ import java.time.Duration
  * @property webClientId 웹 로그인의 `client_id` — 애플 개발자 콘솔의 **Services ID**다(앱 번들 ID가 아니다).
  *   [clientIds]에도 함께 넣어야 웹에서 받은 ID 토큰의 `aud` 검증을 통과한다.
  * @property webRedirectUri 애플이 폼 POST 로 콜백할 우리 서버 주소. 콘솔의 Return URL 과 정확히 같아야 한다.
+ * @property adminWebRedirectUri 어드민 로그인의 Return URL. 유저 웹과 [webClientId] 는 공유하고 돌아올 주소만 다르다
+ *   — 콘솔의 한 Services ID 에 Return URL 을 둘 다 등록해야 한다.
  * @property jwksCacheTtl 애플 공개키 캐시 시간. 애플은 키를 주기적으로 교체하므로 영구 캐시는 안 된다.
  */
 @ConfigurationProperties(prefix = "ditto.oauth.apple")
@@ -20,6 +22,7 @@ data class AppleOAuthProperties(
     val clientIds: List<String> = emptyList(),
     val webClientId: String = "",
     val webRedirectUri: String = "",
+    val adminWebRedirectUri: String = "",
     val jwksCacheTtl: Duration = Duration.ofHours(6),
     val connectTimeout: Duration = Duration.ofSeconds(3),
     val readTimeout: Duration = Duration.ofSeconds(5),
