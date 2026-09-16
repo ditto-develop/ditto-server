@@ -39,8 +39,10 @@ class AuthService(
 
     @Transactional
     fun refresh(refreshToken: String): TokenRefreshResult {
+        // 서버 잘못이 아니다 — 로그아웃·쿠키 삭제·이미 회전된 토큰이면 정상적으로 도달한다.
+        // ErrorException 이면 스택트레이스가 ERROR 로 남아 진짜 장애처럼 보인다.
         val existedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
-            ?: throw ErrorException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
+            ?: throw WarnException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
 
         if (existedRefreshToken.isExpired()) {
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)

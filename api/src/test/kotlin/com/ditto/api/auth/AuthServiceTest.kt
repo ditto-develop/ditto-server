@@ -4,7 +4,6 @@ import com.ditto.api.auth.service.AuthService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
@@ -40,7 +39,7 @@ class AuthServiceTest(
             }
 
             "존재하지 않는 리프레시 토큰이면 예외가 발생한다" {
-                val exception = shouldThrow<ErrorException> {
+                val exception = shouldThrow<WarnException> {
                     authService.refresh("non-existent-token")
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
@@ -68,7 +67,7 @@ class AuthServiceTest(
 
                 authService.refresh(oldToken)
 
-                val exception = shouldThrow<ErrorException> {
+                val exception = shouldThrow<WarnException> {
                     authService.refresh(oldToken)
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND
@@ -150,7 +149,7 @@ class AuthServiceTest(
 
                 authService.logout(member.id)
 
-                val exception = shouldThrow<ErrorException> {
+                val exception = shouldThrow<WarnException> {
                     authService.refresh(refreshToken.token)
                 }
                 exception.errorCode shouldBe ErrorCode.REFRESH_TOKEN_NOT_FOUND

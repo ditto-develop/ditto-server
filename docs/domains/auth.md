@@ -24,6 +24,8 @@
 - **애플 로그인은 앱·웹 둘 다 지원한다.** 앱은 `POST /api/v1/users/social-login/apple/native`, 웹은 인가 URL(`GET .../social-login/APPLE`) → 애플 → **`POST /api/v1/users/social-login/APPLE/callback`**(폼 POST). 웹 콜백이 POST인 이유는 scope 를 요청하려면 `response_mode=form_post` 가 필수이기 때문이고, `response_type=code id_token` 으로 받아 **같은 검증기로 ID 토큰만 검증**한다(코드 교환 없음 = 시크릿 없음). 웹은 `client_id` 가 Services ID 다. [ADR 0023](../adr/0023-apple-web-login-form-post-callback.md)
 - 애플 상세: `POST /api/v1/users/social-login/apple/native`. 애플은 사용자 정보 API가 없어 **ID 토큰(JWT) 서명 검증이 곧 인증**이며(JWKS·`iss`·`aud`·`exp`, 앱이 보내면 `nonce`까지), 인가 코드 교환을 하지 않으므로 새 비밀값이 없다. 이름은 애플이 최초 1회만 주므로 앱이 요청에 실어 보낸다. 카카오 계정과 잇지 않는다(제공자별 별도 회원). [ADR 0022](../adr/0022-apple-native-login-id-token.md)
 - 제재 로그인 콜백 계약(FE): 제재 회원 로그인 시 토큰 없이 `?sanctioned=true&sanctionCode=MEMBER_SUSPENDED|MEMBER_BANNED&suspendedUntil=<ISO-8601, 정지만>`으로 리다이렉트. (`OAuthService.getSanctionCallbackUrl`)
+- **리프레시 토큰이 없으면 `WarnException`(REFRESH_TOKEN_NOT_FOUND, 2001)이다** — 서버 잘못이 아니라 로그아웃·쿠키 삭제·이미 회전된 토큰으로 정상 도달하는 경로다. `ErrorException`이면 스택트레이스가 ERROR로 남아 진짜 장애처럼 보인다. 만료(`REFRESH_TOKEN_EXPIRED`, 2002)도 같은 등급이다.
+- **`UserDetailsServiceAutoConfiguration`은 제외한다**(`DittoApplication`). 인증 주체는 JWT 필터와 어드민 세션이 직접 만들고 `UserDetailsService`를 쓰는 경로가 없는데, 켜 두면 부팅마다 인메모리 계정과 생성 비밀번호가 프로덕션 로그에 찍힌다.
 - 어드민 인가는 `@PreAuthorize`가 아니라 `JwtAuthenticationFilter`의 경로 prefix 검사: `/api/v1/admin` 경로는 `member.isAdmin()` 아니면 `403 FORBIDDEN`. [ADR 0006](../adr/0006-admin-authz-filter-path-check.md)
 - WebSocket(STOMP): `/ws` 핸드셰이크는 HTTP 계층 permitAll(브라우저 WS 헤더 제약), 인증·인가는 `StompAuthChannelInterceptor`(CONNECT: `X-API-Key`+JWT, SUBSCRIBE: 방 멤버십). deny-all 체인은 `@Order(7)`. [ADR 0009](../adr/0009-websocket-stomp-auth.md)
 

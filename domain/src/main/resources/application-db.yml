@@ -49,7 +49,10 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 3
       idle-timeout: 30000
-      max-lifetime: 60000
+      # MySQL wait_timeout(기본 8시간)보다 넉넉히 짧게 둔다. 60초로 두면 커넥션을 1분마다 버려
+      # RDS 재연결(TCP+인증)이 상시 발생하고, keepalive 가 maxLifetime 이상이라 비활성화된다
+      # ("keepaliveTime is greater than or equal to maxLifetime, disabling it" 경고가 부팅마다 찍혔다).
+      max-lifetime: 1740000
   jpa:
     hibernate:
       ddl-auto: validate
