@@ -1,6 +1,8 @@
 package com.ditto.api.admin.auth
 
 import com.ditto.api.auth.service.MemberSocialAccountService
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -96,6 +98,15 @@ class AdminLoginServiceTest : FreeSpec({
             every { appleAuthenticator.authenticate(any()) } returns appleUserInfo
             every { memberSocialAccountService.findMemberBySocial(SocialProvider.APPLE, any()) } returns
                 MemberFixture.create(role = MemberRole.USER, id = 21L)
+
+            shouldThrow<AdminLoginDeniedException> { service.loginWithAppleIdToken("id-token") }
+        }
+
+        // 서버 렌더 화면이라 WarnException 이 새어나가면 로그인 페이지 대신 JSON 이 노출된다.
+        // 콘솔에 Return URL·Services ID 가 등록되기 전 구간이 정확히 이 경로다.
+        "ID 토큰 검증에 실패하면 로그인 거부로 바꿔 던진다" {
+            every { appleAuthenticator.authenticate(any()) } throws
+                WarnException(ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN)
 
             shouldThrow<AdminLoginDeniedException> { service.loginWithAppleIdToken("id-token") }
         }

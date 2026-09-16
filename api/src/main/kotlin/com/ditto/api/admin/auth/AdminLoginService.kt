@@ -1,6 +1,7 @@
 package com.ditto.api.admin.auth
 
 import com.ditto.api.auth.service.MemberSocialAccountService
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.infrastructure.oauth.NativeSocialAuthenticatorFactory
@@ -42,11 +43,19 @@ class AdminLoginService(
     /**
      * 애플 웹 콜백으로 함께 온 ID 토큰을 검증해 로그인한다 — 인가 코드는 쓰지 않는다(ADR 0023).
      * 검증기는 앱/웹 로그인과 같은 것을 그대로 쓴다.
+     *
+     * 토큰 검증 실패(`WarnException`)를 [AdminLoginDeniedException] 으로 바꿔 던지는 이유: 어드민은 JSON API 가
+     * 아니라 **서버 렌더 화면**이다. 그대로 두면 `GlobalExceptionHandler` 가 JSON 에러 바디를 뱉어 관리자가 로그인
+     * 페이지 대신 날 JSON 을 보게 된다. 콘솔에 Return URL·Services ID 가 아직 등록되지 않은 구간에서 바로 이 경로를 탄다.
      */
     fun loginWithAppleIdToken(idToken: String): AdminPrincipal {
-        val userInfo = nativeSocialAuthenticatorFactory
-            .getAuthenticator(SocialProvider.APPLE)
-            .authenticate(NativeSocialCredential(token = idToken))
+        val userInfo = try {
+            nativeSocialAuthenticatorFactory
+                .getAuthenticator(SocialProvider.APPLE)
+                .authenticate(NativeSocialCredential(token = idToken))
+        } catch (e: WarnException) {
+            throw AdminLoginDeniedException("애플 인증에 실패했습니다: ${e.errorCode.code}")
+        }
 
         return authorizeAdmin(SocialProvider.APPLE, userInfo.id)
     }
