@@ -218,6 +218,23 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     cursor: pointer;
 }
 .btn-kakao:hover { filter: brightness(0.97); }
+.btn-apple {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px;
+    border-radius: 10px;
+    background: #000;
+    color: #fff;
+    font-weight: 800;
+    font-size: 15px;
+    border: none;
+    cursor: pointer;
+}
+.btn-apple:hover { filter: brightness(1.15); }
 .btn-dev {
     display: flex;
     align-items: center;

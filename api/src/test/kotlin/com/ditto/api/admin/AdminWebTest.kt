@@ -22,6 +22,7 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpSession
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -397,5 +399,89 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/members/" + member.id + "/sanctions"))
+    }
+
+    @Test
+    @DisplayName("애플 로그인 진입은 인가 URL로 리다이렉트된다")
+    fun appleOauthAuthorizeRedirect() {
+        mockMvc.perform(get("/admin/oauth/apple")).andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    @DisplayName("ADMIN 회원 애플 콜백은 세션 설정 후 대시보드로 이동한다")
+    fun appleCallbackAdmin() {
+        val member = memberRepository.save(MemberFixture.create(role = MemberRole.ADMIN).apply { activate() })
+        socialAccountRepository.save(
+            SocialAccount.create(
+                memberId = member.id,
+                provider = SocialProvider.APPLE,
+                providerUserId = AppleNativeFakeAuthenticator.FAKE_SUBJECT,
+            ),
+        )
+
+        val result = mockMvc.perform(
+            post("/admin/oauth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("id_token", "fake-id-token"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin"))
+            .andReturn()
+
+        // 콜백이 심은 세션만으로 어드민 페이지에 들어갈 수 있어야 한다.
+        val session = result.request.session as MockHttpSession
+        mockMvc.perform(get("/admin").session(session)).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("애플 콜백은 CSRF 토큰 없이도 처리된다 — 애플이 보내는 크로스사이트 폼 POST다")
+    fun appleCallbackSkipsCsrf() {
+        // .with(csrf()) 없이 호출한다. CSRF 예외가 풀리면 403 이 되어 이 테스트가 깨진다.
+        mockMvc.perform(
+            post("/admin/oauth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("id_token", "fake-id-token"),
+        ).andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    @DisplayName("애플로 연결된 회원이 없으면 로그인 에러로 이동한다")
+    fun appleCallbackDenied() {
+        mockMvc.perform(
+            post("/admin/oauth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("id_token", "fake-id-token"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/login?error"))
+    }
+
+    @Test
+    @DisplayName("ADMIN이 아닌 애플 회원은 로그인 에러로 이동한다")
+    fun appleCallbackNonAdmin() {
+        val member = memberRepository.save(MemberFixture.create(role = MemberRole.USER).apply { activate() })
+        socialAccountRepository.save(
+            SocialAccount.create(
+                memberId = member.id,
+                provider = SocialProvider.APPLE,
+                providerUserId = AppleNativeFakeAuthenticator.FAKE_SUBJECT,
+            ),
+        )
+
+        mockMvc.perform(
+            post("/admin/oauth/apple/callback")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("id_token", "fake-id-token"),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/login?error"))
+    }
+
+    @Test
+    @DisplayName("로그인 페이지에 애플 로그인 버튼이 노출된다")
+    fun loginPageShowsAppleButton() {
+        mockMvc.perform(get("/admin/login"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("Apple로 로그인")))
     }
 }

@@ -5,6 +5,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.core.env.Environment
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
@@ -12,10 +13,15 @@ import org.springframework.security.web.context.SecurityContextRepository
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 
 /**
- * 어드민 카카오 로그인 진입/콜백. 콜백에서 ADMIN 검증을 통과하면 세션에 인증을 설정한다.
+ * 어드민 소셜 로그인 진입/콜백. 콜백에서 ADMIN 검증을 통과하면 세션에 인증을 설정한다.
+ *
+ * 카카오는 `GET ?code=...`, 애플은 **폼 POST**로 콜백이 온다 — 애플은 scope 를 요청하려면
+ * `response_mode=form_post` 가 필수이기 때문이다(ADR 0023). 그래서 애플 콜백 경로만
+ * [com.ditto.api.admin.config.AdminSecurityConfig] 에서 CSRF 예외로 둔다.
  */
 @Controller
 class AdminOAuthController(
@@ -38,6 +44,9 @@ class AdminOAuthController(
     @GetMapping("/admin/oauth/kakao")
     fun kakaoLogin(): String = "redirect:" + adminLoginService.authorizationUrl()
 
+    @GetMapping("/admin/oauth/apple")
+    fun appleLogin(): String = "redirect:" + adminLoginService.appleAuthorizationUrl()
+
     @GetMapping("/admin/oauth/kakao/callback")
     fun kakaoCallback(
         @RequestParam code: String,
@@ -51,6 +60,45 @@ class AdminOAuthController(
             return "redirect:/admin/login?error"
         }
 
+        authenticate(principal, request, response)
+
+        return "redirect:/admin"
+    }
+
+    /**
+     * 애플 웹 로그인 콜백. 폼에는 `code`·`id_token`·`state`·`user` 가 실리지만 **`id_token` 만 쓴다** —
+     * 검증이 곧 인증이라 인가 코드 교환(=클라이언트 시크릿)이 필요 없다.
+     *
+     * 이름·이메일을 담은 `user` 필드는 읽지 않는다. 어드민은 회원을 생성하지 않고 기존 회원을 찾기만 하므로
+     * 최초 인가에서만 오는 그 값이 필요 없다.
+     */
+    @PostMapping(
+        "/admin/oauth/apple/callback",
+        consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE],
+    )
+    fun appleCallback(
+        @RequestParam("id_token") idToken: String,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ): String {
+        val principal = try {
+            adminLoginService.loginWithAppleIdToken(idToken)
+        } catch (e: AdminLoginDeniedException) {
+            log.info { "어드민 애플 로그인 거부: ${e.message}" }
+            return "redirect:/admin/login?error"
+        }
+
+        authenticate(principal, request, response)
+
+        return "redirect:/admin"
+    }
+
+    /** 세션에 어드민 인증을 심는다 — 제공자와 무관하게 부여하는 권한은 ROLE_ADMIN 하나다. */
+    private fun authenticate(
+        principal: AdminPrincipal,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
         val authentication = UsernamePasswordAuthenticationToken(
             principal,
             null,
@@ -59,8 +107,6 @@ class AdminOAuthController(
         val context = SecurityContextHolder.createEmptyContext().apply { this.authentication = authentication }
         SecurityContextHolder.setContext(context)
         securityContextRepository.saveContext(context, request, response)
-
-        return "redirect:/admin"
     }
 
     companion object {
