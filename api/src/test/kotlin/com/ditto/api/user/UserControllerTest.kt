@@ -372,9 +372,11 @@ class UserControllerTest : RestDocsTest() {
                             .tag("Users")
                             .summary("타인 받은 평가 조회")
                             .description(
-                                "매칭된 상대가 받은 평가 요약입니다. `GET /users/me/ratings`와 같은 스키마·같은 공개 기준으로, " +
+                                "상대가 받은 평가 요약입니다. `GET /users/me/ratings`와 같은 스키마·같은 공개 기준으로, " +
                                     "총 평가가 publicThreshold(3)건 미만이면 totalCount만 실제 값이고 평균·노쇼는 0, 코멘트는 빈 배열입니다. " +
-                                    "권한은 공개 프로필과 동일합니다(매칭된 상대 또는 같은 그룹채팅 참여자, 차단 관계면 403).",
+                                    "권한은 공개 프로필과 동일합니다(차단 관계면 403). 관계에 따라 공개 범위가 둘로 나뉩니다 — " +
+                                    "매칭 성사·같은 그룹채팅 참여자는 전체를 보고, **이번 주 매칭 후보(성사 전)는 평균·건수까지만** 봅니다" +
+                                    "(noShowCount가 null이고 ratings는 빈 배열).",
                             )
                             .pathParameters(
                                 parameterWithName("id").description("대상 사용자 ID"),
@@ -384,8 +386,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.averageScore").description("평균 별점 (비공개 시 0)"),
                                 fieldWithPath("data.totalCount").description("받은 평가 총 건수"),
                                 fieldWithPath("data.publicThreshold").description("공개 기준 건수 (3)"),
-                                fieldWithPath("data.noShowCount").description("노쇼 평가를 받은 횟수 (비공개 시 0)"),
-                                fieldWithPath("data.ratings").description("평가 목록 최신순 (비공개 시 빈 배열)"),
+                                fieldWithPath("data.noShowCount")
+                                    .description("노쇼 평가를 받은 횟수 (공개 기준 미달이면 0, 후보에게는 null)").optional(),
+                                fieldWithPath("data.ratings").description("평가 목록 최신순 (비공개·후보면 빈 배열)"),
                                 fieldWithPath("data.ratings[].comment").description("한줄 코멘트 (미입력이면 null)").optional(),
                                 fieldWithPath("data.ratings[].createdAt").description("평가 확정 일시"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),

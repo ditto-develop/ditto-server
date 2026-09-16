@@ -6,6 +6,7 @@ import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.api.quiz.service.QuizProgressService
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@Loggable
 class QuizProgressController(
     private val quizProgressService: QuizProgressService,
     private val serverTimeProvider: ServerTimeProvider,

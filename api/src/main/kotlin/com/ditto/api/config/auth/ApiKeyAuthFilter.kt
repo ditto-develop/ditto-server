@@ -24,7 +24,9 @@ class ApiKeyAuthFilter(
         val apiKey = request.getHeader(API_KEY_HEADER)
 
         if (apiKey == null || apiKey != apiKeyProperties.apiKey) {
-            log.warn { "잘못된 api key=$apiKey" }
+            // 받은 값은 찍지 않는다 — 오타 한 글자짜리 요청이 오면 유효한 키가 그대로 CloudWatch 에 남는다.
+            // 조사에 필요한 건 "헤더가 없었나, 틀렸나"와 어느 경로였나까지다.
+            log.warn { "잘못된 api key: ${if (apiKey == null) "헤더 없음" else "불일치"} | ${request.method} ${request.requestURI}" }
             response.status = HttpServletResponse.SC_UNAUTHORIZED
             response.contentType = "application/json"
             val unauthorizedResponse = objectMapper.writeValueAsString(ApiResponse.error(ErrorCode.UNAUTHORIZED_ERROR))

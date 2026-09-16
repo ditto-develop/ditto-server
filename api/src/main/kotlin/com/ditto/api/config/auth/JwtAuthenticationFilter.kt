@@ -10,6 +10,8 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import com.ditto.api.config.logging.RequestIdFilter
+import org.slf4j.MDC
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 import kotlin.jvm.optionals.getOrNull
@@ -101,6 +103,10 @@ class JwtAuthenticationFilter(
                 SecurityContextHolder.getContext().authentication?.authorities ?: emptyList(),
             )
         SecurityContextHolder.getContext().authentication = authentication
+
+        // 이 요청의 모든 로그에 회원 식별자를 붙인다 — 예외 한 줄만 남는 요청도 "누구의 요청인지"는 알 수 있어야
+        // 재현·문의 대응이 된다. 제거는 RequestIdFilter 가 요청 끝에서 한다(스레드 재사용 시 값이 새지 않게).
+        MDC.put(RequestIdFilter.MEMBER_ID_MDC_KEY, memberId.toString())
     }
 
     companion object {

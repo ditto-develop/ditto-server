@@ -3,12 +3,14 @@ package com.ditto.api.match.controller
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.match.dto.GroupCandidateResponse
 import com.ditto.api.match.service.GroupCandidateService
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@Loggable
 class GroupCandidateController(
     private val groupCandidateService: GroupCandidateService,
 ) {

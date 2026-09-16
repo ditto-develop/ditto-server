@@ -28,7 +28,9 @@
 
 ## 로깅·프로필
 
-- `RequestIdFilter`: 요청마다 MDC에 `requestId`를 주입(로그 추적용). `LoggingAspect`가 `common`의 `@Loggable`을 AOP로 적용한다.
+- `RequestIdFilter`: 요청마다 MDC에 `requestId`를 주입하고, 요청이 끝나면 `requestId`·`memberId`를 함께 지운다(톰캣 스레드 재사용 시 값이 새지 않게). `memberId`는 인증에 성공한 요청에만 `JwtAuthenticationFilter`가 넣는다 — 예외 한 줄만 남는 요청도 누구의 요청인지 알 수 있어야 한다.
+- `LoggingAspect`가 `common`의 `@Loggable`을 AOP로 적용한다. **메서드·클래스 어디에나 붙는다** — 클래스에 붙이면 그 컨트롤러의 모든 핸들러가 진입점이 된다. 진입점 밖에서 던져진 예외 중 `WarnException`은 WARN, 나머지는 ERROR로 남는다(의도된 비즈니스 응답이 알람을 울리지 않게).
+- `GlobalExceptionHandler`는 모든 예외 로그에 `| <METHOD> <URI>`를 붙인다. 이게 없으면 `@Loggable`이 없는 컨트롤러의 4xx는 어느 API였는지 추적할 수 없다.
 - Logback 프로필 분리: `local`(컬러 콘솔·requestId·Hibernate SQL DEBUG) / `prod`(JSON 구조화 로그, CloudWatch 파싱 최적화).
 - 프로필 파일: `application.yml`(공통·로컬 기본), `application-prod.yml`(프로덕션), `application-test.yml`(H2·테스트 API Key). ECS는 `SPRING_PROFILES_ACTIVE=prod`.
 

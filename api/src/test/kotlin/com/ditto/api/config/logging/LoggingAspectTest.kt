@@ -6,6 +6,7 @@ import ch.qos.logback.core.read.ListAppender
 import com.ditto.api.support.RestDocsTest
 import io.kotest.inspectors.forAtLeastOne
 import io.kotest.inspectors.forNone
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -19,7 +20,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@Import(TestLoggingController::class, TestLoggingService::class)
+@Import(TestLoggingController::class, TestClassLoggableController::class, TestLoggingService::class)
 class LoggingAspectTest : RestDocsTest() {
 
     private lateinit var logAppender: ListAppender<ILoggingEvent>
@@ -37,6 +38,9 @@ class LoggingAspectTest : RestDocsTest() {
     }
 
     private fun logs() = logAppender.list.map { it.formattedMessage }
+
+    private fun levelOf(fragment: String) =
+        logAppender.list.first { it.formattedMessage.contains(fragment) }.level.levelStr
 
     @Nested
     @DisplayName("기본 로깅")
@@ -65,6 +69,55 @@ class LoggingAspectTest : RestDocsTest() {
                 it shouldContain "return: tuna"
                 it shouldContain "ms"
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("예외 로그 레벨")
+    inner class ExceptionLevel {
+
+        @Test
+        @DisplayName("WarnException은 의도된 비즈니스 응답이라 WARN으로 남는다")
+        fun warnExceptionLogsAtWarn() {
+            mockMvc.perform(get("/api/test/logging/warn").withApiKey().withBearerToken())
+                .andExpect(status().isOk)
+
+            levelOf("<-- TestLoggingController.throwWarn") shouldBe "WARN"
+        }
+
+        @Test
+        @DisplayName("그 밖의 예외는 ERROR로 남는다")
+        fun otherExceptionLogsAtError() {
+            mockMvc.perform(get("/api/test/logging/boom").withApiKey().withBearerToken())
+                .andExpect(status().isOk)
+
+            levelOf("<-- TestLoggingController.throwUnexpected") shouldBe "ERROR"
+        }
+    }
+
+    @Nested
+    @DisplayName("클래스 레벨 @Loggable")
+    inner class ClassLevelLoggable {
+
+        @Test
+        @DisplayName("클래스에 붙이면 핸들러마다 붙이지 않아도 진입·반환이 로깅된다")
+        fun logsWithoutMethodAnnotation() {
+            mockMvc.perform(
+                get("/api/test/logging/class-level").withApiKey().withBearerToken().param("name", "tuna"),
+            ).andExpect(status().isOk)
+
+            logs().forAtLeastOne { it shouldContain "--> TestClassLoggableController.classLevel" }
+            logs().forAtLeastOne { it shouldContain "<-- TestClassLoggableController.classLevel" }
+        }
+
+        @Test
+        @DisplayName("클래스 레벨 진입점도 한 번만 로깅된다 (두 어드바이스 중복 방지)")
+        fun logsOnlyOnce() {
+            mockMvc.perform(
+                get("/api/test/logging/class-level").withApiKey().withBearerToken().param("name", "tuna"),
+            ).andExpect(status().isOk)
+
+            logs().count { it.contains("--> TestClassLoggableController.classLevel") } shouldBe 1
         }
     }
 

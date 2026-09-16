@@ -115,29 +115,43 @@ class UserService(
     }
 
     /**
-     * 타인 프로필(과 평점·답변 비교 같은 보조 정보) 열람 권한 검사.
-     * 매칭이 성사된 상대(또는 같은 그룹채팅 참여자)만 볼 수 있고, 차단 관계면 이력이 있어도 막는다.
-     * 본인 조회(viewerId == targetId)는 언제나 허용한다.
+     * 타인 프로필(과 평점·답변 비교 같은 보조 정보) 열람 권한 검사. 관계에 따라 공개 범위가 다르다.
+     * - 본인·매칭 성사·같은 그룹 채팅 참여: [ProfileAccessLevel.FULL]
+     * - 이번 주 매칭 후보(성사 전): [ProfileAccessLevel.SUMMARY]
+     * - 그 외: FORBIDDEN
+     *
+     * 후보 구간을 여는 이유는 소개노트와 같다 — "대화 신청 여부를 정하는 화면"(피그마 3.2)이
+     * 판단 근거로 쓴다([com.ditto.api.intronote.service.IntroNoteService.getIntroNotes]).
+     * 이 구간이 막혀 있던 동안 후보 프로필의 평점 조회는 전부 403이었다.
+     *
+     * 차단 관계면 성사 이력이 있어도 막는다 —
+     * "차단한 사용자는 나의 프로필을 볼 수 없고"(피그마 6.2.2)를 집행하는 지점이다.
+     * 후보 행은 계산 시점의 스냅샷이라 그 뒤에 생긴 차단이 반영되지 않으므로 후보도 똑같이 확인한다.
      *
      * 프로필 본문과 보조 정보가 같은 규칙을 쓰도록 판정을 여기 하나로 모은다.
      */
-    fun checkProfileAccess(viewerId: Long, targetId: Long) {
-        if (viewerId == targetId) return
+    fun checkProfileAccess(viewerId: Long, targetId: Long): ProfileAccessLevel {
+        if (viewerId == targetId) return ProfileAccessLevel.FULL
 
-        if (!matchAccessChecker.isMatched(viewerId, targetId)) {
-            throw WarnException(ErrorCode.FORBIDDEN)
-        }
         if (memberBlockRepository.existsBetween(viewerId, targetId)) {
             throw WarnException(ErrorCode.FORBIDDEN)
         }
+        if (matchAccessChecker.isMatched(viewerId, targetId)) {
+            return ProfileAccessLevel.FULL
+        }
+        if (matchAccessChecker.isMatchCandidate(viewerId, targetId)) {
+            return ProfileAccessLevel.SUMMARY
+        }
+
+        throw WarnException(ErrorCode.FORBIDDEN)
     }
 
     /**
-     * 타인 공개 프로필 조회. 매칭이 성사된 상대(또는 같은 그룹채팅 참여자)만 조회 가능.
-     * 민감정보(email·전화번호·실명)는 반환하지 않는다.
+     * 타인 공개 프로필 조회. 매칭이 성사된 상대·같은 그룹채팅 참여자와 이번 주 매칭 후보가 조회 가능하다
+     * ([checkProfileAccess]). 민감정보(email·전화번호·실명)는 반환하지 않는다.
      *
-     * 차단한/차단당한 상대는 매칭 이력이 있어도 볼 수 없다 —
-     * "차단한 사용자는 나의 프로필을 볼 수 없고"(피그마 6.2.2)를 집행하는 지점이다.
+     * 공개 범위는 두 등급이 같다 — 프로필 본문은 후보 카드에 이미 실려 있고,
+     * 상단 평균 별점도 [MemberRatingService.findPublicAverageScore]가 공개 기준(3건)으로 한 번 더 거른다.
      */
     @Transactional(readOnly = true)
     fun getPublicProfile(viewerId: Long, targetId: Long): PublicProfileResponse {

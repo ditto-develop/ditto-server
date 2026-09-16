@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Loggable
@@ -26,6 +27,10 @@ class TestExceptionController {
 
     @GetMapping("/api/test/unhandled")
     fun throwUnhandled(): Unit = throw IllegalStateException("예기치 않은 오류")
+
+    /** 필수 쿼리 파라미터 누락 핸들러 검증용 — 소셜 로그인 콜백의 `code` 와 같은 모양이다. */
+    @GetMapping("/api/test/required-param")
+    fun requireParam(@RequestParam code: String): Unit = Unit
 
     @PostMapping("/api/test/validation")
     fun throwValidation(@Valid @RequestBody request: TestRequest): Unit = Unit
