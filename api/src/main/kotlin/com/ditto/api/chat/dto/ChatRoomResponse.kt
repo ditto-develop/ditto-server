@@ -22,6 +22,11 @@ data class ChatRoomResponse(
     val endedReason: ChatEndReason?,
     // 내가 이 방을 나갔는지. 나간 방은 목록에 남지만 읽기 전용이다.
     val hasLeft: Boolean,
+    /**
+     * 그룹 방의 기본 이름 — 그 그룹이 만들어진 **그룹 퀴즈의 주제**다.
+     * 1:1·재매칭은 상대가 한 명이라 이름을 두지 않는다(null).
+     */
+    val roomName: String?,
 ) {
     companion object {
         fun of(
@@ -30,6 +35,7 @@ data class ChatRoomResponse(
             lastMessage: ChatMessageResponse?,
             unreadCount: Long,
             hasLeft: Boolean,
+            roomName: String?,
         ): ChatRoomResponse = ChatRoomResponse(
             roomId = room.id,
             sourceType = room.sourceType,
@@ -43,6 +49,7 @@ data class ChatRoomResponse(
             endedAt = room.endedAt,
             endedReason = room.endReason,
             hasLeft = hasLeft,
+            roomName = roomName,
         )
     }
 }

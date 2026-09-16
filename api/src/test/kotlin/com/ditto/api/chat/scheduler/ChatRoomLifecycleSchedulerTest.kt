@@ -2,6 +2,7 @@ package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
+import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
@@ -28,6 +29,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val rematchChatRoomOpener = mockk<RematchChatRoomOpener>(relaxed = true)
     val reviewRequestNotifier = mockk<ReviewRequestNotifier>(relaxed = true)
     val chatEndingSoonNotifier = mockk<ChatEndingSoonNotifier>(relaxed = true)
+    val unformedGroupNotifier = mockk<UnformedGroupNotifier>(relaxed = true)
     val serverTimeProvider = mockk<ServerTimeProvider>()
 
     val scheduler = ChatRoomLifecycleScheduler(
@@ -36,6 +38,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         rematchChatRoomOpener,
         reviewRequestNotifier,
         chatEndingSoonNotifier,
+        unformedGroupNotifier,
         serverTimeProvider,
     )
 
@@ -47,6 +50,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             rematchChatRoomOpener,
             reviewRequestNotifier,
             chatEndingSoonNotifier,
+            unformedGroupNotifier,
             serverTimeProvider,
             answers = false,
         )

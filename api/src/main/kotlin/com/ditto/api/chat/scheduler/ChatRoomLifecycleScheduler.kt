@@ -2,6 +2,7 @@ package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
+import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
@@ -35,6 +36,10 @@ import org.springframework.stereotype.Component
  * 마감한 방의 평가는 곧바로 열고, 그와 별개로 놓친 방을 매 주기 복구한다 — 채팅 종료와 평가 생성을
  * 한 트랜잭션으로 묶지 않기 때문에(계획서 ⑤-1) 종료만 되고 평가가 안 열린 방이 남을 수 있다.
  *
+ * 그룹 인원 미달 안내도 여기서 낸다 — 수락 마감이 채팅 개방과 같은 순간(금요일 00:00)이라
+ * 개방을 판정하는 이 스케줄러가 마감도 함께 본다. 그룹 상태는 바꾸지 않고 알림만 남기며,
+ * 재발송은 알림 유형의 중복 정책이 막는다.
+ *
  * 알림(평가 요청·종료 임박)도 여기서 남긴다. 각 전이가 커밋된 뒤에 부르므로 롤백된 전이의 알림이
  * 남지 않고, 알림 적재 실패는 흡수되므로 생명주기 처리를 막지 않는다.
  */
@@ -45,6 +50,7 @@ class ChatRoomLifecycleScheduler(
     private val rematchChatRoomOpener: RematchChatRoomOpener,
     private val reviewRequestNotifier: ReviewRequestNotifier,
     private val chatEndingSoonNotifier: ChatEndingSoonNotifier,
+    private val unformedGroupNotifier: UnformedGroupNotifier,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
 
@@ -64,5 +70,8 @@ class ChatRoomLifecycleScheduler(
 
         // 종료 임박 알림은 마감 뒤에 둔다 — 이번 주기에 끝난 방이 "곧 종료" 대상으로 잡히지 않는다.
         chatEndingSoonNotifier.notifyEndingSoon(serverNow)
+
+        // 개방 뒤에 둔다 — 같은 주기에 성사돼 방이 열린 그룹을 미성사로 잡으면 안 된다.
+        unformedGroupNotifier.notifyUnformed(serverNow)
     }
 }

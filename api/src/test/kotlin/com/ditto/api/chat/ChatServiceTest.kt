@@ -5,6 +5,10 @@ import com.ditto.api.chat.dto.ChatImageUploadUrlsRequest
 import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.support.IntegrationTest
+import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatRoomFixture
@@ -31,6 +35,8 @@ class ChatServiceTest(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val quizSetRepository: QuizSetRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -101,6 +107,20 @@ class ChatServiceTest(
         response.lastMessage?.id shouldBe last.id
         response.unreadCount shouldBe 2L
         response.hasLeft shouldBe false
+        // 1:1 방은 이름을 두지 않는다 — 상대가 한 명이라 화면이 닉네임으로 그린다.
+        response.roomName shouldBe null
+    }
+
+    // 방 이름 필드가 없어 화면이 참여자 닉네임을 이어 붙이고 있었다(QA BUG-070).
+    "그룹 방 목록은 그룹 퀴즈 주제를 기본 이름으로 담는다" {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(title = "주말 취미 퀴즈"))
+        val groupMatch = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id))
+        chatService.createGroupRoom(groupMatchId = groupMatch.id, memberIds = listOf(1L, 2L, 3L))
+
+        val rooms = chatService.getMyRooms(memberId = 1L)
+
+        rooms.size shouldBe 1
+        rooms[0].roomName shouldBe "주말 취미 퀴즈"
     }
 
     "이탈한 상대는 counterpartMemberIds 에서 빠지고, 내가 나간 방은 hasLeft 로 표시된다" {

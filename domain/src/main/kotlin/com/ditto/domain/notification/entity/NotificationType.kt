@@ -25,6 +25,12 @@ enum class NotificationType(
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
     GROUP_FORMED(NotificationCategory.MATCHING, "chat_room.id (그룹 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 그룹이 수락 마감까지 최소 인원을 채우지 못해 취소됐다. 대상은 **그룹 매칭**이다 —
+     * 방이 열리지 않았으므로 가리킬 `chat_room.id` 가 없다.
+     */
+    GROUP_NOT_FORMED(NotificationCategory.MATCHING, "group_match.id (미성사 그룹)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 재매칭이 성사돼 채팅방이 예약됐다. */
     REMATCH_MATCHED(NotificationCategory.MATCHING, "chat_room.id (재매칭 방)", DuplicatePolicy.ONCE_PER_TARGET),
 

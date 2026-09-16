@@ -88,6 +88,8 @@ class ChatControllerTest : ControllerUnitTest() {
                 endedAt = null,
                 endedReason = null,
                 hasLeft = false,
+                // 1:1 방은 이름이 없다.
+                roomName = null,
             ),
             ChatRoomResponse(
                 roomId = 2L,
@@ -103,6 +105,7 @@ class ChatControllerTest : ControllerUnitTest() {
                 endedReason = ChatEndReason.USER_ENDED,
                 // 두 사람 방의 leave 는 종료로 위임돼 left_at 이 찍히지 않는다 — 이탈은 그룹에만 있다.
                 hasLeft = false,
+                roomName = null,
             ),
         )
 
@@ -151,6 +154,9 @@ class ChatControllerTest : ControllerUnitTest() {
                                     .optional(),
                                 fieldWithPath("data[].hasLeft")
                                     .description("내가 이 방을 나갔는지. 나간 방은 목록에 남지만 읽기 전용"),
+                                fieldWithPath("data[].roomName")
+                                    .description("그룹 방의 기본 이름 = 그 그룹이 만들어진 그룹 퀴즈의 주제. 1:1·재매칭은 null")
+                                    .optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
