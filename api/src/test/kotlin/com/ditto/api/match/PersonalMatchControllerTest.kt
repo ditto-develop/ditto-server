@@ -4,6 +4,7 @@ import com.ditto.api.match.controller.PersonalMatchController
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
+import com.ditto.api.notification.notifier.PersonalMatchRejectedNotifier
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -11,6 +12,7 @@ import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
@@ -28,8 +30,9 @@ import java.time.LocalDateTime
 class PersonalMatchControllerTest : ControllerUnitTest() {
 
     private val personalMatchService: PersonalMatchService = mockk()
+    private val personalMatchRejectedNotifier: PersonalMatchRejectedNotifier = mockk(relaxed = true)
 
-    override val controller = PersonalMatchController(personalMatchService)
+    override val controller = PersonalMatchController(personalMatchService, personalMatchRejectedNotifier)
 
     private fun sampleResponse(
         id: Long = 1L,
@@ -137,7 +140,7 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
     @DisplayName("1:1 매칭 요청을 거절한다")
     fun rejectMatch() {
         every { personalMatchService.rejectMatch(any(), any()) } returns
-            sampleResponse(status = PersonalMatchStatus.REJECTED)
+            sampleResponse(id = 7L, requesterId = 42L, status = PersonalMatchStatus.REJECTED)
 
         mockMvc.perform(post("/api/v1/matches/request/{id}/reject", 1L))
             .andExpect(status().isOk)
@@ -174,5 +177,8 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        // 거절 사실은 신청자에게만 간다 — 거절한 본인(principal)은 자기가 누른 것이라 받지 않는다
+        verify { personalMatchRejectedNotifier.notifyRejected(matchId = 7L, requesterId = 42L, rejectedBy = 1L) }
     }
 }

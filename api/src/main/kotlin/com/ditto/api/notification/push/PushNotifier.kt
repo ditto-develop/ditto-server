@@ -95,7 +95,8 @@ class PushNotifier(
     private fun deepLinkOf(notification: Notification): String? {
         val targetId = notification.targetId
         return when (notification.type) {
-            NotificationType.MATCH_RESULT -> "/matching/"
+            // 거절 전용 화면이 없다 — 다른 후보를 고르러 매칭 홈으로 보낸다.
+            NotificationType.MATCH_RESULT, NotificationType.MATCH_REJECTED -> "/matching/"
             NotificationType.GROUP_FORMED, NotificationType.VOTE_CLOSED ->
                 targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }

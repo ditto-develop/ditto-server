@@ -34,6 +34,19 @@ object NotificationMessages {
     )
 
     /**
+     * 내가 보낸 대화 신청을 [rejecterNickname] 이 거절했다.
+     *
+     * 거절한 사람을 밝히는 이유: 한 주에 여러 명에게 신청할 수 있어 누구인지 없으면 알림이 쓸모없다.
+     * 문구 정본은 기획의 "알림 문구 정책" 문서인데 이 알림은 피그마 7.2에 없어 확정 전이다 —
+     * 확정되면 여기만 고친다.
+     */
+    fun matchRejected(rejecterNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.MATCH_REJECTED,
+        title = "아쉽지만 인연이 닿지 않았어요",
+        body = "${rejecterNickname}님과는 이번 주에 연결되지 않았어요. 다른 후보를 만나보세요.",
+    )
+
+    /**
      * 채팅이 끝나 평가가 열렸다.
      *
      * 그룹은 상대가 여럿이라 이름을 하나만 쓸 수 없으므로 인원으로 말한다 —
