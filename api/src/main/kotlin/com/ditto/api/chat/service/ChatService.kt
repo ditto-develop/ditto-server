@@ -147,9 +147,16 @@ class ChatService(
         return ChatImageUploadUrlsResponse(uploads = uploads)
     }
 
-    /** 내 채팅방 목록 (상대 회원들 · 마지막 메시지 · 안읽음 수), 최근 대화순 */
+    /**
+     * 내 채팅방 목록 (상대 회원들 · 마지막 메시지 · 안읽음 수), 최근 대화순.
+     *
+     * **내가 나간 방은 빼고 준다.** 나간 사람에게는 그 방이 없는 것으로 다루기 때문이다
+     * (`ChatRoomAccessChecker.validateMember` 가 같은 기준으로 조회도 막는다 — 이슈 #196).
+     * 종료된 방은 계속 준다: 내가 나간 것이 아니라 방이 끝난 것이라 지난 대화를 볼 수 있다.
+     */
     fun getMyRooms(memberId: Long): List<ChatRoomResponse> {
         val myRoomMembers = chatRoomMemberRepository.findByMemberId(memberId)
+            .filter { !it.hasLeft }
         if (myRoomMembers.isEmpty()) {
             return emptyList()
         }

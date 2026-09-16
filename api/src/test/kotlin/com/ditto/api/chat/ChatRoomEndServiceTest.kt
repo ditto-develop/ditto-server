@@ -341,15 +341,20 @@ class ChatRoomEndServiceTest(
             }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
         }
 
-        "이탈자도 지난 대화는 읽을 수 있다" {
+        // 읽기 전용으로 남기던 정책을 철회했다(#196) — 나간 뒤 남은 사람들이 나눈 대화까지
+        // 계속 읽히던 것이 이유다. 나간 사람에게 그 방은 없는 것으로 다룬다.
+        "이탈자는 지난 대화도 읽을 수 없다" {
             val room = saveGroupRoomWithMembers(1L, 2L, 3L)
             chatService.sendMessage(senderId = 1L, roomId = room.id, content = "반가워요")
             chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
-            val messages = chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 30)
+            shouldThrow<WarnException> {
+                chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 30)
+            }
 
-            // 보낸 메시지 + 이탈 시스템 메시지
-            messages.messages.size shouldBe 2
+            // 남은 사람에게는 그대로 보인다 — 보낸 메시지 + 이탈 시스템 메시지
+            chatService.getMessages(memberId = 2L, roomId = room.id, cursor = null, size = 30)
+                .messages.size shouldBe 2
         }
     }
 

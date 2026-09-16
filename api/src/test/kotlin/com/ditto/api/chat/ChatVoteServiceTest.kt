@@ -566,8 +566,8 @@ class ChatVoteServiceTest(
             chatVoteService.getVote(room.id, detail.voteId, memberId = 3L).myVote shouldBe null
         }
 
-        // 이탈자 정책 — 조회는 되고(읽기 전용), 표는 집계에서 빠진다(분자·분모가 함께 준다).
-        "이탈자도 결과를 읽을 수 있고, 이탈자의 표는 집계에서 빠진다" {
+        // 이탈자 정책 — 조회 자체가 막히고(#196), 남은 사람 집계에서도 표가 빠진다(분자·분모가 함께 준다).
+        "이탈자는 결과를 읽을 수 없고, 이탈자의 표는 집계에서 빠진다" {
             val room = saveGroupRoom(FRIDAY, 1L, 2L, 3L)
             val detail = createVoteDetail(room.id, memberId = 1L, request = createRequest())
             val placeId = detail.placeOptions[0].optionId
@@ -576,14 +576,15 @@ class ChatVoteServiceTest(
                 .apply { leave(FRIDAY.plusHours(1)) }
                 .let { chatRoomMemberRepository.save(it) }
 
-            val seenByLeaver = chatVoteService.getVote(room.id, detail.voteId, memberId = 3L)
-            val seenByStayer = chatVoteService.getVote(room.id, detail.voteId, memberId = 1L)
+            // 나간 방은 그 사람에게 없는 것으로 다룬다 — 투표 결과도 마찬가지다.
+            shouldThrow<WarnException> {
+                chatVoteService.getVote(room.id, detail.voteId, memberId = 3L)
+            }
 
+            val seenByStayer = chatVoteService.getVote(room.id, detail.voteId, memberId = 1L)
             seenByStayer.totalMembers shouldBe 2
             seenByStayer.votedCount shouldBe 0
             seenByStayer.placeOptions[0].voterIds shouldBe emptyList()
-            // 이탈자 본인도 같은 집계를 본다 — 자기 표가 빠진 결과라 myVote 도 null 이다
-            seenByLeaver.myVote shouldBe null
         }
 
         "목록은 최신 투표가 앞이다" {
