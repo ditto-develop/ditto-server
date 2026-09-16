@@ -28,6 +28,13 @@ enum class NotificationType(
     /** 재매칭이 성사돼 채팅방이 예약됐다. */
     REMATCH_MATCHED(NotificationCategory.MATCHING, "chat_room.id (재매칭 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 내가 보낸 1:1 대화 신청을 상대가 거절했다. 대상이 매칭 건인 이유: 거절은 되돌릴 수 없고
+     * ([PersonalMatch.reject] 가 PENDING 만 받는다) 매칭 건마다 한 번이 정확한 단위다.
+     * 회원+유형으로만 막으면 그 주 이후로 영영 알리지 못한다.
+     */
+    MATCH_REJECTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
