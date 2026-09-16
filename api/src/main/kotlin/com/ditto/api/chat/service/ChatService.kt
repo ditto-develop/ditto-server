@@ -15,6 +15,8 @@ import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -33,6 +35,8 @@ class ChatService(
     private val chatMessageRepository: ChatMessageRepository,
     private val objectStorage: ObjectStorage,
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val quizSetRepository: QuizSetRepository,
 ) {
 
     /**
@@ -154,11 +158,18 @@ class ChatService(
         val roomsById = chatRoomRepository.findAllById(roomIds).associateBy { it.id }
         // 방별 참여자 (상대 회원 파악용). 방 수가 늘면 마지막 메시지/안읽음 집계를 일괄 조회로 최적화 대상.
         val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(roomIds).groupBy { it.roomId }
+        val roomNameByRoomId = groupRoomNames(roomsById.values)
 
         return myRoomMembers
             .mapNotNull { roomMember ->
                 val room = roomsById[roomMember.roomId] ?: return@mapNotNull null
-                toRoomResponse(room, roomMember, membersByRoomId[room.id].orEmpty(), memberId)
+                toRoomResponse(
+                    room,
+                    roomMember,
+                    membersByRoomId[room.id].orEmpty(),
+                    memberId,
+                    roomNameByRoomId[room.id],
+                )
             }
             .sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
     }
@@ -255,11 +266,36 @@ class ChatService(
         return ChatMessageResponse.of(message, imageUrl, roomMembers)
     }
 
+    /**
+     * 그룹 방의 기본 이름(= 그룹 퀴즈 주제)을 방 ID 로 모아 온다.
+     *
+     * 그룹 방은 `sourceId` 가 `groupMatchId` 이고 거기서 `quizSetId` 로 이어진다.
+     * 방마다 따로 타면 N+1 이라 두 번의 일괄 조회로 끝낸다.
+     */
+    private fun groupRoomNames(rooms: Collection<ChatRoom>): Map<Long, String> {
+        val groupRooms = rooms.filter { it.sourceType == ChatRoomType.GROUP }
+        if (groupRooms.isEmpty()) return emptyMap()
+
+        val quizSetIdByMatchId = groupMatchRepository
+            .findAllById(groupRooms.map { it.sourceId })
+            .associate { it.id to it.quizSetId }
+        val titleByQuizSetId = quizSetRepository
+            .findAllById(quizSetIdByMatchId.values.toSet())
+            .associate { it.id to it.title }
+
+        return groupRooms.mapNotNull { room ->
+            val quizSetId = quizSetIdByMatchId[room.sourceId] ?: return@mapNotNull null
+            val title = titleByQuizSetId[quizSetId] ?: return@mapNotNull null
+            room.id to title
+        }.toMap()
+    }
+
     private fun toRoomResponse(
         room: ChatRoom,
         myRoomMember: ChatRoomMember,
         roomMembers: List<ChatRoomMember>,
         memberId: Long,
+        roomName: String?,
     ): ChatRoomResponse {
         // 이탈자는 상대 목록에서 뺀다 — FE 는 이 목록으로 "지금 함께 있는 사람"을 그린다.
         val counterpartMemberIds = roomMembers
@@ -272,6 +308,7 @@ class ChatService(
             lastMessage = lastMessage?.let { toMessageResponse(it, roomMembers) },
             unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
             hasLeft = myRoomMember.hasLeft,
+            roomName = roomName,
         )
     }
 

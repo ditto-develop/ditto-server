@@ -26,6 +26,13 @@ object NotificationMessages {
         body = "같은 취미, 취향 그룹에 ${memberCount}명이 모였어요. 지금 바로 멤버를 확인해 보세요.",
     )
 
+    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. */
+    fun groupNotFormed(): NotificationContent = NotificationContent(
+        type = NotificationType.GROUP_NOT_FORMED,
+        title = "그룹이 인원 미달로 취소됐어요",
+        body = "함께할 사람이 충분히 모이지 않았어요. 다음 주 퀴즈에서 새로운 그룹을 만나보세요.",
+    )
+
     /** 재매칭이 성사돼 방이 예약됐다. */
     fun rematchMatched(counterpartNickname: String): NotificationContent = NotificationContent(
         type = NotificationType.REMATCH_MATCHED,

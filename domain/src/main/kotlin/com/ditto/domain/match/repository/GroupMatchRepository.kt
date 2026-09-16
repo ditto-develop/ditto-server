@@ -1,13 +1,14 @@
 package com.ditto.domain.match.repository
 
 import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.repository.querydsl.GroupMatchRepositoryCustom
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
-interface GroupMatchRepository : JpaRepository<GroupMatch, Long> {
+interface GroupMatchRepository : JpaRepository<GroupMatch, Long>, GroupMatchRepositoryCustom {
 
     /** 해당 퀴즈셋의 그룹 전체 — 후보 재생성 시 기존 그룹을 판별하는 데 쓴다. */
     fun findByQuizSetId(quizSetId: Long): List<GroupMatch>
