@@ -15,9 +15,22 @@ class ChatRoomAccessChecker(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
 ) {
-    /** 방 멤버가 아니면 거부한다. 조회처럼 종료 후에도 허용되는 경로가 쓴다. */
+    /**
+     * 방 멤버가 아니거나 **이미 나갔으면** 거부한다. 조회처럼 종료 후에도 허용되는 경로가 쓴다.
+     *
+     * 나간 사람에게는 그 방이 아예 없는 것으로 다룬다. 예전에는 읽기 전용으로 남겼는데, 그러면
+     * 나간 뒤 남은 사람들이 나눈 대화까지 계속 읽힌다 — 메시지 커서 조회에 `left_at` 컷오프가
+     * 없어서 다시 들어가면 최신까지 따라잡혔다. 컷오프를 두는 대신 방 자체를 감추는 쪽으로 간다:
+     * "어디까지 보여줄지"를 경로마다 되풀이해 정하지 않아도 되고, 목록에서 사라지는 것과
+     * 결과가 어긋나지 않는다(2026-09-17 결정, 이슈 #196).
+     *
+     * **종료된 방은 계속 보인다** — 내가 나간 것이 아니라 방이 끝난 것이라 지난 대화를 볼 수 있다.
+     * 이탈은 그룹에서만 생긴다(두 사람 방의 나가기는 종료와 같은 전이라 이탈자로 남지 않는다).
+     */
     fun validateMember(roomId: Long, memberId: Long) {
-        if (!chatRoomMemberRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
+        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+            ?: throw notFoundOrForbidden(roomId)
+        if (roomMember.hasLeft) {
             throw notFoundOrForbidden(roomId)
         }
     }

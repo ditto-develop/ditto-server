@@ -20,6 +20,7 @@ import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.LocalDateTime
@@ -123,7 +124,7 @@ class ChatServiceTest(
         rooms[0].roomName shouldBe "주말 취미 퀴즈"
     }
 
-    "이탈한 상대는 counterpartMemberIds 에서 빠지고, 내가 나간 방은 hasLeft 로 표시된다" {
+    "이탈한 상대는 counterpartMemberIds 에서 빠지고, 내가 나간 방은 목록에서 사라진다" {
         // given: 3명 방에서 3L 이 이탈
         val room = saveOpenedRoom(100L, 1L, 2L, 3L)
         chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
@@ -132,8 +133,21 @@ class ChatServiceTest(
 
         // then: 남은 사람 화면에서 이탈자가 상대 목록에서 빠진다
         chatService.getMyRooms(memberId = 1L)[0].counterpartMemberIds shouldBe listOf(2L)
-        // then: 이탈자 화면에서는 방이 목록에 남되 hasLeft 로 구분된다 (읽기 전용 안내용)
-        chatService.getMyRooms(memberId = 3L)[0].hasLeft shouldBe true
+        // then: 이탈자에게는 그 방이 아예 없다 — 읽기 전용으로 남기던 정책을 철회했다(#196)
+        chatService.getMyRooms(memberId = 3L).map { it.roomId } shouldNotContain room.id
+    }
+
+    "나간 방은 메시지도 읽을 수 없다 — 나간 뒤 오간 대화까지 읽히던 구멍을 막는다" {
+        val room = saveOpenedRoom(100L, 1L, 2L, 3L)
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+        // 나간 뒤 남은 사람들이 나눈 대화
+        chatMessageRepository.save(ChatMessage.of(room.id, 1L, "나간 뒤 대화"))
+
+        shouldThrow<WarnException> {
+            chatService.getMessages(memberId = 3L, roomId = room.id, cursor = null, size = 20)
+        }
     }
 
     "메시지 조회는 최신순으로 size 만큼 반환하고 다음 커서를 준다" {
