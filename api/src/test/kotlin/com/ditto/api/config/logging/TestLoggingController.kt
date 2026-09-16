@@ -1,5 +1,7 @@
 package com.ditto.api.config.logging
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.common.logging.Loggable
 import com.ditto.common.logging.Mask
 import org.springframework.stereotype.Service
@@ -30,6 +32,23 @@ class TestLoggingController(private val testLoggingService: TestLoggingService) 
 
     @GetMapping("/api/test/logging/direct-service")
     fun directService(): String = testLoggingService.process("direct")
+
+    @Loggable
+    @GetMapping("/api/test/logging/warn")
+    fun throwWarn(): Unit = throw WarnException(ErrorCode.FORBIDDEN)
+
+    @Loggable
+    @GetMapping("/api/test/logging/boom")
+    fun throwUnexpected(): Unit = throw IllegalStateException("예기치 않은 오류")
+}
+
+/** 클래스 레벨 `@Loggable` — 핸들러마다 붙이지 않아도 진입점이 되는지 검증한다. */
+@Loggable
+@RestController
+class TestClassLoggableController {
+
+    @GetMapping("/api/test/logging/class-level")
+    fun classLevel(@RequestParam name: String): String = name
 }
 
 data class MaskedRequest(val email: String, @Mask val password: String)

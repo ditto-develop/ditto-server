@@ -2,11 +2,13 @@ package com.ditto.api.system.controller
 
 import com.ditto.api.system.dto.SystemStateResponse
 import com.ditto.api.system.SystemStateProvider
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@Loggable
 class SystemController(
     private val systemStateProvider: SystemStateProvider,
 ) {

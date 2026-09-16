@@ -76,4 +76,24 @@ class GlobalExceptionHandlerTest : RestDocsTest() {
             .andExpect(jsonPath("$.error.statusCode").value(400))
             .andExpect(jsonPath("$.error.code").value("0001"))
     }
+
+    @Test
+    @DisplayName("필수 쿼리 파라미터가 빠지면 500이 아니라 BAD_REQUEST를 반환한다")
+    fun missingRequiredParameter() {
+        mockMvc.perform(get("/api/test/required-param").withApiKey().withBearerToken())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(400))
+            .andExpect(jsonPath("$.error.code").value("0001"))
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 메서드로 호출하면 500이 아니라 NOT_FOUND를 반환한다")
+    fun methodNotSupported() {
+        mockMvc.perform(post("/api/test/warn").withApiKey().withBearerToken())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(404))
+            .andExpect(jsonPath("$.error.code").value("0004"))
+    }
 }

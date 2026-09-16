@@ -2,7 +2,7 @@
 <included>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5level) %clr(---){faint} %clr([%8.8X{requestId}]){yellow} %clr([%15.15thread]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %msg%n</pattern>
+            <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5level) %clr(---){faint} %clr([%8.8X{requestId}]){yellow} %clr([%6.6X{memberId}]){magenta} %clr([%15.15thread]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>

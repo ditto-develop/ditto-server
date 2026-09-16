@@ -1,5 +1,6 @@
 package com.ditto.api.config.logging
 
+import com.ditto.common.exception.WarnException
 import com.ditto.common.logging.Mask
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.aspectj.lang.ProceedingJoinPoint
@@ -15,7 +16,15 @@ import kotlin.reflect.jvm.javaField
 @Component
 class LoggingAspect {
 
-    @Around("@annotation(com.ditto.common.logging.Loggable)")
+    /**
+     * `@Loggable` 은 메서드에도 클래스에도 붙는다([com.ditto.common.logging.Loggable] 의 `@Target`).
+     * 클래스에 붙이면 그 컨트롤러의 모든 핸들러가 진입점이 된다 — 핸들러마다 애너테이션을 반복하지 않아도
+     * 컨트롤러 전체가 로그에 남는다.
+     */
+    @Around(
+        "@annotation(com.ditto.common.logging.Loggable) || " +
+            "@within(com.ditto.common.logging.Loggable)",
+    )
     fun logEntryPoint(joinPoint: ProceedingJoinPoint): Any? {
         loggingActive.set(true)
         return try {
@@ -26,7 +35,9 @@ class LoggingAspect {
     }
 
     @Around(
-        "execution(* com.ditto..*(..)) && !@annotation(com.ditto.common.logging.Loggable) && (" +
+        "execution(* com.ditto..*(..)) && " +
+            "!@annotation(com.ditto.common.logging.Loggable) && " +
+            "!@within(com.ditto.common.logging.Loggable) && (" +
             "within(@org.springframework.stereotype.Component *) || " +
             "within(@org.springframework.stereotype.Service *) || " +
             "within(@org.springframework.stereotype.Repository *) || " +
@@ -58,7 +69,10 @@ class LoggingAspect {
             result
         } catch (e: Exception) {
             stopWatch.stop()
-            logger.error(e) { "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | exception: ${e.javaClass.simpleName}(${e.message})" }
+            // WarnException 은 "권한 없음"·"없는 리소스"처럼 의도된 비즈니스 응답이다. ERROR 로 찍으면
+            // 알람이 정상 트래픽에 울려, 진짜 ERROR 가 그 안에 묻힌다(GlobalExceptionHandler 와 같은 등급).
+            val message = "<-- $className.$methodName | ${stopWatch.totalTimeMillis}ms | exception: ${e.javaClass.simpleName}(${e.message})"
+            if (e is WarnException) logger.warn { message } else logger.error(e) { message }
             throw e
         }
     }

@@ -2,6 +2,7 @@ package com.ditto.api.match.controller
 
 import com.ditto.api.match.dto.MatchingRegenerateResponse
 import com.ditto.api.match.service.MatchmakingService
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController
  * admin 경로(`/api/v1/admin` 하위 전체)는 JwtAuthenticationFilter에서 role=ADMIN 회원만 접근할 수 있다.
  */
 @RestController
+@Loggable
 class MatchAdminController(
     private val matchmakingService: MatchmakingService,
 ) {

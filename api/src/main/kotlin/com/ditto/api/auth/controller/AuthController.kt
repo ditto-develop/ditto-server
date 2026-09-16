@@ -4,6 +4,7 @@ import com.ditto.api.auth.dto.TokenRefreshResponse
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.config.auth.RefreshTokenCookieFactory
+import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@Loggable
 class AuthController(
     private val authService: AuthService,
     private val refreshTokenCookieFactory: RefreshTokenCookieFactory,
