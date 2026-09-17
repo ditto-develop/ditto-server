@@ -61,6 +61,8 @@ class AdminQuizService(
             isActive = form.isActive,
             matchingType = form.matchingType,
         )
+        if (quizSet.isActive) validateNoOtherActiveInWeek(quizSet)
+
         val saved = quizSetRepository.save(quizSet)
         saveQuizzes(saved.id, form.validatedQuizzes())
         return saved
@@ -78,7 +80,12 @@ class AdminQuizService(
             endDate = period.endsAt,
             matchingType = form.matchingType,
         )
-        if (form.isActive) quizSet.activate() else quizSet.deactivate()
+        if (form.isActive) {
+            validateNoOtherActiveInWeek(quizSet)
+            quizSet.activate()
+        } else {
+            quizSet.deactivate()
+        }
         saveQuizzes(id, form.validatedQuizzes())
     }
 
@@ -198,8 +205,11 @@ class AdminQuizService(
 
 
     fun activate(id: Long) {
-        getQuizSet(id).activate()
+        val quizSet = getQuizSet(id)
+        validateNoOtherActiveInWeek(quizSet)
+        quizSet.activate()
     }
+
 
     fun deactivate(id: Long) {
         getQuizSet(id).deactivate()
@@ -210,6 +220,24 @@ class AdminQuizService(
         if (quizIds.isNotEmpty()) quizChoiceRepository.deleteByQuizIdIn(quizIds)
         quizRepository.deleteByQuizSetId(id)
         quizSetRepository.deleteById(id)
+    }
+
+    /**
+     * 한 주차·타입의 활성 셋은 하나뿐이다. 둘이면 매칭이 어느 셋을 가리키는지 정해지지 않는다
+     * (`findCompletedQuizSetInWeek`). 기존 셋을 말없이 끄지 않고 거부해, 운영 중인 셋이 실수로 닫히지 않게 한다.
+     */
+    private fun validateNoOtherActiveInWeek(quizSet: QuizSet) {
+        val duplicated = quizSetRepository.existsByWeekStartedOnAndMatchingTypeAndIsActiveTrueAndIdNot(
+            quizSet.weekStartedOn,
+            quizSet.matchingType,
+            quizSet.id,
+        )
+        if (!duplicated) return
+
+        throw WarnException(
+            ErrorCode.BAD_REQUEST,
+            "이미 활성화된 ${quizSet.matchingType} 퀴즈셋이 그 주차에 있습니다. 기존 퀴즈셋을 먼저 비활성화하세요.",
+        )
     }
 
 }

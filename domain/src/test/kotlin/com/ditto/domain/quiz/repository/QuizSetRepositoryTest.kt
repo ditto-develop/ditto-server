@@ -129,6 +129,40 @@ class QuizSetRepositoryTest(
             result?.id shouldBe quizSet.id
         }
 
+        "비활성 퀴즈셋은 제외된다" {
+            val inactive = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisWeek.atStartOfDay(),
+                    endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                    isActive = false,
+                ),
+            )
+            saveCompletedProgress(memberId = 1L, quizSetId = inactive.id)
+
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
+
+            result shouldBe null
+        }
+
+        "같은 주차에 활성 셋이 둘이면 나중에 만든 것을 반환한다" {
+            // 기간이 월~수로 고정돼 endDate 가 같으므로 id 가 순서를 가른다.
+            listOf("먼저 만든 셋", "나중에 만든 셋").map { title ->
+                val quizSet = quizSetRepository.save(
+                    QuizSetFixture.create(
+                        title = title,
+                        startDate = thisWeek.atStartOfDay(),
+                        endDate = thisWeek.plusDays(2).atTime(23, 59, 59),
+                    ),
+                )
+                saveCompletedProgress(memberId = 1L, quizSetId = quizSet.id)
+                quizSet
+            }
+
+            val result = quizSetRepository.findCompletedQuizSetInWeek(1L, MatchingType.ONE_TO_ONE, thisWeek)
+
+            result?.title shouldBe "나중에 만든 셋"
+        }
+
         "지난 주에 완주한 퀴즈셋은 제외된다" {
             val previous = quizSetRepository.save(
                 QuizSetFixture.create(

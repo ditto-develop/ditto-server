@@ -13,6 +13,8 @@ import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
+import com.ditto.domain.quiz.entity.MatchingType
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
@@ -350,6 +352,76 @@ class AdminQuizServiceTest(
             )
 
             quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1
+        }
+    }
+
+    "주차·타입당 활성 퀴즈셋 하나" - {
+        val week = LocalDate.of(2026, 8, 3)
+
+        fun activeForm(title: String, matchingType: MatchingType = MatchingType.ONE_TO_ONE) = QuizSetForm(
+            category = "성격",
+            title = title,
+            weekStartedOn = week,
+            matchingType = matchingType,
+            isActive = true,
+        )
+
+        "같은 주차·타입에 활성 셋이 있으면 생성이 거부된다" {
+            adminQuizService.createQuizSet(activeForm("먼저 만든 셋"))
+
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(activeForm("나중에 만든 셋"))
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "타입이 다르면 같은 주차에도 활성화된다" {
+            adminQuizService.createQuizSet(activeForm("1:1 셋"))
+
+            val group = adminQuizService.createQuizSet(activeForm("그룹 셋", MatchingType.GROUP))
+
+            group.isActive shouldBe true
+        }
+
+        "비활성으로 만드는 것은 막지 않는다" {
+            adminQuizService.createQuizSet(activeForm("활성 셋"))
+
+            val draft = adminQuizService.createQuizSet(
+                QuizSetForm(category = "성격", title = "초안", weekStartedOn = week),
+            )
+
+            draft.isActive shouldBe false
+        }
+
+        "이미 활성인 셋이 있으면 다른 셋을 활성화할 수 없다" {
+            adminQuizService.createQuizSet(activeForm("활성 셋"))
+            val draft = adminQuizService.createQuizSet(
+                QuizSetForm(category = "성격", title = "초안", weekStartedOn = week),
+            )
+
+            val exception = shouldThrow<WarnException> { adminQuizService.activate(draft.id) }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "이미 활성인 셋을 다시 활성화하는 것은 자기 자신이라 허용된다" {
+            val quizSet = adminQuizService.createQuizSet(activeForm("활성 셋"))
+
+            shouldNotThrowAny { adminQuizService.activate(quizSet.id) }
+        }
+
+        "기존 셋을 비활성화하면 다른 셋을 활성화할 수 있다" {
+            val previous = adminQuizService.createQuizSet(activeForm("지난 셋"))
+            val next = adminQuizService.createQuizSet(
+                QuizSetForm(category = "성격", title = "새 셋", weekStartedOn = week),
+            )
+
+            adminQuizService.deactivate(previous.id)
+            adminQuizService.activate(next.id)
+
+            // 서비스가 자기 트랜잭션에서 로드한 인스턴스를 바꾸므로 반환받아 뒀던 객체로는 확인할 수 없다.
+            adminQuizService.getQuizSet(next.id).isActive shouldBe true
         }
     }
 })
