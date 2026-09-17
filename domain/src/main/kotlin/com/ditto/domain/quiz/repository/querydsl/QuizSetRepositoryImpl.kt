@@ -53,8 +53,11 @@ class QuizSetRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 quizSet.matchingType.eq(matchingType),
                 quizSet.weekStartedOn.eq(weekStartedOn),
+                // 비활성 셋은 그 주의 대표가 아니다. 활성은 주차·타입당 하나로 강제된다(AdminQuizService).
+                quizSet.isActive.isTrue,
             )
-            // 한 주에 같은 타입은 하나라는 전제지만, 어드민 실수로 둘이 생겨도 결정적으로 하나를 고른다.
-            .orderBy(quizSet.endDate.desc())
+            // 강제 이전에 만들어진 활성 셋이 둘 남아 있을 수 있어 id 로 마지막 순서를 정한다.
+            // endDate 만으로는 못 정한다 — 같은 주 셋은 기간이 월~수로 고정돼 값이 늘 같다.
+            .orderBy(quizSet.endDate.desc(), quizSet.id.desc())
             .fetchFirst()
 }
