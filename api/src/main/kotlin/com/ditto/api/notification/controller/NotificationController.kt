@@ -55,11 +55,18 @@ class NotificationController(
     ): ApiResponse<ReadAllNotificationsResponse> =
         ApiResponse.ok(ReadAllNotificationsResponse(notificationService.markAllRead(principal.memberId)))
 
-    /**
-     * 알림 전체 삭제 — 화면의 "전체 삭제". [category]를 주면 그 필터 칩의 알림만 지운다.
-     *
-     * 지울 것이 없어도 성공하며 `deletedCount`가 0이다.
-     */
+    /** 개별 읽음. 이미 읽은 알림에 다시 요청해도 성공한다(멱등). */
+    @Loggable
+    @PutMapping("/api/v1/notifications/{id}/read")
+    fun read(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable id: Long,
+    ): ApiResponse<Unit> {
+        notificationService.markRead(principal.memberId, id)
+        return ApiResponse.ok(Unit)
+    }
+
+    /** 전체 삭제. [category]를 주면 그 칩만 지운다. 지울 것이 없어도 성공하며 `deletedCount`가 0이다. */
     @Loggable
     @DeleteMapping("/api/v1/notifications")
     fun deleteAll(
@@ -77,16 +84,5 @@ class NotificationController(
     ): ApiResponse<DeleteNotificationsResponse> {
         notificationService.delete(principal.memberId, id)
         return ApiResponse.ok(DeleteNotificationsResponse(deletedCount = 1))
-    }
-
-    /** 개별 읽음. 이미 읽은 알림에 다시 요청해도 성공한다(멱등). */
-    @Loggable
-    @PutMapping("/api/v1/notifications/{id}/read")
-    fun read(
-        @AuthenticationPrincipal principal: MemberPrincipal,
-        @PathVariable id: Long,
-    ): ApiResponse<Unit> {
-        notificationService.markRead(principal.memberId, id)
-        return ApiResponse.ok(Unit)
     }
 }

@@ -53,7 +53,7 @@ class NotificationService(
 
     /** 홈 헤더 벨 배지용 미읽음 수 */
     fun getUnreadCount(memberId: Long): Long =
-        notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(memberId, Notification.retentionFrom())
+        notificationRepository.countUnread(memberId, Notification.retentionFrom())
 
     /**
      * 알림 하나를 읽음으로 표시한다. 이미 읽은 알림에 다시 요청해도 성공한다(멱등).
@@ -62,7 +62,7 @@ class NotificationService(
      */
     @Transactional
     fun markRead(memberId: Long, notificationId: Long) {
-        val notification = notificationRepository.findByIdAndMemberId(notificationId, memberId)
+        val notification = notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notificationId, memberId)
             ?: throw WarnException(ErrorCode.NOT_FOUND, "존재하지 않는 알림입니다.")
         notification.markRead(LocalDateTime.now())
     }
@@ -80,33 +80,33 @@ class NotificationService(
     fun markAllRead(memberId: Long): Long = notificationRepository.markAllRead(memberId, LocalDateTime.now())
 
     /**
-     * 알림 하나를 지운다. 남의 알림·이미 지운 알림은 [ErrorCode.NOT_FOUND]다 — 읽음과 같은 기준이다.
+     * 알림 하나를 지운다. 남의 알림·이미 지운 알림은 [ErrorCode.NOT_FOUND]다.
      *
-     * 되돌릴 수 없다(하드 삭제). 알림은 사건의 사본이고 본문에 닉네임·메시지 미리보기가 들어 있어
-     * 보이지 않는 행을 남겨둘 이유가 없다 — 접기·탈퇴·보관 경과 정리도 모두 같은 방식이다.
+     * 행은 남기고 지운 시각만 찍는다 — 중복 검사가 행의 존재를 보기 때문에 지워버리면
+     * 스케줄러가 같은 알림을 다시 적재한다. 행은 30일 뒤 purge 가 지운다.
      */
     @Transactional
     fun delete(memberId: Long, notificationId: Long) {
-        val notification = notificationRepository.findByIdAndMemberId(notificationId, memberId)
+        val notification = notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notificationId, memberId)
             ?: throw WarnException(ErrorCode.NOT_FOUND, "존재하지 않는 알림입니다.")
-        notificationRepository.delete(notification)
+        notification.markDeleted(LocalDateTime.now())
     }
 
     /**
-     * 내 알림을 모두 지운다. [category]가 주어지면 그 카테고리만 — 화면의 필터 칩과 같은 기준이다.
+     * 화면에 보이는 내 알림을 모두 지운다. [category]가 있으면 그 칩만.
      *
-     * 보관 기간 밖의 알림도 함께 지운다. 화면에 안 보이는 행이라 남겨도 사용자에게는 차이가 없고,
-     * 어차피 purge 대상이라 조건을 좁히지 않는 편이 단순하다([markAllRead]와 같은 판단).
+     * 보관 창 밖은 건드리지 않는다 — 응답하는 건수가 사용자가 보던 목록과 맞아야 한다.
      *
-     * @return 지운 건수
+     * @return 이번 호출로 지워진 건수
      */
     @Transactional
     fun deleteAll(memberId: Long, category: NotificationCategory?): Long =
-        if (category == null) {
-            notificationRepository.deleteAllByMemberId(memberId)
-        } else {
-            notificationRepository.deleteAllByMemberIdAndCategory(memberId, category)
-        }
+        notificationRepository.markAllDeleted(
+            memberId = memberId,
+            category = category,
+            at = LocalDateTime.now(),
+            from = Notification.retentionFrom(),
+        )
 
     companion object {
         /** 한 페이지 최대 건수. 채팅 메시지 페이징과 같은 상한을 쓴다. */

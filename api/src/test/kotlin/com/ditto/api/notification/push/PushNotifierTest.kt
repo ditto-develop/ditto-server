@@ -50,7 +50,7 @@ class PushNotifierTest : FreeSpec({
             }
         }
         val notificationRepository = mockk<NotificationRepository> {
-            every { countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(any(), any()) } returns unreadCount
+            every { countUnread(any(), any()) } returns unreadCount
         }
         val chatRoomRepository = mockk<ChatRoomRepository> {
             every { findById(any()) } returns Optional.ofNullable(room)

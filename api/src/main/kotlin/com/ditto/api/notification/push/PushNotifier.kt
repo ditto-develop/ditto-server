@@ -124,10 +124,7 @@ class PushNotifier(
 
     /** 벨 배지 API 와 같은 창을 써야 인앱과 아이콘 뱃지가 같은 수가 된다. */
     private fun countUnread(memberId: Long): Int =
-        notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(
-            memberId,
-            Notification.retentionFrom(),
-        ).toInt()
+        notificationRepository.countUnread(memberId, Notification.retentionFrom()).toInt()
 
     /** 시효가 있는 알림만 짧게. 없으면 FCM 기본(4주)이라 꺼져 있던 기기에 지난 알림이 몰린다. */
     private fun ttlOf(type: NotificationType): Duration? = when (type) {

@@ -46,10 +46,10 @@
 - **보관·조회 창은 30일이다**(`Notification.RETENTION_DAYS`). 조회가 그 밖을 자르고, 같은 기준으로 purge 배치가 지운다. 미읽음 수(배지)도 같은 창을 써야 한다 — 창이 어긋나면 배지가 0이 되지 않는다.
 - **설정의 알림 토글은 이 목록을 막지 않는다.** 토글(`member_notification_setting`)은 푸시 수신 동의이고 센터는 인앱 기록이다. 채팅 알림을 끈 사람도 센터에서는 새 메시지를 본다.
 - **적재는 비즈니스 트랜잭션을 되돌리지 않는다.** `REQUIRES_NEW` + 실패 흡수. 반대급부로 롤백된 작업의 알림이 드물게 남을 수 있고, 그건 감수한다.
-- **알림 행이 곧 처리 완료 표시다.** "대상당 1회" 유형은 존재 검사로 막으므로, 스케줄러가 같은 방·같은 퀴즈셋을 매 주기 다시 집어와도 알림은 하나다. 별도 플래그나 outbox 가 없다(`RematchChatRoomOpener`·`EndedChatReviewOpener`와 같은 수렴 루프).
+- **알림 행이 곧 처리 완료 표시다.** 사용자 삭제가 행을 남기는 이유가 이것이다. "대상당 1회" 유형은 존재 검사로 막으므로, 스케줄러가 같은 방·같은 퀴즈셋을 매 주기 다시 집어와도 알림은 하나다. 별도 플래그나 outbox 가 없다(`RematchChatRoomOpener`·`EndedChatReviewOpener`와 같은 수렴 루프).
 - **재매칭 방 종료에는 평가 요청을 알리지 않는다.** 재매칭 채팅은 평가를 열지 않기 때문이다(#132). `ReviewRequestNotifier`가 `REMATCH`를 걸러낸다.
 - **탈퇴 완전 삭제는 알림도 지운다.** 본문에 닉네임·메시지 미리보기(개인정보)가 들어 있다.
-- **삭제는 되돌릴 수 없다(하드 삭제).** 사용자 삭제·접기·탈퇴·보관 경과 정리가 모두 행을 지운다. 알림은 사건의 사본이라 복구할 원본이 따로 있고, 30일 뒤 어차피 사라진다.
+- **사용자 삭제는 행을 남긴다(`deleted_at`).** 중복 검사가 행의 존재를 보므로 지워버리면 수렴 루프를 도는 스케줄러가 같은 알림과 푸시를 다시 내보낸다(`CHAT_ENDING_SOON`은 방이 끝날 때까지, `GROUP_NOT_FORMED`는 무기한). 지운 알림은 목록·미읽음 수·전체 읽음에서 빠지고, 30일 뒤 purge 가 다른 행과 함께 지운다. 사용자에게는 되돌릴 수 없다.
 - **한 토큰 = 한 회원.** `member_device.token` 단독 유일 제약이 강제한다. 토큰은 기기의 것이라 로그아웃해도
   그대로이므로, 공용 기기에서 다른 회원이 로그인하면 행 추가가 아니라 소유자 갱신이다 — 갱신하지 않으면
   이전 회원의 알림이 남의 폰에 뜬다. 등록은 멱등이고(앱이 실행·토큰 갱신 때마다 재호출),
@@ -92,8 +92,8 @@
 | GET | `/api/v1/notifications/unread-count` | 홈 헤더 벨 배지용 |
 | PUT | `/api/v1/notifications/{id}/read` | 개별 읽음(멱등). 남의 알림은 404 |
 | PUT | `/api/v1/notifications/read-all` | 전체 읽음. `readCount` 반환 |
-| DELETE | `/api/v1/notifications/{id}` | 개별 삭제(하드). 남의 알림·이미 지운 알림은 404 |
-| DELETE | `/api/v1/notifications` | 전체 삭제(하드). `category`를 주면 그 칩만. `deletedCount` 반환 |
+| DELETE | `/api/v1/notifications/{id}` | 개별 삭제. 남의 알림·이미 지운 알림은 404. `deletedCount`는 항상 1(전체 삭제와 형식을 맞춘 값) |
+| DELETE | `/api/v1/notifications` | 전체 삭제. `category`를 주면 그 칩만, 보관 창 안만. `deletedCount` 반환 |
 | POST | `/api/v1/notifications/devices` | 푸시 디바이스 토큰 등록(멱등·소유권 이전). 앱 전용 |
 | DELETE | `/api/v1/notifications/devices/{token}` | 토큰 해제(멱등). 남의 토큰은 404. 로그아웃·탈퇴 직전에 앱이 호출 |
 

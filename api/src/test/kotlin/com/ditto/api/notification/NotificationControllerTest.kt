@@ -207,7 +207,7 @@ class NotificationControllerTest : RestDocsTest() {
                 .andExpect(jsonPath("$.success").value(true))
         }
 
-        check(notificationRepository.findByIdAndMemberId(notification.id, member.id)!!.isRead) {
+        check(notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, member.id)!!.isRead) {
             "읽음 처리되지 않았다"
         }
 
@@ -258,7 +258,7 @@ class NotificationControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(404))
 
-        check(!notificationRepository.findByIdAndMemberId(notification.id, other.id)!!.isRead) {
+        check(!notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, other.id)!!.isRead) {
             "남의 알림이 읽음 처리됐다"
         }
     }
@@ -334,7 +334,7 @@ class NotificationControllerTest : RestDocsTest() {
                             .tag("Notification")
                             .summary("알림 삭제")
                             .description(
-                                "알림 하나를 지웁니다. 되돌릴 수 없으며 목록과 미읽음 수에서 함께 빠집니다. " +
+                                "알림 하나를 지웁니다. 목록과 미읽음 수에서 함께 빠지며 되돌릴 수 없습니다. " +
                                     "내 알림이 아니거나 이미 지운 알림이면 404 로 응답합니다. " +
                                     "deletedCount 는 항상 1 입니다(전체 삭제와 형식을 맞춘 값).",
                             )
@@ -363,6 +363,11 @@ class NotificationControllerTest : RestDocsTest() {
                 .withBearerToken(member.id),
         )
             .andExpect(jsonPath("$.data.count").value(1))
+
+        // 행은 남는다 — 중복 검사가 존재를 보므로 지우면 스케줄러가 다시 적재한다.
+        check(notificationRepository.findById(notification.id).get().isDeleted) {
+            "삭제 표시가 찍히지 않았다"
+        }
     }
 
     @Test
@@ -404,9 +409,32 @@ class NotificationControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(404))
 
-        check(notificationRepository.findByIdAndMemberId(notification.id, other.id) != null) {
+        check(notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, other.id) != null) {
             "남의 알림이 삭제됐다"
         }
+    }
+
+    @Test
+    @DisplayName("지운 알림은 읽음 처리할 수 없다")
+    fun readDeletedNotificationRejected() {
+        val member = saveMember("지운알림읽음회원")
+        val notification = save(member.id, NotificationType.MATCH_RESULT, "지울 알림", targetId = 1L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.success").value(true))
+
+        mockMvc.perform(
+            put("/api/v1/notifications/{id}/read", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(404))
     }
 
     @Test
@@ -433,7 +461,7 @@ class NotificationControllerTest : RestDocsTest() {
                             .tag("Notification")
                             .summary("알림 전체 삭제")
                             .description(
-                                "내 알림을 모두 지웁니다. category 를 주면 그 필터 칩의 알림만 지웁니다. " +
+                                "화면에 보이는 내 알림을 모두 지웁니다. category 를 주면 그 필터 칩만 지웁니다. " +
                                     "되돌릴 수 없으며, 지울 것이 없으면 deletedCount 가 0 이고 성공합니다.",
                             )
                             .queryParameters(
