@@ -191,6 +191,12 @@ class ChatServiceTest(
         }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
     }
 
+    "존재하지 않는 방은 숨길 수 없다" {
+        shouldThrow<WarnException> {
+            chatService.hideRoom(memberId = 1L, roomId = 9999L)
+        }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_FOUND
+    }
+
     "나간 방은 숨길 수 없다" {
         val room = saveEndedRoom(100L, 1L, 2L, 3L)
         chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)

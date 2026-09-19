@@ -191,12 +191,8 @@ class ChatService(
      */
     @Transactional
     fun hideRoom(memberId: Long, roomId: Long) {
-        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
-            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
-        // 나간 사람에게는 방이 없는 것으로 다룬다(validateMember 와 같은 기준).
-        if (roomMember.hasLeft) {
-            throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
-        }
+        // 멤버 행을 잠그지 않는다. @DynamicUpdate 라 hidden_at 쓰기가 겹친 이탈·읽음 갱신을 덮지 않는다.
+        val roomMember = chatRoomAccessChecker.requireMember(roomId, memberId)
 
         val room = chatRoomRepository.findById(roomId).orElseThrow { chatRoomAccessChecker.notFoundOrForbidden(roomId) }
         if (!room.isEnded) {
