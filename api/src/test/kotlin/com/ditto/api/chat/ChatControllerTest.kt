@@ -36,6 +36,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.restdocs.request.RequestDocumentation.parameterWithName
 import org.springframework.restdocs.request.RequestDocumentation.pathParameters
 import org.springframework.restdocs.request.RequestDocumentation.queryParameters
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -376,6 +377,49 @@ class ChatControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("종료된 채팅방을 내 목록에서 숨긴다")
+    fun hide() {
+        every { chatService.hideRoom(any(), any()) } returns Unit
+
+        mockMvc.perform(delete("/api/v1/chat/rooms/{roomId}", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-hide",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅방 숨기기")
+                            .description(
+                                "종료된 방을 내 채팅방 목록에서만 제거합니다. " +
+                                    "상대 목록과 대화 내용은 그대로 남고, 방을 나가는 것도 아니라 상대에게는 아무 알림도 가지 않습니다. " +
+                                    "roomId 로 메시지를 조회하는 것은 계속 됩니다. " +
+                                    "이미 숨긴 방에 다시 요청해도 성공으로 답합니다(멱등). " +
+                                    "아직 진행 중인 방은 7006(아직 종료되지 않은 채팅방입니다)으로 거절합니다.",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        verify { chatService.hideRoom(any(), 1L) }
     }
 
     @Test
