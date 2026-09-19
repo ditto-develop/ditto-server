@@ -41,6 +41,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 private val INTEREST_CODES = Interest.entries.joinToString(", ") { it.code }
+private val LOCATION_CODES = Location.entries.joinToString(", ") { it.code }
+private val JOB_CODES = Job.entries.joinToString(", ") { it.code }
 
 class MyProfileControllerTest : RestDocsTest() {
 
@@ -104,6 +106,10 @@ class MyProfileControllerTest : RestDocsTest() {
             introduction = "주말마다 한강 산책하는 걸 좋아해요!",
             profileImageUrl = "/assets/avatar/m3.png",
             interests = setOf("workout", "movie-drama", "exhibition"),
+            nickname = "산책러버",
+            gender = Gender.FEMALE,
+            location = "busan",
+            occupation = "design",
         )
 
         mockMvc.perform(
@@ -117,6 +123,10 @@ class MyProfileControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.profileImageUrl").value("/assets/avatar/m3.png"))
             .andExpect(jsonPath("$.data.introduction").value("주말마다 한강 산책하는 걸 좋아해요!"))
+            .andExpect(jsonPath("$.data.nickname").value("산책러버"))
+            .andExpect(jsonPath("$.data.gender").value("FEMALE"))
+            .andExpect(jsonPath("$.data.location").value("busan"))
+            .andExpect(jsonPath("$.data.occupation").value("design"))
             .andDo(
                 document(
                     "my-profile-update",
@@ -127,10 +137,11 @@ class MyProfileControllerTest : RestDocsTest() {
                             .tag("Users")
                             .summary("내 프로필 수정")
                             .description(
-                                "프로필 수정 화면에서 편집 가능한 항목만 수정합니다 — 캐리커쳐·관심사·한 줄 소개. " +
-                                    "닉네임·성별·나이·사는곳·직업은 수정할 수 없습니다. " +
+                                "프로필 수정 화면의 항목을 수정합니다 — 닉네임·성별·사는곳·직업·캐리커쳐·관심사·한 줄 소개. " +
+                                    "나이·이메일은 수정할 수 없고, 생년월일은 personal-info 가 맡습니다. " +
                                     "생략(null)한 항목은 변경하지 않습니다. " +
-                                    "한 줄 소개는 소개노트 'one-word' 답변으로 저장됩니다.",
+                                    "한 줄 소개는 소개노트 'one-word' 답변으로 저장됩니다. " +
+                                    "닉네임이 이미 쓰이고 있으면 3003 으로 응답합니다.",
                             )
                             .requestFields(
                                 fieldWithPath("introduction")
@@ -141,6 +152,18 @@ class MyProfileControllerTest : RestDocsTest() {
                                     .optional(),
                                 fieldWithPath("interests")
                                     .description("관심사 code 1~5개. 생략 시 변경 없음. 가능한 값: $INTEREST_CODES")
+                                    .optional(),
+                                fieldWithPath("nickname")
+                                    .description("닉네임 (2~10자, 한글·영문·숫자). 생략 시 변경 없음")
+                                    .optional(),
+                                fieldWithPath("gender")
+                                    .description("성별 (MALE, FEMALE). 생략 시 변경 없음")
+                                    .optional(),
+                                fieldWithPath("location")
+                                    .description("사는곳 code. 생략 시 변경 없음. 가능한 값: $LOCATION_CODES")
+                                    .optional(),
+                                fieldWithPath("occupation")
+                                    .description("직업 code. 생략 시 변경 없음. 가능한 값: $JOB_CODES")
                                     .optional(),
                             )
                             .responseFields(*profileResponseFields())
@@ -172,6 +195,78 @@ class MyProfileControllerTest : RestDocsTest() {
     fun updateMyProfileRejectsBlankIntroduction() {
         val member = saveActiveMember()
         val request = UpdateMyProfileRequest(introduction = "   ")
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/profile")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+    }
+
+    @Test
+    @DisplayName("이미 쓰이는 닉네임이면 거부한다")
+    fun updateMyProfileRejectsDuplicateNickname() {
+        val member = saveActiveMember()
+        memberRepository.save(MemberFixture.create(nickname = "선점된닉네임", status = MemberStatus.ACTIVE))
+        val request = UpdateMyProfileRequest(nickname = "선점된닉네임")
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/profile")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("3003"))
+    }
+
+    // 다른 항목만 바꾸려고 닉네임을 그대로 실어 보내는 경우가 있다.
+    @Test
+    @DisplayName("내가 쓰던 닉네임을 그대로 보내면 통과한다")
+    fun updateMyProfileAllowsOwnNickname() {
+        val member = saveActiveMember()
+        val request = UpdateMyProfileRequest(nickname = member.nickname, location = "daegu")
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/profile")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.location").value("daegu"))
+    }
+
+    @Test
+    @DisplayName("닉네임에 특수문자가 있으면 거부한다")
+    fun updateMyProfileRejectsInvalidNickname() {
+        val member = saveActiveMember()
+        val request = UpdateMyProfileRequest(nickname = "산책러버!!")
+
+        mockMvc.perform(
+            patch("/api/v1/users/me/profile")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+    }
+
+    @Test
+    @DisplayName("없는 사는곳 code 면 거부한다")
+    fun updateMyProfileRejectsUnknownLocation() {
+        val member = saveActiveMember()
+        val request = UpdateMyProfileRequest(location = "atlantis")
 
         mockMvc.perform(
             patch("/api/v1/users/me/profile")

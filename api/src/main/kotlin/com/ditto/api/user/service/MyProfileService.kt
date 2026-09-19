@@ -10,6 +10,10 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
+import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.entity.ProfileChanges
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -40,7 +44,7 @@ class MyProfileService(
         userService.getPublicProfile(memberId, memberId)
 
     /**
-     * 캐리커쳐·관심사·한 줄 소개만 수정한다. null인 항목은 건드리지 않는다.
+     * 프로필 수정 화면의 항목을 갱신한다. null인 항목은 건드리지 않는다.
      *
      * 한 줄 소개는 `member`가 아니라 소개노트 `ONE_WORD`에 저장된다 — 프로필 조회가 그 답변을
      * 읽어 `introduction`으로 내려주므로, 저장 위치를 한 곳으로 유지해야 두 화면이 어긋나지 않는다.
@@ -51,9 +55,17 @@ class MyProfileService(
             WarnException(ErrorCode.NOT_FOUND)
         }
 
+        request.nickname?.let { checkNicknameAvailable(it, member) }
+
         member.updateProfile(
-            caricature = request.profileImageUrl,
-            interests = request.interests?.map { Interest.from(it) }?.toSet(),
+            ProfileChanges(
+                nickname = request.nickname,
+                gender = request.gender,
+                location = request.location?.let { Location.from(it) },
+                job = request.occupation?.let { Job.from(it) },
+                caricature = request.profileImageUrl,
+                interests = request.interests?.map { Interest.from(it) }?.toSet(),
+            ),
         )
 
         request.introduction?.let { introduction ->
@@ -64,6 +76,16 @@ class MyProfileService(
         }
 
         return userService.getPublicProfile(memberId, memberId)
+    }
+
+    /** 내가 쓰던 닉네임을 그대로 보낸 것은 변경이 아니므로 중복으로 보지 않는다. */
+    private fun checkNicknameAvailable(nickname: String, member: Member) {
+        if (nickname == member.nickname) {
+            return
+        }
+        if (memberRepository.existsByNickname(nickname)) {
+            throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
+        }
     }
 
     @Transactional(readOnly = true)
