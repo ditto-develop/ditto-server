@@ -1,6 +1,7 @@
 package com.ditto.api.notification.controller
 
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.dto.DeleteNotificationsResponse
 import com.ditto.api.notification.dto.NotificationsResponse
 import com.ditto.api.notification.dto.ReadAllNotificationsResponse
 import com.ditto.api.notification.dto.UnreadNotificationCountResponse
@@ -9,13 +10,14 @@ import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import com.ditto.domain.notification.entity.NotificationCategory
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
-/** 알림 센터 화면(피그마 7.2)의 목록·읽음 엔드포인트. */
+/** 알림 센터 화면(피그마 7.2)의 목록·읽음·삭제 엔드포인트. */
 @RestController
 class NotificationController(
     private val notificationService: NotificationService,
@@ -52,6 +54,30 @@ class NotificationController(
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<ReadAllNotificationsResponse> =
         ApiResponse.ok(ReadAllNotificationsResponse(notificationService.markAllRead(principal.memberId)))
+
+    /**
+     * 알림 전체 삭제 — 화면의 "전체 삭제". [category]를 주면 그 필터 칩의 알림만 지운다.
+     *
+     * 지울 것이 없어도 성공하며 `deletedCount`가 0이다.
+     */
+    @Loggable
+    @DeleteMapping("/api/v1/notifications")
+    fun deleteAll(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @RequestParam(required = false) category: NotificationCategory?,
+    ): ApiResponse<DeleteNotificationsResponse> =
+        ApiResponse.ok(DeleteNotificationsResponse(notificationService.deleteAll(principal.memberId, category)))
+
+    /** 개별 삭제. 내 알림이 아니거나 이미 지웠으면 404 다. */
+    @Loggable
+    @DeleteMapping("/api/v1/notifications/{id}")
+    fun delete(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable id: Long,
+    ): ApiResponse<DeleteNotificationsResponse> {
+        notificationService.delete(principal.memberId, id)
+        return ApiResponse.ok(DeleteNotificationsResponse(deletedCount = 1))
+    }
 
     /** 개별 읽음. 이미 읽은 알림에 다시 요청해도 성공한다(멱등). */
     @Loggable

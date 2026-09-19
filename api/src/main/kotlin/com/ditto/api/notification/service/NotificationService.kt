@@ -79,6 +79,34 @@ class NotificationService(
     @Transactional
     fun markAllRead(memberId: Long): Long = notificationRepository.markAllRead(memberId, LocalDateTime.now())
 
+    /**
+     * 알림 하나를 지운다. 남의 알림·이미 지운 알림은 [ErrorCode.NOT_FOUND]다 — 읽음과 같은 기준이다.
+     *
+     * 되돌릴 수 없다(하드 삭제). 알림은 사건의 사본이고 본문에 닉네임·메시지 미리보기가 들어 있어
+     * 보이지 않는 행을 남겨둘 이유가 없다 — 접기·탈퇴·보관 경과 정리도 모두 같은 방식이다.
+     */
+    @Transactional
+    fun delete(memberId: Long, notificationId: Long) {
+        val notification = notificationRepository.findByIdAndMemberId(notificationId, memberId)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "존재하지 않는 알림입니다.")
+        notificationRepository.delete(notification)
+    }
+
+    /**
+     * 내 알림을 모두 지운다. [category]가 주어지면 그 카테고리만 — 화면의 필터 칩과 같은 기준이다.
+     *
+     * 보관 기간 밖의 알림도 함께 지운다. 화면에 안 보이는 행이라 남겨도 사용자에게는 차이가 없고,
+     * 어차피 purge 대상이라 조건을 좁히지 않는 편이 단순하다([markAllRead]와 같은 판단).
+     *
+     * @return 지운 건수
+     */
+    @Transactional
+    fun deleteAll(memberId: Long, category: NotificationCategory?): Long =
+        if (category == null) {
+            notificationRepository.deleteAllByMemberId(memberId)
+        } else {
+            notificationRepository.deleteAllByMemberIdAndCategory(memberId, category)
+        }
 
     companion object {
         /** 한 페이지 최대 건수. 채팅 메시지 페이징과 같은 상한을 쓴다. */
