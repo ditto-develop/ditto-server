@@ -26,6 +26,14 @@ interface MemberRepository : JpaRepository<Member, Long> {
 
     fun existsByNickname(nickname: String): Boolean
 
+    /**
+     * 나를 뺀 다른 회원이 이 닉네임을 쓰고 있는가 — 프로필 수정용.
+     *
+     * 내 닉네임을 코틀린 문자열 비교로 걸러내면 DB 콜레이션과 규칙이 갈린다. 대소문자를 무시하는
+     * 콜레이션에서는 `ditto` 를 `Ditto` 로 바꿀 때 내 행이 중복으로 잡힌다.
+     */
+    fun existsByNicknameAndIdNot(nickname: String, id: Long): Boolean
+
     /** 주어진 ID 중 해당 상태인 회원 수 — 탈퇴자가 섞였는지 확인하는 데 쓴다. */
     fun countByIdInAndStatus(ids: Collection<Long>, status: MemberStatus): Long
 
