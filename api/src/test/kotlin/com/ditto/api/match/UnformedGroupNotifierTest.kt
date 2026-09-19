@@ -36,16 +36,18 @@ class UnformedGroupNotifierTest(
         val afterDeadline = LocalDateTime.of(2026, 6, 5, 0, 30)
         val beforeDeadline = LocalDateTime.of(2026, 6, 4, 23, 30)
 
-        fun quizSetId(): Long = quizSetRepository.save(
+        fun quizSetId(weekStartedOn: LocalDate = monday): Long = quizSetRepository.save(
             QuizSetFixture.create(
-                startDate = monday.atStartOfDay(),
-                endDate = monday.plusDays(2).atTime(23, 59, 59),
+                startDate = weekStartedOn.atStartOfDay(),
+                endDate = weekStartedOn.plusDays(2).atTime(23, 59, 59),
             ),
         ).id
 
         /** 수락자 [acceptedMemberIds] 를 가진 미성사 그룹. 임계값(3) 미만이라 활성화되지 않는다. */
-        fun unformedGroup(acceptedMemberIds: List<Long>): GroupMatch {
-            val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId()))
+        fun unformedGroup(acceptedMemberIds: List<Long>, weekStartedOn: LocalDate = monday): GroupMatch {
+            val group = groupMatchRepository.save(
+                GroupMatchFixture.create(quizSetId = quizSetId(weekStartedOn)),
+            )
             acceptedMemberIds.forEach { memberId ->
                 val member = GroupMatchMember.candidate(roomId = group.id, memberId = memberId)
                 member.accept()
@@ -89,6 +91,24 @@ class UnformedGroupNotifierTest(
 
                 unformedGroupNotifier.notifyUnformed(afterDeadline)
                 unformedGroupNotifier.notifyUnformed(afterDeadline)
+
+                notifications(1L).size shouldBe 1
+            }
+
+            // 알림 행은 30일 뒤 purge 된다. 스캔이 그보다 오래 거슬러 올라가면 존재 검사가 다시
+            // 통과해 한참 전에 끝난 그룹의 안내와 푸시가 다시 나간다.
+            "오래된 주차의 미성사 그룹은 대상이 아니다" {
+                unformedGroup(listOf(1L), weekStartedOn = monday.minusDays(21))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 0
+
+                notifications(1L).size shouldBe 0
+            }
+
+            "지난주 미성사 그룹은 아직 대상이다 — 스케줄러가 멈췄다 돌아도 따라잡는다" {
+                unformedGroup(listOf(1L), weekStartedOn = monday.minusDays(7))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 1
 
                 notifications(1L).size shouldBe 1
             }

@@ -21,6 +21,10 @@ private val log = KotlinLogging.logger {}
  * **그룹 상태를 바꾸지 않는다.** `is_active=false` 자체가 이미 "성사되지 않음"이고,
  * 취소 플래그를 따로 두면 마이그레이션이 필요해진다. 재발송은 알림 유형의
  * `ONCE_PER_TARGET`(대상 = `group_match.id`)이 막으므로 상태 없이도 멱등이다.
+ *
+ * 그 멱등은 알림 행이 살아 있는 동안만이다 — 보관 기간(30일)이 지나 purge 되면 존재 검사가
+ * 다시 통과한다. 그래서 스캔을 최근 [NOTIFIABLE_WINDOW_DAYS]일로 자른다. 마감 직후 안내라
+ * 지난 주차를 다시 집을 이유도 없다.
  */
 @Service
 class UnformedGroupNotifier(
@@ -33,7 +37,10 @@ class UnformedGroupNotifier(
     fun notifyUnformed(now: LocalDateTime): Int {
         // 마감은 그 주 금요일 00:00. 주 시작일(월요일) 기준이라 4일을 뺀다.
         val lastWeekStartedOn = now.toLocalDate().minusDays(DAYS_FROM_MONDAY_TO_FRIDAY)
-        val unformed = groupMatchRepository.findUnformedUntil(lastWeekStartedOn)
+        val unformed = groupMatchRepository.findUnformedBetween(
+            oldestWeekStartedOn = lastWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
+            lastWeekStartedOn = lastWeekStartedOn,
+        )
         if (unformed.isEmpty()) return 0
 
         var notified = 0
@@ -59,5 +66,11 @@ class UnformedGroupNotifier(
 
     companion object {
         private const val DAYS_FROM_MONDAY_TO_FRIDAY = 4L
+
+        /**
+         * 안내를 보낼 주차의 범위. 알림 보관 기간(30일)보다 짧아야 purge 된 뒤 다시 알리는 일이 없고,
+         * 배포 중단 등으로 스케줄러가 한두 주 멈춰도 놓친 주차를 따라잡을 만큼은 길다.
+         */
+        private const val NOTIFIABLE_WINDOW_DAYS = 14L
     }
 }

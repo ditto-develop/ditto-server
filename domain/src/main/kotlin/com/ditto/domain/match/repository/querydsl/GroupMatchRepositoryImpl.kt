@@ -18,11 +18,15 @@ class GroupMatchRepositoryImpl(
      *
      * 수락자가 0명인 그룹도 함께 나온다. 알릴 사람이 없을 뿐이라 거르는 건 부르는 쪽 몫이다.
      */
-    override fun findUnformedUntil(lastWeekStartedOn: LocalDate): List<GroupMatch> = queryFactory
+    override fun findUnformedBetween(
+        oldestWeekStartedOn: LocalDate,
+        lastWeekStartedOn: LocalDate,
+    ): List<GroupMatch> = queryFactory
         .selectFrom(groupMatch)
         .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id))
         .where(
             groupMatch.isActive.isFalse,
+            quizSet.weekStartedOn.goe(oldestWeekStartedOn),
             quizSet.weekStartedOn.loe(lastWeekStartedOn),
         )
         .fetch()
