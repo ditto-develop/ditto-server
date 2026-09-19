@@ -23,14 +23,17 @@ import org.hibernate.annotations.Comment
  *
  * 안읽음은 `readAt == null` 이다. 채팅처럼 읽음 커서 하나로 접지 않는다 — 화면이 개별 읽음을 요구한다.
  *
+ * 사용자가 지운 알림은 [deletedAt]만 찍고 행은 남긴다. 중복 검사가 행의 존재를 보기 때문에,
+ * 지워버리면 스케줄러가 같은 알림을 다시 적재한다. 행은 30일 뒤 purge 된다.
+ *
  * 보관은 30일이다([RETENTION_DAYS]). 화면이 최근 30일만 보여주므로 그 뒤의 행은 남길 이유가 없다.
  */
 @Entity
 @Table(
     name = "notification",
     indexes = [
-        // 목록 조회 — 내 알림을 id DESC 로 커서 페이징한다.
-        Index(name = "notification_index_1", columnList = "member_id, id"),
+        // 목록 조회 — 안 지운 내 알림을 id DESC 로 커서 페이징한다.
+        Index(name = "notification_index_1", columnList = "member_id, deleted_at, id"),
         // 미읽음 수(홈 배지)·전체 읽음이 읽는 경로.
         Index(name = "notification_index_2", columnList = "member_id, read_at"),
         // 같은 사건 중복 방지(존재 검사)와 새 메시지 알림 접기.
@@ -70,11 +73,19 @@ class Notification private constructor(
     var readAt: LocalDateTime? = null
         protected set
 
+    @Comment("사용자가 지운 시각 (안 지웠으면 NULL)")
+    @Column(name = "deleted_at")
+    var deletedAt: LocalDateTime? = null
+        protected set
+
     val category: NotificationCategory
         get() = type.category
 
     val isRead: Boolean
         get() = readAt != null
+
+    val isDeleted: Boolean
+        get() = deletedAt != null
 
     /**
      * 읽음으로 표시한다. 이미 읽은 알림이면 아무 것도 하지 않는다 —
@@ -88,6 +99,14 @@ class Notification private constructor(
         }
         readAt = at
         return true
+    }
+
+    /** 지운 것으로 표시한다. 이미 지웠으면 아무 것도 하지 않는다. */
+    fun markDeleted(at: LocalDateTime) {
+        if (isDeleted) {
+            return
+        }
+        deletedAt = at
     }
 
     companion object {
