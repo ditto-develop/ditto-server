@@ -12,7 +12,6 @@ import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
-import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.ProfileChanges
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.QuizProgressStatus
@@ -55,7 +54,11 @@ class MyProfileService(
             WarnException(ErrorCode.NOT_FOUND)
         }
 
-        request.nickname?.let { checkNicknameAvailable(it, member) }
+        request.nickname?.let { nickname ->
+            if (memberRepository.existsByNicknameAndIdNot(nickname, memberId)) {
+                throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
+            }
+        }
 
         member.updateProfile(
             ProfileChanges(
@@ -76,16 +79,6 @@ class MyProfileService(
         }
 
         return userService.getPublicProfile(memberId, memberId)
-    }
-
-    /** 내가 쓰던 닉네임을 그대로 보낸 것은 변경이 아니므로 중복으로 보지 않는다. */
-    private fun checkNicknameAvailable(nickname: String, member: Member) {
-        if (nickname == member.nickname) {
-            return
-        }
-        if (memberRepository.existsByNickname(nickname)) {
-            throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
-        }
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,7 @@
 package com.ditto.api.user.dto
 
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.NicknamePolicy
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
@@ -24,9 +25,9 @@ data class UpdateMyProfileRequest(
     @field:Size(min = 1, max = MAX_INTEREST_COUNT, message = "관심사는 1~${MAX_INTEREST_COUNT}개 선택해야 합니다.")
     val interests: Set<String>? = null,
 
-    // 가입과 같은 형식 규칙을 쓴다. 중복은 서비스가 저장소를 보고 판단한다.
-    @field:Size(min = NICKNAME_MIN_LENGTH, max = NICKNAME_MAX_LENGTH)
-    @field:Pattern(regexp = NICKNAME_PATTERN, message = "닉네임은 한글·영문·숫자만 허용됩니다.")
+    // 중복은 서비스가 저장소를 보고 판단한다.
+    @field:Size(min = NicknamePolicy.MIN_LENGTH, max = NicknamePolicy.MAX_LENGTH)
+    @field:Pattern(regexp = NicknamePolicy.PATTERN, message = NicknamePolicy.INVALID_MESSAGE)
     val nickname: String? = null,
 
     val gender: Gender? = null,
@@ -40,8 +41,5 @@ data class UpdateMyProfileRequest(
     companion object {
         const val INTRODUCTION_MAX_LENGTH = 50
         const val MAX_INTEREST_COUNT = 5
-        const val NICKNAME_MIN_LENGTH = 2
-        const val NICKNAME_MAX_LENGTH = 10
-        const val NICKNAME_PATTERN = "^[a-zA-Z0-9가-힣]+$"
     }
 }
