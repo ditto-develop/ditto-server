@@ -2,6 +2,7 @@ package com.ditto.api.chat.service
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import org.springframework.stereotype.Component
@@ -28,11 +29,17 @@ class ChatRoomAccessChecker(
      * 이탈은 그룹에서만 생긴다(두 사람 방의 나가기는 종료와 같은 전이라 이탈자로 남지 않는다).
      */
     fun validateMember(roomId: Long, memberId: Long) {
+        requireMember(roomId, memberId)
+    }
+
+    /** [validateMember]와 같은 기준으로 검사하고 멤버 행을 돌려준다. 검사한 행을 그대로 쓰는 경로(숨김 등)가 쓴다. */
+    fun requireMember(roomId: Long, memberId: Long): ChatRoomMember {
         val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
             ?: throw notFoundOrForbidden(roomId)
         if (roomMember.hasLeft) {
             throw notFoundOrForbidden(roomId)
         }
+        return roomMember
     }
 
     /**

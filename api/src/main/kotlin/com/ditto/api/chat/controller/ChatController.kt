@@ -17,6 +17,7 @@ import jakarta.validation.Valid
 import java.time.LocalDateTime
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -108,6 +109,21 @@ class ChatController(
             endedChatReviewOpener.openFor(listOf(roomId))
             reviewRequestNotifier.notifyFor(listOf(roomId))
         }
+        return ApiResponse.ok(Unit)
+    }
+
+    /**
+     * 종료된 방을 내 목록에서만 감춘다. 처리 규칙은 [ChatService.hideRoom] 참고.
+     *
+     * DELETE 가 지우는 대상은 방이 아니라 내 목록의 항목이다. 메시지도 상대 목록도 그대로 남는다.
+     */
+    @Loggable
+    @DeleteMapping("/api/v1/chat/rooms/{roomId}")
+    fun hide(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        chatService.hideRoom(principal.memberId, roomId)
         return ApiResponse.ok(Unit)
     }
 

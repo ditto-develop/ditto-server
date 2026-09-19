@@ -4,7 +4,7 @@
 
 ## 용어
 - `ChatRoom` — 채팅방. `source_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
-- `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서) + `left_at`(이탈 시각, 참여 중이면 NULL). `hasRead(messageId)`가 읽음 판단의 기준이다.
+- `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서) + `left_at`(이탈 시각, 참여 중이면 NULL) + `hidden_at`(내 목록에서 숨긴 시각, 보이면 NULL). `hasRead(messageId)`가 읽음 판단의 기준이다.
 - `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키.
 - `ChatPeriod` — 채팅이 열려 있는 주말 구간(금 00:00 ~ 월 00:00). 값 객체.
 - `ChatRoomStatus`(SCHEDULED/ACTIVE/ENDED), `ChatEndReason`(EXPIRED/USER_ENDED/INSUFFICIENT_MEMBERS).
@@ -32,6 +32,7 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 - **그룹 방의 기본 이름은 저장하지 않고 유도한다.** `chat_room`에 이름 컬럼이 없다 — 그룹 방은 `source_id`가 `group_match.id`라 `GroupMatch.quizSetId` → `QuizSet.title`로 이어진다. 응답의 `roomName`이 그 값이고 1:1·재매칭은 null이다. 컬럼을 두면 퀴즈 주제가 바뀔 때 두 값이 어긋난다. 목록 조회는 방마다 타지 않고 두 번의 일괄 조회로 모은다(N+1 금지).
 - **"누가 나갔는지"는 `chat_room`에 두지 않는다.** 나갈 때 남기는 `SYSTEM` 메시지의 `sender_id`가 그 사실을 들고 있고, 조회자가 자기 ID와 비교해 "상대방이 채팅을 종료했습니다"를 렌더링한다. 조회자에 따라 값이 달라지는 표현(`SELF_LEFT`/`PARTNER_LEFT`)을 저장하지 않으면서, 그룹의 멤버 이탈도 같은 메커니즘으로 커버된다.
 - **개방 전 방도 읽기 전용이다.** 전송·이미지 URL 발급·STOMP 구독은 `CHAT_ROOM_NOT_OPENED`(7005)로 막는다 — 매칭 수락은 주중에도 일어나 방이 며칠간 `SCHEDULED`로 존재하는데, 그 사이 대화가 오가면 "금~일 72시간"이 클라이언트 렌더링 규칙에 불과해진다. 방 목록·메시지 조회·읽음은 허용해 "금요일에 열려요"를 보여줄 수 있게 한다. **종료 후와 다른 코드를 쓰는 이유**는 클라이언트가 두 상태를 가려 보여줘야 하기 때문이다.
+- **끝난 방은 내 목록에서만 감출 수 있다**(`DELETE /api/v1/chat/rooms/{roomId}`, `chat_room_member.hidden_at`). 목록(`getMyRooms`)에서만 빠지고 메시지 조회는 그대로 되며, 상대 화면과 안읽음·투표 집계에는 아무 영향이 없다. 이탈과 컬럼을 나눈 이유가 이것이다 — `left_at`에 담으면 감췄을 뿐인 사람이 나간 사람으로 집계된다. 진행 중인 방은 `CHAT_ROOM_NOT_ENDED`(7006)로 막는다: 감춘 뒤 새 메시지가 와도 목록에 다시 뜨지 않아 대화를 놓친다. 뒤집어 말하면 끝난 방은 새 메시지가 올 수 없어 되살릴 경로(unhide)가 없어도 된다(이슈 #201).
 - **종료된 방은 읽기 전용이다.** 전송·이미지 URL 발급·STOMP 구독은 `CHAT_ROOM_ENDED`(7004)로 막고, **조회와 읽음 처리는 허용한다** — 지난 대화와 평가 안내를 봐야 하기 때문이다. 내가 나간 방과는 다르다: 방이 끝난 것이지 내가 빠진 것이 아니라 계속 보인다. 그래서 접근 검증이 둘로 갈린다: 대화를 이어가는 경로는 `ChatRoomAccessChecker.validateActiveMember`, 읽기만 하는 경로는 `validateMember`.
 
 ## SYSTEM 메시지 (FE 계약)
@@ -88,4 +89,4 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 
 ## 핵심 파일
 - 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`·`ChatPeriod`), `repository`(+`querydsl` 커서 페이징). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`, 생명주기 컬럼은 `V20260803223317_채팅 종료 생명주기 컬럼 추가.sql`.
-- API: `api/.../chat/controller`(REST 조회·종료), `service/ChatService`(방 생성·목록·메시지 페이징·읽음·전송), `service/ChatRoomEndService`(만료 마감·예약 개방·사용자 종료), `service/ChatRoomAccessChecker`(멤버십·종료 여부 판정), `scheduler/ChatRoomLifecycleScheduler`(개방·마감 + 평가 열기·누락 복구), `websocket`(`WebSocketConfig`·`StompAuthChannelInterceptor`·`ChatStompController`).
+- API: `api/.../chat/controller`(REST 조회·종료·숨김), `service/ChatService`(방 생성·목록·메시지 페이징·읽음·전송·숨김), `service/ChatRoomEndService`(만료 마감·예약 개방·사용자 종료), `service/ChatRoomAccessChecker`(멤버십·종료 여부 판정), `scheduler/ChatRoomLifecycleScheduler`(개방·마감 + 평가 열기·누락 복구), `websocket`(`WebSocketConfig`·`StompAuthChannelInterceptor`·`ChatStompController`).
