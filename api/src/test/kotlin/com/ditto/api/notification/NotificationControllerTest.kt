@@ -17,6 +17,7 @@ import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
@@ -206,7 +207,7 @@ class NotificationControllerTest : RestDocsTest() {
                 .andExpect(jsonPath("$.success").value(true))
         }
 
-        check(notificationRepository.findByIdAndMemberId(notification.id, member.id)!!.isRead) {
+        check(notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, member.id)!!.isRead) {
             "읽음 처리되지 않았다"
         }
 
@@ -257,7 +258,7 @@ class NotificationControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.statusCode").value(404))
 
-        check(!notificationRepository.findByIdAndMemberId(notification.id, other.id)!!.isRead) {
+        check(!notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, other.id)!!.isRead) {
             "남의 알림이 읽음 처리됐다"
         }
     }
@@ -307,6 +308,208 @@ class NotificationControllerTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.readCount").value(0))
+    }
+
+    @Test
+    @DisplayName("알림 하나를 삭제한다 — 목록과 미읽음 수에서 함께 빠진다")
+    fun deleteNotification() {
+        val member = saveMember("삭제회원")
+        val notification = save(member.id, NotificationType.MATCH_RESULT, "지울 알림", targetId = 1L)
+        save(member.id, NotificationType.CHAT_MESSAGE, "남길 알림", targetId = 2L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.deletedCount").value(1))
+            .andDo(
+                document(
+                    "notifications-delete",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Notification")
+                            .summary("알림 삭제")
+                            .description(
+                                "알림 하나를 지웁니다. 목록과 미읽음 수에서 함께 빠지며 되돌릴 수 없습니다. " +
+                                    "내 알림이 아니거나 이미 지운 알림이면 404 로 응답합니다. " +
+                                    "deletedCount 는 항상 1 입니다(전체 삭제와 형식을 맞춘 값).",
+                            )
+                            .pathParameters(parameterWithName("id").description("알림 ID"))
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.deletedCount").description("지운 건수"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        mockMvc.perform(
+            get("/api/v1/notifications")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.data.notifications.length()").value(1))
+            .andExpect(jsonPath("$.data.notifications[0].title").value("남길 알림"))
+
+        mockMvc.perform(
+            get("/api/v1/notifications/unread-count")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.data.count").value(1))
+
+        // 행은 남는다 — 중복 검사가 존재를 보므로 지우면 스케줄러가 다시 적재한다.
+        check(notificationRepository.findById(notification.id).get().isDeleted) {
+            "삭제 표시가 찍히지 않았다"
+        }
+    }
+
+    @Test
+    @DisplayName("이미 지운 알림을 다시 삭제하면 404 다")
+    fun deleteTwiceRejected() {
+        val member = saveMember("두번삭제회원")
+        val notification = save(member.id, NotificationType.MATCH_RESULT, "지울 알림", targetId = 1L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.success").value(true))
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(404))
+    }
+
+    @Test
+    @DisplayName("남의 알림은 삭제할 수 없다")
+    fun deleteOthersNotificationRejected() {
+        val member = saveMember("삭제요청회원")
+        val other = saveMember("삭제대상주인")
+        val notification = save(other.id, NotificationType.MATCH_RESULT, "남의 알림", targetId = 1L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(404))
+
+        check(notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, other.id) != null) {
+            "남의 알림이 삭제됐다"
+        }
+    }
+
+    @Test
+    @DisplayName("지운 알림은 읽음 처리할 수 없다")
+    fun readDeletedNotificationRejected() {
+        val member = saveMember("지운알림읽음회원")
+        val notification = save(member.id, NotificationType.MATCH_RESULT, "지울 알림", targetId = 1L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/{id}", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.success").value(true))
+
+        mockMvc.perform(
+            put("/api/v1/notifications/{id}/read", notification.id)
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.statusCode").value(404))
+    }
+
+    @Test
+    @DisplayName("전체 삭제 — 지운 건수를 준다")
+    fun deleteAllNotifications() {
+        val member = saveMember("전체삭제회원")
+        save(member.id, NotificationType.MATCH_RESULT, "알림1", targetId = 1L)
+        save(member.id, NotificationType.CHAT_MESSAGE, "알림2", targetId = 2L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.deletedCount").value(2))
+            .andDo(
+                document(
+                    "notifications-delete-all",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Notification")
+                            .summary("알림 전체 삭제")
+                            .description(
+                                "화면에 보이는 내 알림을 모두 지웁니다. category 를 주면 그 필터 칩만 지웁니다. " +
+                                    "되돌릴 수 없으며, 지울 것이 없으면 deletedCount 가 0 이고 성공합니다.",
+                            )
+                            .queryParameters(
+                                queryParameterWithName("category")
+                                    .description("필터 (MATCHING·CHAT·SYSTEM). 생략 시 전체").optional(),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.deletedCount").description("지운 건수"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        // 두 번째 호출은 지울 것이 없다.
+        mockMvc.perform(
+            delete("/api/v1/notifications")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.data.deletedCount").value(0))
+    }
+
+    @Test
+    @DisplayName("카테고리를 주면 그 칩의 알림만 지운다")
+    fun deleteAllByCategory() {
+        val member = saveMember("카테고리삭제회원")
+        save(member.id, NotificationType.MATCH_RESULT, "매칭 알림", targetId = 1L)
+        save(member.id, NotificationType.CHAT_MESSAGE, "채팅 알림", targetId = 2L)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications")
+                .withApiKey()
+                .withBearerToken(member.id)
+                .param("category", NotificationCategory.CHAT.name),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.deletedCount").value(1))
+
+        mockMvc.perform(
+            get("/api/v1/notifications")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(jsonPath("$.data.notifications.length()").value(1))
+            .andExpect(jsonPath("$.data.notifications[0].title").value("매칭 알림"))
     }
 
     private fun save(

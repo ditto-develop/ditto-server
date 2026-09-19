@@ -34,6 +34,17 @@ class NotificationAppenderTest(
 
             notificationRepository.count() shouldBe 2
         }
+
+        "사용자가 지운 알림은 다시 적재되지 않는다 — 안 그러면 지울 때마다 스케줄러가 되살린다" {
+            notificationAppender.append(ME, NotificationMessages.matchResult(), targetId = QUIZ_SET)
+            val notification = notificationRepository.findAll().single()
+            notification.markDeleted(LocalDateTime.now())
+            notificationRepository.save(notification)
+
+            notificationAppender.append(ME, NotificationMessages.matchResult(), targetId = QUIZ_SET) shouldBe false
+
+            notificationRepository.count() shouldBe 1
+        }
     }
 
     "새 메시지는 방 단위로 접힌다 (COLLAPSE_UNREAD)" - {

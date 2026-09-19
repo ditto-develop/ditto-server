@@ -13,6 +13,18 @@ class NotificationRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : NotificationRepositoryCustom {
 
+    override fun countUnread(memberId: Long, from: LocalDateTime): Long =
+        queryFactory
+            .select(notification.count())
+            .from(notification)
+            .where(
+                notification.memberId.eq(memberId),
+                notification.readAt.isNull,
+                notification.deletedAt.isNull,
+                notification.createdAt.goe(from),
+            )
+            .fetchOne() ?: 0L
+
     override fun findByMemberIdWithCursor(
         memberId: Long,
         category: NotificationCategory?,
@@ -24,6 +36,7 @@ class NotificationRepositoryImpl(
             .selectFrom(notification)
             .where(
                 notification.memberId.eq(memberId),
+                notification.deletedAt.isNull,
                 notification.createdAt.goe(from),
                 category?.let { notification.type.`in`(NotificationType.of(it)) },
                 cursor?.let { notification.id.lt(it) },
@@ -41,6 +54,7 @@ class NotificationRepositoryImpl(
             .where(
                 notification.memberId.eq(memberId),
                 notification.readAt.isNull,
+                notification.deletedAt.isNull,
             )
             .execute()
 
@@ -53,6 +67,25 @@ class NotificationRepositoryImpl(
                 notification.type.eq(type),
                 notification.targetId.eq(targetId),
                 notification.readAt.isNull,
+            )
+            .execute()
+
+    @Transactional
+    override fun markAllDeleted(
+        memberId: Long,
+        category: NotificationCategory?,
+        at: LocalDateTime,
+        from: LocalDateTime,
+    ): Long =
+        queryFactory
+            .update(notification)
+            .set(notification.deletedAt, at)
+            .set(notification.updatedAt, at)
+            .where(
+                notification.memberId.eq(memberId),
+                notification.deletedAt.isNull,
+                notification.createdAt.goe(from),
+                category?.let { notification.type.`in`(NotificationType.of(it)) },
             )
             .execute()
 

@@ -7,11 +7,14 @@ import java.time.LocalDateTime
 
 interface NotificationRepositoryCustom {
 
+    /** 홈 헤더 벨 배지 — [from] 이후의 안읽은 알림 수. 목록과 창을 맞춰야 배지가 0이 된다. */
+    fun countUnread(memberId: Long, from: LocalDateTime): Long
+
     /**
      * 내 알림을 최신순(id DESC)으로 [size] 개 조회한다.
      *
      * [cursor]가 주어지면 그 id 미만(더 과거)만 — 아래로 스크롤 페이징용. [category]가 주어지면
-     * 그 카테고리의 유형만(생략 = 전체 칩). [from] 이전에 생성된 알림은 보이지 않는다(보관 30일).
+     * 그 카테고리의 유형만(생략 = 전체 칩). [from] 이전 알림과 지운 알림은 보이지 않는다.
      *
      * 새 메시지 알림은 접힐 때 행을 갱신하지 않고 다시 삽입하므로, `id` 정렬이 곧 시간 정렬이다.
      */
@@ -27,7 +30,7 @@ interface NotificationRepositoryCustom {
      * 안읽은 알림을 모두 읽음으로 표시한다 — 화면 우상단 "모두 읽음".
      *
      * 벌크 UPDATE 로 처리한다. 회원의 안읽은 알림을 전부 로드해 하나씩 바꾸면 30일치를 메모리에
-     * 올리게 되고, 목적이 "read_at 하나를 채우는 것"이라 엔티티를 거칠 이유가 없다.
+     * 올리게 되고, 목적이 "read_at 하나를 채우는 것"이라 엔티티를 거칠 이유가 없다. 지운 알림은 건드리지 않는다.
      * 호출자는 이후 같은 트랜잭션에서 알림 엔티티를 읽지 않아야 한다(영속성 컨텍스트와 어긋난다).
      *
      * @return 이번 호출로 읽음이 된 건수
@@ -43,6 +46,19 @@ interface NotificationRepositoryCustom {
      * @return 지운 건수
      */
     fun deleteUnread(memberId: Long, type: NotificationType, targetId: Long): Long
+
+    /**
+     * 화면의 "전체 삭제" — [from] 이후의 안 지운 내 알림에 지운 시각을 찍는다.
+     * [category]가 있으면 그 칩의 유형만. 행은 남긴다(중복 검사가 존재를 본다).
+     *
+     * @return 이번 호출로 지워진 건수
+     */
+    fun markAllDeleted(
+        memberId: Long,
+        category: NotificationCategory?,
+        at: LocalDateTime,
+        from: LocalDateTime,
+    ): Long
 
     /**
      * 회원의 알림을 모두 지운다 — 탈퇴 완전 삭제용.
