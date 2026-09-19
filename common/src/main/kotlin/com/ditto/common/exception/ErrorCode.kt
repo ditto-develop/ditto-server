@@ -48,6 +48,7 @@ enum class ErrorCode(
     INVALID_CHAT_IMAGE_KEY(400, "7003", "유효하지 않은 채팅 이미지입니다."),
     CHAT_ROOM_ENDED(409, "7004", "종료된 채팅방입니다."),
     CHAT_ROOM_NOT_OPENED(409, "7005", "아직 열리지 않은 채팅방입니다."),
+    CHAT_ROOM_NOT_ENDED(409, "7006", "아직 종료되지 않은 채팅방입니다."),
     // 80xx는 리뷰(평가), 81xx는 재매칭 대역이다.
     INVALID_REVIEW_TARGET(400, "8001", "평가할 수 없는 대상입니다."),
     INVALID_REVIEW_ANSWER(400, "8002", "평가 응답값이 올바르지 않습니다."),

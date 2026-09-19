@@ -153,10 +153,11 @@ class ChatService(
      * **내가 나간 방은 빼고 준다.** 나간 사람에게는 그 방이 없는 것으로 다루기 때문이다
      * (`ChatRoomAccessChecker.validateMember` 가 같은 기준으로 조회도 막는다 — 이슈 #196).
      * 종료된 방은 계속 준다: 내가 나간 것이 아니라 방이 끝난 것이라 지난 대화를 볼 수 있다.
+     * 내가 감춘 방([hideRoom])도 뺀다. 목록에서만 빠지고 조회는 그대로 된다.
      */
     fun getMyRooms(memberId: Long): List<ChatRoomResponse> {
         val myRoomMembers = chatRoomMemberRepository.findByMemberId(memberId)
-            .filter { !it.hasLeft }
+            .filter { !it.hasLeft && !it.isHidden }
         if (myRoomMembers.isEmpty()) {
             return emptyList()
         }
@@ -179,6 +180,30 @@ class ChatService(
                 )
             }
             .sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
+    }
+
+    /**
+     * 종료된 방을 내 목록에서만 감춘다. 상대 목록·메시지는 그대로고, 다시 요청해도 성공한다(멱등).
+     *
+     * 끝난 방만 허용한다. 진행 중인 방을 감추면 새 메시지가 와도 목록에 다시 뜨지 않아 대화를 놓친다.
+     * 감춘 방도 roomId 로는 그대로 조회된다. 끝난 방에는 새 대화가 쌓이지 않아 이탈(#196)처럼
+     * 방 전체를 가릴 이유가 없다.
+     */
+    @Transactional
+    fun hideRoom(memberId: Long, roomId: Long) {
+        val roomMember = chatRoomMemberRepository.findByRoomIdAndMemberId(roomId, memberId)
+            ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
+        // 나간 사람에게는 방이 없는 것으로 다룬다(validateMember 와 같은 기준).
+        if (roomMember.hasLeft) {
+            throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
+        }
+
+        val room = chatRoomRepository.findById(roomId).orElseThrow { chatRoomAccessChecker.notFoundOrForbidden(roomId) }
+        if (!room.isEnded) {
+            throw WarnException(ErrorCode.CHAT_ROOM_NOT_ENDED)
+        }
+
+        roomMember.hide(realNow())
     }
 
     /** 방의 과거 메시지 커서 페이징 (최신순). cursor 미만(더 과거)으로 size 개. */

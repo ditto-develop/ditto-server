@@ -66,7 +66,7 @@ class ChatRoomMember private constructor(
     val hasLeft: Boolean
         get() = leftAt != null
 
-    /** 내 목록에서 감췄는지. 이탈과 달리 상대에게는 아무 변화가 없고 집계에서도 빠지지 않는다. */
+    /** 내 목록에서 감췄는지. 이탈과 달리 상대 화면과 집계에는 영향이 없다. */
     val isHidden: Boolean
         get() = hiddenAt != null
 
@@ -99,8 +99,8 @@ class ChatRoomMember private constructor(
     }
 
     /**
-     * 내 목록에서 감춘다. 이미 감췄으면 최초 시각을 그대로 둔다 — 숨김은 한 번 일어나는 사건이 아니라
-     * 켜고 끄는 상태라, [leave]처럼 재호출을 막지 않고 여기서 멱등하게 받는다.
+     * 내 목록에서 감춘다. 이미 감춘 방이면 최초 시각을 유지한다.
+     * [leave]와 달리 재호출을 막지 않는다. 숨김은 일어난 사건이 아니라 켜고 끄는 상태다.
      */
     fun hide(at: LocalDateTime) {
         if (isHidden) {
