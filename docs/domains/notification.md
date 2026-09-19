@@ -49,6 +49,7 @@
 - **알림 행이 곧 처리 완료 표시다.** "대상당 1회" 유형은 존재 검사로 막으므로, 스케줄러가 같은 방·같은 퀴즈셋을 매 주기 다시 집어와도 알림은 하나다. 별도 플래그나 outbox 가 없다(`RematchChatRoomOpener`·`EndedChatReviewOpener`와 같은 수렴 루프).
 - **재매칭 방 종료에는 평가 요청을 알리지 않는다.** 재매칭 채팅은 평가를 열지 않기 때문이다(#132). `ReviewRequestNotifier`가 `REMATCH`를 걸러낸다.
 - **탈퇴 완전 삭제는 알림도 지운다.** 본문에 닉네임·메시지 미리보기(개인정보)가 들어 있다.
+- **삭제는 되돌릴 수 없다(하드 삭제).** 사용자 삭제·접기·탈퇴·보관 경과 정리가 모두 행을 지운다. 알림은 사건의 사본이라 복구할 원본이 따로 있고, 30일 뒤 어차피 사라진다.
 - **한 토큰 = 한 회원.** `member_device.token` 단독 유일 제약이 강제한다. 토큰은 기기의 것이라 로그아웃해도
   그대로이므로, 공용 기기에서 다른 회원이 로그인하면 행 추가가 아니라 소유자 갱신이다 — 갱신하지 않으면
   이전 회원의 알림이 남의 폰에 뜬다. 등록은 멱등이고(앱이 실행·토큰 갱신 때마다 재호출),
@@ -91,6 +92,8 @@
 | GET | `/api/v1/notifications/unread-count` | 홈 헤더 벨 배지용 |
 | PUT | `/api/v1/notifications/{id}/read` | 개별 읽음(멱등). 남의 알림은 404 |
 | PUT | `/api/v1/notifications/read-all` | 전체 읽음. `readCount` 반환 |
+| DELETE | `/api/v1/notifications/{id}` | 개별 삭제(하드). 남의 알림·이미 지운 알림은 404 |
+| DELETE | `/api/v1/notifications` | 전체 삭제(하드). `category`를 주면 그 칩만. `deletedCount` 반환 |
 | POST | `/api/v1/notifications/devices` | 푸시 디바이스 토큰 등록(멱등·소유권 이전). 앱 전용 |
 | DELETE | `/api/v1/notifications/devices/{token}` | 토큰 해제(멱등). 남의 토큰은 404. 로그아웃·탈퇴 직전에 앱이 호출 |
 
