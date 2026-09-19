@@ -57,6 +57,16 @@ class NotificationRepositoryImpl(
             .execute()
 
     @Transactional
+    override fun deleteAllByMemberIdAndCategory(memberId: Long, category: NotificationCategory): Long =
+        queryFactory
+            .delete(notification)
+            .where(
+                notification.memberId.eq(memberId),
+                notification.type.`in`(NotificationType.of(category)),
+            )
+            .execute()
+
+    @Transactional
     override fun deleteAllByMemberId(memberId: Long): Long =
         queryFactory
             .delete(notification)

@@ -45,6 +45,15 @@ interface NotificationRepositoryCustom {
     fun deleteUnread(memberId: Long, type: NotificationType, targetId: Long): Long
 
     /**
+     * 회원의 알림 중 [category]에 속한 것을 지운다 — 알림 센터의 "전체 삭제"에서 필터 칩이 켜져 있을 때.
+     *
+     * 카테고리 없는 전체 삭제는 [deleteAllByMemberId]가 맡는다.
+     *
+     * @return 지운 건수
+     */
+    fun deleteAllByMemberIdAndCategory(memberId: Long, category: NotificationCategory): Long
+
+    /**
      * 회원의 알림을 모두 지운다 — 탈퇴 완전 삭제용.
      *
      * 본문에 닉네임·메시지 미리보기가 들어 있어 회원과 함께 지운다. 파생 삭제 쿼리(`deleteAllByMemberId`)를

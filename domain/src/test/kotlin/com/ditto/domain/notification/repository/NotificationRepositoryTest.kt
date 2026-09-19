@@ -147,6 +147,27 @@ class NotificationRepositoryTest(
         }
     }
 
+    "deleteAllByMemberIdAndCategory — 필터 칩 단위 전체 삭제" - {
+        "그 카테고리의 내 알림만 지운다" {
+            val matching = save(type = NotificationType.MATCH_RESULT, title = "매칭")
+            val chat = save(type = NotificationType.CHAT_MESSAGE, title = "채팅")
+            val others = save(memberId = OTHER, type = NotificationType.CHAT_MESSAGE, title = "남의 채팅")
+
+            val deleted = notificationRepository.deleteAllByMemberIdAndCategory(ME, NotificationCategory.CHAT)
+
+            deleted shouldBe 1
+            notificationRepository.findById(chat.id).isPresent shouldBe false
+            notificationRepository.findById(matching.id).isPresent shouldBe true
+            notificationRepository.findById(others.id).isPresent shouldBe true
+        }
+
+        "지울 것이 없으면 0을 반환한다" {
+            save(type = NotificationType.MATCH_RESULT)
+
+            notificationRepository.deleteAllByMemberIdAndCategory(ME, NotificationCategory.SYSTEM) shouldBe 0
+        }
+    }
+
     "deleteCreatedBefore — 보관 기간 경과분 정리" - {
         "기준 시각 이전에 만들어진 알림을 지운다" {
             save()
