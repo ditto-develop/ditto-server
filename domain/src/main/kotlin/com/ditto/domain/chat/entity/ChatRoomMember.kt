@@ -57,9 +57,18 @@ class ChatRoomMember private constructor(
     var leftAt: LocalDateTime? = null
         protected set
 
+    @Comment("내 목록에서 숨긴 시각 (보이면 NULL)")
+    @Column(name = "hidden_at")
+    var hiddenAt: LocalDateTime? = null
+        protected set
+
     /** 방을 나갔는지. 행을 지우지 않는 이유는 읽음 커서·과거 SYSTEM 메시지 해석을 보존하기 위해서다. */
     val hasLeft: Boolean
         get() = leftAt != null
+
+    /** 내 목록에서 감췄는지. 이탈과 달리 상대 화면과 집계에는 영향이 없다. */
+    val isHidden: Boolean
+        get() = hiddenAt != null
 
     /**
      * 읽음 위치를 messageId 까지 전진시킨다. 이미 더 앞을 읽었다면 그대로 둔다(단조 증가).
@@ -87,6 +96,17 @@ class ChatRoomMember private constructor(
     fun leave(at: LocalDateTime) {
         check(leftAt == null) { "이미 방을 나간 멤버입니다: id=$id, leftAt=$leftAt" }
         leftAt = at
+    }
+
+    /**
+     * 내 목록에서 감춘다. 이미 감춘 방이면 최초 시각을 유지한다.
+     * [leave]와 달리 재호출을 막지 않는다. 숨김은 일어난 사건이 아니라 켜고 끄는 상태다.
+     */
+    fun hide(at: LocalDateTime) {
+        if (isHidden) {
+            return
+        }
+        hiddenAt = at
     }
 
     companion object {

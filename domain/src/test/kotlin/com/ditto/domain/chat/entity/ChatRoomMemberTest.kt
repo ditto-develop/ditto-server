@@ -24,7 +24,47 @@ class ChatRoomMemberTest(
                 roomMember.lastReadMessageId shouldBe null
                 roomMember.leftAt shouldBe null
                 roomMember.hasLeft shouldBe false
+                roomMember.hiddenAt shouldBe null
+                roomMember.isHidden shouldBe false
             }
+        }
+    }
+
+    "hide — 내 목록에서 숨김" - {
+        "when: hide 하면" - {
+            "then: hiddenAt 이 기록되고 isHidden 이 true 가 된다" {
+                val hiddenAt = LocalDateTime.of(2026, 9, 21, 10, 0)
+                val roomMember = chatRoomMemberRepository.save(ChatRoomMember.of(roomId = 1L, memberId = 2L))
+
+                roomMember.hide(hiddenAt)
+
+                chatRoomMemberRepository.save(roomMember).let {
+                    it.hiddenAt shouldBe hiddenAt
+                    it.isHidden shouldBe true
+                }
+            }
+        }
+
+        "given: 이미 숨긴 방일 때" - {
+            "when: 다시 hide 하면" - {
+                "then: 최초 숨김 시각을 유지한다" {
+                    val firstHiddenAt = LocalDateTime.of(2026, 9, 21, 10, 0)
+                    val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
+                    roomMember.hide(firstHiddenAt)
+
+                    roomMember.hide(LocalDateTime.of(2026, 9, 21, 11, 0))
+
+                    roomMember.hiddenAt shouldBe firstHiddenAt
+                }
+            }
+        }
+
+        "숨김은 이탈과 별개 상태다" {
+            val roomMember = ChatRoomMember.of(roomId = 1L, memberId = 2L)
+
+            roomMember.hide(LocalDateTime.of(2026, 9, 21, 10, 0))
+
+            roomMember.hasLeft shouldBe false
         }
     }
 

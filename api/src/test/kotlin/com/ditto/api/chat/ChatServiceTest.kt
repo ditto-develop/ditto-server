@@ -20,6 +20,7 @@ import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -48,6 +49,13 @@ class ChatServiceTest(
     fun saveOpenedRoom(sourceId: Long = 100L, vararg memberIds: Long) =
         chatRoomRepository.save(ChatRoomFixture.personal(sourceId = sourceId, now = FRIDAY)).also { room ->
             chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) })
+        }
+
+    /** 만료로 끝난 방. */
+    fun saveEndedRoom(sourceId: Long = 100L, vararg memberIds: Long) =
+        saveOpenedRoom(sourceId, *memberIds).also { room ->
+            room.expire(FRIDAY.plusDays(3))
+            chatRoomRepository.save(room)
         }
 
     "1:1 방을 생성하면 두 회원의 멤버 레코드가 함께 생성된다" {
@@ -135,6 +143,69 @@ class ChatServiceTest(
         chatService.getMyRooms(memberId = 1L)[0].counterpartMemberIds shouldBe listOf(2L)
         // then: 이탈자에게는 그 방이 아예 없다 — 읽기 전용으로 남기던 정책을 철회했다(#196)
         chatService.getMyRooms(memberId = 3L).map { it.roomId } shouldNotContain room.id
+    }
+
+    "종료된 방을 숨기면 내 목록에서만 빠지고 상대 목록에는 남는다" {
+        // given: 종료된 방
+        val room = saveEndedRoom(100L, 1L, 2L)
+
+        // when
+        chatService.hideRoom(memberId = 1L, roomId = room.id)
+
+        // then
+        chatService.getMyRooms(memberId = 1L).map { it.roomId } shouldNotContain room.id
+        chatService.getMyRooms(memberId = 2L).map { it.roomId } shouldContain room.id
+    }
+
+    "숨긴 방도 메시지는 그대로 조회된다" {
+        val room = saveEndedRoom(100L, 1L, 2L)
+        chatMessageRepository.save(ChatMessage.of(room.id, 2L, "지난 대화"))
+        chatService.hideRoom(memberId = 1L, roomId = room.id)
+
+        chatService.getMessages(memberId = 1L, roomId = room.id, cursor = null, size = 20)
+            .messages.map { it.content } shouldBe listOf("지난 대화")
+    }
+
+    "이미 숨긴 방을 다시 숨겨도 성공한다(멱등)" {
+        val room = saveEndedRoom(100L, 1L, 2L)
+        chatService.hideRoom(memberId = 1L, roomId = room.id)
+
+        chatService.hideRoom(memberId = 1L, roomId = room.id)
+
+        chatService.getMyRooms(memberId = 1L).map { it.roomId } shouldNotContain room.id
+    }
+
+    "진행 중인 방은 숨길 수 없다" {
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        shouldThrow<WarnException> {
+            chatService.hideRoom(memberId = 1L, roomId = room.id)
+        }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_ENDED
+    }
+
+    "방 멤버가 아니면 숨길 수 없다" {
+        val room = saveEndedRoom(100L, 1L, 2L)
+
+        shouldThrow<WarnException> {
+            chatService.hideRoom(memberId = 99L, roomId = room.id)
+        }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
+    }
+
+    "존재하지 않는 방은 숨길 수 없다" {
+        shouldThrow<WarnException> {
+            chatService.hideRoom(memberId = 1L, roomId = 9999L)
+        }.errorCode shouldBe ErrorCode.CHAT_ROOM_NOT_FOUND
+    }
+
+    "나간 방은 숨길 수 없다" {
+        val room = saveEndedRoom(100L, 1L, 2L, 3L)
+        chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, 3L)
+            ?.apply { leave(FRIDAY) }
+            ?.let { chatRoomMemberRepository.save(it) }
+
+        shouldThrow<WarnException> {
+            chatService.hideRoom(memberId = 3L, roomId = room.id)
+        }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
     }
 
     "나간 방은 메시지도 읽을 수 없다 — 나간 뒤 오간 대화까지 읽히던 구멍을 막는다" {
