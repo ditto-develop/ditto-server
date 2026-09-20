@@ -4,6 +4,7 @@ import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationCategory
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.support.IntegrationTest
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -118,8 +119,8 @@ class NotificationRepositoryTest(
             val readCount = notificationRepository.markAllRead(ME, LocalDateTime.now())
 
             readCount shouldBe 1
-            notificationRepository.findByIdAndMemberId(mine.id, ME)!!.isRead shouldBe true
-            notificationRepository.findByIdAndMemberId(others.id, OTHER)!!.isRead shouldBe false
+            notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(mine.id, ME)!!.isRead shouldBe true
+            notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(others.id, OTHER)!!.isRead shouldBe false
         }
 
         "이미 다 읽었으면 0을 반환한다 — 멱등하다" {
@@ -144,6 +145,65 @@ class NotificationRepositoryTest(
             notificationRepository.findById(unread.id).isPresent shouldBe false
             notificationRepository.findById(read.id).isPresent shouldBe true
             notificationRepository.findById(otherRoom.id).isPresent shouldBe true
+        }
+    }
+
+    "markAllDeleted — 화면에서 지우기(행은 남긴다)" - {
+        "카테고리를 주면 그 칩의 내 알림만 지운 것으로 표시한다" {
+            val matching = save(type = NotificationType.MATCH_RESULT, title = "매칭")
+            val chat = save(type = NotificationType.CHAT_MESSAGE, title = "채팅")
+            val others = save(memberId = OTHER, type = NotificationType.CHAT_MESSAGE, title = "남의 채팅")
+
+            val deleted = notificationRepository
+                .markAllDeleted(ME, NotificationCategory.CHAT, LocalDateTime.now(), LONG_AGO)
+
+            deleted shouldBe 1
+            notificationRepository.findById(chat.id).get().isDeleted shouldBe true
+            notificationRepository.findById(matching.id).get().isDeleted shouldBe false
+            notificationRepository.findById(others.id).get().isDeleted shouldBe false
+        }
+
+        "카테고리가 없으면 창 안의 내 알림을 모두 지운다" {
+            save(type = NotificationType.MATCH_RESULT)
+            save(type = NotificationType.CHAT_MESSAGE)
+
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), LONG_AGO) shouldBe 2
+        }
+
+        "이미 지운 알림은 다시 세지 않는다 — 멱등하다" {
+            save()
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), LONG_AGO)
+
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), LONG_AGO) shouldBe 0
+        }
+
+        "보관 창 밖의 알림은 건드리지 않는다 — 화면에 없던 행이 건수에 섞이면 안 된다" {
+            save()
+
+            val tomorrow = LocalDateTime.now().plusDays(1)
+
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), tomorrow) shouldBe 0
+        }
+
+        "지운 알림은 목록·미읽음 수에서 빠지지만 행은 남는다" {
+            val notification = save()
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), LONG_AGO)
+
+            notificationRepository
+                .findByMemberIdWithCursor(ME, category = null, cursor = null, size = 10, from = LONG_AGO)
+                .shouldBeEmpty()
+            notificationRepository.countUnread(ME, LONG_AGO) shouldBe 0
+            notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notification.id, ME) shouldBe null
+            // 행이 남아야 재발송을 막는 존재 검사가 계속 통한다.
+            notificationRepository.findById(notification.id).isPresent shouldBe true
+        }
+
+        "지운 알림도 중복 검사의 근거로 센다 — 지웠다고 다시 알리면 안 된다" {
+            save(type = NotificationType.REVIEW_REQUEST, targetId = 7L)
+            notificationRepository.markAllDeleted(ME, null, LocalDateTime.now(), LONG_AGO)
+
+            notificationRepository
+                .existsByMemberIdAndTypeAndTargetId(ME, NotificationType.REVIEW_REQUEST, 7L) shouldBe true
         }
     }
 
@@ -174,9 +234,9 @@ class NotificationRepositoryTest(
             val tomorrow = LocalDateTime.now().plusDays(1)
 
             notificationRepository
-                .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(ME, LONG_AGO) shouldBe 2
+                .countUnread(ME, LONG_AGO) shouldBe 2
             notificationRepository
-                .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(ME, tomorrow) shouldBe 0
+                .countUnread(ME, tomorrow) shouldBe 0
         }
 
         "같은 (회원·유형·대상)의 알림이 이미 있는지 답한다 — 한 번만 알리기의 근거" {
