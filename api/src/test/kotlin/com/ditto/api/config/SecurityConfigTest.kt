@@ -176,6 +176,30 @@ class SecurityConfigTest : RestDocsTest() {
             )
                 .andExpect(status().isForbidden)
         }
+
+        @Test
+        @DisplayName("애플 웹 콜백은 애플 origin이 붙은 폼 POST를 받는다")
+        fun appleWebCallbackAllowsAppleOrigin() {
+            mockMvc.perform(
+                post("/api/v1/users/social-login/APPLE/callback")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .param("id_token", "fake-id-token")
+                    .header("Origin", "https://appleid.apple.com"),
+            )
+                .andExpect(status().isFound)
+        }
+
+        @Test
+        @DisplayName("애플 웹 콜백도 허용되지 않은 origin의 폼 POST는 막는다")
+        fun appleWebCallbackBlocksOtherOrigin() {
+            mockMvc.perform(
+                post("/api/v1/users/social-login/APPLE/callback")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .param("id_token", "fake-id-token")
+                    .header("Origin", "https://evil.com"),
+            )
+                .andExpect(status().isForbidden)
+        }
     }
 
     @Nested

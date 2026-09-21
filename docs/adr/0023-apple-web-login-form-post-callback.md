@@ -34,4 +34,6 @@
 ## Links
 
 - 이슈: [#165](https://github.com/ditto-develop/ditto-server/issues/165)
+- 후속: [ADR 0030](0030-apple-web-callback-cors-exemption.md) — 이 콜백이 크로스사이트 POST 라
+  CORS Origin 검사에 막혀 실패했다. 허용 목록에 애플 도메인을 더했다.
 - 핵심 파일: `infrastructure/.../oauth/SocialAuthorizationUrlProvider.kt`, `infrastructure/.../oauth/apple/AppleWebAuthorizationUrlProvider.kt`, `api/.../auth/controller/OAuthController.kt`(POST 콜백), `api/.../auth/service/AppleUserFieldReader.kt`

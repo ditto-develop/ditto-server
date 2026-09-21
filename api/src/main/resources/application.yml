@@ -30,6 +30,9 @@ ditto:
     allowed-origins:
       - http://localhost:3000
       - http://localhost:5173
+      # 애플 웹 로그인 콜백은 애플 도메인이 보내는 크로스사이트 폼 POST 라 Origin 이 애플 것이다.
+      # 빼면 콜백이 컨트롤러 전에 403 Invalid CORS request 로 끊긴다. ADR 0030
+      - https://appleid.apple.com
   jwt:
     secret: local-dev-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha
     expiration-ms: 3600000
