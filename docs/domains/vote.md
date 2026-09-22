@@ -37,5 +37,5 @@
 ## 핵심 파일
 
 - 도메인: `domain/.../chat/entity`(`ChatVote`·`ChatVoteOption`·`ChatVoteChoice`·enum 3종), `repository`(`ChatVoteRepository` 등 3개). 스키마: `domain/db/V20260825175340_그룹 투표 테이블 추가.sql`.
-- API: `api/.../chat/controller/ChatVoteController`, `service/ChatVoteService`(생성·조회·선택지 추가·cast·close), `dto/ChatVote*`. 방 종료 연동: `service/ChatRoomEndService.closeOpenVoteQuietly`. 알림: `notification/notifier/ChatVoteClosedNotifier`.
+- API: `api/.../chat/controller/ChatVoteController`, `service/ChatVoteService`(생성·조회·선택지 추가·cast·close), `dto/ChatVote*`. 방 종료 연동: `service/ChatRoomEndService.closeOpenVoteQuietly`. 알림: `notification/notifier/ChatVoteNotifier`.
 - 설계 배경: `docs/plans/group-vote.md`(로컬 계획서 — Figma·FE 실측 근거와 검증 지적 반영 내역).

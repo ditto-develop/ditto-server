@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
  * 여기서 막는다 — 마감 요청 경로에 있어 예외가 올라가면 이미 커밋된 마감이 실패로 보인다.
  */
 @Component
-class ChatVoteClosedNotifier(
+class ChatVoteNotifier(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationAppender: NotificationAppender,
 ) {

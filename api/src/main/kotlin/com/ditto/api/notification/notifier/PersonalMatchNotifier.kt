@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component
  * 1:1 대화 신청의 진행(신청·수락·거절)을 **상대 한 사람에게만** 알린다 — 화면을 열고 있지 않으면 알 길이
  * 없기 때문이다(조회 응답에는 상태가 이미 실려 있어 화면이 켜져 있으면 보인다).
  *
- * 행위를 한 본인에게는 보내지 않는다. 자기가 누른 것이라 알릴 것이 없다 — [ChatVoteClosedNotifier] 가
+ * 행위를 한 본인에게는 보내지 않는다. 자기가 누른 것이라 알릴 것이 없다 — [ChatVoteNotifier] 가
  * 마감자를 빼는 것과 같은 기준이다.
  *
  * 매칭 건마다 한 번이다(`target_id` = `personal_match.id`). 신청은 건마다 한 번 생기고 수락·거절은

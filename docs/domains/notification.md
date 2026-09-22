@@ -32,7 +32,7 @@
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |
-| `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteClosedNotifier` |
+| `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteNotifier` |
 | `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
 
 `MATCH_RESULT`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.

@@ -1,6 +1,6 @@
 package com.ditto.api.notification
 
-import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
+import com.ditto.api.notification.notifier.ChatVoteNotifier
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
@@ -12,8 +12,8 @@ import javax.sql.DataSource
 
 private const val ROOM = 1L
 
-class ChatVoteClosedNotifierTest(
-    private val chatVoteClosedNotifier: ChatVoteClosedNotifier,
+class ChatVoteNotifierTest(
+    private val chatVoteNotifier: ChatVoteNotifier,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
@@ -25,7 +25,7 @@ class ChatVoteClosedNotifierTest(
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it))
             }
 
-            chatVoteClosedNotifier.notifyClosed(ROOM, closedBy = 1L) shouldBe 2
+            chatVoteNotifier.notifyClosed(ROOM, closedBy = 1L) shouldBe 2
 
             val notifications = notificationRepository.findAll()
             notifications.map { it.memberId }.toSet() shouldBe setOf(2L, 3L)
@@ -44,7 +44,7 @@ class ChatVoteClosedNotifierTest(
             )
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = 3L))
 
-            chatVoteClosedNotifier.notifyClosed(ROOM, closedBy = 3L) shouldBe 1
+            chatVoteNotifier.notifyClosed(ROOM, closedBy = 3L) shouldBe 1
 
             notificationRepository.findAll().single().memberId shouldBe 1L
         }
