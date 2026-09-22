@@ -31,7 +31,7 @@ class PersonalMatchNotifierTest(
             ) shouldBe true
 
             notificationRepository.findAll().single().let {
-                // 받는 사람은 신청받은 한 명뿐이다 — 신청한 본인은 자기가 누른 것이라 받지 않는다
+                // 신청한 본인은 받지 않는다
                 it.memberId shouldBe receiver.id
                 it.type shouldBe NotificationType.MATCH_REQUESTED
                 it.title shouldBe "신청자님이 대화를 신청했어요"
@@ -108,7 +108,7 @@ class PersonalMatchNotifierTest(
             ) shouldBe true
 
             notificationRepository.findAll().single().let {
-                // 받는 사람은 신청자 한 명뿐이다 — 거절한 본인은 자기가 누른 것이라 받지 않는다
+                // 거절한 본인은 받지 않는다
                 it.memberId shouldBe requester.id
                 it.type shouldBe NotificationType.MATCH_REJECTED
                 it.title shouldBe "거절한사람님이 대화 신청을 거절했어요"

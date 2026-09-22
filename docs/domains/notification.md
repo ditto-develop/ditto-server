@@ -13,7 +13,7 @@
 - `DuplicatePolicy` — 같은 대상에 다시 발생했을 때의 처리(`ALLOW`/`ONCE_PER_TARGET`/`COLLAPSE_UNREAD`).
 - `NotificationAppender` — 알림을 남기는 유일한 입구. 실패를 삼킨다.
 - `NotificationWriter` — 실제 저장. `REQUIRES_NEW`로 자기 트랜잭션에서 커밋한다.
-- `NotificationMessages` — 문구 한곳 모음(정본은 기획의 "알림 문구 정책" 문서).
+- `NotificationMessages` — 문구 한곳 모음(정본은 기획의 "알림 문구" 표).
 - `MemberDevice` — 푸시 주소록 한 줄. 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원. 회원 1명이 여러 행(폰·태블릿).
 - `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·deepLink·뱃지가 여기 있다.
 - `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 무효 토큰(`UNREGISTERED`)을 콜백으로 돌려준다.
@@ -88,7 +88,8 @@
 
 원칙은 **커밋된 뒤에, 사건을 아는 곳에서**다.
 
-- 스케줄러가 부르는 경로(`MATCH_RESULT`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
+- 스케줄러가 부르는 경로(`MATCH_RESULT`·`NO_MATCH`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
+- 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`)는 **컨트롤러가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.
 
@@ -117,3 +118,5 @@
 - 실시간 배지 — 현재는 폴링/재조회. STOMP 개인 큐 여부 미정
 - `SYSTEM_NOTICE` 발송 주체 — 어드민 공지 화면
 - 채팅 연장(#121)으로 종료 시각이 밀렸을 때 종료 임박 알림을 다시 보낼지
+- 요청 경로의 알림 호출(신청·수락·거절·투표 시작·마감·채팅 종료)을 컨트롤러에서 `facade`로 모으기 — 진입점이 늘면 누락 위험
+- `CHAT_ROOM_OPENED`는 복구 경로가 없다(개방 커밋 직후 실패·재시작이면 알림 없음). 필요해지면 `CHAT_ENDING_SOON`처럼 최근 개방 방을 다시 집어오는 수렴 루프로

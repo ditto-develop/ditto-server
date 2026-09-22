@@ -166,7 +166,7 @@ class ChatVoteControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.voteId").value(41L))
             .andDo { verify(exactly = 1) { messagingTemplate.convertAndSend("/sub/chat/rooms/87", any<Any>()) } }
-            // 생성자 본인은 받지 않는다 — 방의 다른 멤버에게만 알린다
+            // 생성자 본인은 제외
             .andDo { verify(exactly = 1) { chatVoteNotifier.notifyCreated(87L, createdBy = 1L) } }
             .andDo(
                 document(

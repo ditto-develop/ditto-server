@@ -20,7 +20,7 @@ class ChatVoteNotifierTest(
 ) : IntegrationTest(dataSource, {
 
     "투표가 시작되면 방 멤버에게 알린다" - {
-        "생성자 본인은 받지 않는다 — 자기가 만들었다" {
+        "생성자 본인은 받지 않는다" {
             listOf(1L, 2L, 3L).forEach {
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it))
             }
@@ -37,7 +37,7 @@ class ChatVoteNotifierTest(
             }
         }
 
-        // 마감 뒤 같은 방에서 다시 시작한 투표는 정당한 새 알림이다 — 중복을 유형이 막지 않는다
+        // 마감 뒤 다시 시작한 투표도 알린다. 중복을 유형이 막지 않는다
         "같은 방의 다음 투표 시작도 알린다" {
             listOf(1L, 2L).forEach {
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it))

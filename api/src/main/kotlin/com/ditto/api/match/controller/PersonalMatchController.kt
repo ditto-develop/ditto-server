@@ -20,7 +20,7 @@ class PersonalMatchController(
     private val personalMatchNotifier: PersonalMatchNotifier,
 ) {
 
-    /** 대화 신청. 알림은 서비스 커밋 뒤 여기서 남긴다 — 거절([rejectMatch])과 같은 구조다. */
+    /** 대화 신청. 알림은 서비스 커밋 뒤 여기서 남긴다([rejectMatch]와 같은 구조). */
     @PostMapping("/api/v1/matches/request")
     fun requestMatch(
         @AuthenticationPrincipal principal: MemberPrincipal,
@@ -35,7 +35,7 @@ class PersonalMatchController(
         return ApiResponse.ok(requested)
     }
 
-    /** 신청 수락. 알림은 서비스 커밋 뒤 여기서 남긴다 — 거절([rejectMatch])과 같은 구조다. */
+    /** 신청 수락. 알림은 서비스 커밋 뒤 여기서 남긴다([rejectMatch]와 같은 구조). */
     @PostMapping("/api/v1/matches/request/{id}/accept")
     fun acceptMatch(
         @AuthenticationPrincipal principal: MemberPrincipal,

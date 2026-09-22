@@ -8,7 +8,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
 /**
- * 알림을 남기는 유일한 입구. 적재 지점 여섯 곳이 이것만 부르고, 행이 생긴 알림만 푸시가 나간다 —
+ * 알림을 남기는 유일한 입구. 모든 적재 지점이 이것만 부르고, 행이 생긴 알림만 푸시가 나간다.
  * 중복 정책으로 걸러진 사건은 푸시도 없다.
  *
  * 실패는 삼킨다. 알림을 못 남긴 것이 매칭·그룹 참여·채팅 전송을 되돌리는 것보다 낫다.

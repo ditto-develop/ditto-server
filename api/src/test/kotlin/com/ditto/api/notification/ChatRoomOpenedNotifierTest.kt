@@ -21,7 +21,7 @@ class ChatRoomOpenedNotifierTest(
 ) : IntegrationTest(dataSource, {
 
     "열린 방의 참여자에게 알린다" - {
-        "참여자 전원이 받고, 문구는 표 그대로다" {
+        "참여자 전원이 받는다" {
             val room = chatRoomRepository.save(ChatRoomFixture.personal())
             listOf(1L, 2L).forEach {
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it))
@@ -59,7 +59,7 @@ class ChatRoomOpenedNotifierTest(
             notificationRepository.findAll().single().memberId shouldBe 1L
         }
 
-        "열린 방이 없으면 조회 없이 0 이다" {
+        "열린 방이 없으면 0 이다" {
             chatRoomOpenedNotifier.notifyOpened(emptyList()) shouldBe 0
 
             notificationRepository.count() shouldBe 0

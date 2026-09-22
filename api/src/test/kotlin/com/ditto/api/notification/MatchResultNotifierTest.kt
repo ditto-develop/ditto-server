@@ -97,7 +97,7 @@ class MatchResultNotifierTest(
             noMatch.targetId shouldBe quizSet.id
         }
 
-        "퀴즈를 끝내지 않은 회원은 받지 않는다 — 참여하지 않은 사람에게 '답이 닿지 않았다'는 성립하지 않는다" {
+        "퀴즈를 끝내지 않은 회원은 받지 않는다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             quizProgressRepository.save(QuizProgressFixture.create(memberId = MEMBER_C, quizSetId = quizSet.id))
 
@@ -106,7 +106,7 @@ class MatchResultNotifierTest(
             notificationRepository.count() shouldBe 0
         }
 
-        "매칭 풀에서 빠진 회원(탈퇴 등)은 받지 않는다 — 배치와 같은 제외 정책을 쓴다" {
+        "매칭 풀에서 빠진 회원(탈퇴 등)은 받지 않는다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             val left = memberRepository.save(MemberFixture.create(status = MemberStatus.LEFT))
             saveCompletedProgress(left.id, quizSet.id)

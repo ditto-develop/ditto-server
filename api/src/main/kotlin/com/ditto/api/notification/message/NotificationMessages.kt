@@ -4,8 +4,7 @@ import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.notification.entity.NotificationType
 
 /**
- * 알림 문구를 한곳에 모은다. 기획의 "알림 문구" 표를 그대로 옮긴 것이며 정본은 그 표다 —
- * 문구를 바꿀 때 여기만 고친다.
+ * 알림 문구를 한곳에 모은다. 정본은 기획의 "알림 문구" 표고, 문구를 바꿀 때 여기만 고친다.
  *
  * **문구는 발송 시점에 확정해 저장한다**(`Notification` KDoc). 그래서 이 객체는 순수 함수 모음이고
  * 조회 경로에서는 쓰이지 않는다.
@@ -75,7 +74,7 @@ object NotificationMessages {
     /**
      * 채팅이 끝나 평가가 열렸다.
      *
-     * 그룹은 상대가 여럿이라 이름을 하나만 쓸 수 없으므로 인원으로 말한다 —
+     * 그룹은 상대가 여럿이라 이름을 하나만 쓸 수 없으므로 인원으로 말한다.
      * 표의 문구("{닉네임}님과의 만남을 짧게 기록해주세요")는 1:1 기준이다.
      */
     fun reviewRequest(counterpartNicknames: List<String>): NotificationContent = NotificationContent(
@@ -88,10 +87,7 @@ object NotificationMessages {
         },
     )
 
-    /**
-     * 만남 투표가 시작됐다. 표의 `{마감}`은 방 종료 시각으로 채운다 — 투표에는 마감 시각이 없고
-     * (`docs/domains/vote.md`) 방이 끝나면 열린 투표가 함께 닫히므로, 투표할 수 있는 상한은 방 종료다.
-     */
+    /** 만남 투표가 시작됐다. 투표에는 마감 시각이 없어서(vote.md) 표의 {마감}은 방 종료 시각으로 채운다. */
     fun voteCreated(): NotificationContent = NotificationContent(
         type = NotificationType.VOTE_CREATED,
         title = "만남 투표가 시작됐어요",

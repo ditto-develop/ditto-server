@@ -88,7 +88,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { reviewRequestNotifier.notifyFor(emptyList()) }
     }
 
-    "이번 주기에 열린 방만 오픈 알림으로 넘긴다 — 개방이 커밋된 뒤라 롤백된 개방의 알림이 남지 않는다" {
+    "이번 주기에 열린 방만 오픈 알림으로 넘긴다" {
         every { chatRoomEndService.openDue(any()) } returns listOf(
             ChatRoomFixture.personal(id = 11L),
             ChatRoomFixture.group(id = 12L),

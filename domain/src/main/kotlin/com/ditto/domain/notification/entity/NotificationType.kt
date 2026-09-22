@@ -22,10 +22,7 @@ enum class NotificationType(
      */
     MATCH_RESULT(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
 
-    /**
-     * 퀴즈를 끝냈지만 이번 주 후보가 한 명도 없다. 대상이 퀴즈셋인 이유는 [MATCH_RESULT]와 같다.
-     * 수신자는 매칭 풀에 든 회원이다 — 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않는다.
-     */
+    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. 수신자는 매칭 풀에 든 회원. 대상이 퀴즈셋인 이유는 [MATCH_RESULT]와 같다. */
     NO_MATCH(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
 
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
@@ -40,10 +37,7 @@ enum class NotificationType(
     /** 재매칭이 성사돼 채팅방이 예약됐다. */
     REMATCH_MATCHED(NotificationCategory.MATCHING, "chat_room.id (재매칭 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
-    /**
-     * 상대가 나에게 1:1 대화를 신청했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다 —
-     * 한 주에 여러 명에게서 받을 수 있어 회원+유형으로만 막으면 첫 신청만 알린다.
-     */
+    /** 상대가 나에게 1:1 대화를 신청했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
     MATCH_REQUESTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
 
     /** 내가 보낸 1:1 대화 신청을 상대가 수락했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
@@ -68,10 +62,7 @@ enum class NotificationType(
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
 
-    /**
-     * 만남 투표가 시작됐다. 중복을 유형이 막지 않는 이유는 [VOTE_CLOSED]와 같다 — 생성 자체가 방당 열린
-     * 투표 1개로 막혀 있고, 마감 뒤 같은 방의 다음 투표 시작은 정당한 새 알림이다.
-     */
+    /** 만남 투표가 시작됐다. 생성이 방당 열린 투표 1개로 막혀 있어 중복을 유형이 막지 않는다. [VOTE_CLOSED]와 같다. */
     VOTE_CREATED(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ALLOW),
 
     /**
@@ -93,7 +84,7 @@ enum class NotificationType(
 
 /**
  * 같은 대상에 알림이 다시 발생했을 때의 처리 방식. 부르는 쪽이 아니라 유형이 정한다 —
- * 적재 지점이 여섯 곳이라, 각자 판단하게 두면 같은 유형이 곳에 따라 다르게 쌓인다.
+ * 적재 지점이 여럿이라, 각자 판단하게 두면 같은 유형이 곳에 따라 다르게 쌓인다.
  *
  * [ALLOW]가 아닌 정책은 판정 대상이 필요하므로 `targetId`가 있어야 한다.
  */
