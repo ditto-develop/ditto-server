@@ -31,7 +31,7 @@ class ChatVoteClosedNotifierTest(
             notifications.map { it.memberId }.toSet() shouldBe setOf(2L, 3L)
             notifications.first().let {
                 it.type shouldBe NotificationType.VOTE_CLOSED
-                it.title shouldBe "만남 투표가 마감됐어요"
+                it.title shouldBe "만남 투표가 끝났어요"
                 it.targetId shouldBe ROOM
             }
         }

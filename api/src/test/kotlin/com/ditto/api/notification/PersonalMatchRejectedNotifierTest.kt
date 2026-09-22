@@ -34,8 +34,8 @@ class PersonalMatchRejectedNotifierTest(
                 // 받는 사람은 신청자 한 명뿐이다 — 거절한 본인은 자기가 누른 것이라 받지 않는다
                 it.memberId shouldBe requester.id
                 it.type shouldBe NotificationType.MATCH_REJECTED
-                it.title shouldBe "아쉽지만 인연이 닿지 않았어요"
-                it.body shouldBe "거절한사람님과는 이번 주에 연결되지 않았어요. 다른 후보를 만나보세요."
+                it.title shouldBe "거절한사람님이 대화 신청을 거절했어요"
+                it.body shouldBe "새로운 인연에게 대화를 신청해보세요."
                 it.targetId shouldBe MATCH_ID
             }
         }
@@ -52,7 +52,7 @@ class PersonalMatchRejectedNotifierTest(
             notificationRepository.findAll().size shouldBe 1
         }
 
-        // 문구에 닉네임이 들어가므로 주어가 비는 알림("님과는 연결되지 않았어요")을 내보내느니 알리지 않는다.
+        // 문구에 닉네임이 들어가므로 주어가 비는 알림("님이 대화 신청을 거절했어요")을 내보내느니 알리지 않는다.
         "거절한 사람이 없으면(탈퇴 등) 알리지 않는다" {
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
 

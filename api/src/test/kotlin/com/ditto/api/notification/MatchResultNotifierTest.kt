@@ -39,7 +39,7 @@ class MatchResultNotifierTest(
             val notifications = notificationRepository.findAll()
             notifications.map { it.memberId }.toSet() shouldBe setOf(MEMBER_A, MEMBER_B)
             notifications.first().type shouldBe NotificationType.MATCH_RESULT
-            notifications.first().title shouldBe "이번 주 매칭 결과가 나왔어요"
+            notifications.first().title shouldBe "같은 답을 한 사람을 찾았어요"
             // 대상은 퀴즈셋이다 — "주마다 한 번"을 판정하는 기준이다.
             notifications.first().targetId shouldBe QUIZ_SET
         }

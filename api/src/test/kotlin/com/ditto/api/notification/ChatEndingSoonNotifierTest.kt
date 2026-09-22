@@ -37,7 +37,7 @@ class ChatEndingSoonNotifierTest(
 
             val notification = notificationRepository.findAll().first()
             notification.type shouldBe NotificationType.CHAT_ENDING_SOON
-            notification.title shouldBe "채팅이 6시간 후 종료돼요"
+            notification.title shouldBe "대화가 6시간 뒤에 닫혀요"
             notification.targetId shouldBe room.id
         }
 
