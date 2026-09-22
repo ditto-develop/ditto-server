@@ -91,6 +91,9 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        // 신청 사실은 수신자에게만 간다 — 신청한 본인(principal)은 자기가 누른 것이라 받지 않는다
+        verify { personalMatchNotifier.notifyRequested(matchId = 1L, receiverId = 2L, requestedBy = 1L) }
     }
 
     @Test

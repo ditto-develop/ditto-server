@@ -19,6 +19,50 @@ class PersonalMatchNotifierTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
+    "대화 신청이 들어오면 수신자에게 알린다" - {
+        "신청한 사람의 닉네임이 문구에 들어간다" {
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+            val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
+
+            personalMatchNotifier.notifyRequested(
+                matchId = MATCH_ID,
+                receiverId = receiver.id,
+                requestedBy = requester.id,
+            ) shouldBe true
+
+            notificationRepository.findAll().single().let {
+                // 받는 사람은 신청받은 한 명뿐이다 — 신청한 본인은 자기가 누른 것이라 받지 않는다
+                it.memberId shouldBe receiver.id
+                it.type shouldBe NotificationType.MATCH_REQUESTED
+                it.title shouldBe "신청자님이 대화를 신청했어요"
+                it.body shouldBe "수락하면 금요일에 대화방이 열려요."
+                it.targetId shouldBe MATCH_ID
+            }
+        }
+
+        "같은 매칭 건은 한 번만 알린다" {
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+            val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
+            personalMatchNotifier.notifyRequested(MATCH_ID, receiver.id, requester.id) shouldBe true
+
+            personalMatchNotifier.notifyRequested(MATCH_ID, receiver.id, requester.id) shouldBe false
+
+            notificationRepository.findAll().size shouldBe 1
+        }
+
+        "신청한 사람이 없으면(탈퇴 등) 알리지 않는다" {
+            val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
+
+            personalMatchNotifier.notifyRequested(
+                matchId = MATCH_ID,
+                receiverId = receiver.id,
+                requestedBy = 9999L,
+            ) shouldBe false
+
+            notificationRepository.findAll().shouldBeEmpty()
+        }
+    }
+
     "대화 신청이 거절되면 신청자에게 알린다" - {
         "거절한 사람의 닉네임이 문구에 들어간다" {
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))

@@ -35,6 +35,12 @@ enum class NotificationType(
     REMATCH_MATCHED(NotificationCategory.MATCHING, "chat_room.id (재매칭 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
     /**
+     * 상대가 나에게 1:1 대화를 신청했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다 —
+     * 한 주에 여러 명에게서 받을 수 있어 회원+유형으로만 막으면 첫 신청만 알린다.
+     */
+    MATCH_REQUESTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /**
      * 내가 보낸 1:1 대화 신청을 상대가 거절했다. 대상이 매칭 건인 이유: 거절은 되돌릴 수 없고
      * ([PersonalMatch.reject] 가 PENDING 만 받는다) 매칭 건마다 한 번이 정확한 단위다.
      * 회원+유형으로만 막으면 그 주 이후로 영영 알리지 못한다.

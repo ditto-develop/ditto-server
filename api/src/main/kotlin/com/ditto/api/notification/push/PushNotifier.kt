@@ -95,9 +95,10 @@ class PushNotifier(
     private fun deepLinkOf(notification: Notification): String? {
         val targetId = notification.targetId
         return when (notification.type) {
-            // 거절 전용 화면이 없다 — 다른 후보를 고르러 매칭 홈으로 보낸다.
+            // 신청·거절 전용 화면이 없다 — 받은 신청을 보거나 다른 후보를 고르러 매칭 홈으로 보낸다.
             // 미성사 그룹도 마찬가지다 — targetId 가 group_match.id 라 열 방이 없다.
             NotificationType.MATCH_RESULT,
+            NotificationType.MATCH_REQUESTED,
             NotificationType.MATCH_REJECTED,
             NotificationType.GROUP_NOT_FORMED,
             -> "/matching/"

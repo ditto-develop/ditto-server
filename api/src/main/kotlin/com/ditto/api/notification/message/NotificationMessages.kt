@@ -40,6 +40,13 @@ object NotificationMessages {
         body = "${counterpartNickname}님과 대화방이 다시 열렸어요. 이어서 이야기 나눠보세요.",
     )
 
+    /** [requesterNickname] 이 나에게 대화를 신청했다. */
+    fun matchRequested(requesterNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.MATCH_REQUESTED,
+        title = "${requesterNickname}님이 대화를 신청했어요",
+        body = "수락하면 금요일에 대화방이 열려요.",
+    )
+
     /**
      * 내가 보낸 대화 신청을 [rejecterNickname] 이 거절했다.
      *
