@@ -138,6 +138,8 @@ class PushNotifierTest : FreeSpec({
                 .data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.CHAT_MESSAGE, room = ChatRoomFixture.personal())
                 .data["deepLink"] shouldBe "/chat/one-on-one/100/"
+            sentMessage(NotificationType.CHAT_ROOM_OPENED, room = ChatRoomFixture.group())
+                .data["deepLink"] shouldBe "/chat/group/100/"
             // 재매칭 방도 1:1 화면이다 — FE 방 목록과 같은 이분법.
             sentMessage(NotificationType.CHAT_ENDING_SOON, room = ChatRoomFixture.rematch())
                 .data["deepLink"] shouldBe "/chat/one-on-one/100/"
@@ -171,6 +173,9 @@ class PushNotifierTest : FreeSpec({
                 .ttl shouldBe Duration.ofHours(1)
             sentMessage(NotificationType.CHAT_ENDING_SOON, room = ChatRoomFixture.personal())
                 .ttl shouldBe Duration.ofHours(6)
+            // 방이 열려 있는 72시간이 지나면 무의미하다.
+            sentMessage(NotificationType.CHAT_ROOM_OPENED, room = ChatRoomFixture.personal())
+                .ttl shouldBe Duration.ofDays(3)
             sentMessage(NotificationType.MATCH_RESULT).ttl shouldBe null
         }
     }

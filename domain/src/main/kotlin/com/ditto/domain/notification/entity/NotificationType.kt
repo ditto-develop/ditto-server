@@ -44,6 +44,9 @@ enum class NotificationType(
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 채팅방이 열려 대화를 시작할 수 있다. 방마다 한 번만 알린다. */
+    CHAT_ROOM_OPENED(NotificationCategory.CHAT, "chat_room.id (열린 방)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 상대가 메시지를 보냈다. 같은 방의 안읽은 알림은 접힌다. */
     CHAT_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.COLLAPSE_UNREAD),
 

@@ -74,6 +74,13 @@ object NotificationMessages {
         body = "언제 어디서 만날지 확인해보세요.",
     )
 
+    /** 채팅방이 열려 대화를 시작할 수 있다. 종료는 일요일 자정이다(`ChatPeriod`). */
+    fun chatRoomOpened(): NotificationContent = NotificationContent(
+        type = NotificationType.CHAT_ROOM_OPENED,
+        title = "이제 대화를 시작할 수 있어요",
+        body = "일요일 자정까지예요. 천천히 이야기 나눠보세요.",
+    )
+
     /**
      * 상대가 메시지를 보냈다. 본문은 미리보기다 — 이미지는 내용을 문구로 대신한다
      * (본문에 S3 key 가 그대로 들어가면 안 된다).

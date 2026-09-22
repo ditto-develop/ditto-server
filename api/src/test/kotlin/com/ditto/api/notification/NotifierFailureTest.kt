@@ -3,6 +3,7 @@ package com.ditto.api.notification
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
+import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
@@ -63,6 +64,7 @@ class NotifierFailureTest {
         notificationAppender,
         LEAD_HOURS,
     )
+    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, notificationAppender)
 
     @Test
     @DisplayName("평가 요청 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
@@ -111,6 +113,14 @@ class NotifierFailureTest {
         every { chatRoomRepository.findAllIdsEndingBetween(any(), any()) } throws connectionFailure()
 
         chatEndingSoonNotifier.notifyEndingSoon(LocalDateTime.of(2026, 7, 16, 12, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("채팅방 오픈 — 참여자 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun chatRoomOpenedAbsorbsMemberQueryFailure() {
+        every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()
+
+        chatRoomOpenedNotifier.notifyOpened(listOf(ROOM_ID)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

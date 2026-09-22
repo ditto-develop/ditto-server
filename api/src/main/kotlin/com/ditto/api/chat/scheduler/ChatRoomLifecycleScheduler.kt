@@ -2,6 +2,7 @@ package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
+import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
@@ -40,7 +41,7 @@ import org.springframework.stereotype.Component
  * 개방을 판정하는 이 스케줄러가 마감도 함께 본다. 그룹 상태는 바꾸지 않고 알림만 남기며,
  * 재발송은 알림 유형의 중복 정책이 막는다.
  *
- * 알림(평가 요청·종료 임박)도 여기서 남긴다. 각 전이가 커밋된 뒤에 부르므로 롤백된 전이의 알림이
+ * 알림(채팅방 오픈·평가 요청·종료 임박)도 여기서 남긴다. 각 전이가 커밋된 뒤에 부르므로 롤백된 전이의 알림이
  * 남지 않고, 알림 적재 실패는 흡수되므로 생명주기 처리를 막지 않는다.
  */
 @Component
@@ -50,6 +51,7 @@ class ChatRoomLifecycleScheduler(
     private val rematchChatRoomOpener: RematchChatRoomOpener,
     private val reviewRequestNotifier: ReviewRequestNotifier,
     private val chatEndingSoonNotifier: ChatEndingSoonNotifier,
+    private val chatRoomOpenedNotifier: ChatRoomOpenedNotifier,
     private val unformedGroupNotifier: UnformedGroupNotifier,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
@@ -60,7 +62,8 @@ class ChatRoomLifecycleScheduler(
         // 예약 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
         // 있다 — 오버라이드가 예약된 금요일 이후를 가리키면 openDue 가 곧바로 집어간다.
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
-        chatRoomEndService.openDue(serverNow)
+        val opened = chatRoomEndService.openDue(serverNow)
+        chatRoomOpenedNotifier.notifyOpened(opened.map { it.id })
 
         val ended = chatRoomEndService.endExpired(serverNow)
         val endedRoomIds = ended.map { it.id }

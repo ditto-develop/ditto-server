@@ -27,6 +27,7 @@
 | `REMATCH_MATCHED` | MATCHING | `chat_room.id`(재매칭) | 대상당 1회 | `RematchChatRoomOpener.reserve` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchRejectedNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
+| `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |
 | `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteClosedNotifier` |
@@ -73,7 +74,7 @@
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
 - **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON` 6시간 — 종료 6시간 전
-  알림이라 종료가 지나면 무의미). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
+  알림이라 종료가 지나면 무의미, `CHAT_ROOM_OPENED` 3일 — 방이 열려 있는 72시간). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
 - **죽은 토큰 정리** — 발송 결과의 `UNREGISTERED` 토큰을 `PushDeadDeviceCleaner`가 지운다(FCM 콜백
   스레드라 자기 트랜잭션). 방치하면 실패율이 쌓여 FCM 이 발송량을 제한한다.
 
@@ -81,7 +82,7 @@
 
 원칙은 **커밋된 뒤에, 사건을 아는 곳에서**다.
 
-- 스케줄러가 부르는 경로(`MATCH_RESULT`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
+- 스케줄러가 부르는 경로(`MATCH_RESULT`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.
 
