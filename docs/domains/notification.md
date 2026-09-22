@@ -32,6 +32,7 @@
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |
+| `VOTE_CREATED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.createVote` → `ChatVoteNotifier` |
 | `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteNotifier` |
 | `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
 
@@ -39,7 +40,7 @@
 
 **신청 알림은 수신자에게만, 수락·거절 알림은 신청자에게만 간다.** 행위를 한 본인은 자기가 누른 것이라 알릴 것이 없다. 이동 경로는 둘 다 전용 화면이 없어 `MATCH_RESULT`와 같은 `/matching/`이다. 그룹 초대 거절은 알리지 않는다(`docs/domains/match.md` — 거절당한 그룹의 다른 구성원에게는 알리지 않는다); 1:1만 알린다.
 
-\* `VOTE_CLOSED`가 중복을 유형으로 막지 않는 이유: 실제 발행이 close 의 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 마감은 정당한 새 알림이다. 방 종료 동반 마감(`ROOM_ENDED`)은 알리지 않는다 — 방이 끝났다는 사실은 평가 요청 알림이 이미 말한다.
+\* `VOTE_CREATED`·`VOTE_CLOSED`가 중복을 유형으로 막지 않는 이유: 실제 발행이 생성(방당 열린 투표 1개)·close 의 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 시작·마감은 정당한 새 알림이다. 시작 문구의 "일요일 자정까지"는 방 종료 시각이다 — 투표에는 마감 시각이 없다(`vote.md`). 방 종료 동반 마감(`ROOM_ENDED`)은 알리지 않는다 — 방이 끝났다는 사실은 평가 요청 알림이 이미 말한다.
 
 ## 불변식
 

@@ -81,6 +81,16 @@ object NotificationMessages {
         },
     )
 
+    /**
+     * 만남 투표가 시작됐다. 표의 `{마감}`은 방 종료 시각으로 채운다 — 투표에는 마감 시각이 없고
+     * (`docs/domains/vote.md`) 방이 끝나면 열린 투표가 함께 닫히므로, 투표할 수 있는 상한은 방 종료다.
+     */
+    fun voteCreated(): NotificationContent = NotificationContent(
+        type = NotificationType.VOTE_CREATED,
+        title = "만남 투표가 시작됐어요",
+        body = "언제 어디서 만날지 정해요. 일요일 자정까지 투표할 수 있어요.",
+    )
+
     /** 만남 투표가 마감됐다. */
     fun voteClosed(): NotificationContent = NotificationContent(
         type = NotificationType.VOTE_CLOSED,

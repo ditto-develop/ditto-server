@@ -104,7 +104,7 @@ class PushNotifier(
             NotificationType.MATCH_REJECTED,
             NotificationType.GROUP_NOT_FORMED,
             -> "/matching/"
-            NotificationType.GROUP_FORMED, NotificationType.VOTE_CLOSED ->
+            NotificationType.GROUP_FORMED, NotificationType.VOTE_CREATED, NotificationType.VOTE_CLOSED ->
                 targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
             NotificationType.REVIEW_REQUEST -> chatRoomPathOf(targetId)?.let { it + "rate/" }

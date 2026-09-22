@@ -155,6 +155,7 @@ class PushNotifierTest : FreeSpec({
             sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.MATCH_ACCEPTED).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.GROUP_FORMED).data["deepLink"] shouldBe "/chat/group/100/"
+            sentMessage(NotificationType.VOTE_CREATED).data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.VOTE_CLOSED).data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.REMATCH_MATCHED).data["deepLink"] shouldBe "/chat/one-on-one/100/"
         }

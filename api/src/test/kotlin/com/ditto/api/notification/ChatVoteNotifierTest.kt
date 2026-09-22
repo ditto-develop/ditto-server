@@ -19,6 +19,37 @@ class ChatVoteNotifierTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
+    "투표가 시작되면 방 멤버에게 알린다" - {
+        "생성자 본인은 받지 않는다 — 자기가 만들었다" {
+            listOf(1L, 2L, 3L).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it))
+            }
+
+            chatVoteNotifier.notifyCreated(ROOM, createdBy = 2L) shouldBe 2
+
+            val notifications = notificationRepository.findAll()
+            notifications.map { it.memberId }.toSet() shouldBe setOf(1L, 3L)
+            notifications.first().let {
+                it.type shouldBe NotificationType.VOTE_CREATED
+                it.title shouldBe "만남 투표가 시작됐어요"
+                it.body shouldBe "언제 어디서 만날지 정해요. 일요일 자정까지 투표할 수 있어요."
+                it.targetId shouldBe ROOM
+            }
+        }
+
+        // 마감 뒤 같은 방에서 다시 시작한 투표는 정당한 새 알림이다 — 중복을 유형이 막지 않는다
+        "같은 방의 다음 투표 시작도 알린다" {
+            listOf(1L, 2L).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = ROOM, memberId = it))
+            }
+            chatVoteNotifier.notifyCreated(ROOM, createdBy = 1L)
+
+            chatVoteNotifier.notifyCreated(ROOM, createdBy = 1L) shouldBe 1
+
+            notificationRepository.count() shouldBe 2
+        }
+    }
+
     "투표가 마감되면 방 멤버에게 알린다" - {
         "마감자 본인은 받지 않는다 — 자기가 눌렀다" {
             listOf(1L, 2L, 3L).forEach {

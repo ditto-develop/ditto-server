@@ -63,6 +63,7 @@ class NotificationTest : FreeSpec({
                 NotificationType.CHAT_ROOM_OPENED,
                 NotificationType.CHAT_MESSAGE,
                 NotificationType.CHAT_ENDING_SOON,
+                NotificationType.VOTE_CREATED,
                 NotificationType.VOTE_CLOSED,
             )
         NotificationType.of(NotificationCategory.SYSTEM) shouldBe listOf(NotificationType.SYSTEM_NOTICE)

@@ -63,6 +63,12 @@ enum class NotificationType(
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
 
     /**
+     * 만남 투표가 시작됐다. 중복을 유형이 막지 않는 이유는 [VOTE_CLOSED]와 같다 — 생성 자체가 방당 열린
+     * 투표 1개로 막혀 있고, 마감 뒤 같은 방의 다음 투표 시작은 정당한 새 알림이다.
+     */
+    VOTE_CREATED(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ALLOW),
+
+    /**
      * 만남 투표가 마감돼 결과가 확정됐다. 중복을 유형이 막지 않는 이유: 실제 발행이 close 의
      * 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 마감은 정당한 새 알림이다.
      */
