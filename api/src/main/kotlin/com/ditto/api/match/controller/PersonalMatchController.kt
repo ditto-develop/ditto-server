@@ -4,7 +4,7 @@ import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
-import com.ditto.api.notification.notifier.PersonalMatchRejectedNotifier
+import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 @Loggable
 class PersonalMatchController(
     private val personalMatchService: PersonalMatchService,
-    private val personalMatchRejectedNotifier: PersonalMatchRejectedNotifier,
+    private val personalMatchNotifier: PersonalMatchNotifier,
 ) {
 
     @PostMapping("/api/v1/matches/request")
@@ -45,7 +45,7 @@ class PersonalMatchController(
         @PathVariable id: Long,
     ): ApiResponse<PersonalMatchResponse> {
         val rejected = personalMatchService.rejectMatch(principal.memberId, id)
-        personalMatchRejectedNotifier.notifyRejected(
+        personalMatchNotifier.notifyRejected(
             matchId = rejected.id,
             requesterId = rejected.requesterId,
             rejectedBy = principal.memberId,

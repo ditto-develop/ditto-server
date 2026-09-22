@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component
  * 재시도해도 `PENDING` 이 아니라 `INVALID_STATUS_TRANSITION` 만 돌아온다.
  */
 @Component
-class PersonalMatchRejectedNotifier(
+class PersonalMatchNotifier(
     private val memberRepository: MemberRepository,
     private val notificationAppender: NotificationAppender,
 ) {

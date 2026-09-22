@@ -25,7 +25,7 @@
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
 | `REMATCH_MATCHED` | MATCHING | `chat_room.id`(재매칭) | 대상당 1회 | `RematchChatRoomOpener.reserve` |
-| `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchRejectedNotifier` |
+| `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |

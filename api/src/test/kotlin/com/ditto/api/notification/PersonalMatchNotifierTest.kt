@@ -1,6 +1,6 @@
 package com.ditto.api.notification
 
-import com.ditto.api.notification.notifier.PersonalMatchRejectedNotifier
+import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.repository.MemberRepository
@@ -12,8 +12,8 @@ import javax.sql.DataSource
 
 private const val MATCH_ID = 77L
 
-class PersonalMatchRejectedNotifierTest(
-    private val personalMatchRejectedNotifier: PersonalMatchRejectedNotifier,
+class PersonalMatchNotifierTest(
+    private val personalMatchNotifier: PersonalMatchNotifier,
     private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
@@ -24,7 +24,7 @@ class PersonalMatchRejectedNotifierTest(
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val rejecter = memberRepository.save(MemberFixture.create(nickname = "거절한사람", email = "b@ditto.pics"))
 
-            personalMatchRejectedNotifier.notifyRejected(
+            personalMatchNotifier.notifyRejected(
                 matchId = MATCH_ID,
                 requesterId = requester.id,
                 rejectedBy = rejecter.id,
@@ -45,9 +45,9 @@ class PersonalMatchRejectedNotifierTest(
         "같은 매칭 건은 한 번만 알린다" {
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val rejecter = memberRepository.save(MemberFixture.create(nickname = "거절한사람", email = "b@ditto.pics"))
-            personalMatchRejectedNotifier.notifyRejected(MATCH_ID, requester.id, rejecter.id) shouldBe true
+            personalMatchNotifier.notifyRejected(MATCH_ID, requester.id, rejecter.id) shouldBe true
 
-            personalMatchRejectedNotifier.notifyRejected(MATCH_ID, requester.id, rejecter.id) shouldBe false
+            personalMatchNotifier.notifyRejected(MATCH_ID, requester.id, rejecter.id) shouldBe false
 
             notificationRepository.findAll().size shouldBe 1
         }
@@ -56,7 +56,7 @@ class PersonalMatchRejectedNotifierTest(
         "거절한 사람이 없으면(탈퇴 등) 알리지 않는다" {
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
 
-            personalMatchRejectedNotifier.notifyRejected(
+            personalMatchNotifier.notifyRejected(
                 matchId = MATCH_ID,
                 requesterId = requester.id,
                 rejectedBy = 9999L,
