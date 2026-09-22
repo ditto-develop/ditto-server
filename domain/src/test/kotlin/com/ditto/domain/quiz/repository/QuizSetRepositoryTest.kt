@@ -251,17 +251,24 @@ class QuizSetRepositoryTest(
     }
 
     "findEndedQuizSetsWithoutCandidates" - {
+        val endedAfter = now.minusDays(14)
 
         "마감됐고 후보가 하나도 없으면 배치 대상이다" {
             quizSetRepository.save(QuizSetFixture.create(endDate = now.minusDays(1)))
 
-            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 1
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 1
         }
 
         "아직 마감 전이면 배치 대상이 아니다" {
             quizSetRepository.save(QuizSetFixture.create(endDate = now.plusDays(1)))
 
-            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 0
+        }
+
+        "하한보다 먼저 마감된 셋은 후보가 없어도 대상이 아니다" {
+            quizSetRepository.save(QuizSetFixture.create(endDate = endedAfter.minusDays(1)))
+
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 0
         }
 
         "1:1 후보(match_candidate)가 이미 있으면 제외된다" {
@@ -270,7 +277,7 @@ class QuizSetRepositoryTest(
             ).id
             matchCandidateRepository.save(MatchCandidateFixture.create(quizSetId = quizSetId))
 
-            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 0
         }
 
         "그룹 후보(group_match)가 이미 있으면 제외된다" {
@@ -280,7 +287,7 @@ class QuizSetRepositoryTest(
             ).id
             groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
 
-            quizSetRepository.findEndedQuizSetsWithoutCandidates(now).size shouldBe 0
+            quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 0
         }
     }
 })
