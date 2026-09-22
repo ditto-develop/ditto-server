@@ -34,10 +34,14 @@ class ChatRoomOpenedNotifier(
         }
 
         val content = NotificationMessages.chatRoomOpened()
-        // 열리기 전에 나간 멤버는 제외
+        // 열리기 전에 나간 멤버는 제외. 방 단위로 묶어 넘겨 푸시 준비(방 조회)를 방마다 한 번만 한다.
         val appended = chatRoomMemberRepository.findByRoomIdIn(roomIds)
             .filter { !it.hasLeft }
-            .count { notificationAppender.append(it.memberId, content, targetId = it.roomId) }
+            .groupBy { it.roomId }
+            .entries
+            .sumOf { (roomId, members) ->
+                notificationAppender.appendAll(members.map { it.memberId }, content, targetId = roomId)
+            }
 
         if (appended > 0) {
             logger.info { "채팅방 오픈 알림: ${appended}건 (방 ${roomIds.size}개)" }
