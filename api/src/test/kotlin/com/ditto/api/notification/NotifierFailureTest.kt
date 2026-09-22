@@ -1,6 +1,7 @@
 package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
@@ -39,6 +40,7 @@ class NotifierFailureTest {
     private val matchCandidateRepository = mockk<MatchCandidateRepository>()
     private val groupMatchRepository = mockk<GroupMatchRepository>()
     private val groupMatchMemberRepository = mockk<GroupMatchMemberRepository>()
+    private val matchmakingService = mockk<MatchmakingService>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -56,6 +58,7 @@ class NotifierFailureTest {
         matchCandidateRepository,
         groupMatchRepository,
         groupMatchMemberRepository,
+        matchmakingService,
         notificationAppender,
     )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(

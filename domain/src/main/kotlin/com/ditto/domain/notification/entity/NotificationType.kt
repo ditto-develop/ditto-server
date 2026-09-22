@@ -22,6 +22,12 @@ enum class NotificationType(
      */
     MATCH_RESULT(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 퀴즈를 끝냈지만 이번 주 후보가 한 명도 없다. 대상이 퀴즈셋인 이유는 [MATCH_RESULT]와 같다.
+     * 수신자는 매칭 풀에 든 회원이다 — 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않는다.
+     */
+    NO_MATCH(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
     GROUP_FORMED(NotificationCategory.MATCHING, "chat_room.id (그룹 방)", DuplicatePolicy.ONCE_PER_TARGET),
 

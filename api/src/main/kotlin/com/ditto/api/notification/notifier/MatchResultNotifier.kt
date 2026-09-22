@@ -1,5 +1,6 @@
 package com.ditto.api.notification.notifier
 
+import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
@@ -10,22 +11,24 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
 /**
- * 주간 매칭 후보가 생긴 회원에게 알린다 — 매칭 배치와 알림을 잇는 어댑터.
+ * 주간 매칭 결과를 참여자에게 알린다 — 매칭 배치와 알림을 잇는 어댑터.
  *
  * **배치 트랜잭션 밖에서 부른다.** 적재는 자기 트랜잭션에서 커밋되므로(`NotificationWriter`), 배치
  * 트랜잭션 안에서 부르면 배치가 롤백돼도 알림만 남는다. 그래서 스케줄러·어드민이 배치를 마친 뒤 부른다.
  *
- * 대상은 참여자 전원이 아니라 **후보가 실제로 생긴 회원**이다. 인원이 모자라 후보가 안 만들어진 주에
- * "결과가 나왔어요"를 보내면 빈 화면으로 보낸다.
+ * 후보가 생긴 회원에게는 결과를(`MATCH_RESULT`), 매칭 풀에 들었지만 후보가 없는 회원에게는 노매칭을
+ * (`NO_MATCH`) 알린다. 풀은 배치와 같은 계산([MatchmakingService.matchingPoolMemberIds])이다 — 완료자
+ * 전체로 잡으면 정지·성사로 풀에서 빠진 회원에게 "답이 닿지 않았어요"가 간다.
  *
- * 알림은 퀴즈셋당 한 번이다(`MATCH_RESULT`의 `target_id` = 퀴즈셋 ID). 어드민이 같은 주의 후보를
- * 여러 번 재생성해도 알림은 하나다 — 다시 알릴 이유가 없고, 재생성은 대개 운영상의 수정이다.
+ * 알림은 퀴즈셋당 한 번이다(둘 다 `target_id` = 퀴즈셋 ID). 어드민이 같은 주의 후보를 여러 번 재생성해도
+ * 알림은 하나다 — 다시 알릴 이유가 없고, 재생성은 대개 운영상의 수정이다.
  */
 @Component
 class MatchResultNotifier(
     private val matchCandidateRepository: MatchCandidateRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val matchmakingService: MatchmakingService,
     private val notificationAppender: NotificationAppender,
 ) {
     /**
@@ -35,7 +38,7 @@ class MatchResultNotifier(
      * 여기서 막는다 — 어드민 후보 재생성(`AdminMatchController`)이 부르는 경로라, 예외가 올라가면 이미
      * 커밋된 배치가 실패한 것처럼 보인다.
      *
-     * @return 실제로 남긴 알림 수. 실패했으면 0
+     * @return 실제로 남긴 알림 수(결과·노매칭 합). 실패했으면 0
      */
     fun notifyFor(quizSetIds: Collection<Long>): Int =
         runCatchingExceptions { appendMatchResults(quizSetIds) }
@@ -47,19 +50,19 @@ class MatchResultNotifier(
             return 0
         }
 
-        val appended = quizSetIds.sumOf { quizSetId ->
-            val memberIds = notifiedMemberIds(quizSetId)
-            notificationAppender.appendAll(
-                memberIds = memberIds,
-                content = NotificationMessages.matchResult(),
-                targetId = quizSetId,
-            )
+        var matchedCount = 0
+        var unmatchedCount = 0
+        quizSetIds.forEach { quizSetId ->
+            val matchedMemberIds = notifiedMemberIds(quizSetId)
+            val unmatchedMemberIds = matchmakingService.matchingPoolMemberIds(quizSetId) - matchedMemberIds.toSet()
+            matchedCount += notificationAppender.appendAll(matchedMemberIds, NotificationMessages.matchResult(), quizSetId)
+            unmatchedCount += notificationAppender.appendAll(unmatchedMemberIds, NotificationMessages.noMatch(), quizSetId)
         }
 
-        if (appended > 0) {
-            logger.info { "매칭 결과 알림: ${appended}건 (퀴즈셋 ${quizSetIds.size}개)" }
+        if (matchedCount + unmatchedCount > 0) {
+            logger.info { "매칭 결과 알림: 후보 있음 ${matchedCount}건, 노매칭 ${unmatchedCount}건 (퀴즈셋 ${quizSetIds.size}개)" }
         }
-        return appended
+        return matchedCount + unmatchedCount
     }
 
     /**

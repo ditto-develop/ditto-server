@@ -19,6 +19,13 @@ object NotificationMessages {
         body = "누구인지 확인해보세요.",
     )
 
+    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. */
+    fun noMatch(): NotificationContent = NotificationContent(
+        type = NotificationType.NO_MATCH,
+        title = "이번 주는 답이 닿지 않았어요",
+        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+    )
+
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
     fun groupFormed(memberCount: Int): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_FORMED,

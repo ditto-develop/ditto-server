@@ -21,7 +21,6 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
 
 /**
  * 한 퀴즈셋의 매칭 후보를 계산해 저장한다. 여러 셋을 도는 배치는 [MatchingBatchFacade]가 맡는다.
@@ -76,6 +75,19 @@ class MatchmakingService(
         )
         logGeneration(summary)
         return summary
+    }
+
+    /**
+     * 매칭 풀에 들어간 회원 — 완료자에서 제외 정책에 걸린 사람을 뺀 집합. [generateMatchingCandidates]와
+     * 같은 계산이다. 후보 0명 알림(`NO_MATCH`)의 모집단이 이것이다 — 완료자 전체로 잡으면 정지·성사로
+     * 풀에서 빠진 회원에게 "답이 닿지 않았어요"가 간다. 퀴즈셋이 없으면 빈 집합이다.
+     */
+    @Transactional(readOnly = true)
+    fun matchingPoolMemberIds(quizSetId: Long): Set<Long> {
+        val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return emptySet()
+        val completedProgresses =
+            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
+        return availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
     }
 
     private fun logGeneration(summary: CandidateGenerationSummary) {
