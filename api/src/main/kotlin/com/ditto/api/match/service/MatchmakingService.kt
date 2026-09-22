@@ -78,15 +78,20 @@ class MatchmakingService(
     }
 
     /**
-     * 매칭 풀에 든 회원. 완료자에서 제외 정책에 걸린 사람을 뺀 집합으로, [generateMatchingCandidates]와
-     * 같은 계산이다. NO_MATCH 알림의 모집단으로 쓴다. 퀴즈셋이 없으면 빈 집합.
+     * 매칭 풀에 든 활성 회원. 완료자에서 제외 정책에 걸린 사람을 뺀 집합([generateMatchingCandidates]와
+     * 같은 계산)에서 활성 회원만 남긴다. 그룹에는 제외 정책이 없어 정지·탈퇴 회원이 풀에 남기 때문이다.
+     * NO_MATCH 알림의 모집단으로 쓴다. 퀴즈셋이 없으면 빈 집합.
      */
     @Transactional(readOnly = true)
     fun matchingPoolMemberIds(quizSetId: Long): Set<Long> {
         val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return emptySet()
         val completedProgresses =
             quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
-        return availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
+        val poolMemberIds = availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
+        return memberRepository.findAllById(poolMemberIds)
+            .filter { it.isActive() }
+            .map { it.id }
+            .toSet()
     }
 
     private fun logGeneration(summary: CandidateGenerationSummary) {

@@ -17,6 +17,7 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.repository.NotificationRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -41,6 +42,7 @@ class NotifierFailureTest {
     private val groupMatchRepository = mockk<GroupMatchRepository>()
     private val groupMatchMemberRepository = mockk<GroupMatchMemberRepository>()
     private val matchmakingService = mockk<MatchmakingService>()
+    private val notificationRepository = mockk<NotificationRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -59,6 +61,7 @@ class NotifierFailureTest {
         groupMatchRepository,
         groupMatchMemberRepository,
         matchmakingService,
+        notificationRepository,
         notificationAppender,
     )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(

@@ -7,6 +7,8 @@ import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
@@ -28,6 +30,7 @@ class MatchResultNotifier(
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val matchmakingService: MatchmakingService,
+    private val notificationRepository: NotificationRepository,
     private val notificationAppender: NotificationAppender,
 ) {
     /**
@@ -49,9 +52,16 @@ class MatchResultNotifier(
         var unmatchedCount = 0
         quizSetIds.forEach { quizSetId ->
             val matchedMemberIds = notifiedMemberIds(quizSetId)
-            val unmatchedMemberIds = matchmakingService.matchingPoolMemberIds(quizSetId) - matchedMemberIds.toSet()
-            matchedCount += notificationAppender.appendAll(matchedMemberIds, NotificationMessages.matchResult(), quizSetId)
-            unmatchedCount += notificationAppender.appendAll(unmatchedMemberIds, NotificationMessages.noMatch(), quizSetId)
+            matchedCount += notificationAppender.appendAll(
+                memberIds = matchedMemberIds,
+                content = NotificationMessages.matchResult(),
+                targetId = quizSetId,
+            )
+            unmatchedCount += notificationAppender.appendAll(
+                memberIds = unmatchedMemberIds(quizSetId, matchedMemberIds),
+                content = NotificationMessages.noMatch(),
+                targetId = quizSetId,
+            )
         }
 
         if (matchedCount + unmatchedCount > 0) {
@@ -59,6 +69,17 @@ class MatchResultNotifier(
         }
         return matchedCount + unmatchedCount
     }
+
+    /**
+     * 풀에 들었지만 후보가 없는 회원. 이미 MATCH_RESULT 를 받은 회원은 뺀다. 어드민 재생성으로 후보가
+     * 사라진 사람에게 노매칭까지 보내면 같은 주에 두 알림이 나란히 남는다.
+     */
+    private fun unmatchedMemberIds(quizSetId: Long, matchedMemberIds: List<Long>): Set<Long> =
+        (matchmakingService.matchingPoolMemberIds(quizSetId) - matchedMemberIds)
+            .filterNot { memberId ->
+                notificationRepository.existsByMemberIdAndTypeAndTargetId(memberId, NotificationType.MATCH_RESULT, quizSetId)
+            }
+            .toSet()
 
     /**
      * 후보를 받은 회원. 후보를 담는 테이블이 매칭 타입마다 달라 양쪽을 모두 본다 —
