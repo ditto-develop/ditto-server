@@ -35,12 +35,20 @@ class PersonalMatchController(
         return ApiResponse.ok(requested)
     }
 
+    /** 신청 수락. 알림은 서비스 커밋 뒤 여기서 남긴다 — 거절([rejectMatch])과 같은 구조다. */
     @PostMapping("/api/v1/matches/request/{id}/accept")
     fun acceptMatch(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable id: Long,
-    ): ApiResponse<PersonalMatchResponse> =
-        ApiResponse.ok(personalMatchService.acceptMatch(principal.memberId, id))
+    ): ApiResponse<PersonalMatchResponse> {
+        val accepted = personalMatchService.acceptMatch(principal.memberId, id)
+        personalMatchNotifier.notifyAccepted(
+            matchId = accepted.id,
+            requesterId = accepted.requesterId,
+            acceptedBy = principal.memberId,
+        )
+        return ApiResponse.ok(accepted)
+    }
 
     /**
      * 신청 거절. 알림은 서비스 커밋 뒤 여기서 남긴다 — 트랜잭션 안에 외부 I/O(푸시)를 넣지 않는

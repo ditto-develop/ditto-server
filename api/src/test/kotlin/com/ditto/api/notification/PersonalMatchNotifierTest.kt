@@ -63,6 +63,39 @@ class PersonalMatchNotifierTest(
         }
     }
 
+    "대화 신청이 수락되면 신청자에게 알린다" - {
+        "수락한 사람의 닉네임이 문구에 들어간다" {
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+            val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
+
+            personalMatchNotifier.notifyAccepted(
+                matchId = MATCH_ID,
+                requesterId = requester.id,
+                acceptedBy = accepter.id,
+            ) shouldBe true
+
+            notificationRepository.findAll().single().let {
+                it.memberId shouldBe requester.id
+                it.type shouldBe NotificationType.MATCH_ACCEPTED
+                it.title shouldBe "수락한사람님이 대화 신청을 수락했어요"
+                it.body shouldBe "금요일에 설레는 만남이 시작돼요!"
+                it.targetId shouldBe MATCH_ID
+            }
+        }
+
+        "수락한 사람이 없으면(탈퇴 등) 알리지 않는다" {
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+
+            personalMatchNotifier.notifyAccepted(
+                matchId = MATCH_ID,
+                requesterId = requester.id,
+                acceptedBy = 9999L,
+            ) shouldBe false
+
+            notificationRepository.findAll().shouldBeEmpty()
+        }
+    }
+
     "대화 신청이 거절되면 신청자에게 알린다" - {
         "거절한 사람의 닉네임이 문구에 들어간다" {
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))

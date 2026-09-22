@@ -40,6 +40,9 @@ enum class NotificationType(
      */
     MATCH_REQUESTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 내가 보낸 1:1 대화 신청을 상대가 수락했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
+    MATCH_ACCEPTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
+
     /**
      * 내가 보낸 1:1 대화 신청을 상대가 거절했다. 대상이 매칭 건인 이유: 거절은 되돌릴 수 없고
      * ([PersonalMatch.reject] 가 PENDING 만 받는다) 매칭 건마다 한 번이 정확한 단위다.

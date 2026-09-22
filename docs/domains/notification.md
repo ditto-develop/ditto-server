@@ -26,6 +26,7 @@
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
 | `REMATCH_MATCHED` | MATCHING | `chat_room.id`(재매칭) | 대상당 1회 | `RematchChatRoomOpener.reserve` |
 | `MATCH_REQUESTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.requestMatch` → `PersonalMatchNotifier` |
+| `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
@@ -36,7 +37,7 @@
 
 `MATCH_RESULT`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
-**신청 알림은 수신자에게만, 거절 알림은 신청자에게만 간다.** 행위를 한 본인은 자기가 누른 것이라 알릴 것이 없다. 이동 경로는 둘 다 전용 화면이 없어 `MATCH_RESULT`와 같은 `/matching/`이다. 그룹 초대 거절은 알리지 않는다(`docs/domains/match.md` — 거절당한 그룹의 다른 구성원에게는 알리지 않는다); 1:1만 알린다.
+**신청 알림은 수신자에게만, 수락·거절 알림은 신청자에게만 간다.** 행위를 한 본인은 자기가 누른 것이라 알릴 것이 없다. 이동 경로는 둘 다 전용 화면이 없어 `MATCH_RESULT`와 같은 `/matching/`이다. 그룹 초대 거절은 알리지 않는다(`docs/domains/match.md` — 거절당한 그룹의 다른 구성원에게는 알리지 않는다); 1:1만 알린다.
 
 \* `VOTE_CLOSED`가 중복을 유형으로 막지 않는 이유: 실제 발행이 close 의 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 마감은 정당한 새 알림이다. 방 종료 동반 마감(`ROOM_ENDED`)은 알리지 않는다 — 방이 끝났다는 사실은 평가 요청 알림이 이미 말한다.
 

@@ -47,6 +47,13 @@ object NotificationMessages {
         body = "수락하면 금요일에 대화방이 열려요.",
     )
 
+    /** 내가 보낸 대화 신청을 [accepterNickname] 이 수락했다. */
+    fun matchAccepted(accepterNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.MATCH_ACCEPTED,
+        title = "${accepterNickname}님이 대화 신청을 수락했어요",
+        body = "금요일에 설레는 만남이 시작돼요!",
+    )
+
     /**
      * 내가 보낸 대화 신청을 [rejecterNickname] 이 거절했다.
      *

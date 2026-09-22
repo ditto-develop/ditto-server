@@ -100,9 +100,9 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
     @DisplayName("1:1 매칭 요청을 수락한다")
     fun acceptMatch() {
         every { personalMatchService.acceptMatch(any(), any()) } returns
-            sampleResponse(status = PersonalMatchStatus.ACCEPTED)
+            sampleResponse(id = 7L, requesterId = 42L, status = PersonalMatchStatus.ACCEPTED)
 
-        mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 1L))
+        mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 7L))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
@@ -137,6 +137,9 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        // 수락 사실은 신청자에게만 간다 — 수락한 본인(principal)은 자기가 누른 것이라 받지 않는다
+        verify { personalMatchNotifier.notifyAccepted(matchId = 7L, requesterId = 42L, acceptedBy = 1L) }
     }
 
     @Test
