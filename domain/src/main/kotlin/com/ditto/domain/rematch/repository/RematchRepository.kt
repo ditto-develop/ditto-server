@@ -24,6 +24,9 @@ interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCus
      */
     fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
 
+    /** 여러 그룹의 쌍을 한 번에. 미완료 평가 목록이 평가 수만큼 조회하지 않게 한다. */
+    fun findAllBySourceGroupMatchIdIn(sourceGroupMatchIds: Collection<Long>): List<Rematch>
+
     /**
      * 회원이 속한 특정 상태의 쌍 ID. 탈퇴 시 미성사(`WAITING`) 쌍을 찾아 취소하는 데 쓴다.
      *
@@ -56,6 +59,13 @@ interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCus
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Transactional(propagation = Propagation.MANDATORY)
     fun findWithLockById(id: Long): Rematch?
+
+    /** 소스 그룹의 정규화된 쌍 조회(잠금 없음). 제출 뒤 알림 판정처럼 읽기만 하는 곳이 쓴다. */
+    fun findBySourceGroupMatchIdAndMemberId1AndMemberId2(
+        sourceGroupMatchId: Long,
+        memberId1: Long,
+        memberId2: Long,
+    ): Rematch?
 
     /**
      * 소스 그룹의 정규화된 쌍으로 잠금 조회 — 리뷰 제출은 재매칭 ID를 모르고 "누구를 평가하는지"만 안다.

@@ -27,6 +27,7 @@ data class MemberReviewResponse(
             review: MemberReview,
             answers: List<ReviewAnswer>,
             membersById: Map<Long, Member>,
+            counterpartWantsByMemberId: Map<Long, Boolean?>,
         ): MemberReviewResponse = MemberReviewResponse(
             reviewId = review.id,
             matchType = review.matchType,
@@ -36,7 +37,13 @@ data class MemberReviewResponse(
             status = review.status,
             answeredTargetCount = answers.count { it.isAnswered },
             totalTargetCount = answers.size,
-            targets = answers.map { ReviewTargetResponse.of(it, membersById[it.reviewedMemberId]) },
+            targets = answers.map {
+                ReviewTargetResponse.of(
+                    answer = it,
+                    member = membersById[it.reviewedMemberId],
+                    counterpartWantsRematch = counterpartWantsByMemberId[it.reviewedMemberId],
+                )
+            },
         )
     }
 }

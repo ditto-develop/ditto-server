@@ -10,6 +10,8 @@ import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.rematch.RematchFixture
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswerContent
 import com.ditto.domain.review.entity.ReviewProgressStatus
@@ -29,6 +31,7 @@ class MemberReviewServiceTest(
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
     private val memberRepository: MemberRepository,
+    private val rematchRepository: RematchRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -222,6 +225,44 @@ class MemberReviewServiceTest(
             targetResponse.age shouldBe 27
             targetResponse.location shouldBe Location.SEOUL.code
             targetResponse.profileImageUrl shouldBe "m1"
+        }
+
+        "그룹 평가는 대상별로 상대의 재매칭 의사가 함께 온다" {
+            memberReviewService.createReviews(
+                endedChatRoom(matchType = ChatRoomType.GROUP, participantIds = listOf(1L, 2L, 3L)),
+            )
+            val wanting = rematchRepository.save(
+                RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 2L),
+            )
+            wanting.submitWants(2L, true, endedAt.plusHours(1))
+            rematchRepository.save(wanting)
+            rematchRepository.save(RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 3L))
+
+            val targets = memberReviewService.getMyPendingReviews(1L).single().targets.associateBy { it.memberId }
+
+            targets.getValue(2L).counterpartWantsRematch shouldBe true
+            targets.getValue(3L).counterpartWantsRematch shouldBe null
+        }
+
+        // 탈퇴로 취소된 쌍은 성사될 수 없다. 옛 의사를 "받은 신청"으로 보이면 수락해도 아무 일이 없다.
+        "상대가 탈퇴해 취소된 쌍은 상대 의사를 내지 않는다" {
+            memberReviewService.createReviews(
+                endedChatRoom(matchType = ChatRoomType.GROUP, participantIds = listOf(1L, 2L)),
+            )
+            val cancelled = rematchRepository.save(
+                RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 2L),
+            )
+            cancelled.submitWants(2L, true, endedAt.plusHours(1))
+            cancelled.cancelForMemberLeave()
+            rematchRepository.save(cancelled)
+
+            memberReviewService.getMyPendingReviews(1L).single().targets.single().counterpartWantsRematch shouldBe null
+        }
+
+        "1:1 평가는 재매칭이 없어 상대 의사가 null 이다" {
+            memberReviewService.createReviews(endedChatRoom())
+
+            memberReviewService.getMyPendingReviews(1L).single().targets.single().counterpartWantsRematch shouldBe null
         }
 
         "탈퇴 등으로 회원 정보가 없는 대상은 프로필이 비어 온다" {

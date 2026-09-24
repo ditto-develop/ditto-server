@@ -25,6 +25,8 @@
 - [0027 — 매칭 배치는 퀴즈셋마다 별도 트랜잭션으로 돈다](0027-matching-batch-per-quiz-set-transaction.md)
 - [0028 — 어드민 애플 로그인은 폼 POST 콜백 한 경로만 CSRF 예외](0028-admin-apple-login-csrf-exemption.md)
 - [0029 — 타인 프로필·평점 열람을 성사 전 후보까지 열되, 후보에게는 요약만](0029-peer-profile-candidate-summary-tier.md)
+- [0030 — 애플 도메인을 CORS 허용 origin에 넣는다](0030-apple-web-callback-cors-exemption.md)
+- [0031 — 재매칭 의사를 상대에게 공개한다 (상호 선택 비공개 → 신청/수락)](0031-rematch-request-visible-to-counterpart.md)
 
 ## 언제 ADR을 쓰는가
 

@@ -8,6 +8,7 @@ import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.QuizNotifier
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
@@ -24,6 +25,7 @@ import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -54,6 +56,7 @@ class NotifierFailureTest {
     private val quizRepository = mockk<QuizRepository>()
     private val quizProgressRepository = mockk<QuizProgressRepository>()
     private val memberReviewRepository = mockk<MemberReviewRepository>()
+    private val rematchRepository = mockk<RematchRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -89,6 +92,12 @@ class NotifierFailureTest {
         LEAD_HOURS,
     )
     private val reviewReminderNotifier = ReviewReminderNotifier(memberReviewRepository, notificationAppender)
+    private val rematchNotifier = RematchNotifier(
+        memberReviewRepository,
+        rematchRepository,
+        memberRepository,
+        notificationAppender,
+    )
     private val quizNotifier = QuizNotifier(
         quizSetRepository,
         quizRepository,
@@ -184,6 +193,14 @@ class NotifierFailureTest {
         every { memberReviewRepository.findPendingAvailableBetween(any(), any()) } throws connectionFailure()
 
         reviewReminderNotifier.notifyPending(LocalDateTime.of(2026, 7, 20, 9, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("재매칭 제출 — 평가 조회가 실패해도 예외 대신 false 를 돌려준다")
+    fun rematchSubmittedAbsorbsReviewQueryFailure() {
+        every { memberReviewRepository.findById(any()) } throws connectionFailure()
+
+        rematchNotifier.notifySubmitted(reviewId = 1L, submitterId = 1L, counterpartId = 2L) shouldBe false
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

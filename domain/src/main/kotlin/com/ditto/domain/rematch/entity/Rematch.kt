@@ -64,8 +64,7 @@ class Rematch private constructor(
     val memberId2: Long,
 ) : BaseEntity() {
 
-    // 두 선택은 public 접근자를 두지 않는다. 게터가 열려 있으면 엔티티를 그대로 응답에 매핑하거나
-    // 로깅하는 것만으로 상대 선택이 새기 때문에, 외부 조회는 본인 값만 주는 wantsOf()로 강제한다.
+    // 두 선택은 public 접근자를 두지 않는다. 엔티티를 그대로 응답에 매핑하지 않게 하고 wantsOf() 로만 읽는다.
     @Comment("memberId1의 재매칭 선택 (NULL=미응답)")
     @Column(name = "member_1_wants", nullable = true)
     private var member1Wants: Boolean? = null
@@ -112,7 +111,7 @@ class Rematch private constructor(
     /** memberId 본인이 확정한 선택이 주어진 값과 같은지. 재제출이 기존 확정과 일치하는지 판정할 때 쓴다. */
     fun hasSameWants(memberId: Long, wants: Boolean): Boolean = wantsOf(memberId) == wants
 
-    /** memberId 본인의 확정 선택(미응답이면 null). 상대 선택은 성사 전 노출 금지라 본인 값 조회만 제공한다 */
+    /** memberId 의 확정 선택(미응답이면 null). 상대 값은 wantsOf(counterpartOf(me)) 로 읽는다 — 신청/수락 모델은 상대 선택을 공개한다. */
     fun wantsOf(memberId: Long): Boolean? {
         validatePairMember(memberId)
         return if (memberId == memberId1) member1Wants else member2Wants
@@ -120,16 +119,14 @@ class Rematch private constructor(
 
     /**
      * memberId의 재매칭 선택을 최종 확정한다. 양쪽 응답이 모두 확정되는 호출에서
-     * 상호 true면 MATCHED, 아니면 CANCELLED로 전이한다.
+     * 상호 true면 MATCHED, 아니면 CANCELLED로 전이한다. 제출은 한 번뿐이라 제출 직후의 상태가 곧 이번 제출의 결과다.
      * 호출 전 반드시 pair 행을 PESSIMISTIC_WRITE로 잠가야 동시 제출에서 상대 선택을 놓치지 않는다 (ADR 0011).
      */
     fun submitWants(memberId: Long, wants: Boolean, now: LocalDateTime) {
-        // 검사 순서가 곧 비공개 계약이다. 쌍 상태를 먼저 보면 실패 응답의 오류 코드 차이만으로
-        // 상대가 언제 제출했는지가 드러나므로, 인가와 본인 상태를 항상 먼저 확인한다.
         validatePairMember(memberId)
         if (wantsOf(memberId) != null) throw WarnException(ErrorCode.REMATCH_ALREADY_SUBMITTED)
         // 양쪽이 모두 제출해야 WAITING을 벗어나므로 위 가드를 지난 시점에는 항상 WAITING이다.
-        // 주간 제한(R2)·탈퇴(D1)가 외부에서 취소를 걸기 시작하면 그 경로를 막는 가드가 된다.
+        // 탈퇴(D1)가 외부에서 취소를 걸기 시작하면 그 경로를 막는 가드가 된다.
         if (status != RematchStatus.WAITING) throw WarnException(ErrorCode.REMATCH_PAIR_ALREADY_SETTLED)
 
         if (memberId == memberId1) member1Wants = wants else member2Wants = wants

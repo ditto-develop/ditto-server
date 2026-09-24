@@ -1,6 +1,6 @@
 # rematch 도메인
 
-재매칭 — 그룹 채팅 종료 후 멤버끼리 "1:1로 다시 만나고 싶어요"를 비공개로 선택하고, 상호 선택일 때만 별도 1:1 관계가 성사된다.
+재매칭 — 그룹 채팅 종료 후 멤버끼리 "1:1로 다시 만나고 싶어요"를 선택하고, 상호 선택일 때만 별도 1:1 관계가 성사된다. 먼저 원한다고 낸 쪽의 의사는 상대에게 보인다(신청/수락, [ADR 0031](../adr/0031-rematch-request-visible-to-counterpart.md)).
 
 ## 용어
 
@@ -13,7 +13,7 @@
 ## 불변식
 
 - 쌍 정규화: `memberId1`=min, `memberId2`=max ([ADR 0008](../adr/0008-matching-entity-uniqueness-modeling.md) 패턴). UK(`source_group_match_id`, `member_id_1`, `member_id_2`)로 같은 소스 그룹의 방향 무관 중복 금지. 자기 자신과의 쌍 금지.
-- 단방향 선택은 비공개: 상대의 제출 여부·값·시각을 어떤 경로로도 노출하지 않는다. 두 선택 필드는 `private`이라 외부 조회는 본인 값만 주는 `wantsOf()`뿐이고, `submitWants()`는 인가 → 본인 상태 → 쌍 상태 순으로 검사한다. 순서를 뒤집으면 실패 응답의 오류 코드 차이만으로 상대의 제출 시각을 특정할 수 있다.
+- **상대의 선택은 공개된다**(2026-09-24, [ADR 0031](../adr/0031-rematch-request-visible-to-counterpart.md)). 평가 대상 응답의 `counterpartWantsRematch`(`true` 받은 신청 / `false` 상대가 원하지 않음 / `null` 미제출)와 알림 `REMATCH_REQUESTED`·`REMATCH_REJECTED`로 드러난다. 두 선택 필드는 여전히 `private`이고 `wantsOf(memberId)`로만 읽는다 — 엔티티를 그대로 응답에 매핑하지 않게 하는 용도다. 이전 모델(상호 선택 비공개)의 근거는 ADR 0031 Context 에 남겼다.
 - 선택 제출은 최종: `NULL`(미응답) → `true`/`false` 한 번만. 재제출 거부.
 - 소속 운영 주는 `OperationWeek`로 받는다. "월요일만 허용"은 그 값 객체가 강제하므로 재매칭 쪽에서 다시 검증하지 않고, `QuizSet`처럼 컬럼은 `weekStartedOn: LocalDate`로 저장하고 `operationWeek` 접근자로 되돌린다([ADR 0010](../adr/0010-week-identifier-week-started-on.md)). 이 컬럼은 원본 추적용이지 제한 키가 아니다.
 - 제출 경로는 pair 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 판정한다 — 동시 제출의 성사 누락 방지 ([ADR 0011](../adr/0011-rematch-pessimistic-lock.md)의 안전 규칙 준수).

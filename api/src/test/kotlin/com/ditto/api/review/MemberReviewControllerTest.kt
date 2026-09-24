@@ -1,5 +1,6 @@
 package com.ditto.api.review
 
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.controller.MemberReviewController
 import com.ditto.api.review.dto.MemberReviewResponse
 import com.ditto.api.review.dto.RematchResultResponse
@@ -16,6 +17,7 @@ import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
@@ -33,8 +35,9 @@ import java.time.LocalDateTime
 class MemberReviewControllerTest : ControllerUnitTest() {
 
     private val memberReviewService: MemberReviewService = mockk()
+    private val rematchNotifier: RematchNotifier = mockk(relaxed = true)
 
-    override val controller = MemberReviewController(memberReviewService)
+    override val controller = MemberReviewController(memberReviewService, rematchNotifier)
 
     private fun answeredTarget() = ReviewTargetResponse(
         memberId = 2L,
@@ -47,9 +50,10 @@ class MemberReviewControllerTest : ControllerUnitTest() {
         rating = 4,
         comment = "친절하고 재밌어요",
         answeredAt = LocalDateTime.of(2026, 8, 3, 10, 0),
+        counterpartWantsRematch = null,
     )
 
-    /** 아직 제출하지 않은 대상 — 답변 필드가 모두 null 로 나가는 것을 문서에 남긴다. */
+    /** 아직 제출하지 않은 대상 — 답변 필드가 모두 null 로 나가고, 상대는 먼저 재매칭을 원한다고 낸 상태다. */
     private fun unansweredTarget() = ReviewTargetResponse(
         memberId = 3L,
         nickname = "홍길동",
@@ -61,6 +65,7 @@ class MemberReviewControllerTest : ControllerUnitTest() {
         rating = null,
         comment = null,
         answeredAt = null,
+        counterpartWantsRematch = true,
     )
 
     @Test
@@ -128,6 +133,12 @@ class MemberReviewControllerTest : ControllerUnitTest() {
                                     .description("내가 쓴 한줄 코멘트. 미제출이거나 미입력이면 null").optional(),
                                 fieldWithPath("data[].targets[].answeredAt")
                                     .description("내 제출 시각. null 이면 아직 제출하지 않은 대상").optional(),
+                                fieldWithPath("data[].targets[].counterpartWantsRematch")
+                                    .description(
+                                        "상대의 1:1 재매칭 의사. true 면 나를 원한다고 냈다(받은 신청), " +
+                                            "false 면 원하지 않는다고 냈다, null 이면 아직 안 냈거나 1:1 평가",
+                                    )
+                                    .optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -166,6 +177,8 @@ class MemberReviewControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("COMPLETED"))
             .andExpect(jsonPath("$.data.rematch.matchedMemberId").value(2L))
+            // 재매칭 의사가 실린 제출이라 커밋 뒤 알림 판정을 부른다
+            .andDo { verify(exactly = 1) { rematchNotifier.notifySubmitted(1L, submitterId = 1L, counterpartId = 2L) } }
             .andDo(
                 document(
                     "member-review-submit",
@@ -215,6 +228,27 @@ class MemberReviewControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("재매칭 의사가 없는 제출(1:1 평가)은 재매칭 알림 판정을 부르지 않는다")
+    fun submitAnswerWithoutRematchSkipsNotifier() {
+        every { memberReviewService.submitAnswer(any(), any(), any(), any()) } returns ReviewAnswerSubmitResponse(
+            reviewId = 1L,
+            status = ReviewProgressStatus.COMPLETED,
+            answeredTargetCount = 1,
+            totalTargetCount = 1,
+            completedAt = LocalDateTime.of(2026, 8, 3, 10, 30),
+            rematch = null,
+        )
+
+        mockMvc.perform(
+            put("/api/v1/member-reviews/{reviewId}/targets/{memberId}", 1L, 2L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(ReviewAnswerSubmitRequest(MeetingStatus.MET, 5, null))),
+        )
+            .andExpect(status().isOk)
+            .andDo { verify(exactly = 0) { rematchNotifier.notifySubmitted(any(), any(), any()) } }
     }
 
     // 만남 상태는 enum 으로 받으므로 잘못된 값은 서비스에 닿기 전 역직렬화에서 걸린다.

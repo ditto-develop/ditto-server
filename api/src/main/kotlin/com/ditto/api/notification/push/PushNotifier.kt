@@ -9,6 +9,7 @@ import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -29,6 +30,7 @@ class PushNotifier(
     private val memberDeviceRepository: MemberDeviceRepository,
     private val notificationRepository: NotificationRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val rematchRepository: RematchRepository,
     private val pushDeadDeviceCleaner: PushDeadDeviceCleaner,
     private val pushSender: PushSender,
 ) {
@@ -107,6 +109,10 @@ class PushNotifier(
             NotificationType.GROUP_FORMED, NotificationType.VOTE_CREATED, NotificationType.VOTE_CLOSED ->
                 targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
+            // 신청·거절은 의사를 제출하는 그룹 평가 화면으로. targetId 는 쌍이라 방은 쌍에서 읽는다.
+            NotificationType.REMATCH_REQUESTED, NotificationType.REMATCH_REJECTED ->
+                targetId?.let { rematchRepository.findById(it).orElse(null) }
+                    ?.let { chatRoomPath(ChatRoomType.GROUP, it.sourceChatRoomId) + "rate/" }
             NotificationType.REVIEW_REQUEST, NotificationType.REVIEW_REMINDER ->
                 chatRoomPathOf(targetId)?.let { it + "rate/" }
             NotificationType.CHAT_ROOM_OPENED,
