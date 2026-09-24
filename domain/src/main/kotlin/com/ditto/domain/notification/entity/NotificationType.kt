@@ -22,6 +22,9 @@ enum class NotificationType(
      */
     QUIZ_OPENED(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 이번 주 퀴즈 마감이 가깝다. 아직 끝내지 않은 활성 회원에게. 대상은 [QUIZ_OPENED]와 같은 대표 셋. */
+    QUIZ_CLOSING_SOON(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /**
      * 주간 매칭 후보가 생겼다. 대상은 퀴즈셋이다 — 화면은 매칭 홈으로 보내면 되지만,
      * "주마다 한 번"을 판정할 대상이 필요하다(회원+유형만으로 막으면 평생 한 번만 알린다).

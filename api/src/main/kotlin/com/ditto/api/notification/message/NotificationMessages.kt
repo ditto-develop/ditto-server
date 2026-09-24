@@ -18,6 +18,13 @@ object NotificationMessages {
         body = "수요일 자정까지 ${quizCount}문항에 답하면 매칭이 시작돼요.",
     )
 
+    /** 이번 주 퀴즈 마감이 가깝다. */
+    fun quizClosingSoon(): NotificationContent = NotificationContent(
+        type = NotificationType.QUIZ_CLOSING_SOON,
+        title = "오늘 자정에 퀴즈가 마감돼요",
+        body = "답을 남기면 이번 주 매칭에 들어가요.",
+    )
+
     /** 이번 주 매칭 후보가 생겼다. */
     fun matchResult(): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_RESULT,
