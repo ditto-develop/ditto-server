@@ -25,8 +25,10 @@ class MatchingBatchFacade(
 ) {
 
     /**
-     * 마감([now] 기준)됐고 아직 후보가 없는 퀴즈셋의 매칭 후보를 생성한다(멱등).
+     * 최근 [RETRY_WINDOW_DAYS]일 안에 마감([now] 기준)됐고 아직 후보가 없는 퀴즈셋의 매칭 후보를 생성한다(멱등).
      * 실패한 셋은 경고 로그만 남기고 다음 셋으로 넘어간다 — 후보가 없는 채로 남아 다음 배치가 다시 집는다.
+     * 창을 두는 이유: 후보가 0건으로 끝난 셋(완주자 1명 등)은 영원히 후보가 없어서, 하한이 없으면 매주 다시
+     * 계산되고 그때마다 노매칭 알림 존재 검사를 다시 탄다. 알림 보관 30일보다 짧아야 한다.
      *
      * @return 이번 호출로 후보를 생성한 퀴즈셋 ID(실패한 셋 제외). 알림은 커밋된 뒤에 남겨야 하므로
      *   (`MatchResultNotifier`) 대상 목록을 여기서 흘려보낸다.
@@ -36,7 +38,7 @@ class MatchingBatchFacade(
         sanctionExpiryService.expireDue(now)
 
         return quizSetRepository
-            .findEndedQuizSetsWithoutCandidates(now)
+            .findEndedQuizSetsWithoutCandidates(now.minusDays(RETRY_WINDOW_DAYS), now)
             .mapNotNull { quizSet -> generatedQuizSetIdOrNull(quizSet.id) }
     }
 
@@ -48,6 +50,8 @@ class MatchingBatchFacade(
             .getOrNull()
 
     companion object {
+        /** 한 주 배치가 통째로 실패해도 다음 주에 집을 수 있게 두 주. */
+        const val RETRY_WINDOW_DAYS = 14L
         private val logger = KotlinLogging.logger {}
     }
 }

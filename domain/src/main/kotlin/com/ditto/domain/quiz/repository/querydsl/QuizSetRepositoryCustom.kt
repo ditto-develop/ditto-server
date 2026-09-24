@@ -9,10 +9,11 @@ interface QuizSetRepositoryCustom {
     fun findCurrentWeekActive(now: LocalDateTime): List<QuizSet>
 
     /**
-     * 마감(endDate < now)됐고 아직 매칭 후보가 없는 퀴즈셋 — 매칭 배치 대상.
+     * [endedAfter] 이후 마감(endedAfter < endDate < now)됐고 아직 매칭 후보가 없는 퀴즈셋. 매칭 배치 대상이다.
      * 후보를 담는 테이블이 매칭 타입마다 달라 `match_candidate`·`group_match` 양쪽을 anti-join 한다.
+     * 하한이 없으면 후보가 0건으로 끝난 셋이 매주 다시 잡힌다.
      */
-    fun findEndedQuizSetsWithoutCandidates(now: LocalDateTime): List<QuizSet>
+    fun findEndedQuizSetsWithoutCandidates(endedAfter: LocalDateTime, now: LocalDateTime): List<QuizSet>
 
     /**
      * 회원이 **그 운영 주에** 완주(COMPLETED)한 해당 타입 퀴즈셋. 후보 조회·성사 전 열람 권한의 기준이다.

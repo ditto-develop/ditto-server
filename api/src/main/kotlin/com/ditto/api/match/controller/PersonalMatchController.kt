@@ -4,7 +4,7 @@ import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
-import com.ditto.api.notification.notifier.PersonalMatchRejectedNotifier
+import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,22 +17,38 @@ import org.springframework.web.bind.annotation.RestController
 @Loggable
 class PersonalMatchController(
     private val personalMatchService: PersonalMatchService,
-    private val personalMatchRejectedNotifier: PersonalMatchRejectedNotifier,
+    private val personalMatchNotifier: PersonalMatchNotifier,
 ) {
 
+    /** 대화 신청. 알림은 서비스 커밋 뒤 여기서 남긴다([rejectMatch]와 같은 구조). */
     @PostMapping("/api/v1/matches/request")
     fun requestMatch(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @RequestBody request: PersonalMatchRequest,
-    ): ApiResponse<PersonalMatchResponse> =
-        ApiResponse.ok(personalMatchService.requestMatch(principal.memberId, request))
+    ): ApiResponse<PersonalMatchResponse> {
+        val requested = personalMatchService.requestMatch(principal.memberId, request)
+        personalMatchNotifier.notifyRequested(
+            matchId = requested.id,
+            receiverId = requested.receiverId,
+            requestedBy = principal.memberId,
+        )
+        return ApiResponse.ok(requested)
+    }
 
+    /** 신청 수락. 알림은 서비스 커밋 뒤 여기서 남긴다([rejectMatch]와 같은 구조). */
     @PostMapping("/api/v1/matches/request/{id}/accept")
     fun acceptMatch(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable id: Long,
-    ): ApiResponse<PersonalMatchResponse> =
-        ApiResponse.ok(personalMatchService.acceptMatch(principal.memberId, id))
+    ): ApiResponse<PersonalMatchResponse> {
+        val accepted = personalMatchService.acceptMatch(principal.memberId, id)
+        personalMatchNotifier.notifyAccepted(
+            matchId = accepted.id,
+            requesterId = accepted.requesterId,
+            acceptedBy = principal.memberId,
+        )
+        return ApiResponse.ok(accepted)
+    }
 
     /**
      * 신청 거절. 알림은 서비스 커밋 뒤 여기서 남긴다 — 트랜잭션 안에 외부 I/O(푸시)를 넣지 않는
@@ -45,7 +61,7 @@ class PersonalMatchController(
         @PathVariable id: Long,
     ): ApiResponse<PersonalMatchResponse> {
         val rejected = personalMatchService.rejectMatch(principal.memberId, id)
-        personalMatchRejectedNotifier.notifyRejected(
+        personalMatchNotifier.notifyRejected(
             matchId = rejected.id,
             requesterId = rejected.requesterId,
             rejectedBy = principal.memberId,

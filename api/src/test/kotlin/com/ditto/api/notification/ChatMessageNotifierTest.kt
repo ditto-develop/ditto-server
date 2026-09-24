@@ -57,7 +57,7 @@ class ChatMessageNotifierTest(
             val notification = notificationRepository.findAll().single()
             notification.memberId shouldBe receiver.id
             notification.type shouldBe NotificationType.CHAT_MESSAGE
-            notification.title shouldBe "산책러버님의 새 메시지"
+            notification.title shouldBe "산책러버님의 메시지"
             notification.body shouldBe "주말에 시간 괜찮으세요?"
             notification.targetId shouldBe ROOM
         }

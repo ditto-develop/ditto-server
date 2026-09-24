@@ -59,7 +59,13 @@ class NotificationTest : FreeSpec({
 
     "카테고리에 속한 유형을 모은다 — 목록 조회 필터가 쓴다" {
         NotificationType.of(NotificationCategory.CHAT) shouldBe
-            listOf(NotificationType.CHAT_MESSAGE, NotificationType.CHAT_ENDING_SOON, NotificationType.VOTE_CLOSED)
+            listOf(
+                NotificationType.CHAT_ROOM_OPENED,
+                NotificationType.CHAT_MESSAGE,
+                NotificationType.CHAT_ENDING_SOON,
+                NotificationType.VOTE_CREATED,
+                NotificationType.VOTE_CLOSED,
+            )
         NotificationType.of(NotificationCategory.SYSTEM) shouldBe listOf(NotificationType.SYSTEM_NOTICE)
     }
 })

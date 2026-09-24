@@ -4,7 +4,7 @@ import com.ditto.api.match.controller.PersonalMatchController
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
-import com.ditto.api.notification.notifier.PersonalMatchRejectedNotifier
+import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -30,9 +30,9 @@ import java.time.LocalDateTime
 class PersonalMatchControllerTest : ControllerUnitTest() {
 
     private val personalMatchService: PersonalMatchService = mockk()
-    private val personalMatchRejectedNotifier: PersonalMatchRejectedNotifier = mockk(relaxed = true)
+    private val personalMatchNotifier: PersonalMatchNotifier = mockk(relaxed = true)
 
-    override val controller = PersonalMatchController(personalMatchService, personalMatchRejectedNotifier)
+    override val controller = PersonalMatchController(personalMatchService, personalMatchNotifier)
 
     private fun sampleResponse(
         id: Long = 1L,
@@ -91,15 +91,18 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        // 알림은 수신자에게만. 신청한 본인(principal)은 받지 않는다
+        verify { personalMatchNotifier.notifyRequested(matchId = 1L, receiverId = 2L, requestedBy = 1L) }
     }
 
     @Test
     @DisplayName("1:1 매칭 요청을 수락한다")
     fun acceptMatch() {
         every { personalMatchService.acceptMatch(any(), any()) } returns
-            sampleResponse(status = PersonalMatchStatus.ACCEPTED)
+            sampleResponse(id = 7L, requesterId = 42L, status = PersonalMatchStatus.ACCEPTED)
 
-        mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 1L))
+        mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 7L))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
@@ -134,6 +137,9 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        // 알림은 신청자에게만. 수락한 본인(principal)은 받지 않는다
+        verify { personalMatchNotifier.notifyAccepted(matchId = 7L, requesterId = 42L, acceptedBy = 1L) }
     }
 
     @Test
@@ -179,6 +185,6 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
             )
 
         // 거절 사실은 신청자에게만 간다 — 거절한 본인(principal)은 자기가 누른 것이라 받지 않는다
-        verify { personalMatchRejectedNotifier.notifyRejected(matchId = 7L, requesterId = 42L, rejectedBy = 1L) }
+        verify { personalMatchNotifier.notifyRejected(matchId = 7L, requesterId = 42L, rejectedBy = 1L) }
     }
 }

@@ -22,7 +22,7 @@
 - **마감은 수동이다(확정 정책).** ① 멤버 누구나 close API(멱등 — 재요청은 성공으로 답하되 SYSTEM 메시지·알림은 실제로 닫은 요청만) ② 방이 끝나면(만료·해체) 열린 투표를 함께 닫는다(`ROOM_ENDED`, 마감자 없음, 메시지·알림 없음). ②는 정책이 아니라 **안전망**이다. 마감 권한은 생성자 한정이 아니고 최소 조건도 없다 — 0표여도 닫을 수 있다. cast별 실시간 브로드캐스트는 없다 — 채팅방에 뜨는 것은 생성 메시지와 마감 결과뿐이고, 집계는 화면 재진입·cast 응답으로 따라잡는다.
 - **투표에 마감 시각을 두지 않는다.** 그룹 방에 이미 `expiresAt`이라는 상위 시한이 있고 그 시한이 열린 투표를 함께 닫으므로, 투표에 `closes_at`을 또 두면 시한이 두 겹이 되어 "방은 살아 있는데 투표만 닫힌" 상태를 화면이 새로 다뤄야 한다. 시각 기반 자동 마감은 스케줄러발 STOMP 브로드캐스트 경로를 새로 내야 하는데(지금 브로드캐스트는 컨트롤러에만 있다), 얻는 것이 그 상위 시한과 겹친다. 배경: [#187](https://github.com/ditto-develop/ditto-server/issues/187) (FE QA BUG-083).
 - **"열린 채 아무도 닫을 수 없는 투표"는 생기지 않는다.** 그룹 방이 끝나는 경로는 만료(`endExpired`)와 잔여 1명 해체(`leaveGroupRoom`) 둘뿐이고 둘 다 `closeOpenVoteQuietly`를 부른다 — 1:1 종료 경로(`endByUser`)는 `ChatRoom.canEndByUser()`가 그룹 방을 막는다. 방이 먼저 끝나 자동 마감된 뒤 눌린 마감 버튼은 멱등 성공으로 받는다(멱등 반환이 방 상태 검사보다 **먼저**라 `CHAT_ROOM_ENDED`로 튕기지 않는다). 이 불변식은 `ChatVoteServiceTest`의 "자동 마감된 투표는 뒤늦은 마감 요청도 성공한다" 두 건이 고정한다.
-- **생성·마감은 SYSTEM 메시지를 남긴다** — `VOTE_CREATED:{voteId}`·`VOTE_CLOSED:{voteId}`. 투표 코드만 `:voteId` 접미가 붙는 이유는 배너·카드가 상세를 재조회하는 키라서다. 브로드캐스트 페이로드가 저장된 메시지인 이유: FE 소켓 수신부가 프레임을 `ChatMessage`로 파싱해 `id` 기준 병합하므로, 저장되지 않은 프레임은 병합·재접속 복구를 깨뜨린다.
+- **생성·마감은 SYSTEM 메시지를 남기고, 행위자를 뺀 활성 멤버에게 알림도 남긴다**(`VOTE_CREATED`·`VOTE_CLOSED`, [notification](notification.md)) — SYSTEM 코드는 `VOTE_CREATED:{voteId}`·`VOTE_CLOSED:{voteId}`. 투표 코드만 `:voteId` 접미가 붙는 이유는 배너·카드가 상세를 재조회하는 키라서다. 브로드캐스트 페이로드가 저장된 메시지인 이유: FE 소켓 수신부가 프레임을 `ChatMessage`로 파싱해 `id` 기준 병합하므로, 저장되지 않은 프레임은 병합·재접속 복구를 깨뜨린다.
 - **시간 옵션은 `meetAt: LocalDateTime` 단일 필드다.** `date`·`time` 분리는 전역 `LocalTime` 포맷(`HH:mm:ss`)과 충돌해 FE의 `"19:00"` 요청이 400으로 떨어진다. 표시 문구(`dateLabel`)는 저장하지 않는다 — 로케일 문자열을 저장값으로 삼으면 나중에 못 바꾼다.
 
 ## 동시성 (ADR 0011)
@@ -37,5 +37,5 @@
 ## 핵심 파일
 
 - 도메인: `domain/.../chat/entity`(`ChatVote`·`ChatVoteOption`·`ChatVoteChoice`·enum 3종), `repository`(`ChatVoteRepository` 등 3개). 스키마: `domain/db/V20260825175340_그룹 투표 테이블 추가.sql`.
-- API: `api/.../chat/controller/ChatVoteController`, `service/ChatVoteService`(생성·조회·선택지 추가·cast·close), `dto/ChatVote*`. 방 종료 연동: `service/ChatRoomEndService.closeOpenVoteQuietly`. 알림: `notification/notifier/ChatVoteClosedNotifier`.
+- API: `api/.../chat/controller/ChatVoteController`, `service/ChatVoteService`(생성·조회·선택지 추가·cast·close), `dto/ChatVote*`. 방 종료 연동: `service/ChatRoomEndService.closeOpenVoteQuietly`. 알림: `notification/notifier/ChatVoteNotifier`.
 - 설계 배경: `docs/plans/group-vote.md`(로컬 계획서 — Figma·FE 실측 근거와 검증 지적 반영 내역).

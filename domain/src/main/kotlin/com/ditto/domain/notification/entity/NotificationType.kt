@@ -22,6 +22,9 @@ enum class NotificationType(
      */
     MATCH_RESULT(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. 수신자는 매칭 풀에 든 회원. 대상이 퀴즈셋인 이유는 [MATCH_RESULT]와 같다. */
+    NO_MATCH(NotificationCategory.MATCHING, "quiz_set.id (이번 주 퀴즈셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
     GROUP_FORMED(NotificationCategory.MATCHING, "chat_room.id (그룹 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
@@ -34,6 +37,12 @@ enum class NotificationType(
     /** 재매칭이 성사돼 채팅방이 예약됐다. */
     REMATCH_MATCHED(NotificationCategory.MATCHING, "chat_room.id (재매칭 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 상대가 나에게 1:1 대화를 신청했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
+    MATCH_REQUESTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /** 내가 보낸 1:1 대화 신청을 상대가 수락했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
+    MATCH_ACCEPTED(NotificationCategory.MATCHING, "personal_match.id", DuplicatePolicy.ONCE_PER_TARGET),
+
     /**
      * 내가 보낸 1:1 대화 신청을 상대가 거절했다. 대상이 매칭 건인 이유: 거절은 되돌릴 수 없고
      * ([PersonalMatch.reject] 가 PENDING 만 받는다) 매칭 건마다 한 번이 정확한 단위다.
@@ -44,11 +53,17 @@ enum class NotificationType(
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /** 채팅방이 열려 대화를 시작할 수 있다. 방마다 한 번만 알린다. */
+    CHAT_ROOM_OPENED(NotificationCategory.CHAT, "chat_room.id (열린 방)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 상대가 메시지를 보냈다. 같은 방의 안읽은 알림은 접힌다. */
     CHAT_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.COLLAPSE_UNREAD),
 
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /** 만남 투표가 시작됐다. 생성이 방당 열린 투표 1개로 막혀 있어 중복을 유형이 막지 않는다. [VOTE_CLOSED]와 같다. */
+    VOTE_CREATED(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ALLOW),
 
     /**
      * 만남 투표가 마감돼 결과가 확정됐다. 중복을 유형이 막지 않는 이유: 실제 발행이 close 의
@@ -69,7 +84,7 @@ enum class NotificationType(
 
 /**
  * 같은 대상에 알림이 다시 발생했을 때의 처리 방식. 부르는 쪽이 아니라 유형이 정한다 —
- * 적재 지점이 여섯 곳이라, 각자 판단하게 두면 같은 유형이 곳에 따라 다르게 쌓인다.
+ * 적재 지점이 여럿이라, 각자 판단하게 두면 같은 유형이 곳에 따라 다르게 쌓인다.
  *
  * [ALLOW]가 아닌 정책은 판정 대상이 필요하므로 `targetId`가 있어야 한다.
  */

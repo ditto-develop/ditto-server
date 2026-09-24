@@ -41,8 +41,8 @@ class ReviewRequestNotifierTest(
 
             val mine = notificationRepository.findAll().single { it.memberId == me.id }
             mine.type shouldBe NotificationType.REVIEW_REQUEST
-            mine.title shouldBe "이번 만남은 어떠셨나요?"
-            mine.body shouldBe "댕이누나님과의 만남을 평가해주세요."
+            mine.title shouldBe "이번 만남은 어땠어요?"
+            mine.body shouldBe "댕이누나님과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
             mine.targetId shouldBe room.id
         }
 
@@ -57,7 +57,7 @@ class ReviewRequestNotifierTest(
             reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 4
 
             notificationRepository.findAll().single { it.memberId == me.id }.body shouldBe
-                "함께한 3명과의 만남을 평가해주세요."
+                "함께한 3명과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
         }
 
         // 이탈자는 평가 대상이 아니다 — 알리면 평가할 상대가 없는 화면으로 보낸다.
@@ -79,7 +79,7 @@ class ReviewRequestNotifierTest(
             notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(me.id, other.id)
             // 문구의 상대 집계에서도 이탈자가 빠진다 — 상대가 1명으로 줄면 닉네임 문구로 내려간다
             notificationRepository.findAll().single { it.memberId == me.id }.body shouldBe
-                "남은멤버님과의 만남을 평가해주세요."
+                "남은멤버님과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
         }
 
         // 인원 미달 해체 방은 잔여 1명이라 평가가 열리지 않는다 — 알리면 평가할 것이 없는 화면으로 보낸다.

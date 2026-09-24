@@ -25,12 +25,13 @@ class QuizSetRepositoryImpl(
             )
             .fetch()
 
-    override fun findEndedQuizSetsWithoutCandidates(now: LocalDateTime): List<QuizSet> =
+    override fun findEndedQuizSetsWithoutCandidates(endedAfter: LocalDateTime, now: LocalDateTime): List<QuizSet> =
         queryFactory
             .selectFrom(quizSet)
             .leftJoin(matchCandidate).on(matchCandidate.quizSetId.eq(quizSet.id))
             .leftJoin(groupMatch).on(groupMatch.quizSetId.eq(quizSet.id))
             .where(
+                quizSet.endDate.gt(endedAfter),
                 quizSet.endDate.lt(now),
                 // 후보가 하나도 없는(아직 계산 안 된) 셋만. 후보를 담는 테이블이 타입마다 달라 둘 다 본다 —
                 // 그룹만 보고 빠뜨리면 그룹 퀴즈셋이 매주 다시 계산돼 후보 ID가 갈린다.

@@ -95,17 +95,23 @@ class PushNotifier(
     private fun deepLinkOf(notification: Notification): String? {
         val targetId = notification.targetId
         return when (notification.type) {
-            // 거절 전용 화면이 없다 — 다른 후보를 고르러 매칭 홈으로 보낸다.
-            // 미성사 그룹도 마찬가지다 — targetId 가 group_match.id 라 열 방이 없다.
+            // 전용 화면이 없는 유형은 매칭 홈으로. 수락된 방은 금요일까지 SCHEDULED 라 아직 열 수 없고,
+            // 미성사 그룹은 targetId 가 group_match.id 라 열 방이 없다.
             NotificationType.MATCH_RESULT,
+            NotificationType.NO_MATCH,
+            NotificationType.MATCH_REQUESTED,
+            NotificationType.MATCH_ACCEPTED,
             NotificationType.MATCH_REJECTED,
             NotificationType.GROUP_NOT_FORMED,
             -> "/matching/"
-            NotificationType.GROUP_FORMED, NotificationType.VOTE_CLOSED ->
+            NotificationType.GROUP_FORMED, NotificationType.VOTE_CREATED, NotificationType.VOTE_CLOSED ->
                 targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
             NotificationType.REVIEW_REQUEST -> chatRoomPathOf(targetId)?.let { it + "rate/" }
-            NotificationType.CHAT_MESSAGE, NotificationType.CHAT_ENDING_SOON -> chatRoomPathOf(targetId)
+            NotificationType.CHAT_ROOM_OPENED,
+            NotificationType.CHAT_MESSAGE,
+            NotificationType.CHAT_ENDING_SOON,
+            -> chatRoomPathOf(targetId)
             NotificationType.SYSTEM_NOTICE -> null
         }
     }
@@ -129,6 +135,8 @@ class PushNotifier(
     /** 시효가 있는 알림만 짧게. 없으면 FCM 기본(4주)이라 꺼져 있던 기기에 지난 알림이 몰린다. */
     private fun ttlOf(type: NotificationType): Duration? = when (type) {
         NotificationType.CHAT_MESSAGE -> Duration.ofHours(1)
+        // 방이 열려 있는 72시간(금 00:00 ~ 월 00:00)이 지나면 무의미하다.
+        NotificationType.CHAT_ROOM_OPENED -> Duration.ofDays(3)
         // 종료 6시간 전 알림 — 종료가 지나면 무의미하다.
         NotificationType.CHAT_ENDING_SOON -> Duration.ofHours(6)
         else -> null

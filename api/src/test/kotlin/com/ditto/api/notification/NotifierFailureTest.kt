@@ -1,8 +1,10 @@
 package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
+import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
@@ -15,6 +17,7 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.repository.NotificationRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -38,6 +41,8 @@ class NotifierFailureTest {
     private val matchCandidateRepository = mockk<MatchCandidateRepository>()
     private val groupMatchRepository = mockk<GroupMatchRepository>()
     private val groupMatchMemberRepository = mockk<GroupMatchMemberRepository>()
+    private val matchmakingService = mockk<MatchmakingService>()
+    private val notificationRepository = mockk<NotificationRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -55,6 +60,8 @@ class NotifierFailureTest {
         matchCandidateRepository,
         groupMatchRepository,
         groupMatchMemberRepository,
+        matchmakingService,
+        notificationRepository,
         notificationAppender,
     )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(
@@ -63,6 +70,7 @@ class NotifierFailureTest {
         notificationAppender,
         LEAD_HOURS,
     )
+    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, notificationAppender)
 
     @Test
     @DisplayName("평가 요청 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
@@ -111,6 +119,14 @@ class NotifierFailureTest {
         every { chatRoomRepository.findAllIdsEndingBetween(any(), any()) } throws connectionFailure()
 
         chatEndingSoonNotifier.notifyEndingSoon(LocalDateTime.of(2026, 7, 16, 12, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("채팅방 오픈 — 참여자 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun chatRoomOpenedAbsorbsMemberQueryFailure() {
+        every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()
+
+        chatRoomOpenedNotifier.notifyOpened(listOf(ROOM_ID)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

@@ -8,7 +8,7 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
-import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
+import com.ditto.api.notification.notifier.ChatVoteNotifier
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
@@ -29,12 +29,12 @@ import java.time.LocalDateTime
 class ChatVoteController(
     private val chatVoteService: ChatVoteService,
     private val messagingTemplate: SimpMessagingTemplate,
-    private val chatVoteClosedNotifier: ChatVoteClosedNotifier,
+    private val chatVoteNotifier: ChatVoteNotifier,
 ) {
 
     /**
      * 투표 생성 — 방당 열린 투표 1개. 이미 있으면 VOTE_ALREADY_EXISTS 로 거부한다(멱등 아님).
-     * 생성 SYSTEM 메시지는 서비스 커밋 뒤 여기서 브로드캐스트한다 — 잠금 구간에 외부 I/O 를
+     * 생성 SYSTEM 메시지와 알림은 서비스 커밋 뒤 여기서 내보낸다. 잠금 구간에 외부 I/O 를
      * 넣지 않는 규칙(ADR 0011)이고, 채팅 종료가 같은 구조다.
      */
     @Loggable
@@ -47,6 +47,7 @@ class ChatVoteController(
         val result = chatVoteService.createVote(roomId, principal.memberId, request)
         result.systemMessage?.let {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
+            chatVoteNotifier.notifyCreated(roomId, createdBy = principal.memberId)
         }
         return ApiResponse.ok(result.detail)
     }
@@ -65,7 +66,7 @@ class ChatVoteController(
         val result = chatVoteService.close(roomId, voteId, principal.memberId, LocalDateTime.now())
         result.systemMessage?.let {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
-            chatVoteClosedNotifier.notifyClosed(roomId, closedBy = principal.memberId)
+            chatVoteNotifier.notifyClosed(roomId, closedBy = principal.memberId)
         }
         return ApiResponse.ok(result.detail)
     }

@@ -2,11 +2,13 @@ package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
+import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.domain.chat.ChatRoomFixture
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
@@ -29,6 +31,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val rematchChatRoomOpener = mockk<RematchChatRoomOpener>(relaxed = true)
     val reviewRequestNotifier = mockk<ReviewRequestNotifier>(relaxed = true)
     val chatEndingSoonNotifier = mockk<ChatEndingSoonNotifier>(relaxed = true)
+    val chatRoomOpenedNotifier = mockk<ChatRoomOpenedNotifier>(relaxed = true)
     val unformedGroupNotifier = mockk<UnformedGroupNotifier>(relaxed = true)
     val serverTimeProvider = mockk<ServerTimeProvider>()
 
@@ -38,6 +41,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         rematchChatRoomOpener,
         reviewRequestNotifier,
         chatEndingSoonNotifier,
+        chatRoomOpenedNotifier,
         unformedGroupNotifier,
         serverTimeProvider,
     )
@@ -50,6 +54,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             rematchChatRoomOpener,
             reviewRequestNotifier,
             chatEndingSoonNotifier,
+            chatRoomOpenedNotifier,
             unformedGroupNotifier,
             serverTimeProvider,
             answers = false,
@@ -81,5 +86,16 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { endedChatReviewOpener.openFor(emptyList()) }
         verify { endedChatReviewOpener.openMissing() }
         verify { reviewRequestNotifier.notifyFor(emptyList()) }
+    }
+
+    "이번 주기에 열린 방만 오픈 알림으로 넘긴다" {
+        every { chatRoomEndService.openDue(any()) } returns listOf(
+            ChatRoomFixture.personal(id = 11L),
+            ChatRoomFixture.group(id = 12L),
+        )
+
+        scheduler.sweep()
+
+        verify { chatRoomOpenedNotifier.notifyOpened(listOf(11L, 12L)) }
     }
 })

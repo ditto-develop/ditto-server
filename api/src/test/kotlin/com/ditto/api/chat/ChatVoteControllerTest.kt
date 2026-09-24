@@ -12,7 +12,7 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse.MyVoteResponse
 import com.ditto.api.chat.dto.ChatVoteDetailResponse.PlaceOptionResponse
 import com.ditto.api.chat.dto.ChatVoteDetailResponse.TimeOptionResponse
 import com.ditto.api.chat.service.ChatVoteService
-import com.ditto.api.notification.notifier.ChatVoteClosedNotifier
+import com.ditto.api.notification.notifier.ChatVoteNotifier
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatVoteCloseReason
@@ -44,9 +44,9 @@ class ChatVoteControllerTest : ControllerUnitTest() {
 
     private val chatVoteService: ChatVoteService = mockk()
     private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
-    private val chatVoteClosedNotifier: ChatVoteClosedNotifier = mockk(relaxed = true)
+    private val chatVoteNotifier: ChatVoteNotifier = mockk(relaxed = true)
 
-    override val controller = ChatVoteController(chatVoteService, messagingTemplate, chatVoteClosedNotifier)
+    override val controller = ChatVoteController(chatVoteService, messagingTemplate, chatVoteNotifier)
 
     /** nullable 필드도 전부 non-null 샘플 — 전부 null 이면 openapi.yaml 스키마에서 그 필드가 빠진다(#140). */
     private fun sampleDetail(
@@ -166,6 +166,8 @@ class ChatVoteControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.voteId").value(41L))
             .andDo { verify(exactly = 1) { messagingTemplate.convertAndSend("/sub/chat/rooms/87", any<Any>()) } }
+            // 생성자 본인은 제외
+            .andDo { verify(exactly = 1) { chatVoteNotifier.notifyCreated(87L, createdBy = 1L) } }
             .andDo(
                 document(
                     "chat-vote-create",
