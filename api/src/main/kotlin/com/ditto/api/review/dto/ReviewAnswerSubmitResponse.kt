@@ -8,8 +8,8 @@ import java.time.LocalDateTime
 /**
  * 제출 후의 진행 상태. 마지막 대상을 제출하면 `status`가 `COMPLETED`가 되므로 별도 완료 API는 없다.
  *
- * @property rematch **이번 제출로 상호 성사된 경우에만** 채운다 — 상대가 아직 고르지 않았거나
- *   선택하지 않은 경우 `null`이라, 이 값으로 상대의 선택 여부를 알 수는 없다
+ * @property rematch **이번 제출로 상호 성사된 경우에만** 채운다. 상대의 선택 자체는 목록 조회의
+ *   `targets[].counterpartWantsRematch` 로 본다
  */
 data class ReviewAnswerSubmitResponse(
     val reviewId: Long,

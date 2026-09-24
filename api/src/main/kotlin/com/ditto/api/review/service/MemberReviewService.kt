@@ -49,6 +49,7 @@ class MemberReviewService(
                 review = review,
                 answers = answersByReviewId[review.id].orEmpty(),
                 membersById = reviewedMembersById,
+                counterpartWantsByMemberId = rematchSubmitter.counterpartWantsByTarget(review, memberId),
             )
         }
     }

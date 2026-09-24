@@ -47,9 +47,10 @@ class MemberReviewControllerTest : ControllerUnitTest() {
         rating = 4,
         comment = "친절하고 재밌어요",
         answeredAt = LocalDateTime.of(2026, 8, 3, 10, 0),
+        counterpartWantsRematch = null,
     )
 
-    /** 아직 제출하지 않은 대상 — 답변 필드가 모두 null 로 나가는 것을 문서에 남긴다. */
+    /** 아직 제출하지 않은 대상 — 답변 필드가 모두 null 로 나가고, 상대는 먼저 재매칭을 원한다고 낸 상태다. */
     private fun unansweredTarget() = ReviewTargetResponse(
         memberId = 3L,
         nickname = "홍길동",
@@ -61,6 +62,7 @@ class MemberReviewControllerTest : ControllerUnitTest() {
         rating = null,
         comment = null,
         answeredAt = null,
+        counterpartWantsRematch = true,
     )
 
     @Test
@@ -128,6 +130,8 @@ class MemberReviewControllerTest : ControllerUnitTest() {
                                     .description("내가 쓴 한줄 코멘트. 미제출이거나 미입력이면 null").optional(),
                                 fieldWithPath("data[].targets[].answeredAt")
                                     .description("내 제출 시각. null 이면 아직 제출하지 않은 대상").optional(),
+                                fieldWithPath("data[].targets[].counterpartWantsRematch")
+                                    .description("상대의 1:1 재매칭 의사. true 면 나를 원한다고 냈다(받은 신청), false 면 원하지 않는다고 냈다, null 이면 아직 안 냈거나 1:1 평가").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

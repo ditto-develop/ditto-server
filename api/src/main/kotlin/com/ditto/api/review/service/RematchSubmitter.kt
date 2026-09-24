@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
  * 리뷰 서비스가 쌍 정규화 규칙과 재매칭 리포지토리를 직접 알지 않도록 분리했다
  * (같은 이유로 매칭 관계 판정은 `MatchAccessChecker`가 맡는다).
  *
- * 행 잠금을 걸므로 호출자 트랜잭션 안에서만 쓴다. 잠금 순서는 평가 → 재매칭 (ADR 0011).
+ * 제출·검증 메서드는 행 잠금을 걸므로 호출자 트랜잭션 안에서만 쓴다. 잠금 순서는 평가 → 재매칭 (ADR 0011).
  */
 @Component
 class RematchSubmitter(
@@ -58,6 +58,22 @@ class RematchSubmitter(
         if (!rematch.hasSameWants(memberId, submitted)) {
             throw WarnException(ErrorCode.REVIEW_ANSWER_NOT_MODIFIABLE, "확정한 재매칭 의사는 수정할 수 없습니다.")
         }
+    }
+
+    /**
+     * 대상별 상대의 재매칭 의사. 신청/수락 모델이라 상대 선택을 화면에 보여 준다.
+     * 재매칭을 받지 않는 평가(1:1)면 빈 맵. 잠금 없는 조회다.
+     */
+    fun counterpartWantsByTarget(review: MemberReview, authorId: Long): Map<Long, Boolean?> {
+        if (!review.canRematch()) {
+            return emptyMap()
+        }
+        return rematchRepository.findAllBySourceGroupMatchId(review.matchId)
+            .filter { it.memberId1 == authorId || it.memberId2 == authorId }
+            .associate { pair ->
+                val counterpartId = pair.counterpartOf(authorId)
+                counterpartId to pair.wantsOf(counterpartId)
+            }
     }
 
     /**
