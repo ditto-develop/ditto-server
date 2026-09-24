@@ -22,7 +22,7 @@
 
 | 유형 | 카테고리 | `target_id` | 중복 정책 | 적재 지점 |
 |---|---|---|---|---|
-| `QUIZ_OPENED` | MATCHING | `quiz_set.id`(이번 주 대표 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(월 00:00) → `QuizNotifier` |
+| `QUIZ_OPENED` | MATCHING | `quiz_set.id`(이번 주 대표 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(월 00:00, 프로퍼티) → `QuizNotifier` — 활성 회원 전원 |
 | `QUIZ_CLOSING_SOON` | MATCHING | `quiz_set.id`(이번 주 대표 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(수 18:00, 프로퍼티) → `QuizNotifier` — 어느 셋도 끝내지 않은 활성 회원 |
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `NO_MATCH` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` (매칭 풀에 들었지만 후보 0명) |
@@ -32,7 +32,7 @@
 | `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
-| `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 미완료 평가 |
+| `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 활성 회원의 미완료 평가 |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_NO_MESSAGE` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatNoMessageNotifier`(개방 12시간 후, 프로퍼티) |
@@ -41,7 +41,7 @@
 | `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteNotifier` |
 | `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
 
-`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 id 가 가장 작은 셋을 대표로 삼고, 문항이 없는 셋이면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
+`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 **문항이 있는 셋 중** id 가 가장 작은 셋을 대표로 삼는다(문항 수 문구도 그 셋 기준). 문항 있는 셋이 없으면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
 **노매칭 알림의 수신자는 매칭 풀에 든 회원이다**(`MatchmakingService.matchingPoolMemberIds` — 퀴즈 완료자에서 배치의 제외 정책에 걸린 사람을 뺀 집합). 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않고, 정지·성사로 풀에서 빠진 사람에게는 틀린 안내다.
 
@@ -61,7 +61,7 @@
 - **재매칭 방 종료에는 평가 요청을 알리지 않는다.** 재매칭 채팅은 평가를 열지 않기 때문이다(#132). `ReviewRequestNotifier`가 `REMATCH`를 걸러낸다.
 - **탈퇴 완전 삭제는 알림도 지운다.** 본문에 닉네임·메시지 미리보기(개인정보)가 들어 있다.
 - **사용자 삭제는 행을 남긴다(`deleted_at`).** 중복 검사가 행의 존재를 보므로 지워버리면 수렴 루프를 도는 스케줄러가 같은 알림과 푸시를 다시 내보낸다. 지운 알림은 목록·미읽음 수·전체 읽음에서 빠지고, 30일 뒤 purge 가 다른 행과 함께 지운다. 사용자에게는 되돌릴 수 없다.
-- **중복 검사는 보관 기간까지만 유효하다.** 행이 purge 되면 존재 검사가 다시 통과하므로, 수렴 루프의 스캔 범위는 30일보다 짧아야 한다. 지금은 모두 그렇다 — `CHAT_ENDING_SOON`은 종료 6시간 창(이미 알린 방은 조회 쿼리가 뺀다), `CHAT_NO_MESSAGE`는 개방 12시간 뒤부터 6시간 창(대화 메시지가 생기거나 이미 알린 방은 조회 쿼리가 뺀다 — 매분 도는 조회라 멤버별 존재 검사를 반복하지 않게), `GROUP_NOT_FORMED`는 최근 2주 주차, `REVIEW_REMINDER`는 최근 7일 안에 열린 평가만 본다(평가에는 마감이 없어 창이 없으면 오래된 미완료가 매주 딸려 나온다), `MATCH_RESULT`·`NO_MATCH`는 매칭 배치가 마감 2주 안의 셋만 집는다(`MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건 셋은 영원히 후보가 없어 하한이 없으면 매주 다시 잡힌다), 나머지는 이번 주기 처리분만 받는다.
+- **중복 검사는 보관 기간까지만 유효하다.** 행이 purge 되면 존재 검사가 다시 통과하므로, 수렴 루프의 스캔 범위는 30일보다 짧아야 한다. 지금은 모두 그렇다 — `CHAT_ENDING_SOON`은 종료 6시간 창, `CHAT_NO_MESSAGE`는 개방 12시간 뒤부터 6시간 창(둘 다 대화 메시지가 생기거나 이미 알린 방은 조회 쿼리가 **방 단위로** 뺀다 — 매분 도는 조회라 멤버별 존재 검사를 반복하지 않게. 그래서 한 명이라도 적재됐으면 나머지의 적재 실패는 재시도되지 않는다), `GROUP_NOT_FORMED`는 최근 2주 주차, `REVIEW_REMINDER`는 최근 7일 안에 열린 평가만 본다(평가에는 마감이 없어 창이 없으면 오래된 미완료가 매주 딸려 나온다), `MATCH_RESULT`·`NO_MATCH`는 매칭 배치가 마감 2주 안의 셋만 집는다(`MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건 셋은 영원히 후보가 없어 하한이 없으면 매주 다시 잡힌다), 나머지는 이번 주기 처리분만 받는다.
 - **한 토큰 = 한 회원.** `member_device.token` 단독 유일 제약이 강제한다. 토큰은 기기의 것이라 로그아웃해도
   그대로이므로, 공용 기기에서 다른 회원이 로그인하면 행 추가가 아니라 소유자 갱신이다 — 갱신하지 않으면
   이전 회원의 알림이 남의 폰에 뜬다. 등록은 멱등이고(앱이 실행·토큰 갱신 때마다 재호출),

@@ -190,7 +190,8 @@ class PushNotifierTest : FreeSpec({
             sentMessage(NotificationType.CHAT_ROOM_OPENED, room = ChatRoomFixture.personal())
                 .ttl shouldBe Duration.ofDays(3)
             sentMessage(NotificationType.QUIZ_OPENED).ttl shouldBe Duration.ofDays(3)
-            sentMessage(NotificationType.CHAT_NO_MESSAGE, room = ChatRoomFixture.personal()).ttl shouldBe Duration.ofDays(3)
+            sentMessage(NotificationType.CHAT_NO_MESSAGE, room = ChatRoomFixture.personal())
+                .ttl shouldBe Duration.ofDays(3)
             sentMessage(NotificationType.QUIZ_CLOSING_SOON).ttl shouldBe Duration.ofHours(6)
             sentMessage(NotificationType.MATCH_RESULT).ttl shouldBe null
         }

@@ -13,7 +13,9 @@ class MemberRepositoryTest(
 ) : IntegrationTest(dataSource, {
 
     fun save(nickname: String, status: MemberStatus) =
-        memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status))
+        memberRepository.save(
+            MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status),
+        )
 
     "findAllIdsByStatus" - {
         "해당 상태인 회원의 ID 만 돌려준다" {

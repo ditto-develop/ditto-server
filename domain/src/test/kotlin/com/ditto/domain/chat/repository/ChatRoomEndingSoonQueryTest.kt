@@ -53,7 +53,11 @@ class ChatRoomEndingSoonQueryTest(
                 "then: 나오지 않는다 — 매분 도는 조회가 멤버별 존재 검사를 반복하지 않게" {
                     val room = chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON))
                     notificationRepository.save(
-                        NotificationFixture.create(memberId = 1L, type = NotificationType.CHAT_ENDING_SOON, targetId = room.id),
+                        NotificationFixture.create(
+                            memberId = 1L,
+                            type = NotificationType.CHAT_ENDING_SOON,
+                            targetId = room.id,
+                        ),
                     )
 
                     val result = chatRoomRepository

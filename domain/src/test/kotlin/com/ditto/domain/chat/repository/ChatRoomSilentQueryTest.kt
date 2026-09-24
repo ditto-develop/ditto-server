@@ -42,7 +42,9 @@ class ChatRoomSilentQueryTest(
 
         "SYSTEM 메시지만 있으면 대화가 없는 것이다" {
             val room = chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON))
-            chatMessageRepository.save(ChatMessageFixture.create(roomId = room.id, messageType = ChatMessageType.SYSTEM))
+            chatMessageRepository.save(
+                ChatMessageFixture.create(roomId = room.id, messageType = ChatMessageType.SYSTEM),
+            )
 
             chatRoomRepository.findAllIdsSilentOpenedBetween(OPENS_AT.minusHours(6), OPENS_AT) shouldBe listOf(room.id)
         }
@@ -75,7 +77,9 @@ class ChatRoomSilentQueryTest(
         "열린 시각이 창 밖이면 나오지 않는다" {
             chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON))
 
-            chatRoomRepository.findAllIdsSilentOpenedBetween(OPENS_AT.minusHours(12), OPENS_AT.minusHours(6)).shouldBeEmpty()
+            chatRoomRepository
+                .findAllIdsSilentOpenedBetween(OPENS_AT.minusHours(12), OPENS_AT.minusHours(6))
+                .shouldBeEmpty()
         }
     }
 })

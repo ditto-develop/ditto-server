@@ -7,6 +7,7 @@ import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.entity.QNotification.notification
+import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
 import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
@@ -44,14 +45,7 @@ class ChatRoomRepositoryImpl(
                 chatRoom.status.eq(ChatRoomStatus.ACTIVE),
                 chatRoom.expiresAt.gt(from),
                 chatRoom.expiresAt.loe(to),
-                // 이미 알린 방은 여기서 뺀다. 매분 도는 조회라 멤버마다 존재 검사를 반복하지 않게.
-                queryFactory.selectOne()
-                    .from(notification)
-                    .where(
-                        notification.type.eq(NotificationType.CHAT_ENDING_SOON),
-                        notification.targetId.eq(chatRoom.id),
-                    )
-                    .notExists(),
+                notAlreadyNotified(NotificationType.CHAT_ENDING_SOON),
             )
             .fetch()
 
@@ -70,16 +64,19 @@ class ChatRoomRepositoryImpl(
                         chatMessage.messageType.ne(ChatMessageType.SYSTEM),
                     )
                     .notExists(),
-                // 이미 알린 방은 여기서 뺀다. 매분 도는 조회라 멤버마다 존재 검사를 반복하지 않게.
-                queryFactory.selectOne()
-                    .from(notification)
-                    .where(
-                        notification.type.eq(NotificationType.CHAT_NO_MESSAGE),
-                        notification.targetId.eq(chatRoom.id),
-                    )
-                    .notExists(),
+                notAlreadyNotified(NotificationType.CHAT_NO_MESSAGE),
             )
             .fetch()
+
+    /**
+     * 이 방으로 [type] 알림이 아직 없다. 매분 도는 조회가 이미 알린 방의 멤버마다 존재 검사를 반복하지 않게 한다.
+     * 방 단위 판정이라 한 명이라도 적재됐으면 그 방은 다시 보지 않는다. 적재에 일부만 실패해도 재시도하지 않는다.
+     */
+    private fun notAlreadyNotified(type: NotificationType): BooleanExpression =
+        queryFactory.selectOne()
+            .from(notification)
+            .where(notification.type.eq(type), notification.targetId.eq(chatRoom.id))
+            .notExists()
 
     override fun existsUnendedRoomOfMember(memberId: Long): Boolean =
         queryFactory

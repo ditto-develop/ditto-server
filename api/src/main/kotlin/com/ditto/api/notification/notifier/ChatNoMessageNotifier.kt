@@ -13,9 +13,10 @@ import org.springframework.stereotype.Component
 /**
  * 열린 뒤 [leadHours]가 지나도록 아무도 말하지 않은 방의 참여자에게 첫 인사를 권한다.
  *
- * ChatEndingSoonNotifier 와 같은 수렴 루프다. 매 주기 조건에 맞는 방을 다시 집어오고 방마다 한 번만 알린다.
- * 이미 알린 방은 조회 쿼리가 뺀다. 후보는 열린 시각이 (now - lead - 6시간, now - lead] 인 방으로 좁혀
- * 스캔 범위를 최소로 둔다. 스케줄러가 6시간 넘게 멈추면 그 방은 리마인드를 놓친다.
+ * ChatEndingSoonNotifier 와 같은 구조다. 매 주기 조건에 맞는 방을 다시 집어오고 방마다 한 번만 알린다.
+ * 이미 알린 방은 조회 쿼리가 방 단위로 뺀다. 그래서 한 명이라도 적재됐으면 나머지 멤버의 적재 실패는
+ * 재시도하지 않는다. 후보는 열린 시각이 (now - lead - 6시간, now - lead] 인 방으로 좁혀 스캔 범위를
+ * 최소로 둔다. 스케줄러가 6시간 넘게 멈추면 그 방은 리마인드를 놓친다.
  */
 @Component
 class ChatNoMessageNotifier(
@@ -33,7 +34,7 @@ class ChatNoMessageNotifier(
     private fun appendToSilentRooms(now: LocalDateTime): Int {
         val openedBefore = now.minusHours(leadHours)
         val roomIds = chatRoomRepository.findAllIdsSilentOpenedBetween(
-            from = openedBefore.minusHours(RETRY_WINDOW_HOURS),
+            from = openedBefore.minusHours(SCAN_WINDOW_HOURS),
             to = openedBefore,
         )
         if (roomIds.isEmpty()) {
@@ -56,7 +57,7 @@ class ChatNoMessageNotifier(
     }
 
     companion object {
-        private const val RETRY_WINDOW_HOURS = 6L
+        private const val SCAN_WINDOW_HOURS = 6L
         private val logger = KotlinLogging.logger {}
     }
 }
