@@ -129,7 +129,9 @@ class AdminWebTest {
         ).andExpect(status().is3xxRedirection)
 
         val notice = systemNoticeRepository.findAllByOrderByIdDesc().single()
+        notice.targetCount shouldBe 1
         notice.recipientCount shouldBe 1
+        notice.isSending shouldBe false
         notice.authorMemberId shouldBe 1L
         notificationRepository.findAll().single().let {
             it.memberId shouldBe active.id
@@ -139,13 +141,15 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("제목이 비면 공지를 보내지 않고 오류 메시지로 돌아간다")
+    @DisplayName("제목이 비면 공지를 보내지 않고 오류 메시지와 입력값을 돌려준다")
     fun publishSystemNoticeRejectsBlankTitle() {
         mockMvc.perform(
-            post("/admin/notices").with(authentication(admin())).with(csrf()).param("title", "   "),
+            post("/admin/notices").with(authentication(admin())).with(csrf())
+                .param("title", "   ").param("body", "쓰던 본문"),
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(flash().attributeExists("error"))
+            .andExpect(flash().attribute("body", "쓰던 본문"))
 
         systemNoticeRepository.count() shouldBe 0
     }

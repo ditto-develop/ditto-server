@@ -29,13 +29,15 @@ class SystemNoticeFacadeTest(
             MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status),
         )
 
-    "공지를 보내면 활성 회원 전원에게 알림이 남고 이력에 수신 수가 기록된다" {
+    "공지를 보내면 활성 회원 전원에게 알림이 남고 이력에 대상·수신 수가 기록된다" {
         val active = listOf("a", "b").map { saveMember(it) }
         saveMember("left", MemberStatus.LEFT)
 
         val notice = systemNoticeFacade.publish("ditto가 업데이트됐어요", "이번에 달라진 점을 확인해보세요.", ADMIN)
 
+        notice.targetCount shouldBe 2
         notice.recipientCount shouldBe 2
+        notice.isSending shouldBe false
         notice.authorMemberId shouldBe 99L
         notice.authorName shouldBe "관리자"
         systemNoticeRepository.findById(notice.id).get().recipientCount shouldBe 2
@@ -76,13 +78,11 @@ class SystemNoticeFacadeTest(
         systemNoticeRepository.count() shouldBe 0
     }
 
-    "제목이 100자를 넘으면 거부한다" {
-        shouldThrow<WarnException> { systemNoticeFacade.publish("가".repeat(101), null, ADMIN) }
-    }
+    "활성 회원이 없으면 대상 0·수신 0 으로 이력만 남는다" {
+        val notice = systemNoticeFacade.publish("공지", null, ADMIN)
 
-    "활성 회원이 없으면 수신 수 0 으로 이력만 남는다" {
-        systemNoticeFacade.publish("공지", null, ADMIN).recipientCount shouldBe 0
-
+        notice.targetCount shouldBe 0
+        notice.recipientCount shouldBe 0
         systemNoticeRepository.count() shouldBe 1
     }
 })

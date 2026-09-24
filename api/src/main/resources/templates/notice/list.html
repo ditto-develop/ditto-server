@@ -16,11 +16,11 @@
                 <form th:action="@{/admin/notices}" method="post">
                     <div class="field">
                         <label>제목</label>
-                        <input type="text" name="title" th:maxlength="${titleMaxLength}" required placeholder="예: ditto가 업데이트됐어요"/>
+                        <input type="text" name="title" th:value="${title}" th:maxlength="${titleMaxLength}" required placeholder="예: ditto가 업데이트됐어요"/>
                     </div>
                     <div class="field">
                         <label>본문 (선택)</label>
-                        <textarea name="body" rows="3" th:maxlength="${bodyMaxLength}" placeholder="예: 이번에 달라진 점을 확인해보세요."></textarea>
+                        <textarea name="body" rows="3" th:maxlength="${bodyMaxLength}" th:text="${body}" placeholder="예: 이번에 달라진 점을 확인해보세요."></textarea>
                     </div>
                     <div class="field">
                         <button class="btn" type="submit"
@@ -31,6 +31,7 @@
 
             <div class="card">
                 <h2>발송 이력</h2>
+                <p class="muted">발송은 요청 안에서 끝납니다. "발송 중"이 오래 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
                 <p class="muted" th:if="${notices.isEmpty()}">보낸 공지가 없습니다.</p>
                 <table class="tbl" th:unless="${notices.isEmpty()}">
                     <thead>
@@ -42,7 +43,10 @@
                         <td class="num" th:text="${#temporals.format(n.createdAt, 'yy-MM-dd HH:mm')}">-</td>
                         <td th:text="${n.title}">title</td>
                         <td class="muted" th:text="${n.body} ?: '—'">body</td>
-                        <td class="num" th:text="${n.recipientCount} + '명'">0</td>
+                        <td class="num">
+                            <span class="badge" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
+                            <span th:unless="${n.sending}" th:text="${n.recipientCount} + ' / ' + ${n.targetCount} + '명'">0</span>
+                        </td>
                         <td th:text="${n.authorName != null} ? (${n.authorName} + (${n.authorEmail != null} ? ' (' + ${n.authorEmail} + ')' : '')) : ('회원 #' + ${n.authorMemberId})">-</td>
                     </tr>
                     </tbody>

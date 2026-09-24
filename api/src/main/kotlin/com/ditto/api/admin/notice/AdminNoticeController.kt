@@ -39,12 +39,15 @@ class AdminNoticeController(
     ): String {
         runCatching { systemNoticeFacade.publish(title, body, admin) }
             .onSuccess { notice ->
-                log.info { "어드민[${admin.displayName}] 이 시스템 공지 #${notice.id} 발송 — ${notice.recipientCount}명" }
-                redirectAttributes.addFlashAttribute("message", "${notice.recipientCount}명에게 공지를 보냈습니다.")
+                log.info { "어드민[${admin.displayName}] 이 시스템 공지 #${notice.id} 발송 — 대상 ${notice.targetCount}명 중 ${notice.recipientCount}명" }
+                redirectAttributes.addFlashAttribute("message", "대상 ${notice.targetCount}명 중 ${notice.recipientCount}명에게 공지를 보냈습니다.")
             }
             .onFailure { e ->
                 if (e !is WarnException) throw e
                 redirectAttributes.addFlashAttribute("error", e.message)
+                // 검증에 걸린 입력을 폼에 다시 채워 준다. 리다이렉트로 돌아가면 작성 내용이 사라진다.
+                redirectAttributes.addFlashAttribute("title", title)
+                redirectAttributes.addFlashAttribute("body", body)
             }
         return "redirect:/admin/notices"
     }

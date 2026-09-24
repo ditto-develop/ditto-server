@@ -8,12 +8,15 @@ import io.kotest.matchers.shouldBe
 
 class SystemNoticeTest : FreeSpec({
 
-    "만들 때는 수신 수가 0 이고, 발송이 끝나면 적재된 수를 남긴다" {
-        val notice = SystemNoticeFixture.create()
-        notice.recipientCount shouldBe 0
+    "만들 때는 발송 중(수신 수 없음)이고, 발송이 끝나면 적재된 수를 남긴다" {
+        val notice = SystemNoticeFixture.create(targetCount = 150)
+        notice.isSending shouldBe true
+        notice.recipientCount shouldBe null
+        notice.targetCount shouldBe 150
 
         notice.recordRecipientCount(120)
 
+        notice.isSending shouldBe false
         notice.recipientCount shouldBe 120
     }
 
