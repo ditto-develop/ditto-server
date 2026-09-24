@@ -32,6 +32,7 @@
 | `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end` → `ReviewRequestNotifier` |
+| `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 미완료 평가 |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_NO_MESSAGE` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatNoMessageNotifier`(개방 12시간 후, 프로퍼티) |
@@ -60,7 +61,7 @@
 - **재매칭 방 종료에는 평가 요청을 알리지 않는다.** 재매칭 채팅은 평가를 열지 않기 때문이다(#132). `ReviewRequestNotifier`가 `REMATCH`를 걸러낸다.
 - **탈퇴 완전 삭제는 알림도 지운다.** 본문에 닉네임·메시지 미리보기(개인정보)가 들어 있다.
 - **사용자 삭제는 행을 남긴다(`deleted_at`).** 중복 검사가 행의 존재를 보므로 지워버리면 수렴 루프를 도는 스케줄러가 같은 알림과 푸시를 다시 내보낸다. 지운 알림은 목록·미읽음 수·전체 읽음에서 빠지고, 30일 뒤 purge 가 다른 행과 함께 지운다. 사용자에게는 되돌릴 수 없다.
-- **중복 검사는 보관 기간까지만 유효하다.** 행이 purge 되면 존재 검사가 다시 통과하므로, 수렴 루프의 스캔 범위는 30일보다 짧아야 한다. 지금은 모두 그렇다 — `CHAT_ENDING_SOON`은 종료 6시간 창(이미 알린 방은 조회 쿼리가 뺀다), `CHAT_NO_MESSAGE`는 개방 12시간 뒤부터 6시간 창(대화 메시지가 생기거나 이미 알린 방은 조회 쿼리가 뺀다 — 매분 도는 조회라 멤버별 존재 검사를 반복하지 않게), `GROUP_NOT_FORMED`는 최근 2주 주차, `MATCH_RESULT`·`NO_MATCH`는 매칭 배치가 마감 2주 안의 셋만 집는다(`MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건 셋은 영원히 후보가 없어 하한이 없으면 매주 다시 잡힌다), 나머지는 이번 주기 처리분만 받는다.
+- **중복 검사는 보관 기간까지만 유효하다.** 행이 purge 되면 존재 검사가 다시 통과하므로, 수렴 루프의 스캔 범위는 30일보다 짧아야 한다. 지금은 모두 그렇다 — `CHAT_ENDING_SOON`은 종료 6시간 창(이미 알린 방은 조회 쿼리가 뺀다), `CHAT_NO_MESSAGE`는 개방 12시간 뒤부터 6시간 창(대화 메시지가 생기거나 이미 알린 방은 조회 쿼리가 뺀다 — 매분 도는 조회라 멤버별 존재 검사를 반복하지 않게), `GROUP_NOT_FORMED`는 최근 2주 주차, `REVIEW_REMINDER`는 최근 7일 안에 열린 평가만 본다(평가에는 마감이 없어 창이 없으면 오래된 미완료가 매주 딸려 나온다), `MATCH_RESULT`·`NO_MATCH`는 매칭 배치가 마감 2주 안의 셋만 집는다(`MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건 셋은 영원히 후보가 없어 하한이 없으면 매주 다시 잡힌다), 나머지는 이번 주기 처리분만 받는다.
 - **한 토큰 = 한 회원.** `member_device.token` 단독 유일 제약이 강제한다. 토큰은 기기의 것이라 로그아웃해도
   그대로이므로, 공용 기기에서 다른 회원이 로그인하면 행 추가가 아니라 소유자 갱신이다 — 갱신하지 않으면
   이전 회원의 알림이 남의 폰에 뜬다. 등록은 멱등이고(앱이 실행·토큰 갱신 때마다 재호출),
@@ -78,7 +79,7 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
+  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
   방이 지워졌으면 deepLink 없이 보낸다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
@@ -92,7 +93,7 @@
 원칙은 **커밋된 뒤에, 사건을 아는 곳에서**다.
 
 - 스케줄러가 부르는 경로(`MATCH_RESULT`·`NO_MATCH`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`·`CHAT_NO_MESSAGE`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
-- 시각이 트리거인 경로(`QUIZ_OPENED`·`QUIZ_CLOSING_SOON` — `WeeklyNotificationScheduler`)는 사건이 일어나는 코드 지점이 없다. `MatchingScheduler`처럼 실제 시각의 cron 으로 돌고, 그 시각에 활성 셋이 없으면(어드민이 늦게 만들면) 그 주 알림은 없다. 수렴 루프가 아니다.
+- 시각이 트리거인 경로(`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`REVIEW_REMINDER` — `WeeklyNotificationScheduler`)는 사건이 일어나는 코드 지점이 없다. `MatchingScheduler`처럼 실제 시각의 cron 으로 돌고, 그 시각에 활성 셋이 없으면(어드민이 늦게 만들면) 그 주 알림은 없다. 수렴 루프가 아니다.
 - 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`)는 **컨트롤러가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.
@@ -123,4 +124,5 @@
 - `SYSTEM_NOTICE` 발송 주체 — 어드민 공지 화면
 - 채팅 연장(#121)으로 종료 시각이 밀렸을 때 종료 임박 알림을 다시 보낼지
 - 요청 경로의 알림 호출(신청·수락·거절·투표 시작·마감·채팅 종료)을 컨트롤러에서 `facade`로 모으기 — 진입점이 늘면 누락 위험
+- 평가 리마인드는 마감 개념 없이 독촉 한 번이다(#211 결정). 기획이 평가 기한을 정하면 제출 거부 여부와 함께 다시 본다
 - `CHAT_ROOM_OPENED`는 복구 경로가 없다(개방 커밋 직후 실패·재시작이면 알림 없음). 필요해지면 `CHAT_ENDING_SOON`처럼 최근 개방 방을 다시 집어오는 수렴 루프로

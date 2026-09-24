@@ -62,6 +62,12 @@ enum class NotificationType(
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 열린 평가를 아직 끝내지 않았다. [REVIEW_REQUEST]와 유형을 나눈 이유: 그쪽은 대상당 1회라 같은 방으로 다시
+     * 적재되지 않는다. 평가에는 마감이 없어 리마인드도 방마다 한 번이다.
+     */
+    REVIEW_REMINDER(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 채팅방이 열려 대화를 시작할 수 있다. 방마다 한 번만 알린다. */
     CHAT_ROOM_OPENED(NotificationCategory.CHAT, "chat_room.id (열린 방)", DuplicatePolicy.ONCE_PER_TARGET),
 

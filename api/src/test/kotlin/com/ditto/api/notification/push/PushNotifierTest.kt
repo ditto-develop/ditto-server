@@ -150,6 +150,8 @@ class PushNotifierTest : FreeSpec({
         "deepLink — 평가 요청은 방 경로 밑의 rate 다" {
             sentMessage(NotificationType.REVIEW_REQUEST, room = ChatRoomFixture.personal())
                 .data["deepLink"] shouldBe "/chat/one-on-one/100/rate/"
+            sentMessage(NotificationType.REVIEW_REMINDER, room = ChatRoomFixture.group())
+                .data["deepLink"] shouldBe "/chat/group/100/rate/"
         }
 
         "deepLink — 유형이 종류를 내포하면 방을 조회하지 않는다" {

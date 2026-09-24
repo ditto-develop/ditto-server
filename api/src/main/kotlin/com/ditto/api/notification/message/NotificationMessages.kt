@@ -101,6 +101,13 @@ object NotificationMessages {
         },
     )
 
+    /** 열린 평가를 아직 끝내지 않았다. */
+    fun reviewReminder(): NotificationContent = NotificationContent(
+        type = NotificationType.REVIEW_REMINDER,
+        title = "이번 만남은 어떠셨나요?",
+        body = "잠깐이면 돼요. 다음 만남을 위해 평가해주세요.",
+    )
+
     /** 만남 투표가 시작됐다. 투표에는 마감 시각이 없어서(vote.md) 표의 {마감}은 방 종료 시각으로 채운다. */
     fun voteCreated(): NotificationContent = NotificationContent(
         type = NotificationType.VOTE_CREATED,

@@ -107,7 +107,8 @@ class PushNotifier(
             NotificationType.GROUP_FORMED, NotificationType.VOTE_CREATED, NotificationType.VOTE_CLOSED ->
                 targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
-            NotificationType.REVIEW_REQUEST -> chatRoomPathOf(targetId)?.let { it + "rate/" }
+            NotificationType.REVIEW_REQUEST, NotificationType.REVIEW_REMINDER ->
+                chatRoomPathOf(targetId)?.let { it + "rate/" }
             NotificationType.CHAT_ROOM_OPENED,
             NotificationType.CHAT_MESSAGE,
             NotificationType.CHAT_NO_MESSAGE,

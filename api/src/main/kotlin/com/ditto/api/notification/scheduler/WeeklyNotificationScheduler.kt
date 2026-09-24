@@ -1,6 +1,7 @@
 package com.ditto.api.notification.scheduler
 
 import com.ditto.api.notification.notifier.QuizNotifier
+import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -12,12 +13,19 @@ import org.springframework.stereotype.Component
 @Component
 class WeeklyNotificationScheduler(
     private val quizNotifier: QuizNotifier,
+    private val reviewReminderNotifier: ReviewReminderNotifier,
 ) {
 
     /** 퀴즈 응답 기간은 월요일 00:00 에 시작한다(QuizResponsePeriod). */
     @Scheduled(cron = "\${notification.quiz-opened.cron:0 0 0 * * MON}")
     fun notifyQuizOpened() {
         quizNotifier.notifyOpened(LocalDateTime.now())
+    }
+
+    /** 주말 방은 월요일 00:00 에 끝나고 그때 평가가 열린다. 사건 시각이 따로 없어 월요일 오전을 기본값으로 둔다. */
+    @Scheduled(cron = "\${notification.review-reminder.cron:0 0 9 * * MON}")
+    fun notifyReviewReminder() {
+        reviewReminderNotifier.notifyPending(LocalDateTime.now())
     }
 
     /** 응답 마감은 수요일 23:59:59. 기본값은 6시간 전이다. 표에는 "N시간 전"으로만 있어 프로퍼티로 조정한다. */

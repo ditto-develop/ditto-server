@@ -7,6 +7,7 @@ import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
 import com.ditto.domain.review.entity.ReviewProgressStatus
 import com.querydsl.jpa.impl.JPAQueryFactory
+import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
 
 @Transactional(readOnly = true)
@@ -22,6 +23,16 @@ class MemberReviewRepositoryImpl(
                 memberReview.status.ne(ReviewProgressStatus.COMPLETED),
             )
             .orderBy(memberReview.availableAt.asc(), memberReview.id.asc())
+            .fetch()
+
+    override fun findPendingAvailableBetween(from: LocalDateTime, to: LocalDateTime): List<MemberReview> =
+        queryFactory
+            .selectFrom(memberReview)
+            .where(
+                memberReview.status.ne(ReviewProgressStatus.COMPLETED),
+                memberReview.availableAt.gt(from),
+                memberReview.availableAt.loe(to),
+            )
             .fetch()
 
     override fun findEndedChatRoomIdsWithoutReview(limit: Int): List<Long> =

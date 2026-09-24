@@ -8,6 +8,7 @@ import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.QuizNotifier
+import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.chat.ChatRoomFixture
@@ -23,6 +24,7 @@ import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.repository.MemberReviewRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -51,6 +53,7 @@ class NotifierFailureTest {
     private val quizSetRepository = mockk<QuizSetRepository>()
     private val quizRepository = mockk<QuizRepository>()
     private val quizProgressRepository = mockk<QuizProgressRepository>()
+    private val memberReviewRepository = mockk<MemberReviewRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -85,6 +88,7 @@ class NotifierFailureTest {
         notificationAppender,
         LEAD_HOURS,
     )
+    private val reviewReminderNotifier = ReviewReminderNotifier(memberReviewRepository, notificationAppender)
     private val quizNotifier = QuizNotifier(
         quizSetRepository,
         quizRepository,
@@ -172,6 +176,14 @@ class NotifierFailureTest {
         every { chatRoomRepository.findAllIdsSilentOpenedBetween(any(), any()) } throws connectionFailure()
 
         chatNoMessageNotifier.notifyNoMessage(LocalDateTime.of(2026, 7, 17, 14, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("평가 리마인드 — 평가 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun reviewReminderAbsorbsReviewQueryFailure() {
+        every { memberReviewRepository.findPendingAvailableBetween(any(), any()) } throws connectionFailure()
+
+        reviewReminderNotifier.notifyPending(LocalDateTime.of(2026, 7, 20, 9, 0)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

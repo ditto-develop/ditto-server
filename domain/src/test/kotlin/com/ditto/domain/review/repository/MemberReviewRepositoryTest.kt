@@ -5,6 +5,7 @@ import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.review.MemberReviewFixture
 import com.ditto.domain.support.IntegrationTest
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -23,6 +24,32 @@ class MemberReviewRepositoryTest(
             it.expire(AFTER_EXPIRY)
             chatRoomRepository.save(it)
         }
+
+    "findPendingAvailableBetween — 평가 리마인드 후보" - {
+        "창 안에 열린 미완료 평가만 돌려준다" {
+            val pending = memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = 1L, chatRoomId = 10L, availableAt = AFTER_EXPIRY),
+            )
+            memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = 2L, chatRoomId = 10L, availableAt = AFTER_EXPIRY)
+                    .apply { recordAnswer(hasRemainingTarget = false, answeredAt = AFTER_EXPIRY.plusHours(1)) },
+            )
+            memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = 3L, chatRoomId = 11L, availableAt = AFTER_EXPIRY.minusDays(8)),
+            )
+
+            val result = memberReviewRepository.findPendingAvailableBetween(AFTER_EXPIRY.minusDays(7), AFTER_EXPIRY)
+
+            result.map { it.id } shouldBe listOf(pending.id)
+        }
+
+        "창 경계 — from 은 제외, to 는 포함한다" {
+            memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = 1L, chatRoomId = 10L, availableAt = FRIDAY))
+
+            memberReviewRepository.findPendingAvailableBetween(FRIDAY, AFTER_EXPIRY).shouldBeEmpty()
+            memberReviewRepository.findPendingAvailableBetween(FRIDAY.minusDays(1), FRIDAY).size shouldBe 1
+        }
+    }
 
     "findEndedChatRoomIdsWithoutReview — 끝났는데 평가가 열리지 않은 방(누락 복구 대상)" - {
         "given: 끝난 1:1 방에 평가가 없을 때" - {
