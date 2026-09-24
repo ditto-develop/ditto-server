@@ -17,6 +17,7 @@
 - `MemberDevice` — 푸시 주소록 한 줄. 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원. 회원 1명이 여러 행(폰·태블릿).
 - `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·deepLink·뱃지가 여기 있다.
 - `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 무효 토큰(`UNREGISTERED`)을 콜백으로 돌려준다.
+- `SystemNotice` — 어드민이 보낸 시스템 공지 한 건의 이력(제목·본문·발송자·대상 수·수신 수). 수신자별 행은 `Notification`이다.
 
 ## 유형 표 (FE 계약)
 
@@ -39,7 +40,7 @@
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |
 | `VOTE_CREATED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.createVote` → `ChatVoteNotifier` |
 | `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteNotifier` |
-| `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
+| `SYSTEM_NOTICE` | SYSTEM | `system_notice.id` | 제한 없음 | `AdminNoticeController` → `SystemNoticeFacade` → `SystemNoticeNotifier` — 활성 회원 전원 |
 
 `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 **문항이 있는 셋 중** id 가 가장 작은 셋을 대표로 삼는다(문항 수 문구도 그 셋 기준). 문항 있는 셋이 없으면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
@@ -79,7 +80,7 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
+  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림 — `target_id`는 추적용).
   방이 지워졌으면 deepLink 없이 보낸다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
@@ -94,9 +95,20 @@
 
 - 스케줄러가 부르는 경로(`MATCH_RESULT`·`NO_MATCH`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`·`CHAT_NO_MESSAGE`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
 - 시각이 트리거인 경로(`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`REVIEW_REMINDER` — `WeeklyNotificationScheduler`)는 사건이 일어나는 코드 지점이 없다. `MatchingScheduler`처럼 실제 시각의 cron 으로 돌고, 그 시각에 활성 셋이 없으면(어드민이 늦게 만들면) 그 주 알림은 없다. 수렴 루프가 아니다.
-- 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`)는 **컨트롤러가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
+- 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`·`SYSTEM_NOTICE`)는 **컨트롤러(또는 트랜잭션 없는 facade)가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.
+
+## 시스템 공지
+
+어드민이 `/admin/notices`에서 제목·본문을 넣고 보내면 활성 회원 전원에게 `SYSTEM_NOTICE`가 적재·푸시된다.
+
+- **이력은 `system_notice`에 따로 남긴다.** `notification` 행은 수신자별 기록이라 "언제 누가 무엇을 몇 명에게"를 볼 수 없고 30일 뒤 지워진다. 이력은 제목·본문·발송자(ID·이름·이메일 스냅샷)·대상 수·수신 수를 담고 상태 컬럼은 없다.
+- **발송은 어드민 요청 안에서 동기로 끝난다.** 다른 전원 알림(`QUIZ_OPENED`)과 같다. `SystemNoticeFacade`가 **대상 조회 → 이력(대상 수) 커밋 → 적재 → 수신 수 기록** 순으로 트랜잭션 없이 조율한다. 조회를 먼저 하는 이유는 조회가 실패하면 이력 없이 오류로 끝나야 하기 때문이다 — 사람이 결과를 보는 경로라 스케줄러처럼 삼키지 않는다.
+- **`recipient_count`가 NULL 이면 발송 중이다.** 발송이 길어져 화면이 먼저 돌아와도(앞단 타임아웃) "0명"이 아니라 "발송 중 · 대상 N명"으로 보여야 어드민이 다시 보내지 않는다 — `SYSTEM_NOTICE`는 중복을 막지 않아 두 번 보내면 전원이 두 번 받는다. 발송 도중 서버가 멈추면 NULL 로 남는다. 상태 컬럼(FAILED)이 없으니 그건 어드민이 판단한다(화면 안내). 회원 수가 커져 발송이 앞단 타임아웃을 넘기게 되면 상태 컬럼과 비동기 작업을 `QUIZ_OPENED`와 함께 다시 본다.
+- 회원 한 명의 적재 실패는 `NotificationAppender`가 삼키고 로그로 남으며, 수신 수는 실제 적재된 수다. 자동 재시도는 없다 — 어드민이 다시 보낸다.
+- **문구 길이 제한은 알림과 같다**(`Notification.TITLE_MAX_LENGTH`·`BODY_MAX_LENGTH`). 검증·정규화는 `SystemNotice.create`가 한다 — 앞뒤 공백을 지우고 줄바꿈을 LF 로 맞춘 뒤 센다(브라우저 폼은 textarea 줄바꿈을 CRLF 로 보내 화면 `maxlength`를 통과한 500자가 서버에서 길어진다). 검증에 걸리면 입력값을 폼에 다시 채워 준다.
+- **푸시 토글에 걸리지 않는다.** 운영 공지(업데이트·점검)를 전제로 한다. 이벤트 안내처럼 마케팅 성격의 공지를 같은 경로로 보내면 `marketing` 수신 거부를 무시하게 되므로, 그 전에 공지 종류를 나눠 토글을 태울지 정한다(TODO).
 
 ## 엔드포인트
 
@@ -121,7 +133,8 @@
 
 - 탈퇴 완전 삭제 시 `member_device` 정리 — FE 가 탈퇴 전 해제를 부르지만 서버측 보강 필요 (#154)
 - 실시간 배지 — 현재는 폴링/재조회. STOMP 개인 큐 여부 미정
-- `SYSTEM_NOTICE` 발송 주체 — 어드민 공지 화면
+- 시스템 공지의 운영/마케팅 구분과 `marketing` 토글 연동 — 이벤트 안내를 같은 경로로 보내기 전에
+- 시스템 공지 대상 조건(전원 외) 발송 — 필요해지면
 - 채팅 연장(#121)으로 종료 시각이 밀렸을 때 종료 임박 알림을 다시 보낼지
 - 요청 경로의 알림 호출(신청·수락·거절·투표 시작·마감·채팅 종료)을 컨트롤러에서 `facade`로 모으기 — 진입점이 늘면 누락 위험
 - 평가 리마인드는 마감 개념 없이 독촉 한 번이다(#211 결정). 기획이 평가 기한을 정하면 제출 거부 여부와 함께 다시 본다

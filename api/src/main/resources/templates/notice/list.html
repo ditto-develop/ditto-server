@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('시스템 공지')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('notice')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">시스템 공지</h1>
+            <p class="page-desc">활성 회원 전원에게 알림 센터·푸시로 공지를 보냅니다. 같은 공지를 다시 보낼 수 있습니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <h2>공지 보내기</h2>
+                <form th:action="@{/admin/notices}" method="post">
+                    <div class="field">
+                        <label>제목</label>
+                        <input type="text" name="title" th:value="${title}" th:maxlength="${titleMaxLength}" required placeholder="예: ditto가 업데이트됐어요"/>
+                    </div>
+                    <div class="field">
+                        <label>본문 (선택)</label>
+                        <textarea name="body" rows="3" th:maxlength="${bodyMaxLength}" th:text="${body}" placeholder="예: 이번에 달라진 점을 확인해보세요."></textarea>
+                    </div>
+                    <div class="field">
+                        <button class="btn" type="submit"
+                                onclick="return confirm('활성 회원 전원에게 보냅니다. 되돌릴 수 없습니다. 보낼까요?')">전원에게 보내기</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>발송 이력</h2>
+                <p class="muted">발송은 요청 안에서 끝납니다. "발송 중"이 오래 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
+                <p class="muted" th:if="${notices.isEmpty()}">보낸 공지가 없습니다.</p>
+                <table class="tbl" th:unless="${notices.isEmpty()}">
+                    <thead>
+                    <tr><th>#</th><th>보낸 시각</th><th>제목</th><th>본문</th><th>수신</th><th>발송자</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="n : ${notices}">
+                        <td class="num" th:text="${n.id}">1</td>
+                        <td class="num" th:text="${#temporals.format(n.createdAt, 'yy-MM-dd HH:mm')}">-</td>
+                        <td th:text="${n.title}">title</td>
+                        <td class="muted" th:text="${n.body} ?: '—'">body</td>
+                        <td class="num">
+                            <span class="badge" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
+                            <span th:unless="${n.sending}" th:text="${n.recipientCount} + ' / ' + ${n.targetCount} + '명'">0</span>
+                        </td>
+                        <td th:text="${n.authorName != null} ? (${n.authorName} + (${n.authorEmail != null} ? ' (' + ${n.authorEmail} + ')' : '')) : ('회원 #' + ${n.authorMemberId})">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>
