@@ -1,10 +1,10 @@
 package com.ditto.api.review.controller
 
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.dto.MemberReviewResponse
 import com.ditto.api.review.dto.ReviewAnswerSubmitRequest
 import com.ditto.api.review.dto.ReviewAnswerSubmitResponse
-import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.service.MemberReviewService
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
@@ -47,7 +47,11 @@ class MemberReviewController(
             request = request,
         )
         if (request.wantsOneToOneRematch != null) {
-            rematchNotifier.notifySubmitted(reviewId, submitterId = principal.memberId, counterpartId = reviewedMemberId)
+            rematchNotifier.notifySubmitted(
+                reviewId = reviewId,
+                submitterId = principal.memberId,
+                counterpartId = reviewedMemberId,
+            )
         }
         return ApiResponse.ok(response)
     }

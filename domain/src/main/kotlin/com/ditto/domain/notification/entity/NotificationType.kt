@@ -43,7 +43,7 @@ enum class NotificationType(
      */
     GROUP_NOT_FORMED(NotificationCategory.MATCHING, "group_match.id (미성사 그룹)", DuplicatePolicy.ONCE_PER_TARGET),
 
-    /** 그룸 멤버가 나와 1:1 재매칭을 원한다고 냈다. 쌍마다 한 번. 신청/수락 모델(ADR 0031). */
+    /** 그룹 멤버가 나와 1:1 재매칭을 원한다고 냈다. 쌍마다 한 번. 신청/수락 모델(ADR 0031). */
     REMATCH_REQUESTED(NotificationCategory.MATCHING, "rematch.id", DuplicatePolicy.ONCE_PER_TARGET),
 
     /** 한쪽이 원했는데 성사되지 않았다. 원했던 쪽에게. 쌍마다 한 번. */

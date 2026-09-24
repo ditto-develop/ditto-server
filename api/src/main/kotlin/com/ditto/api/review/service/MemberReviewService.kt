@@ -43,13 +43,17 @@ class MemberReviewService(
         val answers = reviewAnswerRepository.findAllByMemberReviewIdInOrderByIdAsc(reviews.map { it.id })
         val answersByReviewId = answers.groupBy { it.memberReviewId }
         val reviewedMembersById = findReviewedMembersById(answers)
+        val pairsByMatchId = rematchSubmitter.findPairsByMatchId(reviews)
 
         return reviews.map { review ->
             MemberReviewResponse.of(
                 review = review,
                 answers = answersByReviewId[review.id].orEmpty(),
                 membersById = reviewedMembersById,
-                counterpartWantsByMemberId = rematchSubmitter.counterpartWantsByTarget(review, memberId),
+                counterpartWantsByMemberId = rematchSubmitter.counterpartWantsByTarget(
+                    pairs = pairsByMatchId[review.matchId].orEmpty(),
+                    authorId = memberId,
+                ),
             )
         }
     }

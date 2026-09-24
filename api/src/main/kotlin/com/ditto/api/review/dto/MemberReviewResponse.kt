@@ -38,7 +38,11 @@ data class MemberReviewResponse(
             answeredTargetCount = answers.count { it.isAnswered },
             totalTargetCount = answers.size,
             targets = answers.map {
-                ReviewTargetResponse.of(it, membersById[it.reviewedMemberId], counterpartWantsByMemberId[it.reviewedMemberId])
+                ReviewTargetResponse.of(
+                    answer = it,
+                    member = membersById[it.reviewedMemberId],
+                    counterpartWantsRematch = counterpartWantsByMemberId[it.reviewedMemberId],
+                )
             },
         )
     }

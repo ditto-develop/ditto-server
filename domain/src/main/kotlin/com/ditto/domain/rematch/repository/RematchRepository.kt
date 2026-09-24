@@ -24,6 +24,9 @@ interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCus
      */
     fun findAllBySourceGroupMatchId(sourceGroupMatchId: Long): List<Rematch>
 
+    /** 여러 그룹의 쌍을 한 번에. 미완료 평가 목록이 평가 수만큼 조회하지 않게 한다. */
+    fun findAllBySourceGroupMatchIdIn(sourceGroupMatchIds: Collection<Long>): List<Rematch>
+
     /**
      * 회원이 속한 특정 상태의 쌍 ID. 탈퇴 시 미성사(`WAITING`) 쌍을 찾아 취소하는 데 쓴다.
      *

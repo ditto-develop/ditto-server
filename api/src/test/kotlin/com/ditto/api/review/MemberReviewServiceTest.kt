@@ -231,7 +231,9 @@ class MemberReviewServiceTest(
             memberReviewService.createReviews(
                 endedChatRoom(matchType = ChatRoomType.GROUP, participantIds = listOf(1L, 2L, 3L)),
             )
-            val wanting = rematchRepository.save(RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 2L))
+            val wanting = rematchRepository.save(
+                RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 2L),
+            )
             wanting.submitWants(2L, true, endedAt.plusHours(1))
             rematchRepository.save(wanting)
             rematchRepository.save(RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 3L))
@@ -240,6 +242,21 @@ class MemberReviewServiceTest(
 
             targets.getValue(2L).counterpartWantsRematch shouldBe true
             targets.getValue(3L).counterpartWantsRematch shouldBe null
+        }
+
+        // 탈퇴로 취소된 쌍은 성사될 수 없다. 옛 의사를 "받은 신청"으로 보이면 수락해도 아무 일이 없다.
+        "상대가 탈퇴해 취소된 쌍은 상대 의사를 내지 않는다" {
+            memberReviewService.createReviews(
+                endedChatRoom(matchType = ChatRoomType.GROUP, participantIds = listOf(1L, 2L)),
+            )
+            val cancelled = rematchRepository.save(
+                RematchFixture.create(sourceGroupMatchId = 7L, memberIdA = 1L, memberIdB = 2L),
+            )
+            cancelled.submitWants(2L, true, endedAt.plusHours(1))
+            cancelled.cancelForMemberLeave()
+            rematchRepository.save(cancelled)
+
+            memberReviewService.getMyPendingReviews(1L).single().targets.single().counterpartWantsRematch shouldBe null
         }
 
         "1:1 평가는 재매칭이 없어 상대 의사가 null 이다" {

@@ -1,12 +1,12 @@
 package com.ditto.api.review
 
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.controller.MemberReviewController
 import com.ditto.api.review.dto.MemberReviewResponse
 import com.ditto.api.review.dto.RematchResultResponse
 import com.ditto.api.review.dto.ReviewAnswerSubmitRequest
 import com.ditto.api.review.dto.ReviewAnswerSubmitResponse
 import com.ditto.api.review.dto.ReviewTargetResponse
-import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.service.MemberReviewService
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -134,7 +134,11 @@ class MemberReviewControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].targets[].answeredAt")
                                     .description("내 제출 시각. null 이면 아직 제출하지 않은 대상").optional(),
                                 fieldWithPath("data[].targets[].counterpartWantsRematch")
-                                    .description("상대의 1:1 재매칭 의사. true 면 나를 원한다고 냈다(받은 신청), false 면 원하지 않는다고 냈다, null 이면 아직 안 냈거나 1:1 평가").optional(),
+                                    .description(
+                                        "상대의 1:1 재매칭 의사. true 면 나를 원한다고 냈다(받은 신청), " +
+                                            "false 면 원하지 않는다고 냈다, null 이면 아직 안 냈거나 1:1 평가",
+                                    )
+                                    .optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -224,6 +228,27 @@ class MemberReviewControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("재매칭 의사가 없는 제출(1:1 평가)은 재매칭 알림 판정을 부르지 않는다")
+    fun submitAnswerWithoutRematchSkipsNotifier() {
+        every { memberReviewService.submitAnswer(any(), any(), any(), any()) } returns ReviewAnswerSubmitResponse(
+            reviewId = 1L,
+            status = ReviewProgressStatus.COMPLETED,
+            answeredTargetCount = 1,
+            totalTargetCount = 1,
+            completedAt = LocalDateTime.of(2026, 8, 3, 10, 30),
+            rematch = null,
+        )
+
+        mockMvc.perform(
+            put("/api/v1/member-reviews/{reviewId}/targets/{memberId}", 1L, 2L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(ReviewAnswerSubmitRequest(MeetingStatus.MET, 5, null))),
+        )
+            .andExpect(status().isOk)
+            .andDo { verify(exactly = 0) { rematchNotifier.notifySubmitted(any(), any(), any()) } }
     }
 
     // 만남 상태는 enum 으로 받으므로 잘못된 값은 서비스에 닿기 전 역직렬화에서 걸린다.

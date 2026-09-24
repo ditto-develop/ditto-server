@@ -36,7 +36,9 @@ class RematchNotifierTest(
     )
 
     fun savePair(a: Long, b: Long, submit: Rematch.() -> Unit = {}) =
-        rematchRepository.save(RematchFixture.create(sourceGroupMatchId = GROUP_MATCH_ID, memberIdA = a, memberIdB = b).apply(submit))
+        rematchRepository.save(
+            RematchFixture.create(sourceGroupMatchId = GROUP_MATCH_ID, memberIdA = a, memberIdB = b).apply(submit),
+        )
 
     "먼저 원한다고 내면 상대에게 신청 알림이 간다" {
         val me = saveMember("나")
@@ -129,7 +131,9 @@ class RematchNotifierTest(
 
     "1:1 평가는 재매칭이 없어 알리지 않는다" {
         val me = saveMember("나")
-        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = me.id, matchType = ChatRoomType.PERSONAL))
+        val review = memberReviewRepository.save(
+            MemberReviewFixture.create(authorMemberId = me.id, matchType = ChatRoomType.PERSONAL),
+        )
 
         rematchNotifier.notifySubmitted(review.id, submitterId = me.id, counterpartId = 2L) shouldBe false
     }

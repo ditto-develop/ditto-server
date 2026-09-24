@@ -27,7 +27,11 @@ data class ReviewTargetResponse(
     val counterpartWantsRematch: Boolean?,
 ) {
     companion object {
-        fun of(answer: ReviewAnswer, member: Member?, counterpartWantsRematch: Boolean?): ReviewTargetResponse = ReviewTargetResponse(
+        fun of(
+            answer: ReviewAnswer,
+            member: Member?,
+            counterpartWantsRematch: Boolean?,
+        ): ReviewTargetResponse = ReviewTargetResponse(
             memberId = answer.reviewedMemberId,
             nickname = member?.nickname,
             gender = member?.gender?.name,
