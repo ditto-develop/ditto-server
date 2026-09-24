@@ -6,6 +6,7 @@ import com.ditto.api.review.dto.RematchResultResponse
 import com.ditto.api.review.dto.ReviewAnswerSubmitRequest
 import com.ditto.api.review.dto.ReviewAnswerSubmitResponse
 import com.ditto.api.review.dto.ReviewTargetResponse
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.review.service.MemberReviewService
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -16,6 +17,7 @@ import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
@@ -33,8 +35,9 @@ import java.time.LocalDateTime
 class MemberReviewControllerTest : ControllerUnitTest() {
 
     private val memberReviewService: MemberReviewService = mockk()
+    private val rematchNotifier: RematchNotifier = mockk(relaxed = true)
 
-    override val controller = MemberReviewController(memberReviewService)
+    override val controller = MemberReviewController(memberReviewService, rematchNotifier)
 
     private fun answeredTarget() = ReviewTargetResponse(
         memberId = 2L,
@@ -170,6 +173,8 @@ class MemberReviewControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("COMPLETED"))
             .andExpect(jsonPath("$.data.rematch.matchedMemberId").value(2L))
+            // 재매칭 의사가 실린 제출이라 커밋 뒤 알림 판정을 부른다
+            .andDo { verify(exactly = 1) { rematchNotifier.notifySubmitted(1L, submitterId = 1L, counterpartId = 2L) } }
             .andDo(
                 document(
                     "member-review-submit",

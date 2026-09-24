@@ -53,6 +53,23 @@ object NotificationMessages {
         body = "함께할 사람이 충분히 모이지 않았어요. 다음 주 퀴즈에서 새로운 그룹을 만나보세요.",
     )
 
+    /** [requesterNickname] 이 나와 1:1 재매칭을 원한다고 냈다. */
+    fun rematchRequested(requesterNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.REMATCH_REQUESTED,
+        title = "${requesterNickname}님이 다시 만나고 싶어 해요",
+        body = "수락하면 대화방이 열려요.",
+    )
+
+    /**
+     * [counterpartNickname] 과의 재매칭이 성사되지 않았다. 기획 표에 없는 알림이라 문구는 확정 전이다.
+     * 그룹에서 함께한 사이라 "거절했어요"보다 한 단계 부드럽게 둔다.
+     */
+    fun rematchRejected(counterpartNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.REMATCH_REJECTED,
+        title = "${counterpartNickname}님과의 재매칭이 이루어지지 않았어요",
+        body = "다음 만남에서 새로운 인연을 만나보세요.",
+    )
+
     /** 재매칭이 성사돼 방이 예약됐다. */
     fun rematchMatched(counterpartNickname: String): NotificationContent = NotificationContent(
         type = NotificationType.REMATCH_MATCHED,

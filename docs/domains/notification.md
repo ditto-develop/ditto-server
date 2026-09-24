@@ -28,6 +28,8 @@
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `NO_MATCH` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` (매칭 풀에 들었지만 후보 0명) |
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
+| `REMATCH_REQUESTED` | MATCHING | `rematch.id` | 대상당 1회 | `MemberReviewController.submitAnswer` → `RematchNotifier` — 먼저 "원한다"를 낸 사람의 상대 |
+| `REMATCH_REJECTED` | MATCHING | `rematch.id` | 대상당 1회 | 같은 지점 — `CANCELLED(NOT_MUTUAL)` 시 원했던 쪽 |
 | `REMATCH_MATCHED` | MATCHING | `chat_room.id`(재매칭) | 대상당 1회 | `RematchChatRoomOpener.reserve` |
 | `MATCH_REQUESTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.requestMatch` → `PersonalMatchNotifier` |
 | `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
@@ -80,7 +82,7 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림 — `target_id`는 추적용).
+  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`→없음(탭하면 앱만 열림 — `target_id`는 추적용).
   방이 지워졌으면 deepLink 없이 보낸다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
@@ -95,7 +97,7 @@
 
 - 스케줄러가 부르는 경로(`MATCH_RESULT`·`NO_MATCH`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`·`CHAT_NO_MESSAGE`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
 - 시각이 트리거인 경로(`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`REVIEW_REMINDER` — `WeeklyNotificationScheduler`)는 사건이 일어나는 코드 지점이 없다. `MatchingScheduler`처럼 실제 시각의 cron 으로 돌고, 그 시각에 활성 셋이 없으면(어드민이 늦게 만들면) 그 주 알림은 없다. 수렴 루프가 아니다.
-- 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`·`SYSTEM_NOTICE`)는 **컨트롤러(또는 트랜잭션 없는 facade)가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
+- 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`·`SYSTEM_NOTICE`·`REMATCH_REQUESTED`·`REMATCH_REJECTED`)는 **컨트롤러(또는 트랜잭션 없는 facade)가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.
 

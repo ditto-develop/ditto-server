@@ -11,6 +11,9 @@ import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.rematch.RematchFixture
+import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -39,6 +42,7 @@ class PushNotifierTest : FreeSpec({
         setting: MemberNotificationSetting? = null,
         deviceTokens: List<String> = listOf("token-1"),
         room: ChatRoom? = null,
+        rematch: Rematch? = null,
         unreadCount: Long = 3L,
     ): Fixture {
         val settingRepository = mockk<MemberNotificationSettingRepository> {
@@ -55,6 +59,9 @@ class PushNotifierTest : FreeSpec({
         val chatRoomRepository = mockk<ChatRoomRepository> {
             every { findById(any()) } returns Optional.ofNullable(room)
         }
+        val rematchRepository = mockk<RematchRepository> {
+            every { findById(any()) } returns Optional.ofNullable(rematch)
+        }
         val cleaner = mockk<PushDeadDeviceCleaner>(relaxed = true)
         val pushSender = mockk<PushSender>(relaxed = true)
         val notifier = PushNotifier(
@@ -62,6 +69,7 @@ class PushNotifierTest : FreeSpec({
             memberDeviceRepository = deviceRepository,
             notificationRepository = notificationRepository,
             chatRoomRepository = chatRoomRepository,
+            rematchRepository = rematchRepository,
             pushDeadDeviceCleaner = cleaner,
             pushSender = pushSender,
         )
@@ -172,6 +180,17 @@ class PushNotifierTest : FreeSpec({
             message.data["notificationId"] shouldBe "8821"
         }
 
+        "deepLink — 재매칭 신청·거절은 쌍이 나온 그룹 방의 평가 화면이다" {
+            val pair = RematchFixture.create(sourceChatRoomId = 55L)
+            val fixture = fixture(rematch = pair)
+            val messageSlot = slot<PushMessage>()
+            every { fixture.pushSender.send(capture(messageSlot), any()) } returns Unit
+
+            fixture.notifier.pushAll(listOf(notification(NotificationType.REMATCH_REQUESTED, targetId = pair.id)))
+
+            messageSlot.captured.data["deepLink"] shouldBe "/chat/group/55/rate/"
+        }
+
         "deepLink — 퀴즈 오픈은 이번 주 퀴즈 화면이다" {
             sentMessage(NotificationType.QUIZ_OPENED).data["deepLink"] shouldBe "/quiz/current/"
             sentMessage(NotificationType.QUIZ_CLOSING_SOON).data["deepLink"] shouldBe "/quiz/current/"
@@ -232,6 +251,7 @@ class PushNotifierTest : FreeSpec({
             memberDeviceRepository = mockk(),
             notificationRepository = mockk(),
             chatRoomRepository = mockk(),
+            rematchRepository = mockk(),
             pushDeadDeviceCleaner = mockk(),
             pushSender = mockk(),
         )
