@@ -11,6 +11,13 @@ import com.ditto.domain.notification.entity.NotificationType
  */
 object NotificationMessages {
 
+    /** 이번 주 퀴즈가 열렸다. 표의 "12문항"은 셋마다 다를 수 있어 실제 문항 수([quizCount])로 채운다. */
+    fun quizOpened(quizCount: Int): NotificationContent = NotificationContent(
+        type = NotificationType.QUIZ_OPENED,
+        title = "이번 주 퀴즈가 열렸어요",
+        body = "수요일 자정까지 ${quizCount}문항에 답하면 매칭이 시작돼요.",
+    )
+
     /** 이번 주 매칭 후보가 생겼다. */
     fun matchResult(): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_RESULT,

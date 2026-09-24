@@ -168,6 +168,10 @@ class PushNotifierTest : FreeSpec({
             message.data["notificationId"] shouldBe "8821"
         }
 
+        "deepLink — 퀴즈 오픈은 이번 주 퀴즈 화면이다" {
+            sentMessage(NotificationType.QUIZ_OPENED).data["deepLink"] shouldBe "/quiz/current/"
+        }
+
         "deepLink — SYSTEM 공지는 이동할 곳이 없다" {
             sentMessage(NotificationType.SYSTEM_NOTICE, targetId = null).data.containsKey("deepLink") shouldBe false
         }
@@ -180,6 +184,7 @@ class PushNotifierTest : FreeSpec({
             // 방이 열려 있는 72시간이 지나면 무의미하다.
             sentMessage(NotificationType.CHAT_ROOM_OPENED, room = ChatRoomFixture.personal())
                 .ttl shouldBe Duration.ofDays(3)
+            sentMessage(NotificationType.QUIZ_OPENED).ttl shouldBe Duration.ofDays(3)
             sentMessage(NotificationType.MATCH_RESULT).ttl shouldBe null
         }
     }

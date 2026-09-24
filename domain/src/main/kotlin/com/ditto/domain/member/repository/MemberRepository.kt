@@ -3,6 +3,7 @@ package com.ditto.domain.member.repository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.querydsl.MemberRepositoryCustom
 import jakarta.persistence.LockModeType
 import java.time.LocalDateTime
 import org.springframework.data.jpa.repository.JpaRepository
@@ -10,7 +11,7 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
-interface MemberRepository : JpaRepository<Member, Long> {
+interface MemberRepository : JpaRepository<Member, Long>, MemberRepositoryCustom {
 
     /**
      * 회원 행을 잠그고 읽는다 — 가입 완료(register)처럼 "상태 확인 후 전이 + 파생 행 생성"이

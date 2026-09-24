@@ -22,6 +22,7 @@
 
 | 유형 | 카테고리 | `target_id` | 중복 정책 | 적재 지점 |
 |---|---|---|---|---|
+| `QUIZ_OPENED` | MATCHING | `quiz_set.id`(이번 주 대표 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(월 00:00) → `QuizOpenedNotifier` |
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `NO_MATCH` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` (매칭 풀에 들었지만 후보 0명) |
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
@@ -37,7 +38,7 @@
 | `VOTE_CLOSED` | CHAT | `chat_room.id` | 제한 없음* | `ChatVoteController.close` → `ChatVoteNotifier` |
 | `SYSTEM_NOTICE` | SYSTEM | 없음 | 제한 없음 | **발송 주체 없음**(어드민 공지 화면 후속) |
 
-`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
+`QUIZ_OPENED`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. `QUIZ_OPENED`는 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 id 가 가장 작은 셋을 대표로 삼는다. 수신자는 활성 회원 전원이고 문항이 없는 셋이면 보내지 않는다. 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
 **노매칭 알림의 수신자는 매칭 풀에 든 회원이다**(`MatchmakingService.matchingPoolMemberIds` — 퀴즈 완료자에서 배치의 제외 정책에 걸린 사람을 뺀 집합). 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않고, 정지·성사로 풀에서 빠진 사람에게는 틀린 안내다.
 
@@ -75,12 +76,12 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`→`/matching/`, `REVIEW_REQUEST`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
+  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`→`/quiz/current/`, `REVIEW_REQUEST`→방 경로+`rate/`, `SYSTEM_NOTICE`→없음(탭하면 앱만 열림).
   방이 지워졌으면 deepLink 없이 보낸다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
 - **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON` 6시간 — 종료 6시간 전
-  알림이라 종료가 지나면 무의미, `CHAT_ROOM_OPENED` 3일 — 방이 열려 있는 72시간). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
+  알림이라 종료가 지나면 무의미, `CHAT_ROOM_OPENED`·`QUIZ_OPENED` 3일 — 방이 열려 있는 72시간·퀴즈 응답 기간 월~수). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
 - **죽은 토큰 정리** — 발송 결과의 `UNREGISTERED` 토큰을 `PushDeadDeviceCleaner`가 지운다(FCM 콜백
   스레드라 자기 트랜잭션). 방치하면 실패율이 쌓여 FCM 이 발송량을 제한한다.
 
@@ -89,6 +90,7 @@
 원칙은 **커밋된 뒤에, 사건을 아는 곳에서**다.
 
 - 스케줄러가 부르는 경로(`MATCH_RESULT`·`NO_MATCH`·`CHAT_ROOM_OPENED`·`REVIEW_REQUEST`·`CHAT_ENDING_SOON`)는 전이가 커밋된 뒤에 부르므로 롤백된 작업의 알림이 남지 않는다.
+- 시각이 트리거인 경로(`QUIZ_OPENED` — `WeeklyNotificationScheduler`)는 사건이 일어나는 코드 지점이 없다. `MatchingScheduler`처럼 실제 시각의 cron 으로 돌고, 그 시각에 활성 셋이 없으면(어드민이 늦게 만들면) 그 주 알림은 없다. 수렴 루프가 아니다.
 - 요청 경로(`MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`VOTE_CREATED`·`VOTE_CLOSED`)는 **컨트롤러가 서비스 커밋 뒤에** 부른다. 서비스의 `@Transactional` 안에 두면 `REQUIRES_NEW` 적재가 먼저 커밋돼 롤백된 요청의 알림이 나가고, 커넥션을 잡은 채 푸시 준비 조회를 한다. 컨트롤러가 흐름을 알게 되는 대가는 감수한다 — 진입점이 늘면 `facade` 계층으로 모은다(아래 TODO).
 - 트랜잭션 안에서 부르는 경로(`GROUP_FORMED`)는 그 사실을 아는 곳이 거기뿐이라 남겨 뒀다. 롤백 시 알림만 남을 수 있다는 것을 알고 택했다.
 - 실시간 경로(`CHAT_MESSAGE`)는 **브로드캐스트 뒤에** 둔다 — 전달이 적재를 기다리지 않아야 한다.

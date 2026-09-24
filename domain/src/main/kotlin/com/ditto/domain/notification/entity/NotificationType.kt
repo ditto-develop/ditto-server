@@ -17,6 +17,12 @@ enum class NotificationType(
     val duplicatePolicy: DuplicatePolicy,
 ) {
     /**
+     * 이번 주 퀴즈가 열렸다. 대상은 그 주 활성 셋 중 대표 하나(id 최소)다. 화면 이동용이 아니라 "주마다 한 번"의
+     * 판정 기준이라, 셋이 둘(1:1·그룹)이어도 알림은 하나다.
+     */
+    QUIZ_OPENED(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /**
      * 주간 매칭 후보가 생겼다. 대상은 퀴즈셋이다 — 화면은 매칭 홈으로 보내면 되지만,
      * "주마다 한 번"을 판정할 대상이 필요하다(회원+유형만으로 막으면 평생 한 번만 알린다).
      */

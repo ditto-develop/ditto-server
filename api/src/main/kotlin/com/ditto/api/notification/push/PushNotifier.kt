@@ -112,6 +112,7 @@ class PushNotifier(
             NotificationType.CHAT_MESSAGE,
             NotificationType.CHAT_ENDING_SOON,
             -> chatRoomPathOf(targetId)
+            NotificationType.QUIZ_OPENED -> "/quiz/current/"
             NotificationType.SYSTEM_NOTICE -> null
         }
     }
@@ -135,8 +136,8 @@ class PushNotifier(
     /** 시효가 있는 알림만 짧게. 없으면 FCM 기본(4주)이라 꺼져 있던 기기에 지난 알림이 몰린다. */
     private fun ttlOf(type: NotificationType): Duration? = when (type) {
         NotificationType.CHAT_MESSAGE -> Duration.ofHours(1)
-        // 방이 열려 있는 72시간(금 00:00 ~ 월 00:00)이 지나면 무의미하다.
-        NotificationType.CHAT_ROOM_OPENED -> Duration.ofDays(3)
+        // 방이 열려 있는 72시간(금 00:00 ~ 월 00:00)이 지나면 무의미하다. 퀴즈 응답 기간(월~수)도 같다.
+        NotificationType.CHAT_ROOM_OPENED, NotificationType.QUIZ_OPENED -> Duration.ofDays(3)
         // 종료 6시간 전 알림 — 종료가 지나면 무의미하다.
         NotificationType.CHAT_ENDING_SOON -> Duration.ofHours(6)
         else -> null
