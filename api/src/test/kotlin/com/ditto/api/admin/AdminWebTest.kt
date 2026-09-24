@@ -10,6 +10,9 @@ import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.SystemNoticeRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.MemberReportFixture
 import com.ditto.domain.memberreport.repository.MemberReportRepository
@@ -78,6 +81,12 @@ class AdminWebTest {
     @Autowired
     lateinit var groupMatchRepository: GroupMatchRepository
 
+    @Autowired
+    lateinit var systemNoticeRepository: SystemNoticeRepository
+
+    @Autowired
+    lateinit var notificationRepository: NotificationRepository
+
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
             AdminPrincipal(1L, "관리자", "admin@ditto.pics"),
@@ -105,6 +114,40 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/new").with(authentication(admin()))).andExpect(status().isOk)
         mockMvc.perform(get("/admin/time-override").with(authentication(admin()))).andExpect(status().isOk)
         mockMvc.perform(get("/admin/matching").with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/notices").with(authentication(admin()))).andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("시스템 공지를 보내면 활성 회원에게 알림이 남고 이력에 기록된다")
+    fun publishSystemNotice() {
+        val active = memberRepository.save(MemberFixture.create(nickname = "활성", email = "active@ditto.pics", status = MemberStatus.ACTIVE))
+        memberRepository.save(MemberFixture.create(nickname = "탈퇴", email = "left@ditto.pics", status = MemberStatus.LEFT))
+
+        mockMvc.perform(
+            post("/admin/notices").with(authentication(admin())).with(csrf())
+                .param("title", "ditto가 업데이트됐어요").param("body", "이번에 달라진 점을 확인해보세요."),
+        ).andExpect(status().is3xxRedirection)
+
+        val notice = systemNoticeRepository.findAllByOrderByIdDesc().single()
+        notice.recipientCount shouldBe 1
+        notice.authorMemberId shouldBe 1L
+        notificationRepository.findAll().single().let {
+            it.memberId shouldBe active.id
+            it.type shouldBe NotificationType.SYSTEM_NOTICE
+            it.targetId shouldBe notice.id
+        }
+    }
+
+    @Test
+    @DisplayName("제목이 비면 공지를 보내지 않고 오류 메시지로 돌아간다")
+    fun publishSystemNoticeRejectsBlankTitle() {
+        mockMvc.perform(
+            post("/admin/notices").with(authentication(admin())).with(csrf()).param("title", "   "),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(flash().attributeExists("error"))
+
+        systemNoticeRepository.count() shouldBe 0
     }
 
     @Test
