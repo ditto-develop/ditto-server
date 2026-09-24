@@ -89,8 +89,11 @@ enum class NotificationType(
      */
     VOTE_CLOSED(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ALLOW),
 
-    /** 운영 공지·업데이트 안내. 같은 내용을 다시 보낼 수 있어야 하므로 중복을 막지 않는다. */
-    SYSTEM_NOTICE(NotificationCategory.SYSTEM, "없음", DuplicatePolicy.ALLOW),
+    /**
+     * 운영 공지·업데이트 안내. 같은 내용을 다시 보낼 수 있어야 하므로 중복을 막지 않는다.
+     * 대상은 공지 이력이다. 화면 이동용이 아니라 어느 공지에서 나온 알림인지 추적하는 용도다.
+     */
+    SYSTEM_NOTICE(NotificationCategory.SYSTEM, "system_notice.id", DuplicatePolicy.ALLOW),
     ;
 
     companion object {

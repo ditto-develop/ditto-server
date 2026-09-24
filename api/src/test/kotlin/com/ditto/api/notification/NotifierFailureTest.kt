@@ -9,6 +9,7 @@ import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.QuizNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
+import com.ditto.api.notification.notifier.SystemNoticeNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.chat.ChatRoomFixture
@@ -20,6 +21,7 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.SystemNoticeFixture
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
@@ -89,6 +91,7 @@ class NotifierFailureTest {
         LEAD_HOURS,
     )
     private val reviewReminderNotifier = ReviewReminderNotifier(memberReviewRepository, notificationAppender)
+    private val systemNoticeNotifier = SystemNoticeNotifier(memberRepository, notificationAppender)
     private val quizNotifier = QuizNotifier(
         quizSetRepository,
         quizRepository,
@@ -184,6 +187,14 @@ class NotifierFailureTest {
         every { memberReviewRepository.findPendingAvailableBetween(any(), any()) } throws connectionFailure()
 
         reviewReminderNotifier.notifyPending(LocalDateTime.of(2026, 7, 20, 9, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("시스템 공지 — 회원 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun systemNoticeAbsorbsMemberQueryFailure() {
+        every { memberRepository.findAllIdsByStatus(any()) } throws connectionFailure()
+
+        systemNoticeNotifier.notify(SystemNoticeFixture.create(id = 5L)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

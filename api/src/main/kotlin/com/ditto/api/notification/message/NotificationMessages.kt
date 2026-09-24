@@ -160,6 +160,10 @@ object NotificationMessages {
         body = "아직 못다 한 이야기가 있다면 지금 해보는 건 어때요?",
     )
 
-    // SYSTEM_NOTICE 문구는 운영이 직접 쓰므로 여기 두지 않는다. 발송 화면(어드민)이 붙을 때
-    // 그 입력값으로 NotificationContent 를 만든다 — 지금은 발송 주체가 없어 만들 문구도 없다.
+    /** 운영 공지. 문구는 어드민이 입력한 그대로다(SystemNotice). */
+    fun systemNotice(title: String, body: String?): NotificationContent = NotificationContent(
+        type = NotificationType.SYSTEM_NOTICE,
+        title = title,
+        body = body,
+    )
 }
