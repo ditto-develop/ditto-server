@@ -2,7 +2,6 @@ package com.ditto.api.admin.notice
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.notification.facade.SystemNoticeFacade
-import com.ditto.api.notification.service.SystemNoticeService
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.notification.entity.Notification
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -18,12 +17,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminNoticeController(
     private val systemNoticeFacade: SystemNoticeFacade,
-    private val systemNoticeService: SystemNoticeService,
+    private val adminNoticeService: AdminNoticeService,
 ) {
 
     @GetMapping("/admin/notices")
     fun page(model: Model): String {
-        model.addAttribute("notices", systemNoticeService.history())
+        model.addAttribute("notices", adminNoticeService.history())
         model.addAttribute("titleMaxLength", Notification.TITLE_MAX_LENGTH)
         model.addAttribute("bodyMaxLength", Notification.BODY_MAX_LENGTH)
         model.addAttribute("active", "notice")

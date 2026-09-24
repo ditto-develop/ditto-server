@@ -1,5 +1,7 @@
 package com.ditto.domain.notification.entity
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -55,18 +57,41 @@ class SystemNotice private constructor(
     }
 
     companion object {
+        /**
+         * 문구는 앞뒤 공백을 지우고 줄바꿈을 LF 로 맞춘 뒤 검사한다. 브라우저 폼은 textarea 줄바꿈을 CRLF 로
+         * 보내서, 화면의 maxlength 를 통과한 500자가 서버에서는 줄 수만큼 길어진다.
+         */
         fun create(
             title: String,
             body: String?,
             authorMemberId: Long,
             authorName: String?,
             authorEmail: String?,
-        ): SystemNotice = SystemNotice(
-            title = title,
-            body = body,
-            authorMemberId = authorMemberId,
-            authorName = authorName,
-            authorEmail = authorEmail,
-        )
+        ): SystemNotice {
+            val normalizedTitle = normalize(title)
+            val normalizedBody = body?.let(::normalize)?.takeIf { it.isNotEmpty() }
+            validate(normalizedTitle, normalizedBody)
+            return SystemNotice(
+                title = normalizedTitle,
+                body = normalizedBody,
+                authorMemberId = authorMemberId,
+                authorName = authorName,
+                authorEmail = authorEmail,
+            )
+        }
+
+        private fun normalize(text: String): String = text.replace("\r\n", "\n").trim()
+
+        private fun validate(title: String, body: String?) {
+            if (title.isEmpty()) {
+                throw WarnException(ErrorCode.BAD_REQUEST, "제목을 입력하세요.")
+            }
+            if (title.length > Notification.TITLE_MAX_LENGTH) {
+                throw WarnException(ErrorCode.BAD_REQUEST, "제목은 ${Notification.TITLE_MAX_LENGTH}자 이하여야 합니다.")
+            }
+            if (body != null && body.length > Notification.BODY_MAX_LENGTH) {
+                throw WarnException(ErrorCode.BAD_REQUEST, "본문은 ${Notification.BODY_MAX_LENGTH}자 이하여야 합니다.")
+            }
+        }
     }
 }

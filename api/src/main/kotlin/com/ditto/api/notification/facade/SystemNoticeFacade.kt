@@ -1,8 +1,8 @@
 package com.ditto.api.notification.facade
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.admin.notice.AdminNoticeService
 import com.ditto.api.notification.notifier.SystemNoticeNotifier
-import com.ditto.api.notification.service.SystemNoticeService
 import com.ditto.domain.notification.entity.SystemNotice
 import org.springframework.stereotype.Component
 
@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component
  */
 @Component
 class SystemNoticeFacade(
-    private val systemNoticeService: SystemNoticeService,
+    private val adminNoticeService: AdminNoticeService,
     private val systemNoticeNotifier: SystemNoticeNotifier,
 ) {
 
     /** 이력을 남기고 활성 회원 전원에게 보낸다. 수신 수가 기록된 이력을 돌려준다. */
     fun publish(title: String, body: String?, author: AdminPrincipal): SystemNotice {
-        val notice = systemNoticeService.record(title, body, author)
-        val recipientCount = systemNoticeNotifier.notify(notice)
-        return systemNoticeService.recordRecipientCount(notice.id, recipientCount)
+        val notice = adminNoticeService.record(title, body, author)
+        val recipientCount = systemNoticeNotifier.notifyPublished(notice)
+        return adminNoticeService.recordRecipientCount(notice.id, recipientCount)
     }
 }

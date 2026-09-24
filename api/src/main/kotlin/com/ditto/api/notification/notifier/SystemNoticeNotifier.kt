@@ -19,7 +19,7 @@ class SystemNoticeNotifier(
     private val notificationAppender: NotificationAppender,
 ) {
     /** 실제로 남긴 알림 수. 회원 조회가 실패하면 0. */
-    fun notify(notice: SystemNotice): Int =
+    fun notifyPublished(notice: SystemNotice): Int =
         runCatchingExceptions { appendToActiveMembers(notice) }
             .onFailure { logger.warn(it) { "시스템 공지 발송 실패 — 무시한다: noticeId=${notice.id}" } }
             .getOrDefault(0)

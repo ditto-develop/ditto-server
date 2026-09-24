@@ -10,12 +10,12 @@ import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
-import com.ditto.domain.notification.entity.NotificationType
-import com.ditto.domain.notification.repository.NotificationRepository
-import com.ditto.domain.notification.repository.SystemNoticeRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.MemberReportFixture
 import com.ditto.domain.memberreport.repository.MemberReportRepository
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.SystemNoticeRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
@@ -25,8 +25,8 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
-import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.junit.jupiter.api.DisplayName

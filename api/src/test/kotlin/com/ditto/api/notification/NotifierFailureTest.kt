@@ -9,8 +9,8 @@ import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.QuizNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
-import com.ditto.api.notification.notifier.SystemNoticeNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
+import com.ditto.api.notification.notifier.SystemNoticeNotifier
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
@@ -194,7 +194,7 @@ class NotifierFailureTest {
     fun systemNoticeAbsorbsMemberQueryFailure() {
         every { memberRepository.findAllIdsByStatus(any()) } throws connectionFailure()
 
-        systemNoticeNotifier.notify(SystemNoticeFixture.create(id = 5L)) shouldBe 0
+        systemNoticeNotifier.notifyPublished(SystemNoticeFixture.create(id = 5L)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")
