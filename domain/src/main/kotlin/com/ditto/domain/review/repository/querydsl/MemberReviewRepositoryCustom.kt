@@ -1,6 +1,7 @@
 package com.ditto.domain.review.repository.querydsl
 
 import com.ditto.domain.review.entity.MemberReview
+import java.time.LocalDateTime
 
 interface MemberReviewRepositoryCustom {
 
@@ -11,6 +12,13 @@ interface MemberReviewRepositoryCustom {
      * 정렬 키가 하나면 동순위 행의 순서를 DB가 보장하지 않아 목록이 요청마다 뒤바뀐다.
      */
     fun findPendingByAuthorOldestFirst(authorMemberId: Long): List<MemberReview>
+
+    /**
+     * 평가 가능 시각이 (`from`, `to`] 안이고 아직 완료되지 않은, 활성 회원의 평가. 평가 리마인드 후보다.
+     * 탈퇴해도 평가 행은 30일 동안 남으므로 작성자 상태를 함께 본다.
+     * "미완료"의 정의는 [findPendingByAuthorOldestFirst]와 같다.
+     */
+    fun findPendingAvailableBetween(from: LocalDateTime, to: LocalDateTime): List<MemberReview>
 
     /**
      * 끝났는데 평가가 아직 열리지 않은 채팅방 ID — 누락 복구(anti-join) 대상.

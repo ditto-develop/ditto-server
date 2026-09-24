@@ -11,6 +11,20 @@ import com.ditto.domain.notification.entity.NotificationType
  */
 object NotificationMessages {
 
+    /** 이번 주 퀴즈가 열렸다. 표의 "12문항"은 셋마다 다를 수 있어 실제 문항 수([quizCount])로 채운다. */
+    fun quizOpened(quizCount: Int): NotificationContent = NotificationContent(
+        type = NotificationType.QUIZ_OPENED,
+        title = "이번 주 퀴즈가 열렸어요",
+        body = "수요일 자정까지 ${quizCount}문항에 답하면 매칭이 시작돼요.",
+    )
+
+    /** 이번 주 퀴즈 마감이 가깝다. */
+    fun quizClosingSoon(): NotificationContent = NotificationContent(
+        type = NotificationType.QUIZ_CLOSING_SOON,
+        title = "오늘 자정에 퀴즈가 마감돼요",
+        body = "답을 남기면 이번 주 매칭에 들어가요.",
+    )
+
     /** 이번 주 매칭 후보가 생겼다. */
     fun matchResult(): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_RESULT,
@@ -87,6 +101,13 @@ object NotificationMessages {
         },
     )
 
+    /** 열린 평가를 아직 끝내지 않았다. */
+    fun reviewReminder(): NotificationContent = NotificationContent(
+        type = NotificationType.REVIEW_REMINDER,
+        title = "이번 만남은 어떠셨나요?",
+        body = "잠깐이면 돼요. 다음 만남을 위해 평가해주세요.",
+    )
+
     /** 만남 투표가 시작됐다. 투표에는 마감 시각이 없어서(vote.md) 표의 {마감}은 방 종료 시각으로 채운다. */
     fun voteCreated(): NotificationContent = NotificationContent(
         type = NotificationType.VOTE_CREATED,
@@ -123,6 +144,13 @@ object NotificationMessages {
             ChatMessageType.IMAGE -> "사진을 보냈어요."
             else -> content
         },
+    )
+
+    /** 방이 열린 뒤 아무도 말하지 않았다. */
+    fun chatNoMessage(): NotificationContent = NotificationContent(
+        type = NotificationType.CHAT_NO_MESSAGE,
+        title = "아직 대화가 시작되지 않았어요",
+        body = "먼저 가벼운 인사부터 건네볼까요?",
     )
 
     /** 채팅 종료가 [hoursLeft]시간 남았다. */

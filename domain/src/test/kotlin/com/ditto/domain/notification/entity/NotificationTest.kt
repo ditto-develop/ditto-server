@@ -62,6 +62,7 @@ class NotificationTest : FreeSpec({
             listOf(
                 NotificationType.CHAT_ROOM_OPENED,
                 NotificationType.CHAT_MESSAGE,
+                NotificationType.CHAT_NO_MESSAGE,
                 NotificationType.CHAT_ENDING_SOON,
                 NotificationType.VOTE_CREATED,
                 NotificationType.VOTE_CLOSED,

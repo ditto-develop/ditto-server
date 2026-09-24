@@ -2,6 +2,9 @@ package com.ditto.domain.chat.repository
 
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatRoomStatus
+import com.ditto.domain.notification.NotificationFixture
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
@@ -14,6 +17,7 @@ private val EXPIRES_AT = LocalDateTime.of(2026, 3, 16, 0, 0)
 
 class ChatRoomEndingSoonQueryTest(
     private val chatRoomRepository: ChatRoomRepository,
+    private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -38,6 +42,26 @@ class ChatRoomEndingSoonQueryTest(
 
                     val result = chatRoomRepository
                         .findAllIdsEndingBetween(FRIDAY_NOON, FRIDAY_NOON.plusHours(6))
+
+                    result.size shouldBe 0
+                }
+            }
+        }
+
+        "given: 이미 종료 임박 알림을 남긴 방일 때" - {
+            "when: 조회하면" - {
+                "then: 나오지 않는다 — 매분 도는 조회가 멤버별 존재 검사를 반복하지 않게" {
+                    val room = chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON))
+                    notificationRepository.save(
+                        NotificationFixture.create(
+                            memberId = 1L,
+                            type = NotificationType.CHAT_ENDING_SOON,
+                            targetId = room.id,
+                        ),
+                    )
+
+                    val result = chatRoomRepository
+                        .findAllIdsEndingBetween(SUNDAY_EVENING, SUNDAY_EVENING.plusHours(6))
 
                     result.size shouldBe 0
                 }

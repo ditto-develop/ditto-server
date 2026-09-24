@@ -4,8 +4,11 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
+import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
+import com.ditto.api.notification.notifier.QuizNotifier
+import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.chat.ChatRoomFixture
@@ -18,6 +21,10 @@ import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.repository.MemberReviewRepository
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -43,6 +50,10 @@ class NotifierFailureTest {
     private val groupMatchMemberRepository = mockk<GroupMatchMemberRepository>()
     private val matchmakingService = mockk<MatchmakingService>()
     private val notificationRepository = mockk<NotificationRepository>()
+    private val quizSetRepository = mockk<QuizSetRepository>()
+    private val quizRepository = mockk<QuizRepository>()
+    private val quizProgressRepository = mockk<QuizProgressRepository>()
+    private val memberReviewRepository = mockk<MemberReviewRepository>()
     private val notificationAppender = mockk<NotificationAppender>(relaxed = true)
 
     private val reviewRequestNotifier = ReviewRequestNotifier(
@@ -71,6 +82,20 @@ class NotifierFailureTest {
         LEAD_HOURS,
     )
     private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, notificationAppender)
+    private val chatNoMessageNotifier = ChatNoMessageNotifier(
+        chatRoomRepository,
+        chatRoomMemberRepository,
+        notificationAppender,
+        LEAD_HOURS,
+    )
+    private val reviewReminderNotifier = ReviewReminderNotifier(memberReviewRepository, notificationAppender)
+    private val quizNotifier = QuizNotifier(
+        quizSetRepository,
+        quizRepository,
+        quizProgressRepository,
+        memberRepository,
+        notificationAppender,
+    )
 
     @Test
     @DisplayName("평가 요청 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
@@ -127,6 +152,38 @@ class NotifierFailureTest {
         every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()
 
         chatRoomOpenedNotifier.notifyOpened(listOf(ROOM_ID)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("퀴즈 오픈 — 퀴즈셋 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun quizOpenedAbsorbsQuizSetQueryFailure() {
+        every { quizSetRepository.findCurrentWeekActive(any()) } throws connectionFailure()
+
+        quizNotifier.notifyOpened(LocalDateTime.of(2026, 7, 13, 0, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("퀴즈 마감 임박 — 퀴즈셋 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun quizClosingSoonAbsorbsQuizSetQueryFailure() {
+        every { quizSetRepository.findCurrentWeekActive(any()) } throws connectionFailure()
+
+        quizNotifier.notifyClosingSoon(LocalDateTime.of(2026, 7, 15, 18, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("첫 메시지 리마인드 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun chatNoMessageAbsorbsRoomQueryFailure() {
+        every { chatRoomRepository.findAllIdsSilentOpenedBetween(any(), any()) } throws connectionFailure()
+
+        chatNoMessageNotifier.notifyNoMessage(LocalDateTime.of(2026, 7, 17, 14, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("평가 리마인드 — 평가 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun reviewReminderAbsorbsReviewQueryFailure() {
+        every { memberReviewRepository.findPendingAvailableBetween(any(), any()) } throws connectionFailure()
+
+        reviewReminderNotifier.notifyPending(LocalDateTime.of(2026, 7, 20, 9, 0)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

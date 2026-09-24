@@ -17,6 +17,15 @@ enum class NotificationType(
     val duplicatePolicy: DuplicatePolicy,
 ) {
     /**
+     * 이번 주 퀴즈가 열렸다. 대상은 그 주 활성 셋 중 대표 하나(문항 있는 셋 중 id 최소)다. 화면 이동용이 아니라 "주마다 한 번"의
+     * 판정 기준이라, 셋이 둘(1:1·그룹)이어도 알림은 하나다.
+     */
+    QUIZ_OPENED(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /** 이번 주 퀴즈 마감이 가깝다. 아직 끝내지 않은 활성 회원에게. 대상은 [QUIZ_OPENED]와 같은 대표 셋. */
+    QUIZ_CLOSING_SOON(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /**
      * 주간 매칭 후보가 생겼다. 대상은 퀴즈셋이다 — 화면은 매칭 홈으로 보내면 되지만,
      * "주마다 한 번"을 판정할 대상이 필요하다(회원+유형만으로 막으면 평생 한 번만 알린다).
      */
@@ -53,11 +62,20 @@ enum class NotificationType(
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
+    /**
+     * 열린 평가를 아직 끝내지 않았다. [REVIEW_REQUEST]와 유형을 나눈 이유: 그쪽은 대상당 1회라 같은 방으로 다시
+     * 적재되지 않는다. 평가에는 마감이 없어 리마인드도 방마다 한 번이다.
+     */
+    REVIEW_REMINDER(NotificationCategory.MATCHING, "chat_room.id (끝난 방)", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 채팅방이 열려 대화를 시작할 수 있다. 방마다 한 번만 알린다. */
     CHAT_ROOM_OPENED(NotificationCategory.CHAT, "chat_room.id (열린 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
     /** 상대가 메시지를 보냈다. 같은 방의 안읽은 알림은 접힌다. */
     CHAT_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.COLLAPSE_UNREAD),
+
+    /** 방이 열린 뒤 한동안 아무도 말하지 않았다. 방마다 한 번만 알린다. */
+    CHAT_NO_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
 
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),

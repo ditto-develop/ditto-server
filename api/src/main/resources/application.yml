@@ -1,6 +1,12 @@
 spring:
   application:
     name: ditto-server
+  task:
+    scheduling:
+      # 기본 1 이면 월 00:00 퀴즈 오픈(회원 전원 적재·푸시)이 도는 동안 매분 sweep 과 다른 cron 이 밀린다.
+      # 스케줄러는 모두 멱등이라 겹쳐 돌아도 안전하다.
+      pool:
+        size: 3
   profiles:
     active: local
     include:
