@@ -68,6 +68,9 @@ enum class NotificationType(
     /** 상대가 메시지를 보냈다. 같은 방의 안읽은 알림은 접힌다. */
     CHAT_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.COLLAPSE_UNREAD),
 
+    /** 방이 열린 뒤 한동안 아무도 말하지 않았다. 방마다 한 번만 알린다. */
+    CHAT_NO_MESSAGE(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
+
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(NotificationCategory.CHAT, "chat_room.id", DuplicatePolicy.ONCE_PER_TARGET),
 

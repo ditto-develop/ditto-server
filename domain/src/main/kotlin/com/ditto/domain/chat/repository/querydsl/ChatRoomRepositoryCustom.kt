@@ -27,6 +27,12 @@ interface ChatRoomRepositoryCustom {
     fun findAllIdsEndingBetween(from: LocalDateTime, to: LocalDateTime): List<Long>
 
     /**
+     * 열려 있고 개방 시각이 (`from`, `to`] 안인데 대화 메시지(SYSTEM 제외)가 하나도 없고, 첫 메시지 리마인드
+     * (`CHAT_NO_MESSAGE`)를 아직 남기지 않은 방. 매분 도는 조회라 이미 알린 방은 쿼리에서 뺀다.
+     */
+    fun findAllIdsSilentOpenedBetween(from: LocalDateTime, to: LocalDateTime): List<Long>
+
+    /**
      * 회원이 참여한 방 중 아직 끝나지 않은(SCHEDULED·ACTIVE) 방이 있는지 — 탈퇴 가드용.
      * "진행 중"의 판정 근거가 방 상태라서 `chat_room_member`를 조인해 확인한다.
      */

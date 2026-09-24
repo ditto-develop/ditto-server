@@ -4,6 +4,7 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
+import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.QuizNotifier
@@ -78,6 +79,12 @@ class NotifierFailureTest {
         LEAD_HOURS,
     )
     private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, notificationAppender)
+    private val chatNoMessageNotifier = ChatNoMessageNotifier(
+        chatRoomRepository,
+        chatRoomMemberRepository,
+        notificationAppender,
+        LEAD_HOURS,
+    )
     private val quizNotifier = QuizNotifier(
         quizSetRepository,
         quizRepository,
@@ -157,6 +164,14 @@ class NotifierFailureTest {
         every { quizSetRepository.findCurrentWeekActive(any()) } throws connectionFailure()
 
         quizNotifier.notifyClosingSoon(LocalDateTime.of(2026, 7, 15, 18, 0)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("첫 메시지 리마인드 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun chatNoMessageAbsorbsRoomQueryFailure() {
+        every { chatRoomRepository.findAllIdsSilentOpenedBetween(any(), any()) } throws connectionFailure()
+
+        chatNoMessageNotifier.notifyNoMessage(LocalDateTime.of(2026, 7, 17, 14, 0)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

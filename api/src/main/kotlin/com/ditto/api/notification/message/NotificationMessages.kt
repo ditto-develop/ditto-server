@@ -139,6 +139,13 @@ object NotificationMessages {
         },
     )
 
+    /** 방이 열린 뒤 아무도 말하지 않았다. */
+    fun chatNoMessage(): NotificationContent = NotificationContent(
+        type = NotificationType.CHAT_NO_MESSAGE,
+        title = "아직 대화가 시작되지 않았어요",
+        body = "먼저 가벼운 인사부터 건네볼까요?",
+    )
+
     /** 채팅 종료가 [hoursLeft]시간 남았다. */
     fun chatEndingSoon(hoursLeft: Long): NotificationContent = NotificationContent(
         type = NotificationType.CHAT_ENDING_SOON,
