@@ -17,7 +17,7 @@ enum class NotificationType(
     val duplicatePolicy: DuplicatePolicy,
 ) {
     /**
-     * 이번 주 퀴즈가 열렸다. 대상은 그 주 활성 셋 중 대표 하나(id 최소)다. 화면 이동용이 아니라 "주마다 한 번"의
+     * 이번 주 퀴즈가 열렸다. 대상은 그 주 활성 셋 중 대표 하나(문항 있는 셋 중 id 최소)다. 화면 이동용이 아니라 "주마다 한 번"의
      * 판정 기준이라, 셋이 둘(1:1·그룹)이어도 알림은 하나다.
      */
     QUIZ_OPENED(NotificationCategory.MATCHING, "quiz_set.id (이번 주 대표 셋)", DuplicatePolicy.ONCE_PER_TARGET),

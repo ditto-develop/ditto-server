@@ -14,7 +14,8 @@ interface MemberReviewRepositoryCustom {
     fun findPendingByAuthorOldestFirst(authorMemberId: Long): List<MemberReview>
 
     /**
-     * 평가 가능 시각이 (`from`, `to`] 안이고 아직 완료되지 않은 평가. 평가 리마인드 후보다.
+     * 평가 가능 시각이 (`from`, `to`] 안이고 아직 완료되지 않은, 활성 회원의 평가. 평가 리마인드 후보다.
+     * 탈퇴해도 평가 행은 30일 동안 남으므로 작성자 상태를 함께 본다.
      * "미완료"의 정의는 [findPendingByAuthorOldestFirst]와 같다.
      */
     fun findPendingAvailableBetween(from: LocalDateTime, to: LocalDateTime): List<MemberReview>

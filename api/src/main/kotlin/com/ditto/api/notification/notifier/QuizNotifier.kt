@@ -17,8 +17,9 @@ import org.springframework.stereotype.Component
 /**
  * 이번 주 퀴즈의 오픈·마감 임박을 활성 회원에게 알린다. WeeklyNotificationScheduler 가 월·수요일에 부른다.
  *
- * 한 주에 1:1·그룹 셋이 나란히 열릴 수 있지만 알림은 주에 한 번이다. id 가 가장 작은 셋을 대표로 삼아
- * target_id 로 쓴다. 문항이 없는 셋(어드민이 아직 채우지 않음)이면 풀 수 있는 퀴즈가 없으므로 알리지 않는다.
+ * 한 주에 1:1·그룹 셋이 나란히 열릴 수 있지만 알림은 주에 한 번이다. 문항이 있는 셋 중 id 가 가장 작은 셋을
+ * 대표로 삼아 target_id 와 문구의 문항 수에 쓴다. 문항 있는 셋이 하나도 없으면(어드민이 아직 채우지 않음)
+ * 풀 수 있는 퀴즈가 없으므로 알리지 않는다.
  *
  * 회원 수만큼 적재와 푸시가 한 번에 돈다. 규모가 커지면 여기서 끊어 넘긴다.
  */
@@ -43,8 +44,7 @@ class QuizNotifier(
             .getOrDefault(0)
 
     private fun appendOpened(now: LocalDateTime): Int {
-        val quizSet = representativeQuizSet(now) ?: return 0
-        val quizCount = quizRepository.countByQuizSetId(quizSet.id).toInt()
+        val (quizSet, quizCount) = representativeQuizSet(quizSetRepository.findCurrentWeekActive(now)) ?: return 0
         val appended = notificationAppender.appendAll(
             memberIds = memberRepository.findAllIdsByStatus(MemberStatus.ACTIVE),
             content = NotificationMessages.quizOpened(quizCount),
@@ -57,9 +57,10 @@ class QuizNotifier(
     }
 
     private fun appendClosingSoon(now: LocalDateTime): Int {
-        val quizSet = representativeQuizSet(now) ?: return 0
+        val activeQuizSets = quizSetRepository.findCurrentWeekActive(now)
+        val (quizSet, _) = representativeQuizSet(activeQuizSets) ?: return 0
         // 1:1·그룹 중 하나라도 끝냈으면 참여자다. 문구가 하나라 회원당 한 번만 보낸다.
-        val completedMemberIds = quizSetRepository.findCurrentWeekActive(now)
+        val completedMemberIds = activeQuizSets
             .flatMap { quizProgressRepository.findByQuizSetIdAndStatus(it.id, QuizProgressStatus.COMPLETED) }
             .map { it.memberId }
             .toSet()
@@ -74,14 +75,14 @@ class QuizNotifier(
         return appended
     }
 
-    /** 이번 주 활성 셋 중 id 가 가장 작은 것. 문항이 없으면 null. */
-    private fun representativeQuizSet(now: LocalDateTime): QuizSet? {
-        val quizSet = quizSetRepository.findCurrentWeekActive(now).minByOrNull { it.id } ?: return null
-        if (quizRepository.countByQuizSetId(quizSet.id) == 0L) {
-            return null
-        }
-        return quizSet
-    }
+    /** 문항이 있는 셋 중 id 가 가장 작은 것과 그 문항 수. 없으면 null. */
+    private fun representativeQuizSet(activeQuizSets: List<QuizSet>): Pair<QuizSet, Int>? =
+        activeQuizSets
+            .sortedBy { it.id }
+            .firstNotNullOfOrNull { quizSet ->
+                val quizCount = quizRepository.countByQuizSetId(quizSet.id).toInt()
+                if (quizCount == 0) null else quizSet to quizCount
+            }
 
     companion object {
         private val logger = KotlinLogging.logger {}

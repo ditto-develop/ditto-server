@@ -2,6 +2,9 @@ package com.ditto.api.notification
 
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.support.IntegrationTest
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.review.MemberReviewFixture
@@ -17,27 +20,41 @@ private val MONDAY_MORNING = LocalDateTime.of(2026, 3, 16, 9, 0)
 class ReviewReminderNotifierTest(
     private val reviewReminderNotifier: ReviewReminderNotifier,
     private val memberReviewRepository: MemberReviewRepository,
+    private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
+    fun saveMember(nickname: String, status: MemberStatus = MemberStatus.ACTIVE) =
+        memberRepository.save(
+            MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status),
+        )
+
     fun savePending(authorMemberId: Long, chatRoomId: Long, availableAt: LocalDateTime = WEEKEND_ENDED) =
         memberReviewRepository.save(
-            MemberReviewFixture.create(authorMemberId = authorMemberId, chatRoomId = chatRoomId, availableAt = availableAt),
+            MemberReviewFixture.create(
+                authorMemberId = authorMemberId,
+                chatRoomId = chatRoomId,
+                availableAt = availableAt,
+            ),
         )
 
     "직전 주말에 열린 평가를 끝내지 않은 작성자에게 알린다" - {
-        "미완료 작성자만 받는다" {
-            savePending(authorMemberId = 1L, chatRoomId = 10L)
+        "미완료인 활성 작성자만 받는다" {
+            val pending = saveMember("pending")
+            val done = saveMember("done")
+            val left = saveMember("left", MemberStatus.LEFT)
+            savePending(authorMemberId = pending.id, chatRoomId = 10L)
+            savePending(authorMemberId = left.id, chatRoomId = 10L)
             memberReviewRepository.save(
-                MemberReviewFixture.create(authorMemberId = 2L, chatRoomId = 10L, availableAt = WEEKEND_ENDED)
+                MemberReviewFixture.create(authorMemberId = done.id, chatRoomId = 10L, availableAt = WEEKEND_ENDED)
                     .apply { recordAnswer(hasRemainingTarget = false, answeredAt = WEEKEND_ENDED.plusHours(1)) },
             )
 
             reviewReminderNotifier.notifyPending(MONDAY_MORNING) shouldBe 1
 
             notificationRepository.findAll().single().let {
-                it.memberId shouldBe 1L
+                it.memberId shouldBe pending.id
                 it.type shouldBe NotificationType.REVIEW_REMINDER
                 it.title shouldBe "이번 만남은 어떠셨나요?"
                 it.body shouldBe "잠깐이면 돼요. 다음 만남을 위해 평가해주세요."
@@ -46,8 +63,9 @@ class ReviewReminderNotifierTest(
         }
 
         "방이 여럿이면 방마다 받는다" {
-            savePending(authorMemberId = 1L, chatRoomId = 10L)
-            savePending(authorMemberId = 1L, chatRoomId = 11L, availableAt = WEEKEND_ENDED.minusDays(1))
+            val author = saveMember("a")
+            savePending(authorMemberId = author.id, chatRoomId = 10L)
+            savePending(authorMemberId = author.id, chatRoomId = 11L, availableAt = WEEKEND_ENDED.minusDays(1))
 
             reviewReminderNotifier.notifyPending(MONDAY_MORNING) shouldBe 2
 
@@ -55,13 +73,15 @@ class ReviewReminderNotifierTest(
         }
 
         "7일보다 오래된 미완료 평가는 받지 않는다" {
-            savePending(authorMemberId = 1L, chatRoomId = 10L, availableAt = MONDAY_MORNING.minusDays(8))
+            val author = saveMember("a")
+            savePending(authorMemberId = author.id, chatRoomId = 10L, availableAt = MONDAY_MORNING.minusDays(8))
 
             reviewReminderNotifier.notifyPending(MONDAY_MORNING) shouldBe 0
         }
 
         "다시 불러도 방마다 한 번이다" {
-            savePending(authorMemberId = 1L, chatRoomId = 10L)
+            val author = saveMember("a")
+            savePending(authorMemberId = author.id, chatRoomId = 10L)
             reviewReminderNotifier.notifyPending(MONDAY_MORNING)
 
             reviewReminderNotifier.notifyPending(MONDAY_MORNING.plusHours(1)) shouldBe 0

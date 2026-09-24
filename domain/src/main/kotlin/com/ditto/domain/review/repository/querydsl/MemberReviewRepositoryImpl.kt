@@ -3,6 +3,8 @@ package com.ditto.domain.review.repository.querydsl
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
 import com.ditto.domain.review.entity.ReviewProgressStatus
@@ -32,6 +34,11 @@ class MemberReviewRepositoryImpl(
                 memberReview.status.ne(ReviewProgressStatus.COMPLETED),
                 memberReview.availableAt.gt(from),
                 memberReview.availableAt.loe(to),
+                // 탈퇴·정지 회원의 평가는 행이 남아 있어도 독촉하지 않는다.
+                queryFactory.selectOne()
+                    .from(member)
+                    .where(member.id.eq(memberReview.authorMemberId), member.status.eq(MemberStatus.ACTIVE))
+                    .exists(),
             )
             .fetch()
 

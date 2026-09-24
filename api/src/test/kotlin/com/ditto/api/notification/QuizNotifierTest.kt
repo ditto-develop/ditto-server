@@ -33,7 +33,9 @@ class QuizNotifierTest(
 ) : IntegrationTest(dataSource, {
 
     fun saveMember(nickname: String, status: MemberStatus = MemberStatus.ACTIVE) =
-        memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status))
+        memberRepository.save(
+            MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status),
+        )
 
     fun saveQuizSetWithQuizzes(quizCount: Int, matchingType: MatchingType = MatchingType.ONE_TO_ONE): Long {
         val quizSetId = quizSetRepository.save(QuizSetFixture.create(matchingType = matchingType)).id
@@ -98,6 +100,19 @@ class QuizNotifierTest(
             saveMember("a")
 
             quizNotifier.notifyOpened(MONDAY_MIDNIGHT) shouldBe 0
+        }
+
+        "id 가 작은 셋에 문항이 없으면 문항 있는 다음 셋을 대표로 삼는다" {
+            saveQuizSetWithQuizzes(quizCount = 0, matchingType = MatchingType.ONE_TO_ONE)
+            val filled = saveQuizSetWithQuizzes(quizCount = 2, matchingType = MatchingType.GROUP)
+            saveMember("a")
+
+            quizNotifier.notifyOpened(MONDAY_MIDNIGHT) shouldBe 1
+
+            notificationRepository.findAll().single().let {
+                it.targetId shouldBe filled
+                it.body shouldBe "수요일 자정까지 2문항에 답하면 매칭이 시작돼요."
+            }
         }
     }
 

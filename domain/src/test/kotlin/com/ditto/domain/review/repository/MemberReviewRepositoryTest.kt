@@ -3,6 +3,9 @@ package com.ditto.domain.review.repository
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.review.MemberReviewFixture
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -16,6 +19,7 @@ private val AFTER_EXPIRY = LocalDateTime.of(2026, 3, 16, 0, 0)
 class MemberReviewRepositoryTest(
     private val memberReviewRepository: MemberReviewRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -26,16 +30,26 @@ class MemberReviewRepositoryTest(
         }
 
     "findPendingAvailableBetween — 평가 리마인드 후보" - {
+        fun saveMember(nickname: String, status: MemberStatus = MemberStatus.ACTIVE) =
+            memberRepository.save(
+                MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status),
+            )
+
         "창 안에 열린 미완료 평가만 돌려준다" {
+            val (a, b, c) = listOf("a", "b", "c").map { saveMember(it) }
             val pending = memberReviewRepository.save(
-                MemberReviewFixture.create(authorMemberId = 1L, chatRoomId = 10L, availableAt = AFTER_EXPIRY),
+                MemberReviewFixture.create(authorMemberId = a.id, chatRoomId = 10L, availableAt = AFTER_EXPIRY),
             )
             memberReviewRepository.save(
-                MemberReviewFixture.create(authorMemberId = 2L, chatRoomId = 10L, availableAt = AFTER_EXPIRY)
+                MemberReviewFixture.create(authorMemberId = b.id, chatRoomId = 10L, availableAt = AFTER_EXPIRY)
                     .apply { recordAnswer(hasRemainingTarget = false, answeredAt = AFTER_EXPIRY.plusHours(1)) },
             )
             memberReviewRepository.save(
-                MemberReviewFixture.create(authorMemberId = 3L, chatRoomId = 11L, availableAt = AFTER_EXPIRY.minusDays(8)),
+                MemberReviewFixture.create(
+                    authorMemberId = c.id,
+                    chatRoomId = 11L,
+                    availableAt = AFTER_EXPIRY.minusDays(8),
+                ),
             )
 
             val result = memberReviewRepository.findPendingAvailableBetween(AFTER_EXPIRY.minusDays(7), AFTER_EXPIRY)
@@ -43,8 +57,20 @@ class MemberReviewRepositoryTest(
             result.map { it.id } shouldBe listOf(pending.id)
         }
 
+        "탈퇴한 작성자의 평가는 행이 남아 있어도 돌려주지 않는다" {
+            val left = saveMember("left", MemberStatus.LEFT)
+            memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = left.id, chatRoomId = 10L, availableAt = AFTER_EXPIRY),
+            )
+
+            memberReviewRepository.findPendingAvailableBetween(AFTER_EXPIRY.minusDays(7), AFTER_EXPIRY).shouldBeEmpty()
+        }
+
         "창 경계 — from 은 제외, to 는 포함한다" {
-            memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = 1L, chatRoomId = 10L, availableAt = FRIDAY))
+            val author = saveMember("a")
+            memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = author.id, chatRoomId = 10L, availableAt = FRIDAY),
+            )
 
             memberReviewRepository.findPendingAvailableBetween(FRIDAY, AFTER_EXPIRY).shouldBeEmpty()
             memberReviewRepository.findPendingAvailableBetween(FRIDAY.minusDays(1), FRIDAY).size shouldBe 1
