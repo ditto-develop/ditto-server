@@ -28,4 +28,14 @@ interface MemberDeviceRepository : JpaRepository<MemberDevice, Long> {
     @Modifying
     @Query("DELETE FROM MemberDevice d WHERE d.token = :token AND d.memberId = :memberId")
     fun deleteByTokenAndMemberId(token: String, memberId: Long): Int
+
+    /**
+     * 회원의 토큰을 모두 지운다 — 탈퇴용. 탈퇴 뒤에는 인증 필터가 LEFT 를 막아 앱이 해제 API 를 부를 수 없으므로
+     * 서버가 지워야 탈퇴한 폰에 푸시가 가지 않는다.
+     *
+     * @return 지운 행 수
+     */
+    @Modifying
+    @Query("DELETE FROM MemberDevice d WHERE d.memberId = :memberId")
+    fun deleteAllByMemberId(memberId: Long): Int
 }

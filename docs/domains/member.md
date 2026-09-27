@@ -23,7 +23,7 @@
 - **프로필 수정의 닉네임 변경은 2회 후 14일 잠긴다**(`nickname_change_count`·`nickname_change_locked_until`). 잠금이 풀리면 다시 2회. 가입 때 정한 닉네임과 지금과 같은 값은 세지 않는다. 남은 횟수·해제 시각은 `GET /api/v1/users/me`로 준다. 잠금 판정은 서버 시각(QA가 오버라이드로 확인할 수 있게).
 - **끝나지 않은 채팅방(예약·진행, 1:1·그룹·재매칭)이 있으면 닉네임을 바꿀 수 없다**(`NICKNAME_CHANGE_IN_ACTIVE_CHAT`). 내가 나간 방은 세지 않는다.
 - `left_at`·`leave_reason`은 LEFT일 때만 값이 존재한다 (`leave`가 설정, `restore`가 비움).
-- 탈퇴는 소프트 삭제다 — 데이터를 지우지 않고 LEFT로 전이하며, 완전 삭제는 30일 경과 후 배치가 한다 ([ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)).
+- 탈퇴는 소프트 삭제다 — 데이터를 지우지 않고 LEFT로 전이하며, 완전 삭제는 30일 경과 후 배치가 한다 ([ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)). 단 세션(refresh token)과 푸시 토큰(`member_device`)은 탈퇴 시점에 바로 지운다 — 탈퇴한 폰에 푸시가 가면 안 되고, 탈퇴 뒤에는 앱이 해제 API를 부를 수 없다.
 - 제재 중에도 탈퇴할 수 있다. 소프트 삭제가 제재 이력과 `SocialAccount`를 보존하므로 차단 우회가 되지 않는다.
 - 진행 중인 매칭(PENDING/ACCEPTED)·끝나지 않은 채팅방·**성사됐는데 방이 아직 없는 재매칭**이 있으면 탈퇴할 수 없다(`LeaveProgressChecker`). 상대가 기다리는 상태를 남기지 않는다.
 - 탈퇴는 **미성사 재매칭 쌍을 취소한다**(`CANCELLED(MEMBER_LEFT)`). 그대로 두면 남은 한쪽의 제출로 성사돼 탈퇴자와의 채팅방이 열린다. 상세는 [rematch 도메인](rematch.md).

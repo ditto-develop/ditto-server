@@ -70,6 +70,9 @@
   이전 회원의 알림이 남의 폰에 뜬다. 등록은 멱등이고(앱이 실행·토큰 갱신 때마다 재호출),
   응답의 `registered`는 "이번 호출로 이 회원 소유가 됐는지"다(멱등 재호출이면 `false`, 실패 아님).
   토큰은 불투명 문자열이다 — 형식을 해석·검증하지 않는다.
+- **탈퇴하면 서버가 토큰을 지운다**(`UserService.leaveUser`·`LeftMemberPurgeService`). 탈퇴 뒤에는 인증 필터가
+  LEFT 를 막아 앱이 해제 API 를 부를 수 없으므로, 앱의 해제 호출과 별개로 서버가 지워야 탈퇴한 폰에 푸시가
+  가지 않는다. 복구한 회원은 앱 실행 시 등록을 다시 부르므로 채워진다.
 
 ## 푸시 발송
 
@@ -126,7 +129,7 @@
 | DELETE | `/api/v1/notifications/{id}` | 개별 삭제. 남의 알림·이미 지운 알림은 404. `deletedCount`는 항상 1(전체 삭제와 형식을 맞춘 값) |
 | DELETE | `/api/v1/notifications` | 전체 삭제. `category`를 주면 그 칩만, 보관 창 안만. `deletedCount` 반환 |
 | POST | `/api/v1/notifications/devices` | 푸시 디바이스 토큰 등록(멱등·소유권 이전). 앱 전용 |
-| DELETE | `/api/v1/notifications/devices/{token}` | 토큰 해제(멱등). 남의 토큰은 404. 로그아웃·탈퇴 직전에 앱이 호출 |
+| DELETE | `/api/v1/notifications/devices/{token}` | 토큰 해제(멱등). 남의 토큰은 404. 로그아웃 시 앱이 호출(탈퇴는 서버가 지운다) |
 
 응답 필드와 예시는 `/docs`(REST Docs → Swagger UI). FE 연동 가이드는 레포 위키의 "알림 센터 API 연동 가이드".
 
@@ -136,7 +139,6 @@
 
 ## TODO (미확정)
 
-- 탈퇴 완전 삭제 시 `member_device` 정리 — FE 가 탈퇴 전 해제를 부르지만 서버측 보강 필요 (#154)
 - 실시간 배지 — 현재는 폴링/재조회. STOMP 개인 큐 여부 미정
 - 시스템 공지의 운영/마케팅 구분과 `marketing` 토글 연동 — 이벤트 안내를 같은 경로로 보내기 전에
 - 시스템 공지 대상 조건(전원 외) 발송 — 필요해지면

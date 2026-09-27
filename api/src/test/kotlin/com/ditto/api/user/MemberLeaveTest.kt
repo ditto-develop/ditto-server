@@ -19,6 +19,8 @@ import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.MemberDeviceFixture
+import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.rematch.RematchFixture
@@ -34,6 +36,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 
 private val SUBMITTED_AT = LocalDateTime.of(2026, 3, 9, 10, 0)
 
@@ -51,9 +55,11 @@ class MemberLeaveTest(
     private val chatRoomRepository: ChatRoomRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val notificationRepository: NotificationRepository,
+    private val memberDeviceRepository: MemberDeviceRepository,
     private val rematchRepository: RematchRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val authService: AuthService,
+    transactionManager: PlatformTransactionManager,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -99,6 +105,20 @@ class MemberLeaveTest(
             userService.leaveUser(member.id, member.id, LeaveRequest(reason = "etc"))
 
             socialAccountRepository.findByMemberId(member.id).shouldNotBeNull()
+        }
+
+        // 탈퇴 뒤에는 인증 필터가 막아 앱이 해제 API를 부를 수 없다. 서버가 안 지우면 탈퇴한 폰에 푸시가 계속 간다.
+        "푸시 토큰은 지운다 — 탈퇴 뒤 앱이 해제할 수 없다" {
+            val member = saveActive("푸시토큰회원")
+            val other = saveActive("무관한푸시회원")
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-phone"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-tablet"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = other.id, token = "other-phone"))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest(reason = "etc"))
+
+            memberDeviceRepository.findAllByMemberId(member.id) shouldBe emptyList()
+            memberDeviceRepository.findAllByMemberId(other.id).map { it.token } shouldBe listOf("other-phone")
         }
 
         "제재 중에도 탈퇴할 수 있다 — 소프트 삭제는 제재 이력을 보존한다" {
@@ -347,22 +367,27 @@ class MemberLeaveTest(
             )
             member.leave(reason = "etc", now = LocalDateTime.now().minusDays(31))
             memberRepository.save(member)
+            // 탈퇴 시점 삭제를 지나온 토큰(레거시 행)도 완전 삭제가 거둔다.
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "purge-phone"))
 
             val purgeService = LeftMemberPurgeService(
                 memberRepository = memberRepository,
                 socialAccountRepository = socialAccountRepository,
                 refreshTokenRepository = refreshTokenRepository,
                 notificationRepository = notificationRepository,
+                memberDeviceRepository = memberDeviceRepository,
                 serverTimeProvider = serverTimeProvider,
                 dryRun = false,
                 batchLimit = 100,
                 retentionDays = 30,
             )
 
-            purgeService.purge() shouldBe 1
+            // 직접 만든 인스턴스라 @Transactional 프록시가 없다. 삭제 쿼리에 필요한 트랜잭션을 여기서 연다.
+            TransactionTemplate(transactionManager).execute { purgeService.purge() } shouldBe 1
 
             memberRepository.findById(member.id).isPresent shouldBe false
             socialAccountRepository.findByMemberId(member.id) shouldBe null
+            memberDeviceRepository.findAllByMemberId(member.id) shouldBe emptyList()
         }
 
         "삭제 대상이 없으면 0을 반환한다" {
