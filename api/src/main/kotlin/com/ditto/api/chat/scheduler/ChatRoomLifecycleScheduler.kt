@@ -21,9 +21,9 @@ import org.springframework.stereotype.Component
  *
  * 전이 로직은 [ChatRoomEndService]에 있고 사용자 종료와 공유한다.
  *
- * **시계를 저장과 판단으로 가른다**(#146). 개방·마감·임박 알림은 [ServerTimeProvider]의 서버 시각으로
- * 판단해 어드민 시각 오버라이드를 따르고, 재매칭 예약만 실제 시각을 쓴다 — 예약은 `opens_at`을 저장하는데
- * 가짜 시각이 박히면 오버라이드를 끈 뒤 그 방이 미래에 갇힌다. 판단은 `status`만 바꾸므로 저장값이 남지 않는다.
+ * **개방·마감·임박 알림은 [ServerTimeProvider]의 서버 시각으로 판단한다**(#146) — 어드민 시각 오버라이드를
+ * 따른다. 1:1·그룹 방도 같은 시계로 기간을 잡아 만든다(#218, `ChatService`). 재매칭 예약만 실제 시각을 쓴다 —
+ * 예약은 `opens_at`을 저장하는데 가짜 시각이 박히면 오버라이드를 끈 뒤 그 방이 미래에 갇힌다.
  *
  * 판단이 서버 시각을 봐야 하는 이유: 접근 검사([com.ditto.api.chat.service.ChatRoomAccessChecker])는
  * 시각이 아니라 `status`만 보고, `status`를 바꾸는 경로가 이 스케줄러뿐이다. 여기가 실제 시각을 쓰면
