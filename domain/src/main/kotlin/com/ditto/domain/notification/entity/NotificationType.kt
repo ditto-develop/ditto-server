@@ -100,6 +100,18 @@ enum class NotificationType(
      * 대상은 공지 이력이다. 화면 이동용이 아니라 어느 공지에서 나온 알림인지 추적하는 용도다.
      */
     SYSTEM_NOTICE(NotificationCategory.SYSTEM, "system_notice.id", DuplicatePolicy.ALLOW),
+
+    /**
+     * 내가 한 신고가 제재로 처리됐다. 신고자에게. 신고 건마다 한 번 — 같은 사람을 여러 번 신고했으면 건마다 알린다.
+     * 제재 수위와 피신고자는 밝히지 않는다. 카테고리가 SYSTEM 인 이유는 [SANCTION_IMPOSED]와 같다.
+     */
+    REPORT_ACTIONED(NotificationCategory.SYSTEM, "member_report.id", DuplicatePolicy.ONCE_PER_TARGET),
+
+    /**
+     * 신고로 제재를 받았다. 피신고자에게. 제재마다 한 번. 운영이 보내는 계정 안내라 수신 설정과 무관하게 나가야 해서
+     * SYSTEM 이다(MATCHING·CHAT 은 토글로 꺼진다).
+     */
+    SANCTION_IMPOSED(NotificationCategory.SYSTEM, "sanction.id", DuplicatePolicy.ONCE_PER_TARGET),
     ;
 
     companion object {

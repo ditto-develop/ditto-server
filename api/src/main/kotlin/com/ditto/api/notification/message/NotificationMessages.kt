@@ -2,6 +2,9 @@ package com.ditto.api.notification.message
 
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.sanction.entity.SanctionLevel
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * 알림 문구를 한곳에 모은다. 정본은 기획의 "알림 문구" 표고, 문구를 바꿀 때 여기만 고친다.
@@ -183,4 +186,37 @@ object NotificationMessages {
         title = title,
         body = body,
     )
+
+    /** 내가 한 신고가 제재로 처리됐다. 피신고자의 제재 수위·닉네임은 밝히지 않는다. */
+    fun reportActioned(): NotificationContent = NotificationContent(
+        type = NotificationType.REPORT_ACTIONED,
+        title = "신고하신 내용을 처리했어요",
+        body = "검토 결과 운영 정책에 따라 조치했어요. 알려주셔서 고마워요.",
+    )
+
+    /**
+     * 신고로 제재를 받았다. 수위마다 막히는 것이 달라 본문이 갈린다.
+     * 경고는 [startsAt](다음 주 월요일)부터 일주일 퀴즈 참여만, 정지는 [endsAt]까지 서비스 전체가 막힌다.
+     */
+    fun sanctionImposed(level: SanctionLevel, startsAt: LocalDateTime, endsAt: LocalDateTime?): NotificationContent =
+        when (level) {
+            SanctionLevel.WARNING -> NotificationContent(
+                type = NotificationType.SANCTION_IMPOSED,
+                title = "운영 정책 위반으로 경고를 받았어요",
+                body = "${startsAt.format(DATE)}부터 일주일 동안 퀴즈에 참여할 수 없어요.",
+            )
+            SanctionLevel.SUSPENSION -> NotificationContent(
+                type = NotificationType.SANCTION_IMPOSED,
+                title = "운영 정책 위반으로 이용이 정지됐어요",
+                body = "${requireNotNull(endsAt).format(DATE_TIME)}까지 서비스를 이용할 수 없어요.",
+            )
+            SanctionLevel.PERMANENT_BAN -> NotificationContent(
+                type = NotificationType.SANCTION_IMPOSED,
+                title = "운영 정책 위반으로 이용이 제한됐어요",
+                body = "더 이상 서비스를 이용할 수 없어요.",
+            )
+        }
+
+    private val DATE = DateTimeFormatter.ofPattern("M월 d일")
+    private val DATE_TIME = DateTimeFormatter.ofPattern("M월 d일 HH:mm")
 }
