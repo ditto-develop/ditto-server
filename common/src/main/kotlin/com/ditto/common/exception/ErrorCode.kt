@@ -18,6 +18,8 @@ enum class ErrorCode(
     SIGNUP_REQUIRED(403, "3001", "회원가입을 완료해야 이용할 수 있습니다."),
     MEMBER_ALREADY_EXISTS(409, "3002", "이미 존재하는 사용자입니다."),
     NICKNAME_ALREADY_EXISTS(409, "3003", "이미 사용 중인 닉네임입니다."),
+    NICKNAME_CHANGE_LOCKED(403, "3004", "닉네임은 2회 변경 후 14일 동안 바꿀 수 없습니다."),
+    NICKNAME_CHANGE_IN_ACTIVE_CHAT(409, "3005", "진행 중인 채팅방이 있어 닉네임을 바꿀 수 없습니다."),
     QUIZ_NOT_IN_ACTIVE_SET(400, "4001", "현재 활성화된 퀴즈 세트에 속한 퀴즈가 아닙니다."),
     INVALID_CHOICE(400, "4002", "해당 퀴즈의 유효한 선택지가 아닙니다."),
     QUIZ_ALREADY_COMPLETED(400, "4003", "이미 완료된 퀴즈는 수정할 수 없습니다."),

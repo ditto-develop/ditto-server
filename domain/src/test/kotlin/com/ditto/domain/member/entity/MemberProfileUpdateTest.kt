@@ -54,9 +54,8 @@ class MemberProfileUpdateTest : FreeSpec(
                 member.caricature shouldBe "/assets/avatar/m1.png"
             }
 
-            "닉네임·성별·사는곳·직업을 바꾼다" {
+            "성별·사는곳·직업을 바꾼다" {
                 val member = MemberFixture.create(
-                    nickname = "예전닉네임",
                     status = MemberStatus.ACTIVE,
                     gender = Gender.MALE,
                     location = Location.SEOUL,
@@ -65,26 +64,15 @@ class MemberProfileUpdateTest : FreeSpec(
 
                 member.updateProfile(
                     ProfileChanges(
-                        nickname = "새닉네임",
                         gender = Gender.FEMALE,
                         location = Location.BUSAN,
                         job = Job.DESIGN,
                     ),
                 )
 
-                member.nickname shouldBe "새닉네임"
                 member.gender shouldBe Gender.FEMALE
                 member.location shouldBe Location.BUSAN
                 member.job shouldBe Job.DESIGN
-            }
-
-            // 빈 문자열까지 받으면 닉네임이 지워져 표시할 이름이 없어진다.
-            "빈 닉네임은 무시한다" {
-                val member = MemberFixture.create(nickname = "예전닉네임", status = MemberStatus.ACTIVE)
-
-                member.updateProfile(ProfileChanges(nickname = "  "))
-
-                member.nickname shouldBe "예전닉네임"
             }
 
             "관심사를 빈 집합으로 지울 수 없다 — 온보딩 필수 정보다" {

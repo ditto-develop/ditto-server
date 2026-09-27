@@ -37,6 +37,14 @@ class Member(
     @Column(nullable = false, length = 50)
     var nickname: String,
 
+    @Comment("현재 창에서 닉네임을 바꾼 횟수")
+    @Column(name = "nickname_change_count", nullable = false)
+    var nicknameChangeCount: Int = 0,
+
+    @Comment("닉네임 변경 잠금 해제 시각 (잠기지 않았으면 NULL)")
+    @Column(name = "nickname_change_locked_until", nullable = true)
+    var nicknameChangeLockedUntil: LocalDateTime? = null,
+
     @Comment("이메일")
     @Column(nullable = true, length = 100)
     var email: String? = null,
@@ -211,7 +219,7 @@ class Member(
      * 마이프로필에서 수정 가능한 항목을 갱신한다. null이 온 항목은 변경 없음으로 둔다.
      *
      * 관심사는 온보딩 필수 정보라 빈 집합으로 지울 수 없다 — `register`가 세운 불변식을 유지한다.
-     * 닉네임 중복 검사는 저장소를 봐야 하므로 호출자가 먼저 한다.
+     * 닉네임은 횟수 제한이 있어 [changeNickname]으로 따로 바꾼다.
      */
     fun updateProfile(changes: ProfileChanges) {
         changes.interests?.let { interests ->
@@ -224,13 +232,46 @@ class Member(
         if (!changes.caricature.isNullOrBlank()) {
             this.caricature = changes.caricature
         }
-        if (!changes.nickname.isNullOrBlank()) {
-            this.nickname = changes.nickname
-        }
         changes.gender?.let { this.gender = it }
         changes.location?.let { this.location = it }
         changes.job?.let { this.job = it }
     }
+
+    /**
+     * 프로필 수정에서 닉네임을 바꾼다. 가입 때 정한 닉네임([register])은 세지 않는다.
+     *
+     * [NICKNAME_CHANGE_LIMIT]회 바꾸면 [NICKNAME_CHANGE_LOCK_DAYS]일 동안 잠기고, 잠금이 풀리면 횟수가 초기화된다.
+     * 지금과 같은 값은 변경이 아니다 — 저장도, 횟수 차감도 하지 않는다. 대소문자만 바꾸는 것은 화면에 보이는
+     * 값이 달라지므로 변경으로 센다. 중복·예약·채팅방 검사는 저장소를 봐야 해서 호출자가 먼저 한다.
+     */
+    fun changeNickname(nickname: String, now: LocalDateTime) {
+        if (nickname == this.nickname) {
+            return
+        }
+        val lockedUntil = nicknameChangeLockedUntil
+        if (lockedUntil != null) {
+            if (now < lockedUntil) {
+                throw WarnException(ErrorCode.NICKNAME_CHANGE_LOCKED)
+            }
+            nicknameChangeCount = 0
+            nicknameChangeLockedUntil = null
+        }
+        this.nickname = nickname
+        nicknameChangeCount += 1
+        if (nicknameChangeCount >= NICKNAME_CHANGE_LIMIT) {
+            nicknameChangeLockedUntil = now.plusDays(NICKNAME_CHANGE_LOCK_DAYS)
+        }
+    }
+
+    /** [now] 시점에 남은 닉네임 변경 횟수. 잠겨 있으면 0, 잠금이 풀렸으면 한도 전체다. */
+    fun remainingNicknameChanges(now: LocalDateTime): Int {
+        val lockedUntil = nicknameChangeLockedUntil ?: return NICKNAME_CHANGE_LIMIT - nicknameChangeCount
+        return if (now < lockedUntil) 0 else NICKNAME_CHANGE_LIMIT
+    }
+
+    /** [now] 시점에 유효한 잠금 해제 시각. 잠겨 있지 않으면 null. */
+    fun nicknameChangeLockedUntilAt(now: LocalDateTime): LocalDateTime? =
+        nicknameChangeLockedUntil?.takeIf { now < it }
 
     fun isPending(): Boolean = status == MemberStatus.PENDING
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
@@ -310,5 +351,10 @@ class Member(
         this.caricature = caricature
         this.joinedAt = LocalDateTime.now()
         this.status = MemberStatus.ACTIVE
+    }
+
+    companion object {
+        const val NICKNAME_CHANGE_LIMIT = 2
+        const val NICKNAME_CHANGE_LOCK_DAYS = 14L
     }
 }

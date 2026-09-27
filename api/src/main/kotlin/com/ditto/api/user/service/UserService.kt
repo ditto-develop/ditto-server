@@ -42,6 +42,7 @@ class UserService(
     private val leaveProgressChecker: LeaveProgressChecker,
     private val leftMemberRematchCanceller: LeftMemberRematchCanceller,
     private val memberRatingService: MemberRatingService,
+    private val nicknameService: NicknameService,
 ) {
 
     @Transactional
@@ -58,9 +59,9 @@ class UserService(
             throw ErrorException(ErrorCode.MEMBER_ALREADY_EXISTS)
         }
 
-        if (request.nickname != null && memberRepository.existsByNickname(request.nickname)) {
-            throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
-        }
+        // 남이 10분 예약한 닉네임도 막는다. 확인과 저장 사이의 경쟁은 member 유니크 제약이 최종으로 막는다
+        // (GlobalExceptionHandler 가 NICKNAME_ALREADY_EXISTS 로 바꾼다).
+        request.nickname?.let { nicknameService.assertAssignable(memberId, it) }
 
         member.register(
             name = request.name,
@@ -82,6 +83,8 @@ class UserService(
             introNoteService.saveAnswer(memberId, IntroQuestion.ONE_WORD.code, introduction.trim())
         }
 
+        nicknameService.release(memberId)
+
         return member.toRegisterResponse()
     }
 
@@ -90,7 +93,7 @@ class UserService(
         val member = memberRepository.findById(memberId).orElseThrow {
             WarnException(ErrorCode.NOT_FOUND)
         }
-        return member.toMeResponse()
+        return member.toMeResponse(serverTimeProvider.now())
     }
 
     /**
@@ -111,7 +114,7 @@ class UserService(
             birthDate = request.birthDate,
         )
 
-        return member.toMeResponse()
+        return member.toMeResponse(serverTimeProvider.now())
     }
 
     /**
@@ -181,13 +184,13 @@ class UserService(
         )
     }
 
-    @Transactional(readOnly = true)
     /**
-     * 중복은 조회 결과이지 오류가 아니라 200 + `available = false`로 답한다.
+     * 중복은 조회 결과이지 오류가 아니라 200 + `available = false`로 답한다. 남이 예약 중인 닉네임도 사용 불가다.
      * 가입·프로필 수정은 동시 저장을 막는 최종 방어선이라 계속 409(NICKNAME_ALREADY_EXISTS)로 거부한다.
      */
+    @Transactional(readOnly = true)
     fun checkNicknameAvailability(nickname: String): CheckNicknameResponse =
-        CheckNicknameResponse(available = !memberRepository.existsByNickname(nickname))
+        CheckNicknameResponse(available = nicknameService.isAvailable(nickname))
 
     /**
      * 탈퇴(소프트 삭제). 데이터를 지우지 않고 상태만 LEFT로 바꾼다 —
