@@ -107,20 +107,6 @@ class MemberLeaveTest(
             socialAccountRepository.findByMemberId(member.id).shouldNotBeNull()
         }
 
-        // 탈퇴 뒤에는 인증 필터가 막아 앱이 해제 API를 부를 수 없다. 서버가 안 지우면 탈퇴한 폰에 푸시가 계속 간다.
-        "푸시 토큰은 지운다 — 탈퇴 뒤 앱이 해제할 수 없다" {
-            val member = saveActive("푸시토큰회원")
-            val other = saveActive("무관한푸시회원")
-            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-phone"))
-            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-tablet"))
-            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = other.id, token = "other-phone"))
-
-            userService.leaveUser(member.id, member.id, LeaveRequest(reason = "etc"))
-
-            memberDeviceRepository.findAllByMemberId(member.id) shouldBe emptyList()
-            memberDeviceRepository.findAllByMemberId(other.id).map { it.token } shouldBe listOf("other-phone")
-        }
-
         "제재 중에도 탈퇴할 수 있다 — 소프트 삭제는 제재 이력을 보존한다" {
             val member = memberRepository.save(
                 Member(nickname = "정지중탈퇴회원").apply {
@@ -142,6 +128,21 @@ class MemberLeaveTest(
                 userService.leaveUser(other.id, member.id, LeaveRequest())
             }
             exception.errorCode shouldBe ErrorCode.FORBIDDEN
+        }
+    }
+
+    "탈퇴는 세션과 푸시 토큰만은 즉시 지운다" - {
+        "푸시 토큰은 지운다 — 탈퇴 뒤 앱이 해제할 수 없다" {
+            val member = saveActive("푸시토큰회원")
+            val other = saveActive("무관한푸시회원")
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-phone"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "left-tablet"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = other.id, token = "other-phone"))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest(reason = "etc"))
+
+            memberDeviceRepository.findAllByMemberId(member.id) shouldBe emptyList()
+            memberDeviceRepository.findAllByMemberId(other.id).map { it.token } shouldBe listOf("other-phone")
         }
     }
 

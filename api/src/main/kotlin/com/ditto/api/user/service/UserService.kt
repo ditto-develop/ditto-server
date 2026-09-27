@@ -223,7 +223,7 @@ class UserService(
 
         // 세션은 즉시 끊는다. SocialAccount는 복구·재가입 식별 근거이므로 남긴다.
         refreshTokenRepository.deleteAllByMemberId(id)
-        // 푸시 토큰도 지금 지운다. 탈퇴 뒤에는 앱이 해제 API를 부를 수 없고, 복구하면 앱이 다시 등록한다.
+        // 푸시 토큰도 지금 지운다. 복구하면 앱이 다시 등록하므로 지워도 안전하다.
         memberDeviceRepository.deleteAllByMemberId(id)
 
         return member.toLeaveResponse()
