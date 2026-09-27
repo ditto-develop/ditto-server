@@ -55,7 +55,8 @@ class AdminReportReviewServiceTest(
             val refreshToken = authService.createRefreshToken(reported.id)
             val report = saveReport(reporter.id, reported.id)
 
-            adminReportReviewService.review(report.id, ReviewDecision.SUSPENSION, "메모", admin, now)
+            val imposed = adminReportReviewService.review(report.id, ReviewDecision.SUSPENSION, "메모", admin, now)
+            imposed?.memberReportId shouldBe report.id
 
             memberReportRepository.findById(report.id).orElseThrow().status shouldBe MemberReportStatus.ACTIONED
             val sanction = sanctionRepository.findAllByMemberIdOrderByIdDesc(reported.id).single()
@@ -104,7 +105,8 @@ class AdminReportReviewServiceTest(
             val reported = saveActiveMember("피신고자")
             val report = saveReport(reporter.id, reported.id)
 
-            adminReportReviewService.review(report.id, ReviewDecision.REJECT, "근거 부족", admin, now)
+            // 제재가 없으면 알림을 보내지 않도록 호출자에게 null 을 돌려준다
+            adminReportReviewService.review(report.id, ReviewDecision.REJECT, "근거 부족", admin, now).shouldBeNull()
 
             memberReportRepository.findById(report.id).orElseThrow().status shouldBe MemberReportStatus.REJECTED
             sanctionRepository.findAllByMemberIdOrderByIdDesc(reported.id) shouldBe emptyList()

@@ -140,7 +140,9 @@ class PushNotifier(
             NotificationType.CHAT_ENDING_SOON,
             -> chatRoomPathOf(targetId)
             NotificationType.QUIZ_OPENED, NotificationType.QUIZ_CLOSING_SOON -> "/quiz/current/"
-            NotificationType.SYSTEM_NOTICE -> null
+            NotificationType.SYSTEM_NOTICE, NotificationType.REPORT_ACTIONED -> null
+            // 정지·차단 회원도 열 수 있는 제재 안내 화면. 경고도 같은 화면이 사유와 기간을 보여준다.
+            NotificationType.SANCTION_IMPOSED -> "/sanction/"
         }
     }
 

@@ -210,6 +210,11 @@ class PushNotifierTest : FreeSpec({
             sentMessage(NotificationType.REMATCH_MATCHED).data["deepLink"] shouldBe "/chat/one-on-one/100/"
         }
 
+        "deepLink — 제재 안내는 제재 화면으로, 신고 처리 안내는 이동 없이 보낸다" {
+            sentMessage(NotificationType.SANCTION_IMPOSED).data["deepLink"] shouldBe "/sanction/"
+            sentMessage(NotificationType.REPORT_ACTIONED).data.containsKey("deepLink") shouldBe false
+        }
+
         "deepLink — 방이 지워졌으면 deepLink 없이 보낸다 (탭하면 앱만 열림)" {
             val message = sentMessage(NotificationType.CHAT_MESSAGE, room = null)
 

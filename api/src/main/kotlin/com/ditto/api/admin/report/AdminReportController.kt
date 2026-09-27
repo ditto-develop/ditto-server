@@ -2,6 +2,7 @@ package com.ditto.api.admin.report
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.admin.report.dto.ReviewDecision
+import com.ditto.api.notification.notifier.ReportSanctionNotifier
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.memberreport.entity.MemberReportStatus
@@ -22,6 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminReportController(
     private val adminReportService: AdminReportService,
     private val adminReportReviewService: AdminReportReviewService,
+    private val reportSanctionNotifier: ReportSanctionNotifier,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
 
@@ -63,8 +65,10 @@ class AdminReportController(
                 now = serverTimeProvider.now(),
             )
         }
-            .onSuccess {
+            .onSuccess { sanction ->
                 log.info { "어드민[${admin.displayName}] 이 신고 #$id 를 ${decision.name} 로 처리" }
+                // 검토 트랜잭션이 커밋된 뒤라 알림 실패가 검토를 되돌리지 않는다(notifier 가 실패를 삼킨다).
+                sanction?.let(reportSanctionNotifier::notifyImposed)
                 redirectAttributes.addFlashAttribute("message", "신고 #$id 를 '${decision.description}' 로 처리했습니다.")
             }
             .onFailure { e ->

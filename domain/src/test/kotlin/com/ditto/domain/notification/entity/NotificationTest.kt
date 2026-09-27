@@ -67,7 +67,11 @@ class NotificationTest : FreeSpec({
                 NotificationType.VOTE_CREATED,
                 NotificationType.VOTE_CLOSED,
             )
-        NotificationType.of(NotificationCategory.SYSTEM) shouldBe listOf(NotificationType.SYSTEM_NOTICE)
+        NotificationType.of(NotificationCategory.SYSTEM) shouldBe listOf(
+            NotificationType.SYSTEM_NOTICE,
+            NotificationType.REPORT_ACTIONED,
+            NotificationType.SANCTION_IMPOSED,
+        )
     }
 })
 

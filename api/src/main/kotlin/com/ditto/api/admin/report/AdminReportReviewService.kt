@@ -6,6 +6,7 @@ import com.ditto.api.admin.sanction.AdminSanctionService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.memberreport.repository.MemberReportRepository
+import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.entity.SanctionOrigin
 import java.time.LocalDateTime
 import kotlin.jvm.optionals.getOrNull
@@ -21,6 +22,7 @@ class AdminReportReviewService(
     private val adminSanctionService: AdminSanctionService,
 ) {
 
+    /** @return 이번 검토로 건 제재. 기각이면 `null` — 호출자는 이 값으로 신고자·피신고자 알림 여부를 정한다. */
     @Transactional
     fun review(
         reportId: Long,
@@ -28,7 +30,7 @@ class AdminReportReviewService(
         note: String?,
         admin: AdminPrincipal,
         now: LocalDateTime,
-    ) {
+    ): Sanction? {
         val report = memberReportRepository.findById(reportId).getOrNull()
             ?: throw WarnException(ErrorCode.NOT_FOUND)
 
@@ -45,9 +47,9 @@ class AdminReportReviewService(
             throw WarnException(ErrorCode.REPORT_ALREADY_REVIEWED)
         }
 
-        val level = decision.sanctionLevel ?: return
+        val level = decision.sanctionLevel ?: return null
         // 제재 적용 실패(피신고자 탈퇴 등) 시 같은 트랜잭션이라 신고 종결도 롤백된다.
-        adminSanctionService.impose(
+        return adminSanctionService.impose(
             memberId = report.reportedMemberId,
             level = level,
             origin = SanctionOrigin.REPORTED,
