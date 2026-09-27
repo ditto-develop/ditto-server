@@ -18,6 +18,8 @@ import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.entity.MemberReview
+import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -39,6 +41,7 @@ class ChatService(
     private val groupMatchRepository: GroupMatchRepository,
     private val quizSetRepository: QuizSetRepository,
     private val serverTimeProvider: ServerTimeProvider,
+    private val memberReviewRepository: MemberReviewRepository,
 ) {
 
     /**
@@ -171,6 +174,8 @@ class ChatService(
         // 방별 참여자 (상대 회원 파악용). 방 수가 늘면 마지막 메시지/안읽음 집계를 일괄 조회로 최적화 대상.
         val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(roomIds).groupBy { it.roomId }
         val roomNameByRoomId = groupRoomNames(roomsById.values)
+        val myReviewByRoomId = memberReviewRepository.findAllByAuthorMemberIdAndChatRoomIdIn(memberId, roomIds)
+            .associateBy { it.chatRoomId }
 
         return myRoomMembers
             .mapNotNull { roomMember ->
@@ -181,6 +186,7 @@ class ChatService(
                     membersByRoomId[room.id].orEmpty(),
                     memberId,
                     roomNameByRoomId[room.id],
+                    myReviewByRoomId[room.id],
                 )
             }
             .sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
@@ -204,6 +210,17 @@ class ChatService(
         }
 
         roomMember.hide(realNow())
+    }
+
+    /**
+     * 이 방 알림을 켜고 끈다(멱등). 채팅 알림 6종의 푸시만 막고 알림 센터 적재는 그대로 둔다 —
+     * 전체 채팅 토글과 같은 규칙이다(`PushNotifier`). 끝난 방도 막지 않는다: 켜고 끄는 상태일 뿐이다.
+     */
+    @Transactional
+    fun setMuted(memberId: Long, roomId: Long, muted: Boolean) {
+        // @DynamicUpdate 라 muted_at 쓰기가 겹친 이탈·읽음 갱신을 덮지 않는다.
+        val roomMember = chatRoomAccessChecker.requireMember(roomId, memberId)
+        if (muted) roomMember.mute(realNow()) else roomMember.unmute()
     }
 
     /** 방의 과거 메시지 커서 페이징 (최신순). cursor 미만(더 과거)으로 size 개. */
@@ -334,6 +351,7 @@ class ChatService(
         roomMembers: List<ChatRoomMember>,
         memberId: Long,
         roomName: String?,
+        myReview: MemberReview?,
     ): ChatRoomResponse {
         // 이탈자는 상대 목록에서 뺀다 — FE 는 이 목록으로 "지금 함께 있는 사람"을 그린다.
         val counterpartMemberIds = roomMembers
@@ -347,6 +365,8 @@ class ChatService(
             unreadCount = unreadCount(room.id, myRoomMember.lastReadMessageId),
             hasLeft = myRoomMember.hasLeft,
             roomName = roomName,
+            myReview = myReview,
+            isMuted = myRoomMember.isMuted,
         )
     }
 

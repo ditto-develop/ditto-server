@@ -62,6 +62,11 @@ class ChatRoomMember private constructor(
     var hiddenAt: LocalDateTime? = null
         protected set
 
+    @Comment("이 방 알림을 끈 시각 (켜져 있으면 NULL)")
+    @Column(name = "muted_at")
+    var mutedAt: LocalDateTime? = null
+        protected set
+
     /** 방을 나갔는지. 행을 지우지 않는 이유는 읽음 커서·과거 SYSTEM 메시지 해석을 보존하기 위해서다. */
     val hasLeft: Boolean
         get() = leftAt != null
@@ -69,6 +74,10 @@ class ChatRoomMember private constructor(
     /** 내 목록에서 감췄는지. 이탈과 달리 상대 화면과 집계에는 영향이 없다. */
     val isHidden: Boolean
         get() = hiddenAt != null
+
+    /** 이 방의 채팅 알림 푸시를 껐는지. 알림 센터에는 그대로 쌓인다. */
+    val isMuted: Boolean
+        get() = mutedAt != null
 
     /**
      * 읽음 위치를 messageId 까지 전진시킨다. 이미 더 앞을 읽었다면 그대로 둔다(단조 증가).
@@ -107,6 +116,19 @@ class ChatRoomMember private constructor(
             return
         }
         hiddenAt = at
+    }
+
+    /** 이 방 알림을 끈다. 켜고 끄는 상태라 재호출해도 최초 시각을 유지한다. */
+    fun mute(at: LocalDateTime) {
+        if (isMuted) {
+            return
+        }
+        mutedAt = at
+    }
+
+    /** 이 방 알림을 다시 켠다. */
+    fun unmute() {
+        mutedAt = null
     }
 
     companion object {

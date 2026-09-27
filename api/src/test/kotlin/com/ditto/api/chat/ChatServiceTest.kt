@@ -20,6 +20,9 @@ import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.api.chat.dto.ChatRoomReviewStatus
+import com.ditto.domain.review.MemberReviewFixture
+import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.assertions.throwables.shouldThrow
@@ -46,6 +49,7 @@ class ChatServiceTest(
     private val groupMatchRepository: GroupMatchRepository,
     private val quizSetRepository: QuizSetRepository,
     private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
+    private val memberReviewRepository: MemberReviewRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -182,6 +186,63 @@ class ChatServiceTest(
         chatService.getMyRooms(memberId = 1L)[0].counterpartMemberIds shouldBe listOf(2L)
         // then: 이탈자에게는 그 방이 아예 없다 — 읽기 전용으로 남기던 정책을 철회했다(#196)
         chatService.getMyRooms(memberId = 3L).map { it.roomId } shouldNotContain room.id
+    }
+
+    "방 목록의 평가 상태는 '아직 안 열림'과 '완료'를 가른다" - {
+        "끝나지 않은 방은 NOT_OPENED, 상태는 ACTIVE 다" {
+            val room = saveOpenedRoom(100L, 1L, 2L)
+
+            val response = chatService.getMyRooms(memberId = 1L).single { it.roomId == room.id }
+
+            response.status shouldBe ChatRoomStatus.ACTIVE
+            response.reviewStatus shouldBe ChatRoomReviewStatus.NOT_OPENED
+            response.reviewId shouldBe null
+        }
+
+        "끝났고 평가가 열렸으면 그 상태와 ID 를, 다 끝냈으면 COMPLETED 를 준다" {
+            val room = saveEndedRoom(100L, 1L, 2L)
+            val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = 1L, chatRoomId = room.id))
+
+            chatService.getMyRooms(memberId = 1L).single().let {
+                it.status shouldBe ChatRoomStatus.ENDED
+                it.reviewStatus shouldBe ChatRoomReviewStatus.NOT_STARTED
+                it.reviewId shouldBe review.id
+            }
+
+            review.recordAnswer(hasRemainingTarget = false, answeredAt = FRIDAY.plusDays(3))
+            memberReviewRepository.save(review)
+
+            chatService.getMyRooms(memberId = 1L).single().reviewStatus shouldBe ChatRoomReviewStatus.COMPLETED
+        }
+
+        "재매칭 방은 평가가 없어 NOT_APPLICABLE 이다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = 100L, now = FRIDAY))
+            chatRoomMemberRepository.saveAll(listOf(ChatRoomMember.of(room.id, 1L), ChatRoomMember.of(room.id, 2L)))
+
+            chatService.getMyRooms(memberId = 1L).single().reviewStatus shouldBe ChatRoomReviewStatus.NOT_APPLICABLE
+        }
+    }
+
+    "방 알림을 끄고 켜면 내 목록에만 반영된다 (멱등)" {
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        chatService.setMuted(memberId = 1L, roomId = room.id, muted = true)
+        chatService.setMuted(memberId = 1L, roomId = room.id, muted = true)
+
+        chatService.getMyRooms(memberId = 1L).single().isMuted shouldBe true
+        chatService.getMyRooms(memberId = 2L).single().isMuted shouldBe false
+
+        chatService.setMuted(memberId = 1L, roomId = room.id, muted = false)
+
+        chatService.getMyRooms(memberId = 1L).single().isMuted shouldBe false
+    }
+
+    "방 멤버가 아니면 알림 설정을 바꿀 수 없다" {
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        shouldThrow<WarnException> {
+            chatService.setMuted(memberId = 9L, roomId = room.id, muted = true)
+        }
     }
 
     "종료된 방을 숨기면 내 목록에서만 빠지고 상대 목록에는 남는다" {

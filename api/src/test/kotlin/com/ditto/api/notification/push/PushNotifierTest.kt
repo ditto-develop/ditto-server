@@ -1,8 +1,11 @@
 package com.ditto.api.notification.push
 
 import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.MemberNotificationSetting
 import com.ditto.domain.member.repository.MemberNotificationSettingRepository
@@ -24,9 +27,11 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import java.time.Duration
+import java.time.LocalDateTime
 import java.util.Optional
 
 private const val MEMBER_ID = 1L
+private val MUTED_AT = LocalDateTime.of(2026, 9, 25, 12, 0)
 
 /** 알림 한 행이 어떤 푸시가 되는지. 발송은 [PushSender] mock 으로 끊는다. */
 class PushNotifierTest : FreeSpec({
@@ -44,6 +49,7 @@ class PushNotifierTest : FreeSpec({
         room: ChatRoom? = null,
         rematch: Rematch? = null,
         unreadCount: Long = 3L,
+        roomMembers: List<ChatRoomMember> = emptyList(),
     ): Fixture {
         val settingRepository = mockk<MemberNotificationSettingRepository> {
             every { findByMemberId(any()) } returns setting
@@ -62,6 +68,9 @@ class PushNotifierTest : FreeSpec({
         val rematchRepository = mockk<RematchRepository> {
             every { findById(any()) } returns Optional.ofNullable(rematch)
         }
+        val chatRoomMemberRepository = mockk<ChatRoomMemberRepository> {
+            every { findByRoomId(any()) } returns roomMembers
+        }
         val cleaner = mockk<PushDeadDeviceCleaner>(relaxed = true)
         val pushSender = mockk<PushSender>(relaxed = true)
         val notifier = PushNotifier(
@@ -69,6 +78,7 @@ class PushNotifierTest : FreeSpec({
             memberDeviceRepository = deviceRepository,
             notificationRepository = notificationRepository,
             chatRoomRepository = chatRoomRepository,
+            chatRoomMemberRepository = chatRoomMemberRepository,
             rematchRepository = rematchRepository,
             pushDeadDeviceCleaner = cleaner,
             pushSender = pushSender,
@@ -82,6 +92,33 @@ class PushNotifierTest : FreeSpec({
         memberId: Long = MEMBER_ID,
         id: Long = 8821L,
     ) = NotificationFixture.create(memberId = memberId, type = type, targetId = targetId, id = id)
+
+    "방별 알림 끄기" - {
+        "이 방 알림을 끈 회원에게는 채팅 푸시가 나가지 않고, 켠 회원에게는 나간다" {
+            val otherId = MEMBER_ID + 1
+            val muted = ChatRoomMemberFixture.create(roomId = 100L, memberId = MEMBER_ID).apply { mute(MUTED_AT) }
+            val listening = ChatRoomMemberFixture.create(roomId = 100L, memberId = otherId)
+            val (notifier, pushSender, _, _) = fixture(room = ChatRoomFixture.personal(), roomMembers = listOf(muted, listening))
+
+            notifier.pushAll(
+                listOf(
+                    notification(NotificationType.CHAT_MESSAGE, memberId = MEMBER_ID),
+                    notification(NotificationType.CHAT_MESSAGE, memberId = otherId, id = 8822L),
+                ),
+            )
+
+            verify(exactly = 1) { pushSender.send(any(), any()) }
+        }
+
+        "매칭 카테고리 알림(평가 요청)은 방 알림을 꺼도 나간다" {
+            val muted = ChatRoomMemberFixture.create(roomId = 100L, memberId = MEMBER_ID).apply { mute(MUTED_AT) }
+            val (notifier, pushSender, _, _) = fixture(room = ChatRoomFixture.personal(), roomMembers = listOf(muted))
+
+            notifier.pushAll(listOf(notification(NotificationType.REVIEW_REQUEST)))
+
+            verify(exactly = 1) { pushSender.send(any(), any()) }
+        }
+    }
 
     "토글 게이트" - {
         "채팅 알림을 끈 회원에게는 CHAT 푸시가 나가지 않는다" {
@@ -251,6 +288,7 @@ class PushNotifierTest : FreeSpec({
             memberDeviceRepository = mockk(),
             notificationRepository = mockk(),
             chatRoomRepository = mockk(),
+            chatRoomMemberRepository = mockk(),
             rematchRepository = mockk(),
             pushDeadDeviceCleaner = mockk(),
             pushSender = mockk(),

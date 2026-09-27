@@ -30,4 +30,7 @@ interface MemberReviewRepository : JpaRepository<MemberReview, Long>, MemberRevi
     fun findWithLockById(id: Long): MemberReview?
 
     fun findAllByChatRoomId(chatRoomId: Long): List<MemberReview>
+
+    /** 채팅방 목록에 내 평가 상태를 붙이는 일괄 조회. */
+    fun findAllByAuthorMemberIdAndChatRoomIdIn(authorMemberId: Long, chatRoomIds: Collection<Long>): List<MemberReview>
 }

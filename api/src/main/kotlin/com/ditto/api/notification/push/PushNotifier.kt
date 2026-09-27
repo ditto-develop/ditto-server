@@ -2,10 +2,12 @@ package com.ditto.api.notification.push
 
 import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.MemberNotificationSetting
 import com.ditto.domain.member.repository.MemberNotificationSettingRepository
 import com.ditto.domain.notification.entity.Notification
+import com.ditto.domain.notification.entity.NotificationCategory
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
@@ -30,6 +32,7 @@ class PushNotifier(
     private val memberDeviceRepository: MemberDeviceRepository,
     private val notificationRepository: NotificationRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val rematchRepository: RematchRepository,
     private val pushDeadDeviceCleaner: PushDeadDeviceCleaner,
     private val pushSender: PushSender,
@@ -48,7 +51,10 @@ class PushNotifier(
         val first = notifications.firstOrNull() ?: return
         runCatchingExceptions {
             val deepLink = deepLinkOf(first)
-            notifications.forEach { send(it, deepLink) }
+            val mutedMemberIds = mutedMemberIdsOf(first)
+            notifications
+                .filter { it.memberId !in mutedMemberIds }
+                .forEach { send(it, deepLink) }
         }.onFailure {
             logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
         }
@@ -64,6 +70,19 @@ class PushNotifier(
         }
 
         pushSender.send(buildMessage(notification, tokens, deepLink), pushDeadDeviceCleaner::clean)
+    }
+
+    /**
+     * 이 방 알림을 끈 회원들. 채팅 카테고리 알림(새 메시지·방 오픈·첫 메시지 리마인드·종료 임박·투표 생성/마감)만 막는다 —
+     * 모두 `targetId = chat_room.id` 다. 같은 사건의 알림은 방이 같으므로 한 번만 조회한다.
+     * 평가 요청처럼 끝난 방을 가리키는 매칭 카테고리 알림은 막지 않는다.
+     */
+    private fun mutedMemberIdsOf(first: Notification): Set<Long> {
+        val roomId = first.targetId
+        if (first.category != NotificationCategory.CHAT || roomId == null) {
+            return emptySet()
+        }
+        return chatRoomMemberRepository.findByRoomId(roomId).filter { it.isMuted }.map { it.memberId }.toSet()
     }
 
     /** 설정 행은 회원이 토글을 처음 건드릴 때 생기므로, 없으면 기본값으로 판단한다. */
