@@ -18,7 +18,10 @@ import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.system.entity.ServerTimeOverride
+import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
@@ -32,6 +35,9 @@ import javax.sql.DataSource
 /** 개방된 주말 한가운데. 이 시각으로 만든 방은 곧바로 ACTIVE 다. */
 private val FRIDAY = LocalDateTime.of(2026, 3, 13, 12, 0)
 
+/** 실제 주보다 먼 미래의 매칭 기간(목요일). 시각 오버라이드로 이 주를 검증하는 상황을 재현한다. */
+private val FUTURE_THURSDAY = LocalDateTime.of(2099, 1, 1, 12, 0)
+
 class ChatServiceTest(
     private val chatService: ChatService,
     private val chatRoomRepository: ChatRoomRepository,
@@ -39,11 +45,12 @@ class ChatServiceTest(
     private val chatMessageRepository: ChatMessageRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
     /**
-     * 대화가 가능한(개방된) 1:1 방. `createPersonalRoom`은 실제 시각으로 기간을 잡으므로 평일에 돌리면
+     * 대화가 가능한(개방된) 1:1 방. `createPersonalRoom`은 서버 시각(오버라이드가 없으면 실제 시각)으로 기간을 잡으므로 평일에 돌리면
      * `SCHEDULED`가 되어 전송·구독·이미지 발급이 막힌다 — 대화 경로를 검증하려면 개방된 방이 필요하다.
      */
     fun saveOpenedRoom(sourceId: Long = 100L, vararg memberIds: Long) =
@@ -96,6 +103,38 @@ class ChatServiceTest(
 
         // then
         chatRoomRepository.findAll().count { it.sourceId == 200L } shouldBe 1
+    }
+
+    "시각 오버라이드가 미래 주 목요일이면 수락한 1:1 방은 그 주 금요일에 열리도록 예약된다" {
+        // given
+        serverTimeOverrideRepository.save(
+            ServerTimeOverride.disabled().apply { override(FUTURE_THURSDAY, "관리자", "admin@ditto.pics") },
+        )
+
+        // when
+        chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
+
+        // then — 실제 주말로 잡히면 스케줄러가 곧바로 마감한다(#218)
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
+        room.status shouldBe ChatRoomStatus.SCHEDULED
+        room.opensAt shouldBe LocalDateTime.of(2099, 1, 2, 0, 0)
+        room.expiresAt shouldBe LocalDateTime.of(2099, 1, 5, 0, 0)
+    }
+
+    "시각 오버라이드가 미래 주 목요일이면 그룹 방도 그 주 금요일에 열리도록 예약된다" {
+        // given
+        serverTimeOverrideRepository.save(
+            ServerTimeOverride.disabled().apply { override(FUTURE_THURSDAY, "관리자", "admin@ditto.pics") },
+        )
+
+        // when
+        chatService.createGroupRoom(groupMatchId = 200L, memberIds = listOf(1L, 2L, 3L))
+
+        // then
+        val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, 200L)!!
+        room.status shouldBe ChatRoomStatus.SCHEDULED
+        room.opensAt shouldBe LocalDateTime.of(2099, 1, 2, 0, 0)
+        room.expiresAt shouldBe LocalDateTime.of(2099, 1, 5, 0, 0)
     }
 
     "내 채팅방 목록은 상대 회원·마지막 메시지·안읽음 수를 담아 반환한다" {

@@ -7,6 +7,7 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
@@ -37,11 +38,14 @@ class ChatService(
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
     private val groupMatchRepository: GroupMatchRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     /**
      * 1:1 매칭 수락 시 두 회원의 채팅방을 생성한다. 이미 있으면 아무 것도 하지 않는다(멱등).
      * 매칭 수락 트랜잭션 안에서 호출된다.
+     *
+     * 기간은 서버 시각([ServerTimeProvider])의 주말로 잡는다 — [lifecycleNow] 참고.
      */
     @Transactional
     fun createPersonalRoom(personalMatchId: Long, memberAId: Long, memberBId: Long) {
@@ -49,7 +53,7 @@ class ChatService(
             return
         }
 
-        val now = realNow()
+        val now = lifecycleNow()
         val room = chatRoomRepository.save(
             ChatRoom.personal(personalMatchId, ChatPeriod.weekendOf(now), now),
         )
@@ -72,7 +76,7 @@ class ChatService(
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)
             ?.let { return it.id }
 
-        val now = realNow()
+        val now = lifecycleNow()
         val room = chatRoomRepository.save(
             ChatRoom.group(groupMatchId, ChatPeriod.weekendOf(now), now),
         )
@@ -235,12 +239,18 @@ class ChatService(
     }
 
     /**
-     * 채팅 생명주기 시각은 어드민 시각 오버라이드를 따르지 않는다.
+     * 1:1·그룹 방의 기간(opens_at·expires_at)을 잡는 시각. 어드민 시각 오버라이드를 따른다(#218).
      *
-     * opens_at·expires_at 은 **저장되는 값**이고, 이를 판정하는 만료 스케줄러는 실제 시각으로 돈다.
-     * 생성만 가짜 시각을 쓰면 오버라이드가 과거 주일 때 방이 만들어지자마자 만료되고,
-     * 미래 주면 며칠간 열리지 않는다 — 오버라이드를 꺼도 그 방은 망가진 채 남는다.
+     * 개방·마감을 판단하는 스케줄러가 서버 시각을 보므로 생성도 같은 시계를 봐야 한다. 실제 시각으로 잡으면
+     * 오버라이드가 미래 주일 때 수락한 방이 실제 주말로 저장되고, 스케줄러가 이미 기한이 지났다고 보고
+     * 곧바로 마감해 평가까지 연다.
+     *
+     * 대가: 오버라이드를 켠 동안 만든 방은 오버라이드 주로 저장되어, 끄면 미래 주 방은 그날까지 열리지 않고
+     * 과거 주 방은 곧바로 마감된다. dev 검증 데이터에만 생기는 일이라 받아들인다.
      */
+    private fun lifecycleNow(): LocalDateTime = serverTimeProvider.now()
+
+    /** 오버라이드와 무관한 실제 시각. 재매칭 방 예약(예약하는 쪽이 기간을 정한다)과 숨김 시각에 쓴다. */
     private fun realNow(): LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
 
     /** TEXT 는 공백·길이 검증, IMAGE 는 본인이 업로드한 key(chat/{senderId}/…)인지 검증한다. */
