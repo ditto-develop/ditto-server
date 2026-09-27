@@ -182,12 +182,12 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
-    fun checkNicknameAvailability(nickname: String): CheckNicknameResponse {
-        if (memberRepository.existsByNickname(nickname)) {
-            throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
-        }
-        return CheckNicknameResponse(available = true)
-    }
+    /**
+     * 중복은 조회 결과이지 오류가 아니라 200 + `available = false`로 답한다.
+     * 가입·프로필 수정은 동시 저장을 막는 최종 방어선이라 계속 409(NICKNAME_ALREADY_EXISTS)로 거부한다.
+     */
+    fun checkNicknameAvailability(nickname: String): CheckNicknameResponse =
+        CheckNicknameResponse(available = !memberRepository.existsByNickname(nickname))
 
     /**
      * 탈퇴(소프트 삭제). 데이터를 지우지 않고 상태만 LEFT로 바꾼다 —

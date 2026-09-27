@@ -618,7 +618,7 @@ class UserControllerTest : RestDocsTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Users")
                             .summary("닉네임 중복 확인")
-                            .description("닉네임이 사용 가능한지 확인합니다.")
+                            .description("닉네임이 사용 가능한지 확인합니다. 이미 사용 중이면 200과 available=false를 반환합니다.")
                             .pathParameters(
                                 parameterWithName("nickname").description("확인할 닉네임"),
                             )
@@ -631,6 +631,20 @@ class UserControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("이미 사용 중인 닉네임이면 200과 available=false를 반환한다")
+    fun checkNicknameAvailability_duplicated() {
+        memberRepository.save(Member(nickname = "사용중닉네임"))
+
+        mockMvc.perform(
+            get("/api/v1/users/nickname/{nickname}/availability", "사용중닉네임")
+                .withApiKey(),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.available").value(false))
     }
 
     @Test

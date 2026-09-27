@@ -313,13 +313,12 @@ class UserServiceTest(
                 result.available shouldBe true
             }
 
-            "이미 사용 중인 닉네임이면 예외가 발생한다" {
+            "이미 사용 중인 닉네임이면 예외 없이 사용 불가로 답한다" {
                 memberRepository.save(Member(nickname = "사용중닉네임"))
 
-                val exception = shouldThrow<WarnException> {
-                    userService.checkNicknameAvailability("사용중닉네임")
-                }
-                exception.errorCode shouldBe ErrorCode.NICKNAME_ALREADY_EXISTS
+                val result = userService.checkNicknameAvailability("사용중닉네임")
+
+                result.available shouldBe false
             }
         }
 
