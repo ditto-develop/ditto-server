@@ -8,9 +8,11 @@ import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.dto.LeaveResponse
 import com.ditto.api.user.dto.MeResponse
 import com.ditto.api.user.dto.MyRatingsResponse
+import com.ditto.api.user.dto.NicknameReservationResponse
 import com.ditto.api.user.dto.PublicProfileResponse
 import com.ditto.api.user.dto.RegisterResponse
 import com.ditto.api.user.dto.UpdatePersonalInfoRequest
+import com.ditto.api.user.facade.NicknameReservationFacade
 import com.ditto.api.user.service.PeerProfileService
 import com.ditto.api.user.service.UserService
 import com.ditto.common.logging.Loggable
@@ -22,12 +24,14 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class UserController(
     private val userService: UserService,
     private val peerProfileService: PeerProfileService,
+    private val nicknameReservationFacade: NicknameReservationFacade,
 ) {
 
     @PostMapping("/api/v1/users")
@@ -102,6 +106,22 @@ class UserController(
     @GetMapping("/api/v1/users/nickname/{nickname}/availability")
     fun checkNicknameAvailability(@PathVariable nickname: String): ApiResponse<CheckNicknameResponse> {
         val result = userService.checkNicknameAvailability(nickname)
+        return ApiResponse.ok(result)
+    }
+
+    /**
+     * 닉네임 확인 v2 — 사용 가능하면 그 자리에서 10분 동안 내게 예약한다.
+     *
+     * v1 과 달리 JWT 가 필요하다(누구의 예약인지 알아야 해서). 가입 중(PENDING) 회원이 부르므로
+     * `SecurityConfig.PENDING_ALLOWED_PATHS`에 들어 있고, 그 목록이 경로 완전 일치라 닉네임을 쿼리로 받는다.
+     */
+    @Loggable
+    @GetMapping("/api/v2/users/nickname/availability")
+    fun checkAndReserveNickname(
+        @RequestParam nickname: String,
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<NicknameReservationResponse> {
+        val result = nicknameReservationFacade.checkAndReserve(principal.memberId, nickname)
         return ApiResponse.ok(result)
     }
 

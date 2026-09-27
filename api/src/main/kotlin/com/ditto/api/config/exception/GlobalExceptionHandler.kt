@@ -6,6 +6,7 @@ import com.ditto.common.exception.WarnException
 import com.ditto.common.response.ApiResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.HttpRequestMethodNotSupportedException
@@ -79,6 +80,20 @@ class GlobalExceptionHandler {
         return ApiResponse.error(ErrorCode.NOT_FOUND)
     }
 
+    /**
+     * 확인과 저장 사이에 남이 같은 닉네임을 먼저 저장했다 — 가입·프로필 수정 모두 `member_unique_1`이 막는다.
+     * 그 밖의 무결성 위반은 서버가 놓친 경우라 그대로 [handleException]과 같이 다룬다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrityViolation(e: DataIntegrityViolationException, request: HttpServletRequest): ApiResponse<Unit> {
+        val message = e.mostSpecificCause.message.orEmpty()
+        if (message.contains(NICKNAME_UNIQUE_CONSTRAINT, ignoreCase = true)) {
+            logger.warn { "[${ErrorCode.NICKNAME_ALREADY_EXISTS.code}] 닉네임 동시 저장 ${request.describe()}" }
+            return ApiResponse.error(ErrorCode.NICKNAME_ALREADY_EXISTS)
+        }
+        return handleException(e, request)
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception, request: HttpServletRequest): ApiResponse<Unit> {
         logger.error(e) { "[UNHANDLED] ${e.message} ${request.describe()}" }
@@ -99,5 +114,6 @@ class GlobalExceptionHandler {
 
     companion object {
         private val logger = KotlinLogging.logger {}
+        private const val NICKNAME_UNIQUE_CONSTRAINT = "member_unique_1"
     }
 }

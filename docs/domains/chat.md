@@ -84,6 +84,8 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
   - 스키마 변경 없이 방 멤버 목록(≤ 그룹 정원)을 한 번 읽어 메모리에서 센다 — 메시지당 쿼리를 내지 않는다.
 - 인가: 방 멤버만 조회·구독·전송 가능. STOMP 구독 인가는 `StompAuthChannelInterceptor`. WS 인증 배경: [ADR 0009](../adr/0009-websocket-stomp-auth.md).
 - 전송 내용: trim 후 공백 불가, 최대 1000자(컬럼 상한).
+- **방별 알림 끄기**(`PUT`/`DELETE /api/v1/chat/rooms/{roomId}/mute`, `chat_room_member.muted_at`): 켜고 끄는 상태라 멱등이고 끝난 방도 막지 않는다. 푸시만 막고 센터 적재는 둔다 — 규칙은 [notification](notification.md) "방별 알림 끄기".
+- **방 목록은 방 상태(`status`)와 내 평가 상태(`reviewStatus`·`reviewId`)를 함께 준다.** 평가 목록(`/member-reviews`)이 미완료만 주므로 "이미 끝냄"과 "아직 안 열림"이 둘 다 "목록에 없음"으로 보였다. `NOT_APPLICABLE`(재매칭 — 평가를 열지 않는다) / `NOT_OPENED`(방이 안 끝났거나, 끝났지만 평가 생성이 아직 — 복구 배치가 곧 연다) / `NOT_STARTED`·`IN_PROGRESS`·`COMPLETED`. 방 목록이 평가를 읽는 것은 조회 조립일 뿐이고, 종료 경로(`ChatRoomEndService`)가 평가를 모르는 규칙은 그대로다.
 
 ## 실시간·스케일
 - 전송: STOMP over WebSocket + 내장 SimpleBroker(인메모리, **단일 인스턴스 전제**). 백프레셔 하드닝(아웃바운드 큐 유한화, send/message 크기·시간 상한)으로 느린 소비자발 OOM 차단.

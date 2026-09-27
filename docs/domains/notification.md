@@ -79,6 +79,9 @@
 - **토글 게이트** — `MemberNotificationSetting.allowsPush`: MATCHING→`matching`, CHAT→`chat`.
   SYSTEM 은 막지 않는다(설정 화면의 세 토글 어디에도 속하지 않고, `marketing`은 마케팅 수신 동의라 공지와
   다른 개념 — 어드민 공지가 생길 때 재검토). 행이 없는 회원은 기본값으로 판단한다.
+- **방별 알림 끄기** — `chat_room_member.muted_at`이 찍힌 회원에게는 그 방의 **CHAT 카테고리 6종**(새 메시지·방 오픈·첫 메시지
+  리마인드·종료 임박·투표 생성/마감) 푸시를 보내지 않는다. 모두 `target_id = chat_room.id`라 같은 사건의 알림은 방 멤버를 한 번만 읽는다.
+  토글과 같이 **센터 적재는 막지 않는다.** 평가 요청처럼 끝난 방을 가리키는 MATCHING 알림은 방을 꺼도 나간다.
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).

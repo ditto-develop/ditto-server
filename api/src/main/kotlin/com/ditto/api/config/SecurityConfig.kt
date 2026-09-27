@@ -181,11 +181,16 @@ class SecurityConfig(
         // PENDING(가입 미완료) 회원도 JWT만으로 접근 가능한 경로.
         // - GET /api/v1/users/me: 가입 정보 prefill 조회
         // - POST /api/v1/users: 회원가입 완료(추가 정보 입력) — 호출 시점엔 아직 PENDING이므로 허용 필요
+        // - GET /api/v2/users/nickname/availability: 온보딩 닉네임 확인 + 10분 예약 — 예약 주인을 알아야 해서 JWT 가 필요하다
         //
         // ⚠️ JwtAuthenticationFilter는 HTTP method를 무시하고 경로(requestURI)만으로 매칭한다.
         //    같은 경로에 다른 method 엔드포인트(예: GET/DELETE /api/v1/users)를 추가하면
         //    PENDING 회원에게도 함께 열리므로, 그때 PENDING 노출 여부를 반드시 재검토할 것.
-        private val PENDING_ALLOWED_PATHS = setOf("/api/v1/users/me", "/api/v1/users")
+        private val PENDING_ALLOWED_PATHS = setOf(
+            "/api/v1/users/me",
+            "/api/v1/users",
+            "/api/v2/users/nickname/availability",
+        )
 
         // 제재 회원의 유일한 안내 창구 — URI-only 매칭이므로 다른 기능과 경로를 공유하지 말 것.
         private val SUSPENDED_ALLOWED_PATHS = setOf("/api/v1/users/me/sanction")

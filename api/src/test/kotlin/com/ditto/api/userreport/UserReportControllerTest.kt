@@ -19,6 +19,7 @@ import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.pos
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest
 import org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
+import org.springframework.restdocs.payload.JsonFieldType
 import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -113,7 +114,7 @@ class UserReportControllerTest : RestDocsTest() {
 
         val request = CreateUserReportRequest(
             reportedMemberId = reported.id,
-            reason = "inappropriate-behavior",
+            reasons = listOf("inappropriate-behavior", "false-information"),
             source = "profile",
             detail = "대화 중 폭언을 반복했습니다.",
             imageKeys = imageKeys,
@@ -144,7 +145,10 @@ class UserReportControllerTest : RestDocsTest() {
                             )
                             .requestFields(
                                 fieldWithPath("reportedMemberId").description("피신고자 회원 ID"),
-                                fieldWithPath("reason").description("신고 사유 code. 가능한 값: $REPORT_REASON_CODES"),
+                                fieldWithPath("reasons[]")
+                                    .description("선택한 신고 사유 code 목록 (다중 선택, 1개 이상). 가능한 값: $REPORT_REASON_CODES"),
+                                fieldWithPath("reason").type(JsonFieldType.STRING)
+                                    .description("(구버전) 신고 사유 code 하나. reasons 가 있으면 무시한다").optional(),
                                 fieldWithPath("source").description("신고 접수 위치 code. 가능한 값: $REPORT_SOURCE_CODES"),
                                 fieldWithPath("detail").description("상세 설명 (선택, 최대 500자 — etc 사유는 필수)").optional(),
                                 fieldWithPath("imageKeys").description("첨부 이미지 objectKey 목록 (선택, 최대 3개)").optional(),

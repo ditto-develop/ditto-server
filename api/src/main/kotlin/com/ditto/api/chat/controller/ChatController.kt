@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -124,6 +125,28 @@ class ChatController(
         @PathVariable roomId: Long,
     ): ApiResponse<Unit> {
         chatService.hideRoom(principal.memberId, roomId)
+        return ApiResponse.ok(Unit)
+    }
+
+    /** 이 방 알림을 끈다. 푸시만 막고 알림 센터에는 쌓인다. 규칙은 [ChatService.setMuted] 참고. */
+    @Loggable
+    @PutMapping("/api/v1/chat/rooms/{roomId}/mute")
+    fun mute(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        chatService.setMuted(principal.memberId, roomId, muted = true)
+        return ApiResponse.ok(Unit)
+    }
+
+    /** 이 방 알림을 다시 켠다. */
+    @Loggable
+    @DeleteMapping("/api/v1/chat/rooms/{roomId}/mute")
+    fun unmute(
+        @AuthenticationPrincipal principal: MemberPrincipal,
+        @PathVariable roomId: Long,
+    ): ApiResponse<Unit> {
+        chatService.setMuted(principal.memberId, roomId, muted = false)
         return ApiResponse.ok(Unit)
     }
 

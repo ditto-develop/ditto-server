@@ -11,13 +11,14 @@ object MemberReportFixture {
         reporterId: Long = 1L,
         reportedMemberId: Long = 2L,
         reason: MemberReportReason = MemberReportReason.INAPPROPRIATE_BEHAVIOR,
+        reasons: Set<MemberReportReason> = setOf(reason),
         source: MemberReportSource = MemberReportSource.PROFILE,
         detail: String? = null,
         id: Long = 0L,
     ): MemberReport = MemberReport.receive(
         reporterId = reporterId,
         reportedMemberId = reportedMemberId,
-        reason = reason,
+        reasons = reasons,
         source = source,
         detail = detail,
     ).withId(id)

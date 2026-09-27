@@ -5,9 +5,12 @@ import java.time.LocalDateTime
 /** 신고 검토 상세 — 한 화면에서 판단에 필요한 모든 정보를 담는다. */
 data class ReportDetailView(
     val id: Long,
-    val reasonDescription: String,
+    /** 선택한 사유 전부, 심각한 순. */
+    val reasonDescriptions: List<String>,
+    /** 선택한 사유 중 하나라도 심각 사유인가. */
     val isSevere: Boolean,
-    val guideline: String,
+    /** 선택한 사유별 대응 안내, 사유와 같은 순서. */
+    val guidelines: List<String>,
     val sourceDescription: String,
     val detail: String?,
     val createdAt: LocalDateTime,

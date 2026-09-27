@@ -259,6 +259,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.name").description("이름 (미동의 시 null)"),
                                 fieldWithPath("data.phoneNumber").description("전화번호 010-XXXX-XXXX (미동의 시 null)"),
                                 fieldWithPath("data.gender").description("성별 MALE/FEMALE (미동의 시 null)"),
+                                fieldWithPath("data.nicknameChangeRemaining").description("프로필 수정에서 닉네임을 더 바꿀 수 있는 횟수 (2회 변경 후 14일 동안 0)"),
+                                fieldWithPath("data.nicknameChangeLockedUntil").type(JsonFieldType.STRING)
+                                    .description("닉네임 변경 잠금이 풀리는 시각 (잠기지 않았으면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -571,6 +574,9 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.name").description("이름").optional(),
                                 fieldWithPath("data.phoneNumber").description("전화번호").optional(),
                                 fieldWithPath("data.gender").description("성별 (MALE, FEMALE)").optional(),
+                                fieldWithPath("data.nicknameChangeRemaining").description("프로필 수정에서 닉네임을 더 바꿀 수 있는 횟수 (2회 변경 후 14일 동안 0)"),
+                                fieldWithPath("data.nicknameChangeLockedUntil").type(JsonFieldType.STRING)
+                                    .description("닉네임 변경 잠금이 풀리는 시각 (잠기지 않았으면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -625,6 +631,50 @@ class UserControllerTest : RestDocsTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.available").description("닉네임 사용 가능 여부"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("닉네임을 확인하고 사용 가능하면 10분 동안 예약한다 (v2) - PENDING 회원도 접근 가능")
+    fun checkAndReserveNickname() {
+        val member = memberRepository.save(Member(nickname = "임시닉네임"))
+
+        mockMvc.perform(
+            get("/api/v2/users/nickname/availability")
+                .param("nickname", "산책러버")
+                .withApiKey()
+                .withBearerToken(member.id),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.available").value(true))
+            .andExpect(jsonPath("$.data.reservedUntil").isNotEmpty)
+            .andDo(
+                document(
+                    "nickname-availability-v2",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Users")
+                            .summary("닉네임 중복 확인 + 10분 예약 (v2)")
+                            .description(
+                                "사용 가능하면 그 닉네임을 10분 동안 내게 예약한다. 예약 중에는 다른 회원의 확인(v1·v2)이 " +
+                                    "available=false 를 받고, 가입·프로필 수정도 NICKNAME_ALREADY_EXISTS(3003)로 막힌다. " +
+                                    "다른 닉네임을 확인하면 이전 예약은 풀린다. 형식이 틀리면 BAD_REQUEST(0001).",
+                            )
+                            .queryParameters(
+                                parameterWithName("nickname").description("확인할 닉네임 (2~10자, 한글·영문·숫자)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.available").description("닉네임 사용 가능 여부"),
+                                fieldWithPath("data.reservedUntil").description("내 예약이 풀리는 시각 (사용 불가면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),

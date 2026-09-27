@@ -12,6 +12,7 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.MemberReportFixture
+import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.memberreport.repository.MemberReportImageRepository
 import com.ditto.domain.memberreport.repository.MemberReportRepository
@@ -90,6 +91,36 @@ class UserReportServiceTest(
             saved.reporterId shouldBe reporter.id
             saved.reportedMemberId shouldBe reported.id
             saved.status shouldBe MemberReportStatus.RECEIVED
+        }
+
+        "사유를 여러 개 고르면 전부 저장되고 대표 사유는 가장 심각한 것이다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+
+            val result = userReportService.submitReport(
+                reporterId = reporter.id,
+                request = CreateUserReportRequest(
+                    reportedMemberId = reported.id,
+                    reasons = listOf("underage", "money-demand", "money-demand"),
+                    source = "profile",
+                ),
+            )
+
+            val saved = memberReportRepository.findById(result.id).orElseThrow()
+            saved.reasons shouldBe setOf(MemberReportReason.MONEY_DEMAND, MemberReportReason.UNDERAGE)
+            saved.reason shouldBe MemberReportReason.MONEY_DEMAND
+        }
+
+        "사유를 하나도 보내지 않으면 거부한다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+
+            shouldThrow<WarnException> {
+                userReportService.submitReport(
+                    reporterId = reporter.id,
+                    request = CreateUserReportRequest(reportedMemberId = reported.id, reasons = emptyList(), source = "profile"),
+                )
+            }.errorCode shouldBe ErrorCode.BAD_REQUEST
         }
 
         "이미지를 첨부하면 확정 영역 키로 이동해 순서대로 저장한다" {

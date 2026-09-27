@@ -11,6 +11,7 @@ import com.ditto.api.chat.dto.ChatMessagesResponse
 import com.ditto.api.chat.dto.ChatReadEvent
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatRoomResponse
+import com.ditto.api.chat.dto.ChatRoomReviewStatus
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
@@ -18,6 +19,7 @@ import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.support.ControllerUnitTest
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
+import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -39,6 +41,7 @@ import org.springframework.restdocs.request.RequestDocumentation.queryParameters
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
@@ -91,6 +94,10 @@ class ChatControllerTest : ControllerUnitTest() {
                 hasLeft = false,
                 // 1:1 방은 이름이 없다.
                 roomName = null,
+                status = ChatRoomStatus.ACTIVE,
+                reviewStatus = ChatRoomReviewStatus.NOT_OPENED,
+                reviewId = null,
+                isMuted = true,
             ),
             ChatRoomResponse(
                 roomId = 2L,
@@ -107,6 +114,10 @@ class ChatControllerTest : ControllerUnitTest() {
                 // 두 사람 방의 leave 는 종료로 위임돼 left_at 이 찍히지 않는다 — 이탈은 그룹에만 있다.
                 hasLeft = false,
                 roomName = null,
+                status = ChatRoomStatus.ENDED,
+                reviewStatus = ChatRoomReviewStatus.IN_PROGRESS,
+                reviewId = 31L,
+                isMuted = false,
             ),
         )
 
@@ -158,6 +169,18 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data[].roomName")
                                     .description("그룹 방의 기본 이름 = 그 그룹이 만들어진 그룹 퀴즈의 주제. 1:1·재매칭은 null")
                                     .optional(),
+                                fieldWithPath("data[].status")
+                                    .description("방 상태 (서버 시각 기준) SCHEDULED(개방 전) / ACTIVE(대화 중) / ENDED(종료)"),
+                                fieldWithPath("data[].reviewStatus")
+                                    .description(
+                                        "이 방의 내 평가 상태. NOT_APPLICABLE(평가 없는 방 — 재매칭) / " +
+                                            "NOT_OPENED(아직 안 열림 — 방이 안 끝났거나 곧 열림) / NOT_STARTED / IN_PROGRESS / COMPLETED(평가 완료)",
+                                    ),
+                                fieldWithPath("data[].reviewId")
+                                    .description("열린 평가의 ID (제출 경로 /member-reviews/{reviewId}/... 에 쓴다). 안 열렸으면 null")
+                                    .optional(),
+                                fieldWithPath("data[].isMuted")
+                                    .description("이 방 알림을 껐는지. 꺼도 알림 센터에는 쌓이고 푸시만 가지 않는다"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
@@ -377,6 +400,83 @@ class ChatControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+    }
+
+    @Test
+    @DisplayName("채팅방 알림을 끈다")
+    fun mute() {
+        every { chatService.setMuted(any(), any(), any()) } returns Unit
+
+        mockMvc.perform(put("/api/v1/chat/rooms/{roomId}/mute", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-mute",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅방 알림 끄기")
+                            .description(
+                                "이 방의 채팅 알림(새 메시지·방 오픈·첫 메시지 리마인드·종료 임박·투표 생성/마감) 푸시를 끕니다. " +
+                                    "알림 센터에는 그대로 쌓이고, 평가 요청 같은 매칭 알림은 계속 옵니다. 다시 요청해도 성공(멱등).",
+                            )
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        verify { chatService.setMuted(any(), 1L, true) }
+    }
+
+    @Test
+    @DisplayName("채팅방 알림을 다시 켠다")
+    fun unmute() {
+        every { chatService.setMuted(any(), any(), any()) } returns Unit
+
+        mockMvc.perform(delete("/api/v1/chat/rooms/{roomId}/mute", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andDo(
+                document(
+                    "chat-unmute",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    pathParameters(
+                        parameterWithName("roomId").description("채팅방 ID"),
+                    ),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("Chat")
+                            .summary("채팅방 알림 켜기")
+                            .description("끈 방 알림을 다시 켭니다. 켜진 방에 요청해도 성공(멱등).")
+                            .pathParameters(
+                                parameterWithName("roomId").description("채팅방 ID"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data").description("응답 데이터 (없음)").optional(),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+
+        verify { chatService.setMuted(any(), 1L, false) }
     }
 
     @Test
