@@ -92,7 +92,7 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`→`/matching/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
+  `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`→`/matching/`(1:1 전용이라 분기 없음), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
   방이 지워졌으면 deepLink 없이 보낸다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.

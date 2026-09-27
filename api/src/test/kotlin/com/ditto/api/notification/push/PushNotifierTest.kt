@@ -14,6 +14,10 @@ import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -48,6 +52,7 @@ class PushNotifierTest : FreeSpec({
         deviceTokens: List<String> = listOf("token-1"),
         room: ChatRoom? = null,
         rematch: Rematch? = null,
+        quizSet: QuizSet? = null,
         unreadCount: Long = 3L,
         roomMembers: List<ChatRoomMember> = emptyList(),
     ): Fixture {
@@ -68,6 +73,9 @@ class PushNotifierTest : FreeSpec({
         val rematchRepository = mockk<RematchRepository> {
             every { findById(any()) } returns Optional.ofNullable(rematch)
         }
+        val quizSetRepository = mockk<QuizSetRepository> {
+            every { findById(any()) } returns Optional.ofNullable(quizSet)
+        }
         val chatRoomMemberRepository = mockk<ChatRoomMemberRepository> {
             every { findByRoomId(any()) } returns roomMembers
         }
@@ -80,6 +88,7 @@ class PushNotifierTest : FreeSpec({
             chatRoomRepository = chatRoomRepository,
             chatRoomMemberRepository = chatRoomMemberRepository,
             rematchRepository = rematchRepository,
+            quizSetRepository = quizSetRepository,
             pushDeadDeviceCleaner = cleaner,
             pushSender = pushSender,
         )
@@ -159,8 +168,13 @@ class PushNotifierTest : FreeSpec({
     }
 
     "payload" - {
-        fun sentMessage(type: NotificationType, room: ChatRoom? = null, targetId: Long? = 100L): PushMessage {
-            val (notifier, pushSender, _, _) = fixture(room = room)
+        fun sentMessage(
+            type: NotificationType,
+            room: ChatRoom? = null,
+            quizSet: QuizSet? = null,
+            targetId: Long? = 100L,
+        ): PushMessage {
+            val (notifier, pushSender, _, _) = fixture(room = room, quizSet = quizSet)
             val messageSlot = slot<PushMessage>()
             every { pushSender.send(capture(messageSlot), any()) } returns Unit
 
@@ -199,11 +213,21 @@ class PushNotifierTest : FreeSpec({
                 .data["deepLink"] shouldBe "/chat/group/100/rate/"
         }
 
+        "deepLink — 매칭 결과는 그 주의 매칭 유형으로 갈린다. /matching/ 은 1:1 결과 화면이라 그룹 주에는 후보가 없다" {
+            val oneToOne = QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE)
+            val group = QuizSetFixture.create(matchingType = MatchingType.GROUP)
+
+            sentMessage(NotificationType.MATCH_RESULT, quizSet = oneToOne).data["deepLink"] shouldBe "/matching/"
+            sentMessage(NotificationType.NO_MATCH, quizSet = oneToOne).data["deepLink"] shouldBe "/matching/"
+            sentMessage(NotificationType.MATCH_RESULT, quizSet = group).data["deepLink"] shouldBe "/matching/group/"
+            sentMessage(NotificationType.NO_MATCH, quizSet = group).data["deepLink"] shouldBe "/matching/group/"
+            sentMessage(NotificationType.MATCH_RESULT, quizSet = null).data["deepLink"] shouldBe null
+        }
+
         "deepLink — 유형이 종류를 내포하면 방을 조회하지 않는다" {
-            sentMessage(NotificationType.MATCH_RESULT).data["deepLink"] shouldBe "/matching/"
-            sentMessage(NotificationType.NO_MATCH).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.MATCH_ACCEPTED).data["deepLink"] shouldBe "/matching/"
+            sentMessage(NotificationType.GROUP_NOT_FORMED).data["deepLink"] shouldBe "/matching/group/"
             sentMessage(NotificationType.GROUP_FORMED).data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.VOTE_CREATED).data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.VOTE_CLOSED).data["deepLink"] shouldBe "/chat/group/100/"
@@ -295,6 +319,7 @@ class PushNotifierTest : FreeSpec({
             chatRoomRepository = mockk(),
             chatRoomMemberRepository = mockk(),
             rematchRepository = mockk(),
+            quizSetRepository = mockk(),
             pushDeadDeviceCleaner = mockk(),
             pushSender = mockk(),
         )
