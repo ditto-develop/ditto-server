@@ -15,7 +15,9 @@
 ## 불변식
 
 - 자기 자신 신고 금지 (`MemberReport.receive`가 `CANNOT_REPORT_SELF`로 거부).
-- ETC(기타) 사유는 상세 설명(detail) 필수 (`REPORT_ETC_REASON_REQUIRED`).
+- 사유는 **여러 개** 고를 수 있고 하나 이상이어야 한다(`reasons`, 콤마 구분 enum 이름 — 관심사와 같은 저장 방식). **대표 사유**(`reason`)는 선언 순서상 가장 앞, 즉 가장 심각한 것이다 — 내 제재 조회(`EffectiveSanctionResponse.reason`)는 계속 이 한 값을 쓴다. 요청은 `reasons[]`를 우선하고, 없으면 구버전 `reason` 하나를 받는다.
+- ETC(기타)가 하나라도 섞이면 상세 설명(detail) 필수 (`REPORT_ETC_REASON_REQUIRED`).
+- 어드민 목록·상세는 선택한 사유를 전부 보여 주고, 하나라도 심각 사유면 "즉시 조치 권고" 배지를 단다.
 - detail은 `DETAIL_MAX_LENGTH`(500) 이하.
 - 검토는 신고당 1회 — 종결 상태(ACTIONED/REJECTED/REJECTED_ABUSIVE)는 불변, 전이는 RECEIVED에서만. 전이는 `MemberReportRepository.completeReview`의 조건부 UPDATE(WHERE status=RECEIVED)가 강제한다 — 두 관리자가 동시에 처리해도 한쪽만 성공(`REPORT_ALREADY_REVIEWED`), 제재 중복 적용 불가.
 - 검토 SLA: 접수 후 24시간 내 수동 검토 (기획) — 어드민 목록이 초과 건을 강조한다.

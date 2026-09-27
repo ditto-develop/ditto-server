@@ -27,6 +27,7 @@
 - [0029 — 타인 프로필·평점 열람을 성사 전 후보까지 열되, 후보에게는 요약만](0029-peer-profile-candidate-summary-tier.md)
 - [0030 — 애플 도메인을 CORS 허용 origin에 넣는다](0030-apple-web-callback-cors-exemption.md)
 - [0031 — 재매칭 의사를 상대에게 공개한다 (상호 선택 비공개 → 신청/수락)](0031-rematch-request-visible-to-counterpart.md)
+- [0032 — 닉네임을 확인 시점에 10분 예약하고, 프로필 수정 변경을 2회/14일로 묶는다](0032-nickname-reservation-and-change-limit.md)
 
 ## 언제 ADR을 쓰는가
 

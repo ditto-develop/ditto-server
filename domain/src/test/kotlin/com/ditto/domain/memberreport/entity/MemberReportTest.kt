@@ -25,6 +25,30 @@ class MemberReportTest : FreeSpec(
                 report.status shouldBe MemberReportStatus.RECEIVED
             }
 
+            "사유를 여러 개 고르면 전부 남고, 대표 사유는 가장 심각한 것이다" {
+                val report = MemberReportFixture.create(
+                    reasons = setOf(MemberReportReason.UNDERAGE, MemberReportReason.MONEY_DEMAND),
+                )
+
+                report.reasons shouldBe setOf(MemberReportReason.MONEY_DEMAND, MemberReportReason.UNDERAGE)
+                report.reason shouldBe MemberReportReason.MONEY_DEMAND
+            }
+
+            "사유가 없으면 거부한다" {
+                shouldThrow<WarnException> {
+                    MemberReportFixture.create(reasons = emptySet())
+                }.errorCode shouldBe ErrorCode.BAD_REQUEST
+            }
+
+            "기타가 섞여 있으면 상세 설명이 필수다" {
+                shouldThrow<WarnException> {
+                    MemberReportFixture.create(
+                        reasons = setOf(MemberReportReason.MONEY_DEMAND, MemberReportReason.ETC),
+                        detail = " ",
+                    )
+                }.errorCode shouldBe ErrorCode.REPORT_ETC_REASON_REQUIRED
+            }
+
             "자기 자신을 신고하면 거부한다" {
                 val exception = shouldThrow<WarnException> {
                     MemberReportFixture.create(reporterId = 1L, reportedMemberId = 1L)

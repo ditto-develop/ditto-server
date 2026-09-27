@@ -16,8 +16,12 @@ data class CreateUserReportRequest(
     @field:Positive(message = "피신고자 ID가 올바르지 않습니다.")
     val reportedMemberId: Long,
 
-    @field:NotBlank(message = "신고 사유를 선택해 주세요.")
-    val reason: String,
+    /** 사유 하나(구버전 계약). [reasons]가 오면 무시한다. 둘 다 없으면 거부한다. */
+    val reason: String? = null,
+
+    /** 선택한 사유 code 목록(다중 선택). 대표 사유는 서버가 가장 심각한 것으로 고른다. */
+    @field:Size(max = MAX_REASON_COUNT, message = "신고 사유가 너무 많습니다.")
+    val reasons: List<String>? = null,
 
     @field:NotBlank(message = "신고 접수 위치가 필요합니다.")
     val source: String,
@@ -29,4 +33,13 @@ data class CreateUserReportRequest(
     val imageKeys: List<String> = emptyList(),
 
     val block: Boolean = false,
-)
+) {
+    /** 다중 선택([reasons])을 우선하고, 없으면 구버전 단일 [reason]을 쓴다. 중복 code 는 하나로 친다. */
+    fun reasonCodes(): Set<String> =
+        (reasons ?: listOfNotNull(reason)).filter { it.isNotBlank() }.toSet()
+
+    companion object {
+        /** 사유 값 개수(5)보다 넉넉하게 — 중복 code 가 섞여도 거르기 전에 막히지 않게. */
+        private const val MAX_REASON_COUNT = 10
+    }
+}

@@ -19,6 +19,9 @@
 - 온보딩 필수 정보: 관심사·사는곳·직업·캐리커쳐는 가입 완료 시 항상 채운다 (`register`).
 - 프로필 수정(`PATCH /api/v1/users/me/profile`)은 닉네임·성별·사는곳·직업·캐리커쳐·관심사·한 줄 소개를 받는다. **성별은 제한 없이 바꿀 수 있다** — 저장된 스냅샷이 없어 매칭·후보 목록·프로필 조회가 모두 `member` 행을 그때그때 읽으므로, 이미 매칭된 상대에게도 바뀐 성별이 보인다. 이미 성사된 매칭은 그대로 두고 다음 회차 후보 풀만 새 성별로 계산한다.
 - 닉네임은 형식(2~10자, 한글·영문·숫자)과 중복만 본다. 금칙어 검증은 아직 없다 — 가입·수정·중복검사 세 경로를 함께 다뤄야 해서 분리했다(#205).
+- **닉네임 확인 v2(`GET /api/v2/users/nickname/availability?nickname=`)는 사용 가능하면 10분 동안 내게 예약한다**(`nickname_reservation`, 회원당 1건). 예약 중에는 남의 확인(v1·v2)이 `available=false`, 가입·프로필 수정이 `NICKNAME_ALREADY_EXISTS`를 받는다. 가입 중(PENDING)에 부르므로 PENDING 허용 경로에 있고, 그 목록이 경로 완전 일치라 닉네임을 쿼리로 받는다. 예약은 선점일 뿐이고 최종 방어선은 `member_unique_1`이다 — 동시 저장으로 걸리면 `GlobalExceptionHandler`가 9999 대신 3003으로 답한다. 예약 시각은 실제 시각이다(서버 시각 오버라이드로 만료가 한꺼번에 흔들리지 않게). [ADR 0032](../adr/0032-nickname-reservation-and-change-limit.md)
+- **프로필 수정의 닉네임 변경은 2회 후 14일 잠긴다**(`nickname_change_count`·`nickname_change_locked_until`). 잠금이 풀리면 다시 2회. 가입 때 정한 닉네임과 지금과 같은 값은 세지 않는다. 남은 횟수·해제 시각은 `GET /api/v1/users/me`로 준다. 잠금 판정은 서버 시각(QA가 오버라이드로 확인할 수 있게).
+- **끝나지 않은 채팅방(예약·진행, 1:1·그룹·재매칭)이 있으면 닉네임을 바꿀 수 없다**(`NICKNAME_CHANGE_IN_ACTIVE_CHAT`). 내가 나간 방은 세지 않는다.
 - `left_at`·`leave_reason`은 LEFT일 때만 값이 존재한다 (`leave`가 설정, `restore`가 비움).
 - 탈퇴는 소프트 삭제다 — 데이터를 지우지 않고 LEFT로 전이하며, 완전 삭제는 30일 경과 후 배치가 한다 ([ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)).
 - 제재 중에도 탈퇴할 수 있다. 소프트 삭제가 제재 이력과 `SocialAccount`를 보존하므로 차단 우회가 되지 않는다.

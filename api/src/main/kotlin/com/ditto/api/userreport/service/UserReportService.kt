@@ -48,7 +48,7 @@ class UserReportService(
         val report = MemberReport.receive(
             reporterId = reporterId,
             reportedMemberId = request.reportedMemberId,
-            reason = MemberReportReason.from(request.reason),
+            reasons = request.reasonCodes().map { MemberReportReason.from(it) }.toSet(),
             source = MemberReportSource.from(request.source),
             detail = request.detail,
         )

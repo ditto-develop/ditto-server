@@ -18,7 +18,7 @@
             <div class="card">
                 <h2>
                     신고 내용
-                    <span class="badge cat" th:text="${report.reasonDescription}">사유</span>
+                    <span class="badge cat" th:each="d : ${report.reasonDescriptions}" th:text="${d}">사유</span>
                     <span class="badge warn" th:if="${report.isSevere}">즉시 조치 권고</span>
                 </h2>
                 <p class="muted">
@@ -37,7 +37,7 @@
             <!-- 대응 가이드라인 -->
             <div class="card">
                 <h2>대응 가이드라인</h2>
-                <p th:text="${report.guideline}">가이드라인</p>
+                <p th:each="g : ${report.guidelines}" th:text="${g}">가이드라인</p>
             </div>
 
             <!-- 피신고자 -->

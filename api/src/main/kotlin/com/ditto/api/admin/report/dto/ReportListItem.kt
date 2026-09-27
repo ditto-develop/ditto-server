@@ -5,7 +5,8 @@ import java.time.LocalDateTime
 /** 신고 검토 목록의 한 행. */
 data class ReportListItem(
     val id: Long,
-    val reasonDescription: String,
+    /** 선택한 사유 전부, 심각한 순. */
+    val reasonDescriptions: List<String>,
     val isSevere: Boolean,
     val reporterNickname: String,
     val reportedNickname: String,

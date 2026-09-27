@@ -39,8 +39,8 @@ class AdminReportService(
             val elapsed = Duration.between(report.createdAt, now)
             ReportListItem(
                 id = report.id,
-                reasonDescription = report.reason.description,
-                isSevere = report.reason.isSevere,
+                reasonDescriptions = report.reasons.map { it.description },
+                isSevere = report.reasons.any { it.isSevere },
                 reporterNickname = nicknames.getValue(report.reporterId),
                 reportedNickname = nicknames.getValue(report.reportedMemberId),
                 statusDescription = report.status.description,
@@ -61,9 +61,9 @@ class AdminReportService(
 
         return ReportDetailView(
             id = report.id,
-            reasonDescription = report.reason.description,
-            isSevere = report.reason.isSevere,
-            guideline = report.reason.guideline,
+            reasonDescriptions = report.reasons.map { it.description },
+            isSevere = report.reasons.any { it.isSevere },
+            guidelines = report.reasons.map { it.guideline },
             sourceDescription = report.source.description,
             detail = report.detail,
             createdAt = report.createdAt,
