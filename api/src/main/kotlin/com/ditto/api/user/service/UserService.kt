@@ -24,6 +24,7 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import org.springframework.stereotype.Service
@@ -38,6 +39,7 @@ class UserService(
     private val matchAccessChecker: MatchAccessChecker,
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val memberDeviceRepository: MemberDeviceRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val leaveProgressChecker: LeaveProgressChecker,
     private val leftMemberRematchCanceller: LeftMemberRematchCanceller,
@@ -221,6 +223,8 @@ class UserService(
 
         // 세션은 즉시 끊는다. SocialAccount는 복구·재가입 식별 근거이므로 남긴다.
         refreshTokenRepository.deleteAllByMemberId(id)
+        // 푸시 토큰도 지금 지운다. 복구하면 앱이 다시 등록하므로 지워도 안전하다.
+        memberDeviceRepository.deleteAllByMemberId(id)
 
         return member.toLeaveResponse()
     }
