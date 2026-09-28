@@ -28,6 +28,7 @@
 - [0030 — 애플 도메인을 CORS 허용 origin에 넣는다](0030-apple-web-callback-cors-exemption.md)
 - [0031 — 재매칭 의사를 상대에게 공개한다 (상호 선택 비공개 → 신청/수락)](0031-rematch-request-visible-to-counterpart.md)
 - [0032 — 닉네임을 확인 시점에 10분 예약하고, 프로필 수정 변경을 2회/14일로 묶는다](0032-nickname-reservation-and-change-limit.md)
+- [0033 — 그룹 매칭을 겹치지 않는 분할로 바꾼다](0033-group-matching-disjoint-partition.md)
 
 ## 언제 ADR을 쓰는가
 
