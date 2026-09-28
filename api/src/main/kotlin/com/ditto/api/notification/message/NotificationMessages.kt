@@ -49,11 +49,11 @@ object NotificationMessages {
         body = "답이 비슷한 ${memberCount}명이 모였어요. 멤버를 확인해보세요.",
     )
 
-    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. 기획 표에 없는 알림이라 문구는 확정 전이다. */
+    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. */
     fun groupNotFormed(): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_NOT_FORMED,
-        title = "그룹이 인원 미달로 취소됐어요",
-        body = "함께할 사람이 충분히 모이지 않았어요. 다음 주 퀴즈에서 새로운 그룹을 만나보세요.",
+        title = "이번 주는 인원 미달로 취소됐어요",
+        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
     )
 
     /** [requesterNickname] 이 나와 1:1 재매칭을 원한다고 냈다. */

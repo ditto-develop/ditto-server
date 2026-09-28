@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
- * 종료가 가까운 채팅방의 참여자에게 알린다 — "채팅이 6시간 후 종료돼요"(피그마 7.2).
+ * 종료가 가까운 채팅방의 참여자에게 알린다(피그마 7.2).
  *
  * 상태를 보고 맞추는 수렴 루프다. 종료 예정 시각이 남은 방을 매 주기 다시 집어오지만, 방마다 한 번만
  * 알린다(`CHAT_ENDING_SOON`의 `target_id` = 방 ID) — 알림 행 자체가 처리 완료 표시라 별도 플래그가 없고,
