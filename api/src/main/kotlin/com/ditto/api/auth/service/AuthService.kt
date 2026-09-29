@@ -51,10 +51,13 @@ class AuthService(
             throw WarnException(ErrorCode.REFRESH_TOKEN_EXPIRED)
         }
 
+        // 정리를 만료 단축보다 먼저 한다. 반대면 행 하나를 잡은 채 회원 범위를 잠그게 돼,
+        // 같은 회원의 다른 토큰 refresh·로그아웃과 동시에 돌 때 서로 교착할 수 있다.
+        refreshTokenRepository.deleteExpiredByMemberId(existedRefreshToken.memberId, now)
+
         // 바로 지우지 않고 잠깐 더 받아준다. 새 쿠키를 담은 응답이 유실되거나(갱신 중 페이지 이동)
         // 두 요청이 같은 쿠키로 동시에 오면, 즉시 삭제로는 그 기기의 세션이 끝난다.
         existedRefreshToken.shortenExpiry(now.plus(ROTATION_GRACE))
-        refreshTokenRepository.deleteExpiredByMemberId(existedRefreshToken.memberId, now)
 
         val member = memberRepository.findById(existedRefreshToken.memberId)
             .orElseThrow { ErrorException(ErrorCode.UNAUTHORIZED_ERROR) }
