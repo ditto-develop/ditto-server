@@ -57,7 +57,7 @@ class AuthControllerTest : RestDocsTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Auth")
                             .summary("토큰 갱신")
-                            .description("refreshToken 쿠키로 새 액세스 토큰을 발급하고 refreshToken 쿠키를 재설정합니다.")
+                            .description("refreshToken 쿠키로 새 액세스 토큰을 발급하고 refreshToken 쿠키를 재설정합니다. 사용한 refreshToken 은 30초 동안 한 번 더 쓸 수 있습니다.")
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.accessToken").description("새 JWT 액세스 토큰"),
