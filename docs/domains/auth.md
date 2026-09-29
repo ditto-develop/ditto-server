@@ -25,6 +25,7 @@
 - **CORS 허용 origin에 `https://appleid.apple.com` 이 있어야 애플 웹 로그인이 된다.** 콜백이 애플 도메인이 보내는 크로스사이트 폼 POST 라 Origin 이 애플 것인데, 목록에 없으면 컨트롤러 전에 403 `Invalid CORS request` 로 끊긴다. 프로덕션 값은 `.aws/task-definition.json` 의 `CORS_ALLOWED_ORIGINS` 라 코드에 안 보이니 지울 때 주의. 와일드카드로 열지 않는 이유는 이 검사가 로그인 CSRF(피해자 브라우저로 공격자 계정에 로그인시키기)를 막고 있기 때문이다. [ADR 0030](../adr/0030-apple-web-callback-cors-exemption.md)
 - 애플 상세: `POST /api/v1/users/social-login/apple/native`. 애플은 사용자 정보 API가 없어 **ID 토큰(JWT) 서명 검증이 곧 인증**이며(JWKS·`iss`·`aud`·`exp`, 앱이 보내면 `nonce`까지), 인가 코드 교환을 하지 않으므로 새 비밀값이 없다. 이름은 애플이 최초 1회만 주므로 앱이 요청에 실어 보낸다. 카카오 계정과 잇지 않는다(제공자별 별도 회원). [ADR 0022](../adr/0022-apple-native-login-id-token.md)
 - 제재 로그인 콜백 계약(FE): 제재 회원 로그인 시 토큰 없이 `?sanctioned=true&sanctionCode=MEMBER_SUSPENDED|MEMBER_BANNED&suspendedUntil=<ISO-8601, 정지만>`으로 리다이렉트. (`OAuthService.getSanctionCallbackUrl`)
+- **refresh 토큰 회전에 30초 유예가 있다.** 쓴 토큰은 바로 지우지 않고 만료를 지금+30초로 앞당긴다 — 갱신 중 페이지 이동으로 새 쿠키를 잃거나 두 문서가 같은 쿠키로 동시에 갱신해도 세션이 끊기지 않게. 규칙은 `docs/domains/refreshtoken.md`. [ADR 0034](../adr/0034-refresh-token-rotation-grace.md)
 - **리프레시 토큰이 없으면 `WarnException`(REFRESH_TOKEN_NOT_FOUND, 2001)이다** — 서버 잘못이 아니라 로그아웃·쿠키 삭제·이미 회전된 토큰으로 정상 도달하는 경로다. `ErrorException`이면 스택트레이스가 ERROR로 남아 진짜 장애처럼 보인다. 만료(`REFRESH_TOKEN_EXPIRED`, 2002)도 같은 등급이다.
 - **`UserDetailsServiceAutoConfiguration`은 제외한다**(`DittoApplication`). 인증 주체는 JWT 필터와 어드민 세션이 직접 만들고 `UserDetailsService`를 쓰는 경로가 없는데, 켜 두면 부팅마다 인메모리 계정과 생성 비밀번호가 프로덕션 로그에 찍힌다.
 - 어드민 인가는 `@PreAuthorize`가 아니라 `JwtAuthenticationFilter`의 경로 prefix 검사: `/api/v1/admin` 경로는 `member.isAdmin()` 아니면 `403 FORBIDDEN`. [ADR 0006](../adr/0006-admin-authz-filter-path-check.md)
@@ -47,6 +48,7 @@
 - [0009](../adr/0009-websocket-stomp-auth.md) WebSocket(STOMP) 인증 — 핸드셰이크 개방 + 프레임 레벨 인증·구독 인가
 - [0019](../adr/0019-native-social-login-token-exchange.md) 네이티브 소셜 로그인 토큰 교환 — 리다이렉트 유지 + 앱 전용 창구 추가
 - [0021](../adr/0021-kakao-general-app-profile-input.md) 카카오 일반 앱 전제 — 프로필 정보는 온보딩 입력
+- [0034](../adr/0034-refresh-token-rotation-grace.md) refresh 토큰 회전 30초 유예
 
 ## 핵심 파일
 - 체인 정의: `api/src/main/kotlin/com/ditto/api/config/SecurityConfig.kt` (Order 1~6, 각 체인 KDoc)
