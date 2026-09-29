@@ -49,11 +49,11 @@ object NotificationMessages {
         body = "답이 비슷한 ${memberCount}명이 모였어요. 멤버를 확인해보세요.",
     )
 
-    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. 기획 표에 없는 알림이라 문구는 확정 전이다. */
+    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. */
     fun groupNotFormed(): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_NOT_FORMED,
-        title = "그룹이 인원 미달로 취소됐어요",
-        body = "함께할 사람이 충분히 모이지 않았어요. 다음 주 퀴즈에서 새로운 그룹을 만나보세요.",
+        title = "이번 주는 인원 미달로 취소됐어요",
+        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
     )
 
     /** [requesterNickname] 이 나와 1:1 재매칭을 원한다고 냈다. */
@@ -108,16 +108,15 @@ object NotificationMessages {
     /**
      * 채팅이 끝나 평가가 열렸다.
      *
-     * 그룹은 상대가 여럿이라 이름을 하나만 쓸 수 없으므로 인원으로 말한다.
-     * 표의 문구("{닉네임}님과의 만남을 짧게 기록해주세요")는 1:1 기준이다.
+     * 방 유형이 아니라 남은 상대 수로 문구를 고른다. 그룹이라도 상대가 1명만 남았으면 닉네임 문구가 맞다.
      */
     fun reviewRequest(counterpartNicknames: List<String>): NotificationContent = NotificationContent(
         type = NotificationType.REVIEW_REQUEST,
         title = "이번 만남은 어땠어요?",
         body = when (counterpartNicknames.size) {
-            0 -> "지난 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
-            1 -> "${counterpartNicknames.first()}님과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
-            else -> "함께한 ${counterpartNicknames.size}명과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
+            0 -> "지난 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+            1 -> "${counterpartNicknames.first()}님과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+            else -> "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
         },
     )
 
