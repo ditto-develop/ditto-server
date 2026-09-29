@@ -52,5 +52,31 @@ class RefreshTokenTest : FreeSpec(
                 refreshToken.isExpired(expiresAt) shouldBe false
             }
         }
+
+        "RefreshToken 만료 단축" - {
+            "만료 시각을 더 이른 시각으로 당긴다" {
+                val refreshToken = RefreshToken.create(
+                    memberId = 1L,
+                    token = "test-token",
+                    expiresAt = LocalDateTime.of(2026, 4, 12, 0, 0),
+                )
+
+                refreshToken.shortenExpiry(LocalDateTime.of(2026, 4, 1, 0, 0, 30))
+
+                refreshToken.expiresAt shouldBe LocalDateTime.of(2026, 4, 1, 0, 0, 30)
+            }
+
+            "이미 더 이르게 만료되면 늦추지 않는다" {
+                val refreshToken = RefreshToken.create(
+                    memberId = 1L,
+                    token = "test-token",
+                    expiresAt = LocalDateTime.of(2026, 4, 1, 0, 0, 10),
+                )
+
+                refreshToken.shortenExpiry(LocalDateTime.of(2026, 4, 1, 0, 0, 30))
+
+                refreshToken.expiresAt shouldBe LocalDateTime.of(2026, 4, 1, 0, 0, 10)
+            }
+        }
     },
 )

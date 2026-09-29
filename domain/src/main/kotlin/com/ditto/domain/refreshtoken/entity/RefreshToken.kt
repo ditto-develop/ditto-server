@@ -36,12 +36,20 @@ class RefreshToken private constructor(
     @Column(nullable = false, length = 36)
     val token: String,
 
-    @Comment("만료 일시")
-    @Column(name = "expires_at", nullable = false)
-    val expiresAt: LocalDateTime,
+    expiresAt: LocalDateTime,
 ) : BaseEntity() {
 
+    @Comment("만료 일시")
+    @Column(name = "expires_at", nullable = false)
+    var expiresAt: LocalDateTime = expiresAt
+        protected set
+
     fun isExpired(now: LocalDateTime = LocalDateTime.now()): Boolean = expiresAt < now
+
+    /** 만료 시각을 [until]로 앞당긴다. 이미 그보다 이르면 그대로 둔다. */
+    fun shortenExpiry(until: LocalDateTime) {
+        expiresAt = minOf(expiresAt, until)
+    }
 
     companion object {
         fun create(
