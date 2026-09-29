@@ -108,16 +108,15 @@ object NotificationMessages {
     /**
      * 채팅이 끝나 평가가 열렸다.
      *
-     * 그룹은 상대가 여럿이라 이름을 하나만 쓸 수 없으므로 인원으로 말한다.
-     * 표의 문구("{닉네임}님과의 만남을 짧게 기록해주세요")는 1:1 기준이다.
+     * 방 유형이 아니라 남은 상대 수로 문구를 고른다. 그룹이라도 상대가 1명만 남았으면 닉네임 문구가 맞다.
      */
     fun reviewRequest(counterpartNicknames: List<String>): NotificationContent = NotificationContent(
         type = NotificationType.REVIEW_REQUEST,
         title = "이번 만남은 어땠어요?",
         body = when (counterpartNicknames.size) {
-            0 -> "지난 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
-            1 -> "${counterpartNicknames.first()}님과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
-            else -> "함께한 ${counterpartNicknames.size}명과의 만남을 짧게 기록해주세요. 다음 매칭이 더 잘 맞아요."
+            0 -> "지난 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+            1 -> "${counterpartNicknames.first()}님과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+            else -> "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
         },
     )
 
