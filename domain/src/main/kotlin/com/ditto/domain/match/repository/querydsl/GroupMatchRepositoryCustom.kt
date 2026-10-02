@@ -10,8 +10,10 @@ interface GroupMatchRepositoryCustom {
      *
      * @param oldestWeekStartedOn 포함할 가장 오래된 운영 주. 안내는 마감 직후의 것이라 지난 주차를
      *   무한정 다시 집으면 안 된다 — 알림 행이 purge 된 뒤 같은 안내가 다시 나간다.
-     * @param lastWeekStartedOn 포함할 운영 주의 상한. 마감은 그 주 금요일 00:00 이므로
-     *   부르는 쪽이 `기준일 - 4일`을 넘긴다.
+     * @param lastWeekStartedOn 포함할 운영 주의 상한. 마감(그 주 금요일 00:00)이 지난 가장 최근 주의 월요일.
      */
     fun findUnformedBetween(oldestWeekStartedOn: LocalDate, lastWeekStartedOn: LocalDate): List<GroupMatch>
+
+    /** 퀴즈셋의 주 시작일이 [weekStartedOn]인 그룹 ID 전부. 성사 여부와 무관하다. */
+    fun findGroupMatchIdsByWeekStartedOn(weekStartedOn: LocalDate): List<Long>
 }

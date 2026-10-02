@@ -5,12 +5,27 @@ import com.ditto.domain.match.entity.QGroupMatch.groupMatch
 import com.ditto.domain.match.entity.QGroupMatchMember
 import com.ditto.domain.match.entity.QGroupMatchMember.groupMatchMember
 import com.querydsl.jpa.impl.JPAQueryFactory
+import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
 
 @Transactional(readOnly = true)
 class GroupMatchMemberRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : GroupMatchMemberRepositoryCustom {
+
+    @Transactional
+    override fun declinePendingByRoomIdIn(roomIds: Collection<Long>, updatedAt: LocalDateTime): Long {
+        if (roomIds.isEmpty()) return 0
+        return queryFactory
+            .update(groupMatchMember)
+            .set(groupMatchMember.status, InvitationStatus.DECLINED)
+            .set(groupMatchMember.updatedAt, updatedAt)
+            .where(
+                groupMatchMember.roomId.`in`(roomIds),
+                groupMatchMember.status.eq(InvitationStatus.PENDING),
+            )
+            .execute()
+    }
 
     override fun existsByMemberIdAndQuizSetId(memberId: Long, quizSetId: Long): Boolean = queryFactory
         .selectOne()

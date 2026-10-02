@@ -30,4 +30,11 @@ class GroupMatchRepositoryImpl(
             quizSet.weekStartedOn.loe(lastWeekStartedOn),
         )
         .fetch()
+
+    override fun findGroupMatchIdsByWeekStartedOn(weekStartedOn: LocalDate): List<Long> = queryFactory
+        .select(groupMatch.id)
+        .from(groupMatch)
+        .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id))
+        .where(quizSet.weekStartedOn.eq(weekStartedOn))
+        .fetch()
 }
