@@ -7,7 +7,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import javax.sql.DataSource
 
-/** `findAllByQuizSetIdAndStatusAndMemberIdIn` — 1:1 성사 시 남은 신청을 고르는 조회. */
+/** `findAllByQuizSetIdAndStatusAndAnyMemberIdIn` — 1:1 성사 시 남은 신청을 고르는 조회. */
 class PersonalMatchByMembersQueryTest(
     private val personalMatchRepository: PersonalMatchRepository,
     dataSource: DataSource,
@@ -24,11 +24,23 @@ class PersonalMatchByMembersQueryTest(
             PersonalMatchFixture.create(requesterId = 50L, receiverId = 60L, quizSetId = 1L),
         )
 
-        personalMatchRepository.findAllByQuizSetIdAndStatusAndMemberIdIn(
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
             quizSetId = 1L,
             status = PersonalMatchStatus.PENDING,
             memberIds = listOf(10L, 20L),
         ).map { it.id } shouldContainExactlyInAnyOrder listOf(sent.id, received.id)
+    }
+
+    "두 회원이 함께 낀 매칭은 한 번만 나온다" {
+        val pair = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 10L, receiverId = 20L, quizSetId = 1L),
+        )
+
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
+            quizSetId = 1L,
+            status = PersonalMatchStatus.PENDING,
+            memberIds = listOf(10L, 20L),
+        ).map { it.id } shouldContainExactlyInAnyOrder listOf(pair.id)
     }
 
     "다른 상태나 다른 퀴즈셋의 매칭은 찾지 않는다" {
@@ -42,7 +54,7 @@ class PersonalMatchByMembersQueryTest(
             PersonalMatchFixture.create(requesterId = 10L, receiverId = 40L, quizSetId = 2L),
         )
 
-        personalMatchRepository.findAllByQuizSetIdAndStatusAndMemberIdIn(
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
             quizSetId = 1L,
             status = PersonalMatchStatus.PENDING,
             memberIds = listOf(10L),

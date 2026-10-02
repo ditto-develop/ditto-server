@@ -38,7 +38,7 @@ class PersonalMatchRepositoryImpl(
         )
         .fetchFirst()
 
-    override fun findAllByQuizSetIdAndStatusAndMemberIdIn(
+    override fun findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
         quizSetId: Long,
         status: PersonalMatchStatus,
         memberIds: Collection<Long>,

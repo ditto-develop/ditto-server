@@ -94,12 +94,12 @@ class PersonalMatchService(
         }
     }
 
-    /** 1:1 방은 한 주에 하나다. 둘 중 누가 이번 퀴즈셋에서 이미 성사됐으면 신청도 수락도 받지 않는다. */
+    /** 1:1 방은 한 주에 하나다. */
     private fun validateNeitherMatched(selfId: Long, counterpartId: Long, quizSetId: Long) {
-        if (isMatchedIn(quizSetId, selfId)) {
+        if (isMatchedIn(quizSetId = quizSetId, memberId = selfId)) {
             throw WarnException(ErrorCode.ALREADY_MATCHED)
         }
-        if (isMatchedIn(quizSetId, counterpartId)) {
+        if (isMatchedIn(quizSetId = quizSetId, memberId = counterpartId)) {
             throw WarnException(ErrorCode.COUNTERPART_ALREADY_MATCHED)
         }
     }
@@ -111,16 +111,14 @@ class PersonalMatchService(
             memberId = memberId,
         )
 
-    /**
-     * 성사된 두 사람이 이번 퀴즈셋에서 주고받은 남은 신청을 취소한다.
-     * 그룹 자동 거절처럼 신청자에게 알리지 않는다.
-     */
+    /** 그룹 자동 거절처럼 신청자에게 알리지 않는다. */
     private fun cancelOtherPendingRequests(accepted: PersonalMatch) {
-        personalMatchRepository.findAllByQuizSetIdAndStatusAndMemberIdIn(
+        val pendingRequests = personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
             quizSetId = accepted.quizSetId,
             status = PersonalMatchStatus.PENDING,
             memberIds = listOf(accepted.memberId1, accepted.memberId2),
         )
+        pendingRequests
             .filterNot { it.id == accepted.id }
             .forEach { it.cancel() }
     }

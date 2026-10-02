@@ -19,7 +19,7 @@ interface PersonalMatchRepositoryCustom {
     ): PersonalMatch?
 
     /** 특정 퀴즈셋에서 주어진 회원 중 한 명이라도 낀 특정 상태의 매칭 목록 (방향 무관) */
-    fun findAllByQuizSetIdAndStatusAndMemberIdIn(
+    fun findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
         quizSetId: Long,
         status: PersonalMatchStatus,
         memberIds: Collection<Long>,
