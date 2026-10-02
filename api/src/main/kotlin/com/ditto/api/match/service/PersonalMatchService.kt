@@ -6,13 +6,13 @@ import com.ditto.api.match.dto.PersonalMatchListResponse
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -70,15 +70,18 @@ class PersonalMatchService(
     /**
      * 1:1 매칭 수락. 지난 주 요청을 오늘 수락해 채팅방이 열리지 않도록 주차를 함께 본다.
      *
-     * 잠글 회원을 알려면 매칭부터 읽어야 해서 잠금 앞에 일반 조회가 하나 있다. REPEATABLE READ에서는
-     * 그 조회 시점의 스냅샷이 고정돼 잠금을 기다리는 동안 커밋된 성사가 보이지 않으므로
-     * READ COMMITTED로 돈다(ADR 0035).
+     * [PersonalMatchFacade]만 부른다. 잠글 두 회원을 트랜잭션 밖에서 미리 받아 회원 잠금을
+     * 이 트랜잭션의 첫 조회로 둔다. 그래야 이후 조회가 잠금을 기다리는 동안 커밋된 성사를 본다(ADR 0035).
      */
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    fun acceptMatch(memberId: Long, matchId: Long): PersonalMatchResponse {
+    @Transactional
+    fun acceptMatch(memberId: Long, matchId: Long, pairMemberIds: Pair<Long, Long>): PersonalMatchResponse {
+        val (memberId1, memberId2) = pairMemberIds
+        lockMembersInIdOrder(memberId1, memberId2)
         val match = findMatchOrThrow(matchId)
+        if (match.memberId1 != memberId1 || match.memberId2 != memberId2) {
+            throw ErrorException(ErrorCode.INTERNAL_ERROR, "잠근 회원이 매칭과 다릅니다: matchId=$matchId")
+        }
         validateReceiver(match, memberId)
-        lockMembersInIdOrder(match.memberId1, match.memberId2)
         matchWeekPolicy.validateCurrentWeek(match.quizSetId)
         validateNeitherMatched(selfId = memberId, counterpartId = match.requesterId, quizSetId = match.quizSetId)
         match.accept()

@@ -38,6 +38,18 @@ class PersonalMatchRepositoryImpl(
         )
         .fetchFirst()
 
+    override fun findPairMemberIdsById(id: Long): Pair<Long, Long>? {
+        val row = queryFactory
+            .select(personalMatch.memberId1, personalMatch.memberId2)
+            .from(personalMatch)
+            .where(personalMatch.id.eq(id))
+            .fetchOne()
+            ?: return null
+        val memberId1 = row.get(personalMatch.memberId1) ?: error("member_id_1 이 비어 있습니다: id=$id")
+        val memberId2 = row.get(personalMatch.memberId2) ?: error("member_id_2 가 비어 있습니다: id=$id")
+        return memberId1 to memberId2
+    }
+
     override fun findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
         quizSetId: Long,
         status: PersonalMatchStatus,

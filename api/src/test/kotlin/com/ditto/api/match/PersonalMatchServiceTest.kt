@@ -2,9 +2,11 @@ package com.ditto.api.match
 
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
+import com.ditto.api.match.service.PersonalMatchFacade
 import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -28,6 +30,7 @@ import javax.sql.DataSource
 
 class PersonalMatchServiceTest(
     private val personalMatchService: PersonalMatchService,
+    private val personalMatchFacade: PersonalMatchFacade,
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val quizSetRepository: QuizSetRepository,
@@ -213,7 +216,7 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        val result = personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        val result = personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         result.status shouldBe PersonalMatchStatus.ACCEPTED
@@ -227,7 +230,7 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
@@ -250,7 +253,7 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.ACCEPTED
@@ -273,7 +276,7 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         personalMatchRepository.findById(unrelated.id).get().status shouldBe PersonalMatchStatus.PENDING
@@ -293,8 +296,8 @@ class PersonalMatchServiceTest(
 
         // when
         val results: List<Result<PersonalMatchResponse>> = runConcurrently(
-            { personalMatchService.acceptMatch(memberId = firstReceiverId, matchId = first.id) },
-            { personalMatchService.acceptMatch(memberId = secondReceiverId, matchId = second.id) },
+            { personalMatchFacade.acceptMatch(memberId = firstReceiverId, matchId = first.id) },
+            { personalMatchFacade.acceptMatch(memberId = secondReceiverId, matchId = second.id) },
         )
 
         // then
@@ -316,7 +319,7 @@ class PersonalMatchServiceTest(
 
         // when
         runConcurrently(
-            { personalMatchService.acceptMatch(memberId = acceptorId, matchId = match.id) },
+            { personalMatchFacade.acceptMatch(memberId = acceptorId, matchId = match.id) },
             {
                 personalMatchService.requestMatch(
                     requesterId = lateRequesterId,
@@ -344,7 +347,7 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
 
         personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.PENDING
@@ -361,7 +364,7 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.COUNTERPART_ALREADY_MATCHED
 
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null
@@ -373,7 +376,7 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
     }
 
@@ -385,14 +388,28 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 99L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 99L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.FORBIDDEN
+    }
+
+    "잠근 회원이 매칭의 두 회원과 다르면 수락하지 않는다" {
+        // given
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
+        )
+
+        // when & then
+        shouldThrow<ErrorException> {
+            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id, pairMemberIds = 1L to 3L)
+        }.errorCode shouldBe ErrorCode.INTERNAL_ERROR
+
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.PENDING
     }
 
     "존재하지 않는 매칭 ID로 수락하면 NOT_FOUND 예외가 발생한다" {
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 1L, matchId = 9999L)
+            personalMatchFacade.acceptMatch(memberId = 1L, matchId = 9999L)
         }.errorCode shouldBe ErrorCode.NOT_FOUND
     }
 
@@ -449,7 +466,7 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
 
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null

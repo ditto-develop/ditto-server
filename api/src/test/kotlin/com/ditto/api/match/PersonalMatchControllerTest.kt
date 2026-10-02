@@ -3,6 +3,7 @@ package com.ditto.api.match
 import com.ditto.api.match.controller.PersonalMatchController
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
+import com.ditto.api.match.service.PersonalMatchFacade
 import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.api.support.ControllerUnitTest
@@ -32,9 +33,14 @@ import java.time.LocalDateTime
 class PersonalMatchControllerTest : ControllerUnitTest() {
 
     private val personalMatchService: PersonalMatchService = mockk()
+    private val personalMatchFacade: PersonalMatchFacade = mockk()
     private val personalMatchNotifier: PersonalMatchNotifier = mockk(relaxed = true)
 
-    override val controller = PersonalMatchController(personalMatchService, personalMatchNotifier)
+    override val controller = PersonalMatchController(
+        personalMatchService = personalMatchService,
+        personalMatchFacade = personalMatchFacade,
+        personalMatchNotifier = personalMatchNotifier,
+    )
 
     private fun sampleResponse(
         id: Long = 1L,
@@ -122,7 +128,7 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
     @Test
     @DisplayName("1:1 매칭 요청을 수락한다")
     fun acceptMatch() {
-        every { personalMatchService.acceptMatch(any(), any()) } returns
+        every { personalMatchFacade.acceptMatch(any(), any()) } returns
             sampleResponse(id = 7L, requesterId = 42L, status = PersonalMatchStatus.ACCEPTED)
 
         mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 7L))
