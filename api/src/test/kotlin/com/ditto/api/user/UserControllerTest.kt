@@ -331,7 +331,7 @@ class UserControllerTest : RestDocsTest() {
                                 fieldWithPath("data.occupation").description("직업 code. 가능한 값: $JOB_CODES").optional(),
                                 fieldWithPath("data.interests[]").description("관심사 code 목록. 가능한 값: $INTEREST_CODES").optional(),
                                 fieldWithPath("data.rating")
-                                    .description("받은 평가 평균 (공개 기준 3건 미만이면 null)").optional(),
+                                    .description("받은 평가 평균, 소수 1자리 반올림 (공개 기준 3건 미만이면 null)").optional(),
                                 // 항상 null 인 필드는 type 을 명시해야 스키마에 실린다.
                                 fieldWithPath("data.preferredMinAge").type(JsonFieldType.NUMBER)
                                     .description("선호 최소 나이 (현재 미지원, null)").optional(),
@@ -386,7 +386,7 @@ class UserControllerTest : RestDocsTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.averageScore").description("평균 별점 (비공개 시 0)"),
+                                fieldWithPath("data.averageScore").description("평균 별점, 소수 1자리 반올림 (비공개 시 0)"),
                                 fieldWithPath("data.totalCount").description("받은 평가 총 건수"),
                                 fieldWithPath("data.publicThreshold").description("공개 기준 건수 (3)"),
                                 fieldWithPath("data.noShowCount")

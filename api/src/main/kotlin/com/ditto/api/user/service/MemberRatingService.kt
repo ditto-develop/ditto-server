@@ -4,6 +4,8 @@ import com.ditto.api.user.dto.MyRatingItem
 import com.ditto.api.user.dto.MyRatingsResponse
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.repository.ReviewAnswerRepository
+import java.math.BigDecimal
+import java.math.RoundingMode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -34,7 +36,7 @@ class MemberRatingService(
         }
 
         return MyRatingsResponse(
-            averageScore = received.mapNotNull { it.rating }.average(),
+            averageScore = roundToOneDecimal(received.mapNotNull { it.rating }.average()),
             totalCount = totalCount,
             publicThreshold = PUBLIC_THRESHOLD,
             noShowCount = received.count { it.meetingStatus == MeetingStatus.NO_SHOW }.toLong(),
@@ -64,6 +66,10 @@ class MemberRatingService(
     @Transactional(readOnly = true)
     fun findPublicAverageScore(memberId: Long): Double? =
         getRatings(memberId).takeIf { it.totalCount >= PUBLIC_THRESHOLD }?.averageScore
+
+    /** 3.6666… 같은 값이 그대로 내려가지 않게 한다. */
+    private fun roundToOneDecimal(score: Double): Double =
+        BigDecimal.valueOf(score).setScale(1, RoundingMode.HALF_UP).toDouble()
 
     companion object {
         /** 받은 평가 공개 기준 — 3건 미만이면 "평가가 충분하지 않아요"를 노출한다. */
