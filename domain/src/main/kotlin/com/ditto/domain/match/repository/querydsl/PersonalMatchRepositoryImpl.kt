@@ -38,6 +38,19 @@ class PersonalMatchRepositoryImpl(
         )
         .fetchFirst()
 
+    override fun findAllByQuizSetIdAndStatusAndMemberIdIn(
+        quizSetId: Long,
+        status: PersonalMatchStatus,
+        memberIds: Collection<Long>,
+    ): List<PersonalMatch> = queryFactory
+        .selectFrom(personalMatch)
+        .where(
+            personalMatch.quizSetId.eq(quizSetId),
+            personalMatch.status.eq(status),
+            personalMatch.memberId1.`in`(memberIds).or(personalMatch.memberId2.`in`(memberIds)),
+        )
+        .fetch()
+
     override fun existsByMemberIdAndStatusIn(
         memberId: Long,
         statuses: Collection<PersonalMatchStatus>,

@@ -70,6 +70,7 @@ class PersonalMatchService(
         matchWeekPolicy.validateCurrentWeek(match.quizSetId)
         validateNeitherMatched(selfId = memberId, counterpartId = match.requesterId, quizSetId = match.quizSetId)
         match.accept()
+        cancelOtherPendingRequests(match)
         chatService.createPersonalRoom(match.id, match.memberId1, match.memberId2)
         return PersonalMatchResponse.from(match)
     }
@@ -109,6 +110,20 @@ class PersonalMatchService(
             status = PersonalMatchStatus.ACCEPTED,
             memberId = memberId,
         )
+
+    /**
+     * 성사된 두 사람이 이번 퀴즈셋에서 주고받은 남은 신청을 취소한다.
+     * 그룹 자동 거절처럼 신청자에게 알리지 않는다.
+     */
+    private fun cancelOtherPendingRequests(accepted: PersonalMatch) {
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndMemberIdIn(
+            quizSetId = accepted.quizSetId,
+            status = PersonalMatchStatus.PENDING,
+            memberIds = listOf(accepted.memberId1, accepted.memberId2),
+        )
+            .filterNot { it.id == accepted.id }
+            .forEach { it.cancel() }
+    }
 
     private fun findReceivedMatches(memberId: Long, quizSetId: Long): List<PersonalMatch> {
         val receivedAsMember1 = personalMatchRepository

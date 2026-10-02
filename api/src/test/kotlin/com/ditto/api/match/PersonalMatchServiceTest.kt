@@ -219,6 +219,53 @@ class PersonalMatchServiceTest(
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
     }
 
+    "수락하면 두 사람이 이번 퀴즈셋에서 주고받은 다른 대기 신청이 취소된다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val receivedByAcceptor = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val sentByAcceptor = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 2L, receiverId = 4L, quizSetId = quizSetId)
+        )
+        val sentByRequester = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 5L, quizSetId = quizSetId)
+        )
+
+        // when
+        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+
+        // then
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.ACCEPTED
+        listOf(receivedByAcceptor, sentByAcceptor, sentByRequester).forEach {
+            personalMatchRepository.findById(it.id).get().status shouldBe PersonalMatchStatus.CANCELLED
+        }
+    }
+
+    "수락해도 성사된 두 사람이 끼지 않은 신청이나 다른 퀴즈셋 신청은 그대로다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val unrelated = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 4L, quizSetId = quizSetId)
+        )
+        val otherQuizSet = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 2L, quizSetId = quizSetId + 1)
+        )
+
+        // when
+        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+
+        // then
+        personalMatchRepository.findById(unrelated.id).get().status shouldBe PersonalMatchStatus.PENDING
+        personalMatchRepository.findById(otherQuizSet.id).get().status shouldBe PersonalMatchStatus.PENDING
+    }
+
     "이미 다른 사람과 성사된 수신자는 받은 신청을 수락할 수 없고 채팅방도 생기지 않는다" {
         // given
         val quizSetId = thisWeekQuizSetId()
