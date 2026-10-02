@@ -30,6 +30,7 @@
 - [0032 — 닉네임을 확인 시점에 10분 예약하고, 프로필 수정 변경을 2회/14일로 묶는다](0032-nickname-reservation-and-change-limit.md)
 - [0033 — 그룹 매칭을 겹치지 않는 분할로 바꾼다](0033-group-matching-disjoint-partition.md)
 - [0034 — refresh 토큰 회전에 30초 유예를 둔다](0034-refresh-token-rotation-grace.md)
+- [0035 — 1:1 신청·수락을 회원 행 잠금으로 줄 세운다](0035-personal-match-member-row-lock.md)
 
 ## 언제 ADR을 쓰는가
 

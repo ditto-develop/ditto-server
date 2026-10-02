@@ -18,6 +18,16 @@ interface PersonalMatchRepositoryCustom {
         memberId: Long,
     ): PersonalMatch?
 
+    /** 매칭의 두 회원 ID (`memberId1`, `memberId2`). 엔티티를 영속성 컨텍스트에 올리지 않으려고 값만 읽는다. */
+    fun findPairMemberIdsById(id: Long): Pair<Long, Long>?
+
+    /** 특정 퀴즈셋에서 주어진 회원 중 한 명이라도 낀 특정 상태의 매칭 목록 (방향 무관) */
+    fun findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
+        quizSetId: Long,
+        status: PersonalMatchStatus,
+        memberIds: Collection<Long>,
+    ): List<PersonalMatch>
+
     /**
      * 해당 회원이 낀 매칭 중 주어진 상태가 하나라도 있는지 (퀴즈셋 무관, 방향 무관) — 탈퇴 가드에 쓴다.
      * 페어가 (memberId1, memberId2)로 정규화돼 있어 양쪽 컬럼을 모두 본다.

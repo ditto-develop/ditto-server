@@ -3,9 +3,12 @@ package com.ditto.api.match
 import com.ditto.api.match.controller.PersonalMatchController
 import com.ditto.api.match.dto.PersonalMatchRequest
 import com.ditto.api.match.dto.PersonalMatchResponse
+import com.ditto.api.match.service.PersonalMatchFacade
 import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -30,9 +33,14 @@ import java.time.LocalDateTime
 class PersonalMatchControllerTest : ControllerUnitTest() {
 
     private val personalMatchService: PersonalMatchService = mockk()
+    private val personalMatchFacade: PersonalMatchFacade = mockk()
     private val personalMatchNotifier: PersonalMatchNotifier = mockk(relaxed = true)
 
-    override val controller = PersonalMatchController(personalMatchService, personalMatchNotifier)
+    override val controller = PersonalMatchController(
+        personalMatchService = personalMatchService,
+        personalMatchFacade = personalMatchFacade,
+        personalMatchNotifier = personalMatchNotifier,
+    )
 
     private fun sampleResponse(
         id: Long = 1L,
@@ -71,7 +79,10 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Matching")
                             .summary("1:1 매칭 요청")
-                            .description("상대방에게 1:1 매칭을 요청합니다.")
+                            .description(
+                                "상대방에게 1:1 매칭을 요청합니다. 이번 퀴즈셋에서 내가 이미 성사됐으면 5003(ALREADY_MATCHED), " +
+                                    "상대가 다른 사람과 성사됐으면 5010(COUNTERPART_ALREADY_MATCHED)으로 실패하고 상대에게 알림이 가지 않습니다.",
+                            )
                             .requestFields(
                                 fieldWithPath("receiverId").description("요청 대상 회원 ID"),
                                 fieldWithPath("quizSetId").description("퀴즈 세트 ID"),
@@ -97,9 +108,27 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
     }
 
     @Test
+    @DisplayName("이미 성사된 상대에게 신청하면 실패하고 상대에게 알림이 가지 않는다")
+    fun requestMatchToMatchedCounterpart() {
+        every { personalMatchService.requestMatch(any(), any()) } throws
+            WarnException(ErrorCode.COUNTERPART_ALREADY_MATCHED)
+
+        mockMvc.perform(
+            post("/api/v1/matches/request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(PersonalMatchRequest(receiverId = 2L, quizSetId = 10L))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("5010"))
+
+        verify(exactly = 0) { personalMatchNotifier.notifyRequested(any(), any(), any()) }
+    }
+
+    @Test
     @DisplayName("1:1 매칭 요청을 수락한다")
     fun acceptMatch() {
-        every { personalMatchService.acceptMatch(any(), any()) } returns
+        every { personalMatchFacade.acceptMatch(any(), any()) } returns
             sampleResponse(id = 7L, requesterId = 42L, status = PersonalMatchStatus.ACCEPTED)
 
         mockMvc.perform(post("/api/v1/matches/request/{id}/accept", 7L))
@@ -118,7 +147,12 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Matching")
                             .summary("1:1 매칭 수락")
-                            .description("받은 매칭 요청을 수락합니다. 수신자만 호출 가능합니다.")
+                            .description(
+                                "받은 매칭 요청을 수락합니다. 수신자만 호출 가능합니다. 이번 퀴즈셋에서 내가 이미 성사됐으면 " +
+                                    "5003(ALREADY_MATCHED), 신청자가 다른 사람과 성사됐으면 " +
+                                    "5010(COUNTERPART_ALREADY_MATCHED)으로 실패합니다. 수락하면 두 사람이 이번 퀴즈셋에서 " +
+                                    "주고받은 다른 대기 요청은 CANCELLED가 됩니다.",
+                            )
                             .pathParameters(
                                 parameterWithName("id").description("매칭 ID"),
                             )

@@ -1,33 +1,70 @@
 package com.ditto.api.match
 
 import com.ditto.api.match.dto.PersonalMatchRequest
+import com.ditto.api.match.dto.PersonalMatchResponse
+import com.ditto.api.match.service.PersonalMatchFacade
 import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import java.time.LocalDate
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 class PersonalMatchServiceTest(
     private val personalMatchService: PersonalMatchService,
+    private val personalMatchFacade: PersonalMatchFacade,
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
     // 요청·수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 조회 경로는 주차를 보지 않는다.
     fun thisWeekQuizSetId(): Long = quizSetRepository.save(QuizSetFixture.currentWeek()).id
+
+    fun saveAccepted(requesterId: Long, receiverId: Long, quizSetId: Long) = personalMatchRepository.save(
+        PersonalMatchFixture.create(
+            requesterId = requesterId, receiverId = receiverId, quizSetId = quizSetId,
+            status = PersonalMatchStatus.ACCEPTED,
+        )
+    )
+
+    // 동시성 케이스는 잠글 회원 행이 있어야 의미가 있다.
+    fun saveMemberIds(count: Int): List<Long> = (1..count).map {
+        memberRepository.save(MemberFixture.create(nickname = "회원$it", email = "member$it@example.com")).id
+    }
+
+    fun <T> runConcurrently(vararg actions: () -> T): List<Result<T>> {
+        val startLatch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(actions.size)
+        val futures = actions.map { action ->
+            executor.submit<Result<T>> {
+                startLatch.await()
+                runCatching(action)
+            }
+        }
+        startLatch.countDown()
+        return futures.map { it.get() }.also { executor.shutdown() }
+    }
 
     "보낸/받은 요청이 모두 있을 때 퀴즈셋 기준으로 분리하여 반환한다" {
         // given
@@ -124,18 +161,52 @@ class PersonalMatchServiceTest(
     "이미 ACCEPTED 매칭이 있는 페어가 다시 요청하면 ALREADY_MATCHED 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = 1L, receiverId = 2L, quizSetId = quizSetId,
-                status = PersonalMatchStatus.ACCEPTED,
-            )
-        )
+        saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
         val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when & then
         shouldThrow<WarnException> {
             personalMatchService.requestMatch(requesterId = 1L, request = request)
         }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
+    }
+
+    "이번 퀴즈셋에서 이미 성사된 회원이 다른 사람에게 신청하면 ALREADY_MATCHED 예외가 발생한다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        val request = PersonalMatchRequest(receiverId = 3L, quizSetId = quizSetId)
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchService.requestMatch(requesterId = 1L, request = request)
+        }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
+    }
+
+    "이미 다른 사람과 성사된 회원에게 신청하면 COUNTERPART_ALREADY_MATCHED 예외가 발생하고 신청이 남지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveAccepted(requesterId = 2L, receiverId = 3L, quizSetId = quizSetId)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchService.requestMatch(requesterId = 1L, request = request)
+        }.errorCode shouldBe ErrorCode.COUNTERPART_ALREADY_MATCHED
+
+        personalMatchRepository.existsByMemberId1AndMemberId2AndQuizSetId(1L, 2L, quizSetId) shouldBe false
+    }
+
+    "다른 퀴즈셋에서 성사된 기록은 이번 주 신청을 막지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId + 1)
+        val request = PersonalMatchRequest(receiverId = 3L, quizSetId = quizSetId)
+
+        // when
+        val result = personalMatchService.requestMatch(requesterId = 1L, request = request)
+
+        // then
+        result.status shouldBe PersonalMatchStatus.PENDING
     }
 
     "수신자가 수락하면 상태가 ACCEPTED 로 변경되고 respondedAt 이 기록된다" {
@@ -145,7 +216,7 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        val result = personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        val result = personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         result.status shouldBe PersonalMatchStatus.ACCEPTED
@@ -159,10 +230,154 @@ class PersonalMatchServiceTest(
         )
 
         // when
-        personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
 
         // then
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldNotBe null
+    }
+
+    "수락하면 두 사람이 이번 퀴즈셋에서 주고받은 다른 대기 신청이 취소된다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val receivedByAcceptor = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val sentByAcceptor = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 2L, receiverId = 4L, quizSetId = quizSetId)
+        )
+        val sentByRequester = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 5L, quizSetId = quizSetId)
+        )
+
+        // when
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
+
+        // then
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.ACCEPTED
+        listOf(receivedByAcceptor, sentByAcceptor, sentByRequester).forEach {
+            personalMatchRepository.findById(it.id).get().status shouldBe PersonalMatchStatus.CANCELLED
+        }
+    }
+
+    "수락해도 성사된 두 사람이 끼지 않은 신청이나 다른 퀴즈셋 신청은 그대로다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+        val unrelated = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 4L, quizSetId = quizSetId)
+        )
+        val otherQuizSet = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 3L, receiverId = 2L, quizSetId = quizSetId + 1)
+        )
+
+        // when
+        personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
+
+        // then
+        personalMatchRepository.findById(unrelated.id).get().status shouldBe PersonalMatchStatus.PENDING
+        personalMatchRepository.findById(otherQuizSet.id).get().status shouldBe PersonalMatchStatus.PENDING
+    }
+
+    "한 사람이 보낸 신청 두 건을 두 수신자가 동시에 수락해도 한 건만 성사된다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val (requesterId, firstReceiverId, secondReceiverId) = saveMemberIds(3)
+        val first = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = firstReceiverId, quizSetId = quizSetId)
+        )
+        val second = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = secondReceiverId, quizSetId = quizSetId)
+        )
+
+        // when
+        val results: List<Result<PersonalMatchResponse>> = runConcurrently(
+            { personalMatchFacade.acceptMatch(memberId = firstReceiverId, matchId = first.id) },
+            { personalMatchFacade.acceptMatch(memberId = secondReceiverId, matchId = second.id) },
+        )
+
+        // then
+        results.count { it.isSuccess } shouldBe 1
+        results.single { it.isFailure }.exceptionOrNull()
+            .shouldBeInstanceOf<WarnException>()
+            .errorCode shouldBe ErrorCode.COUNTERPART_ALREADY_MATCHED
+        val statuses = personalMatchRepository.findAllById(listOf(first.id, second.id)).map { it.status }
+        statuses shouldContainExactlyInAnyOrder listOf(PersonalMatchStatus.ACCEPTED, PersonalMatchStatus.CANCELLED)
+    }
+
+    "수락과 그 사람을 향한 새 신청이 겹쳐도 대기 신청이 남지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val (acceptorId, requesterId, lateRequesterId) = saveMemberIds(3)
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = acceptorId, quizSetId = quizSetId)
+        )
+
+        // when
+        runConcurrently(
+            { personalMatchFacade.acceptMatch(memberId = acceptorId, matchId = match.id) },
+            {
+                personalMatchService.requestMatch(
+                    requesterId = lateRequesterId,
+                    request = PersonalMatchRequest(receiverId = acceptorId, quizSetId = quizSetId),
+                )
+            },
+        )
+
+        // then
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.ACCEPTED
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
+            quizSetId = quizSetId,
+            status = PersonalMatchStatus.PENDING,
+            memberIds = listOf(acceptorId),
+        ).shouldBeEmpty()
+    }
+
+    "이미 다른 사람과 성사된 수신자는 받은 신청을 수락할 수 없고 채팅방도 생기지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveAccepted(requesterId = 2L, receiverId = 3L, quizSetId = quizSetId)
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
+        }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
+
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.PENDING
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null
+    }
+
+    "신청자가 이미 다른 사람과 성사됐으면 COUNTERPART_ALREADY_MATCHED 예외가 발생한다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveAccepted(requesterId = 1L, receiverId = 3L, quizSetId = quizSetId)
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
+        )
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
+        }.errorCode shouldBe ErrorCode.COUNTERPART_ALREADY_MATCHED
+
+        chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null
+    }
+
+    "이미 수락한 신청을 다시 수락하면 ALREADY_MATCHED 예외가 발생한다" {
+        // given
+        val match = saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
+        }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
     }
 
     "수신자가 아닌 사용자가 수락을 시도하면 FORBIDDEN 예외가 발생한다" {
@@ -173,14 +388,28 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 99L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 99L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.FORBIDDEN
+    }
+
+    "잠근 회원이 매칭의 두 회원과 다르면 수락하지 않는다" {
+        // given
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
+        )
+
+        // when & then
+        shouldThrow<ErrorException> {
+            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id, pairMemberIds = 1L to 3L)
+        }.errorCode shouldBe ErrorCode.INTERNAL_ERROR
+
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.PENDING
     }
 
     "존재하지 않는 매칭 ID로 수락하면 NOT_FOUND 예외가 발생한다" {
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 1L, matchId = 9999L)
+            personalMatchFacade.acceptMatch(memberId = 1L, matchId = 9999L)
         }.errorCode shouldBe ErrorCode.NOT_FOUND
     }
 
@@ -199,12 +428,7 @@ class PersonalMatchServiceTest(
 
     "ACCEPTED 상태의 매칭을 거절하려 하면 INVALID_STATUS_TRANSITION 예외가 발생한다" {
         // given
-        val match = personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId(),
-                status = PersonalMatchStatus.ACCEPTED,
-            )
-        )
+        val match = saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = thisWeekQuizSetId())
 
         // when & then
         shouldThrow<WarnException> {
@@ -242,7 +466,7 @@ class PersonalMatchServiceTest(
 
         // when & then
         shouldThrow<WarnException> {
-            personalMatchService.acceptMatch(memberId = 2L, matchId = match.id)
+            personalMatchFacade.acceptMatch(memberId = 2L, matchId = match.id)
         }.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
 
         chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id) shouldBe null
