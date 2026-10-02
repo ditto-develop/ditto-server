@@ -12,7 +12,8 @@ import java.time.LocalDateTime
  * ([com.ditto.api.user.service.ProfileAccessLevel.SUMMARY]). 0 으로 내리면 "노쇼 0회"라고
  * 단언하는 셈이라, 비공개와 실제 0건을 구분할 수 있게 null 로 비운다.
  *
- * 별점 반올림(.5 이상 올림)·코멘트 3개 노출·`(전체 − 3)` 표기는 FE가 처리한다.
+ * 평균 별점은 서버에서 소수 1자리로 반올림해 내린다.
+ * 별 아이콘 개수(.5 이상 올림)·코멘트 3개 노출·`(전체 − 3)` 표기는 FE가 처리한다.
  */
 data class MyRatingsResponse(
     val averageScore: Double,
