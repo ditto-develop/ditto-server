@@ -45,5 +45,16 @@ class MatchWeekPolicy(
         }
     }
 
+    /**
+     * 그룹 초대 응답은 이번 주 퀴즈셋이면서 그 주 채팅이 열리기 전([GroupResponseDeadline])까지만 받는다.
+     * 마감 뒤 수락으로 성사되면 이미 인원 미달 알림을 받은 그룹에 방이 열린다.
+     */
+    fun validateGroupResponseOpen(quizSetId: Long) {
+        validateCurrentWeek(quizSetId)
+        if (GroupResponseDeadline.isPassed(serverTimeProvider.now())) {
+            throw WarnException(ErrorCode.NOT_MATCHING_PERIOD)
+        }
+    }
+
     fun currentWeek(): OperationWeek = OperationWeek.containing(serverTimeProvider.now().toLocalDate())
 }

@@ -47,7 +47,7 @@ class GroupMatchService(
     fun acceptGroupMatch(memberId: Long, groupMatchId: Long): GroupMatchAcceptResponse {
         val room = groupMatchRepository.findWithLockById(groupMatchId)
             ?: throw WarnException(ErrorCode.NOT_FOUND)
-        matchWeekPolicy.validateCurrentWeek(room.quizSetId)
+        matchWeekPolicy.validateGroupResponseOpen(room.quizSetId)
 
         val myInvitations = groupMatchMemberRepository.findWithLockByMemberId(memberId)
 
@@ -73,7 +73,7 @@ class GroupMatchService(
 
         val room = groupMatchRepository.findById(groupMatchId)
             .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-        matchWeekPolicy.validateCurrentWeek(room.quizSetId)
+        matchWeekPolicy.validateGroupResponseOpen(room.quizSetId)
 
         requirePending(invitation).decline()
     }

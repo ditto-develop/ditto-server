@@ -1,5 +1,6 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.match.entity.InvitationStatus
@@ -35,8 +36,7 @@ class UnformedGroupNotifier(
 
     /** @return 알림을 받은 회원 수. */
     fun notifyUnformed(now: LocalDateTime): Int {
-        // 마감은 그 주 금요일 00:00. 주 시작일(월요일) 기준이라 4일을 뺀다.
-        val lastWeekStartedOn = now.toLocalDate().minusDays(DAYS_FROM_MONDAY_TO_FRIDAY)
+        val lastWeekStartedOn = GroupResponseDeadline.latestPassedWeekStartedOn(now)
         val unformed = groupMatchRepository.findUnformedBetween(
             oldestWeekStartedOn = lastWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
             lastWeekStartedOn = lastWeekStartedOn,
@@ -65,8 +65,6 @@ class UnformedGroupNotifier(
     }
 
     companion object {
-        private const val DAYS_FROM_MONDAY_TO_FRIDAY = 4L
-
         /**
          * 안내를 보낼 주차의 범위. 알림 보관 기간(30일)보다 짧아야 purge 된 뒤 다시 알리는 일이 없고,
          * 배포 중단 등으로 스케줄러가 한두 주 멈춰도 놓친 주차를 따라잡을 만큼은 길다.
