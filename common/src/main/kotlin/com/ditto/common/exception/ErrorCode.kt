@@ -33,6 +33,7 @@ enum class ErrorCode(
     QUIZ_NOT_COMPLETED(403, "5007", "퀴즈를 완료하지 않았습니다."),
     NOT_MATCHING_PERIOD(403, "5008", "매칭 기간이 아닙니다."),
     MATCH_CANDIDATES_ALREADY_RESPONDED(409, "5009", "이미 응답이 시작된 퀴즈셋이라 매칭 후보를 다시 만들 수 없습니다."),
+    COUNTERPART_ALREADY_MATCHED(409, "5010", "상대가 이미 다른 사람과 매칭되었습니다."),
     CANNOT_REPORT_SELF(400, "6001", "자기 자신을 신고할 수 없습니다."),
     DUPLICATE_REPORT(409, "6002", "이미 신고한 사용자입니다."),
     REPORT_ETC_REASON_REQUIRED(400, "6003", "기타 사유는 상세 설명을 입력해야 합니다."),

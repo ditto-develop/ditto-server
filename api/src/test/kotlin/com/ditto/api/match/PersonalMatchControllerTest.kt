@@ -71,7 +71,10 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Matching")
                             .summary("1:1 매칭 요청")
-                            .description("상대방에게 1:1 매칭을 요청합니다.")
+                            .description(
+                                "상대방에게 1:1 매칭을 요청합니다. 이번 퀴즈셋에서 내가 이미 성사됐으면 5003(ALREADY_MATCHED), " +
+                                    "상대가 다른 사람과 성사됐으면 5010(COUNTERPART_ALREADY_MATCHED)으로 실패하고 상대에게 알림이 가지 않습니다.",
+                            )
                             .requestFields(
                                 fieldWithPath("receiverId").description("요청 대상 회원 ID"),
                                 fieldWithPath("quizSetId").description("퀴즈 세트 ID"),
@@ -118,7 +121,10 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("Matching")
                             .summary("1:1 매칭 수락")
-                            .description("받은 매칭 요청을 수락합니다. 수신자만 호출 가능합니다.")
+                            .description(
+                                "받은 매칭 요청을 수락합니다. 수신자만 호출 가능합니다. 이번 퀴즈셋에서 내가 이미 성사됐으면 " +
+                                    "5003(ALREADY_MATCHED), 신청자가 다른 사람과 성사됐으면 5010(COUNTERPART_ALREADY_MATCHED)으로 실패합니다.",
+                            )
                             .pathParameters(
                                 parameterWithName("id").description("매칭 ID"),
                             )

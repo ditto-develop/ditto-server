@@ -44,17 +44,11 @@ class PersonalMatchService(
             throw WarnException(ErrorCode.CANNOT_REQUEST_SELF)
         }
         matchWeekPolicy.validateCurrentWeek(quizSetId)
+        validateNeitherMatched(selfId = requesterId, counterpartId = receiverId, quizSetId = quizSetId)
 
         val memberId1 = minOf(requesterId, receiverId)
         val memberId2 = maxOf(requesterId, receiverId)
-
         if (personalMatchRepository.existsByMemberId1AndMemberId2AndQuizSetId(memberId1, memberId2, quizSetId)) {
-            val existing = personalMatchRepository.findByMemberId1AndMemberId2AndQuizSetIdAndStatus(
-                memberId1, memberId2, quizSetId, PersonalMatchStatus.ACCEPTED
-            )
-            if (existing != null) {
-                throw WarnException(ErrorCode.ALREADY_MATCHED)
-            }
             throw WarnException(ErrorCode.MATCH_REQUEST_ALREADY_EXISTS)
         }
 
@@ -74,6 +68,7 @@ class PersonalMatchService(
         val match = findMatchOrThrow(matchId)
         validateReceiver(match, memberId)
         matchWeekPolicy.validateCurrentWeek(match.quizSetId)
+        validateNeitherMatched(selfId = memberId, counterpartId = match.requesterId, quizSetId = match.quizSetId)
         match.accept()
         chatService.createPersonalRoom(match.id, match.memberId1, match.memberId2)
         return PersonalMatchResponse.from(match)
@@ -97,6 +92,23 @@ class PersonalMatchService(
             throw WarnException(ErrorCode.FORBIDDEN)
         }
     }
+
+    /** 1:1 방은 한 주에 하나다. 둘 중 누가 이번 퀴즈셋에서 이미 성사됐으면 신청도 수락도 받지 않는다. */
+    private fun validateNeitherMatched(selfId: Long, counterpartId: Long, quizSetId: Long) {
+        if (isMatchedIn(quizSetId, selfId)) {
+            throw WarnException(ErrorCode.ALREADY_MATCHED)
+        }
+        if (isMatchedIn(quizSetId, counterpartId)) {
+            throw WarnException(ErrorCode.COUNTERPART_ALREADY_MATCHED)
+        }
+    }
+
+    private fun isMatchedIn(quizSetId: Long, memberId: Long): Boolean =
+        personalMatchRepository.existsMatchByQuizSetIdAndStatusAndMemberId(
+            quizSetId = quizSetId,
+            status = PersonalMatchStatus.ACCEPTED,
+            memberId = memberId,
+        )
 
     private fun findReceivedMatches(memberId: Long, quizSetId: Long): List<PersonalMatch> {
         val receivedAsMember1 = personalMatchRepository
