@@ -1,6 +1,7 @@
 package com.ditto.api.match
 
 import com.ditto.api.match.dto.PersonalMatchRequest
+import com.ditto.api.match.dto.PersonalMatchResponse
 import com.ditto.api.match.service.PersonalMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
@@ -10,12 +11,19 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import java.time.LocalDate
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.sql.DataSource
 
 class PersonalMatchServiceTest(
@@ -23,6 +31,7 @@ class PersonalMatchServiceTest(
     private val personalMatchRepository: PersonalMatchRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -35,6 +44,24 @@ class PersonalMatchServiceTest(
             status = PersonalMatchStatus.ACCEPTED,
         )
     )
+
+    // 동시성 케이스는 잠글 회원 행이 있어야 의미가 있다.
+    fun saveMemberIds(count: Int): List<Long> = (1..count).map {
+        memberRepository.save(MemberFixture.create(nickname = "회원$it", email = "member$it@example.com")).id
+    }
+
+    fun <T> runConcurrently(vararg actions: () -> T): List<Result<T>> {
+        val startLatch = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(actions.size)
+        val futures = actions.map { action ->
+            executor.submit<Result<T>> {
+                startLatch.await()
+                runCatching(action)
+            }
+        }
+        startLatch.countDown()
+        return futures.map { it.get() }.also { executor.shutdown() }
+    }
 
     "보낸/받은 요청이 모두 있을 때 퀴즈셋 기준으로 분리하여 반환한다" {
         // given
@@ -251,6 +278,60 @@ class PersonalMatchServiceTest(
         // then
         personalMatchRepository.findById(unrelated.id).get().status shouldBe PersonalMatchStatus.PENDING
         personalMatchRepository.findById(otherQuizSet.id).get().status shouldBe PersonalMatchStatus.PENDING
+    }
+
+    "한 사람이 보낸 신청 두 건을 두 수신자가 동시에 수락해도 한 건만 성사된다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val (requesterId, firstReceiverId, secondReceiverId) = saveMemberIds(3)
+        val first = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = firstReceiverId, quizSetId = quizSetId)
+        )
+        val second = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = secondReceiverId, quizSetId = quizSetId)
+        )
+
+        // when
+        val results: List<Result<PersonalMatchResponse>> = runConcurrently(
+            { personalMatchService.acceptMatch(memberId = firstReceiverId, matchId = first.id) },
+            { personalMatchService.acceptMatch(memberId = secondReceiverId, matchId = second.id) },
+        )
+
+        // then
+        results.count { it.isSuccess } shouldBe 1
+        results.single { it.isFailure }.exceptionOrNull()
+            .shouldBeInstanceOf<WarnException>()
+            .errorCode shouldBe ErrorCode.COUNTERPART_ALREADY_MATCHED
+        val statuses = personalMatchRepository.findAllById(listOf(first.id, second.id)).map { it.status }
+        statuses shouldContainExactlyInAnyOrder listOf(PersonalMatchStatus.ACCEPTED, PersonalMatchStatus.CANCELLED)
+    }
+
+    "수락과 그 사람을 향한 새 신청이 겹쳐도 대기 신청이 남지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        val (acceptorId, requesterId, lateRequesterId) = saveMemberIds(3)
+        val match = personalMatchRepository.save(
+            PersonalMatchFixture.create(requesterId = requesterId, receiverId = acceptorId, quizSetId = quizSetId)
+        )
+
+        // when
+        runConcurrently(
+            { personalMatchService.acceptMatch(memberId = acceptorId, matchId = match.id) },
+            {
+                personalMatchService.requestMatch(
+                    requesterId = lateRequesterId,
+                    request = PersonalMatchRequest(receiverId = acceptorId, quizSetId = quizSetId),
+                )
+            },
+        )
+
+        // then
+        personalMatchRepository.findById(match.id).get().status shouldBe PersonalMatchStatus.ACCEPTED
+        personalMatchRepository.findAllByQuizSetIdAndStatusAndAnyMemberIdIn(
+            quizSetId = quizSetId,
+            status = PersonalMatchStatus.PENDING,
+            memberIds = listOf(acceptorId),
+        ).shouldBeEmpty()
     }
 
     "이미 다른 사람과 성사된 수신자는 받은 신청을 수락할 수 없고 채팅방도 생기지 않는다" {
