@@ -4,6 +4,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
+import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
@@ -38,8 +39,8 @@ import org.springframework.stereotype.Component
  * 마감한 방의 평가는 곧바로 열고, 그와 별개로 놓친 방을 매 주기 복구한다 — 채팅 종료와 평가 생성을
  * 한 트랜잭션으로 묶지 않기 때문에(계획서 ⑤-1) 종료만 되고 평가가 안 열린 방이 남을 수 있다.
  *
- * 그룹 인원 미달 안내도 여기서 낸다 — 수락 마감이 채팅 개방과 같은 순간(금요일 00:00)이라
- * 개방을 판정하는 이 스케줄러가 마감도 함께 본다. 그룹 상태는 바꾸지 않고 알림만 남기며,
+ * 그룹 인원 미달 안내와 미응답 자동 거절도 여기서 한다. 응답 마감(금요일 00:00)이 채팅 개방과 같은 순간이라
+ * 개방을 보는 이 스케줄러가 마감도 함께 본다. 인원 미달 안내는 그룹 상태를 바꾸지 않고 알림만 남기며,
  * 재발송은 알림 유형의 중복 정책이 막는다.
  *
  * 알림(채팅방 오픈·평가 요청·종료 임박·첫 메시지 리마인드)도 여기서 남긴다. 각 전이가 커밋된 뒤에 부르므로 롤백된 전이의 알림이
@@ -55,6 +56,7 @@ class ChatRoomLifecycleScheduler(
     private val chatRoomOpenedNotifier: ChatRoomOpenedNotifier,
     private val chatNoMessageNotifier: ChatNoMessageNotifier,
     private val unformedGroupNotifier: UnformedGroupNotifier,
+    private val unansweredGroupInvitationDecliner: UnansweredGroupInvitationDecliner,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
 
@@ -79,5 +81,8 @@ class ChatRoomLifecycleScheduler(
 
         // 개방 뒤에 둔다 — 같은 주기에 성사돼 방이 열린 그룹을 미성사로 잡으면 안 된다.
         unformedGroupNotifier.notifyUnformed(serverNow)
+
+        // 미응답 초대만 바꾸고 위 안내는 수락자만 보므로 둘의 순서는 상관없다.
+        unansweredGroupInvitationDecliner.declineUnanswered(serverNow)
     }
 }

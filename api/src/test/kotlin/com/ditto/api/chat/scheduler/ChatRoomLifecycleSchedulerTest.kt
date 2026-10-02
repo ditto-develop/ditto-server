@@ -4,6 +4,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
+import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
@@ -35,6 +36,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val chatRoomOpenedNotifier = mockk<ChatRoomOpenedNotifier>(relaxed = true)
     val chatNoMessageNotifier = mockk<ChatNoMessageNotifier>(relaxed = true)
     val unformedGroupNotifier = mockk<UnformedGroupNotifier>(relaxed = true)
+    val unansweredGroupInvitationDecliner = mockk<UnansweredGroupInvitationDecliner>(relaxed = true)
     val serverTimeProvider = mockk<ServerTimeProvider>()
 
     val scheduler = ChatRoomLifecycleScheduler(
@@ -46,6 +48,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         chatRoomOpenedNotifier,
         chatNoMessageNotifier,
         unformedGroupNotifier,
+        unansweredGroupInvitationDecliner,
         serverTimeProvider,
     )
 
@@ -60,6 +63,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             chatRoomOpenedNotifier,
             chatNoMessageNotifier,
             unformedGroupNotifier,
+            unansweredGroupInvitationDecliner,
             serverTimeProvider,
             answers = false,
         )
@@ -73,6 +77,8 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
         verify { chatEndingSoonNotifier.notifyEndingSoon(OVERRIDDEN_NOW) }
         verify { chatNoMessageNotifier.notifyNoMessage(OVERRIDDEN_NOW) }
+        verify { unformedGroupNotifier.notifyUnformed(OVERRIDDEN_NOW) }
+        verify { unansweredGroupInvitationDecliner.declineUnanswered(OVERRIDDEN_NOW) }
     }
 
     "재매칭 예약은 실제 시각을 쓴다 — opens_at 에 가짜 시각이 저장되면 오버라이드를 꺼도 방이 미래에 갇힌다" {

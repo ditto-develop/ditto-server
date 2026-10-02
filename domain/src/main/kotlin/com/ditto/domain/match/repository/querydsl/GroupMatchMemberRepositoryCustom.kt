@@ -1,5 +1,7 @@
 package com.ditto.domain.match.repository.querydsl
 
+import java.time.LocalDateTime
+
 interface GroupMatchMemberRepositoryCustom {
 
     fun existsByMemberIdAndQuizSetId(memberId: Long, quizSetId: Long): Boolean
@@ -12,4 +14,11 @@ interface GroupMatchMemberRepositoryCustom {
      * 어느 한쪽이라도 그 그룹을 거절했으면 같은 그룹이 될 일이 없으므로 제외한다.
      */
     fun existsSharedCandidateGroup(memberId: Long, otherMemberId: Long, quizSetId: Long): Boolean
+
+    /**
+     * 주어진 그룹의 대기 초대를 거절로 바꾸고 바꾼 행 수를 돌려준다. GroupMatchMember.decline()과 같은 전이다.
+     * 상태 조건이 UPDATE 안에 있어서 동시에 커밋된 수락을 덮지 않는다. 엔티티를 거치지 않으므로
+     * 호출 트랜잭션에 이미 올라온 초대는 갱신되지 않는다.
+     */
+    fun declinePendingInvitations(groupMatchIds: Collection<Long>, updatedAt: LocalDateTime): Long
 }

@@ -38,7 +38,7 @@ enum class NotificationType(
     GROUP_FORMED(NotificationCategory.MATCHING, "chat_room.id (그룹 방)", DuplicatePolicy.ONCE_PER_TARGET),
 
     /**
-     * 그룹이 수락 마감까지 최소 인원을 채우지 못해 취소됐다. 대상은 **그룹 매칭**이다 —
+     * 그룹이 응답 마감까지 최소 인원을 채우지 못해 취소됐다. 대상은 **그룹 매칭**이다 —
      * 방이 열리지 않았으므로 가리킬 `chat_room.id` 가 없다.
      */
     GROUP_NOT_FORMED(NotificationCategory.MATCHING, "group_match.id (미성사 그룹)", DuplicatePolicy.ONCE_PER_TARGET),

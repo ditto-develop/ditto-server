@@ -1,5 +1,6 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.domain.match.entity.InvitationStatus
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Service
 private val log = KotlinLogging.logger {}
 
 /**
- * 수락 마감까지 최소 인원([com.ditto.domain.match.entity.GroupMatch.ACTIVATION_THRESHOLD])을
+ * 응답 마감까지 최소 인원([com.ditto.domain.match.entity.GroupMatch.ACTIVATION_THRESHOLD])을
  * 채우지 못한 그룹의 수락자에게 취소를 알린다.
  *
  * 알리지 않으면 수락한 사람은 왜 채팅방이 열리지 않는지 알 수 없다 — 성사 알림만 있고
@@ -35,11 +36,10 @@ class UnformedGroupNotifier(
 
     /** @return 알림을 받은 회원 수. */
     fun notifyUnformed(now: LocalDateTime): Int {
-        // 마감은 그 주 금요일 00:00. 주 시작일(월요일) 기준이라 4일을 뺀다.
-        val lastWeekStartedOn = now.toLocalDate().minusDays(DAYS_FROM_MONDAY_TO_FRIDAY)
+        val newestWeekStartedOn = GroupResponseDeadline.latestClosedWeek(now).startedOn
         val unformed = groupMatchRepository.findUnformedBetween(
-            oldestWeekStartedOn = lastWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
-            lastWeekStartedOn = lastWeekStartedOn,
+            oldestWeekStartedOn = newestWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
+            newestWeekStartedOn = newestWeekStartedOn,
         )
         if (unformed.isEmpty()) return 0
 
@@ -65,8 +65,6 @@ class UnformedGroupNotifier(
     }
 
     companion object {
-        private const val DAYS_FROM_MONDAY_TO_FRIDAY = 4L
-
         /**
          * 안내를 보낼 주차의 범위. 알림 보관 기간(30일)보다 짧아야 purge 된 뒤 다시 알리는 일이 없고,
          * 배포 중단 등으로 스케줄러가 한두 주 멈춰도 놓친 주차를 따라잡을 만큼은 길다.

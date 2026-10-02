@@ -16,10 +16,13 @@ import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.system.OperationWeek
+import com.ditto.domain.system.entity.ServerTimeOverride
+import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class GroupMatchServiceTest(
@@ -29,23 +32,40 @@ class GroupMatchServiceTest(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
     {
 
+        val thisMonday = OperationWeek.containing(LocalDate.now()).startedOn
+
+        fun overrideServerTime(at: LocalDateTime) {
+            serverTimeOverrideRepository.deleteAll()
+            serverTimeOverrideRepository.save(
+                ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") },
+            )
+        }
+
+        // 금요일 이후에 돌려도 응답 마감에 걸리지 않게 서버 시각을 이번 주 수요일로 둔다.
+        beforeEach { overrideServerTime(thisMonday.plusDays(2).atTime(12, 0)) }
+
         // 수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 테스트마다 DB가 비므로 그때그때 깔고,
         // 같은 테스트 안에서는 이미 깔린 것을 재사용해 "같은 퀴즈셋의 두 그룹"을 만들 수 있게 한다.
         fun thisWeekQuizSetId(): Long {
-            val monday = OperationWeek.containing(LocalDate.now()).startedOn
             val existing = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
-                .firstOrNull { it.weekStartedOn == monday && it.matchingType == MatchingType.GROUP }
-            return existing?.id
-                ?: quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.GROUP)).id
+                .firstOrNull { it.weekStartedOn == thisMonday && it.matchingType == MatchingType.GROUP }
+            return existing?.id ?: quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisMonday.atStartOfDay(),
+                    endDate = thisMonday.plusDays(2).atTime(23, 59, 59),
+                    matchingType = MatchingType.GROUP,
+                ),
+            ).id
         }
 
         fun lastWeekQuizSetId(): Long {
-            val monday = OperationWeek.containing(LocalDate.now()).startedOn.minusWeeks(1)
+            val monday = thisMonday.minusWeeks(1)
             return quizSetRepository.save(
                 QuizSetFixture.create(
                     startDate = monday.atStartOfDay(),
@@ -223,6 +243,39 @@ class GroupMatchServiceTest(
 
             "지난 주 후보 그룹은 거절할 수도 없다" {
                 val roomId = saveCandidateGroup(listOf(1L, 2L, 3L), quizSet = lastWeekQuizSetId())
+
+                val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
+
+                exception.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+            }
+        }
+
+        "응답 마감 (그 주 금요일 00:00)" - {
+            val deadline = thisMonday.plusDays(4).atStartOfDay()
+            val oneMinuteBeforeDeadline = deadline.minusMinutes(1)
+
+            "마감 직전에는 수락할 수 있다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                overrideServerTime(oneMinuteBeforeDeadline)
+
+                groupMatchService.acceptGroupMatch(1L, roomId)
+
+                statusOf(roomId, 1L) shouldBe InvitationStatus.ACCEPTED
+            }
+
+            "마감이 지나면 수락할 수 없고 초대는 그대로다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                overrideServerTime(deadline)
+
+                val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
+
+                exception.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+                statusOf(roomId, 1L) shouldBe InvitationStatus.PENDING
+            }
+
+            "마감이 지나면 거절도 받지 않는다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                overrideServerTime(deadline)
 
                 val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
 
