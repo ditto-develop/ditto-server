@@ -20,14 +20,14 @@ class GroupMatchRepositoryImpl(
      */
     override fun findUnformedBetween(
         oldestWeekStartedOn: LocalDate,
-        lastWeekStartedOn: LocalDate,
+        newestWeekStartedOn: LocalDate,
     ): List<GroupMatch> = queryFactory
         .selectFrom(groupMatch)
         .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id))
         .where(
             groupMatch.isActive.isFalse,
             quizSet.weekStartedOn.goe(oldestWeekStartedOn),
-            quizSet.weekStartedOn.loe(lastWeekStartedOn),
+            quizSet.weekStartedOn.loe(newestWeekStartedOn),
         )
         .fetch()
 

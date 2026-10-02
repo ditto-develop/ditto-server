@@ -58,7 +58,10 @@ class GroupMatchMember private constructor(
         status = InvitationStatus.ACCEPTED
     }
 
-    /** 초대를 거절한다. 본인이 누른 거절과 다른 그룹 수락에 따른 자동 거절이 같은 상태를 쓴다. */
+    /**
+     * 초대를 거절한다. 본인이 누른 거절과 다른 그룹 수락에 따른 자동 거절이 같은 상태를 쓴다.
+     * 마감까지 응답하지 않은 초대는 declinePendingInvitations 가 쿼리로 같은 전이를 한다.
+     */
     fun decline() {
         requirePending("거절")
         status = InvitationStatus.DECLINED

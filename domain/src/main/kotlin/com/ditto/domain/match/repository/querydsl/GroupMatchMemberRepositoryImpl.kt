@@ -14,14 +14,25 @@ class GroupMatchMemberRepositoryImpl(
 ) : GroupMatchMemberRepositoryCustom {
 
     @Transactional
-    override fun declinePendingByRoomIdIn(roomIds: Collection<Long>, updatedAt: LocalDateTime): Long {
-        if (roomIds.isEmpty()) return 0
+    override fun declinePendingInvitations(groupMatchIds: Collection<Long>, updatedAt: LocalDateTime): Long {
+        if (groupMatchIds.isEmpty()) return 0
+        // 매분 도는 배치라 바꿀 행이 없을 때는 UPDATE 를 내지 않는다. UPDATE 는 조건에 안 맞는 행까지 잠근다.
+        val pendingIds = queryFactory
+            .select(groupMatchMember.id)
+            .from(groupMatchMember)
+            .where(
+                groupMatchMember.roomId.`in`(groupMatchIds),
+                groupMatchMember.status.eq(InvitationStatus.PENDING),
+            )
+            .fetch()
+        if (pendingIds.isEmpty()) return 0
+
         return queryFactory
             .update(groupMatchMember)
             .set(groupMatchMember.status, InvitationStatus.DECLINED)
             .set(groupMatchMember.updatedAt, updatedAt)
             .where(
-                groupMatchMember.roomId.`in`(roomIds),
+                groupMatchMember.id.`in`(pendingIds),
                 groupMatchMember.status.eq(InvitationStatus.PENDING),
             )
             .execute()

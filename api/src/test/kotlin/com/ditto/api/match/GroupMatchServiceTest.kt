@@ -23,7 +23,6 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import javax.sql.DataSource
 
 class GroupMatchServiceTest(
@@ -41,25 +40,28 @@ class GroupMatchServiceTest(
 
         val thisMonday = OperationWeek.containing(LocalDate.now()).startedOn
 
-        fun pinServerTime(at: LocalDateTime) {
+        fun overrideServerTime(at: LocalDateTime) {
             serverTimeOverrideRepository.deleteAll()
             serverTimeOverrideRepository.save(
                 ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") },
             )
         }
 
-        // 수락·거절은 이번 주 퀴즈셋만, 그 주 금요일 00:00 전까지만 받는다(MatchWeekPolicy). 요일에 따라
-        // 깨지지 않게 서버 시각을 이번 주 수요일로 고정한다. 테스트마다 DB가 비므로 그때그때 깔고,
+        // 금요일 이후에 돌려도 응답 마감에 걸리지 않게 서버 시각을 이번 주 수요일로 둔다.
+        beforeEach { overrideServerTime(thisMonday.plusDays(2).atTime(12, 0)) }
+
+        // 수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 테스트마다 DB가 비므로 그때그때 깔고,
         // 같은 테스트 안에서는 이미 깔린 것을 재사용해 "같은 퀴즈셋의 두 그룹"을 만들 수 있게 한다.
         fun thisWeekQuizSetId(): Long {
-            if (serverTimeOverrideRepository.count() == 0L) {
-                pinServerTime(thisMonday.plusDays(2).atTime(12, 0))
-            }
-            val monday = thisMonday
             val existing = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
-                .firstOrNull { it.weekStartedOn == monday && it.matchingType == MatchingType.GROUP }
-            return existing?.id
-                ?: quizSetRepository.save(QuizSetFixture.currentWeek(matchingType = MatchingType.GROUP)).id
+                .firstOrNull { it.weekStartedOn == thisMonday && it.matchingType == MatchingType.GROUP }
+            return existing?.id ?: quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = thisMonday.atStartOfDay(),
+                    endDate = thisMonday.plusDays(2).atTime(23, 59, 59),
+                    matchingType = MatchingType.GROUP,
+                ),
+            ).id
         }
 
         fun lastWeekQuizSetId(): Long {
@@ -249,12 +251,12 @@ class GroupMatchServiceTest(
         }
 
         "응답 마감 (그 주 금요일 00:00)" - {
-            val thursdayLastMinute = thisMonday.plusDays(3).atTime(LocalTime.of(23, 59))
-            val fridayMidnight = thisMonday.plusDays(4).atStartOfDay()
+            val deadline = thisMonday.plusDays(4).atStartOfDay()
+            val oneMinuteBeforeDeadline = deadline.minusMinutes(1)
 
             "마감 직전에는 수락할 수 있다" {
                 val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
-                pinServerTime(thursdayLastMinute)
+                overrideServerTime(oneMinuteBeforeDeadline)
 
                 groupMatchService.acceptGroupMatch(1L, roomId)
 
@@ -263,7 +265,7 @@ class GroupMatchServiceTest(
 
             "마감이 지나면 수락할 수 없고 초대는 그대로다" {
                 val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
-                pinServerTime(fridayMidnight)
+                overrideServerTime(deadline)
 
                 val exception = shouldThrow<WarnException> { groupMatchService.acceptGroupMatch(1L, roomId) }
 
@@ -273,7 +275,7 @@ class GroupMatchServiceTest(
 
             "마감이 지나면 거절도 받지 않는다" {
                 val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
-                pinServerTime(fridayMidnight)
+                overrideServerTime(deadline)
 
                 val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
 

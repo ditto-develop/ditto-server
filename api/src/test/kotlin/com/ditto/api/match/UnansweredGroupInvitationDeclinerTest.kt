@@ -24,12 +24,15 @@ class UnansweredGroupInvitationDeclinerTest(
     dataSource,
     {
         // 2026-06-01(월) 시작 주. 마감은 2026-06-05(금) 00:00.
-        val monday = LocalDate.of(2026, 6, 1)
-        val atDeadline = LocalDateTime.of(2026, 6, 5, 0, 0)
-        val beforeDeadline = LocalDateTime.of(2026, 6, 4, 23, 59)
+        val thisWeekStartedOn = LocalDate.of(2026, 6, 1)
+        val deadline = LocalDateTime.of(2026, 6, 5, 0, 0)
+        val oneMinuteBeforeDeadline = deadline.minusMinutes(1)
 
-        /** 주어진 주의 그룹 하나에 회원별 응답 상태를 깔고 그룹 ID를 돌려준다. */
-        fun groupWith(statuses: Map<Long, InvitationStatus>, weekStartedOn: LocalDate = monday): Long {
+        /** 그 주 그룹 하나를 저장하고 회원별 응답 상태를 깐다. 그룹 ID를 돌려준다. */
+        fun saveGroupWith(
+            statusByMemberId: Map<Long, InvitationStatus>,
+            weekStartedOn: LocalDate = thisWeekStartedOn,
+        ): Long {
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(
                     startDate = weekStartedOn.atStartOfDay(),
@@ -37,7 +40,7 @@ class UnansweredGroupInvitationDeclinerTest(
                 ),
             )
             val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id))
-            statuses.forEach { (memberId, status) ->
+            statusByMemberId.forEach { (memberId, status) ->
                 val member = GroupMatchMember.candidate(roomId = group.id, memberId = memberId)
                 when (status) {
                     InvitationStatus.ACCEPTED -> member.accept()
@@ -49,11 +52,11 @@ class UnansweredGroupInvitationDeclinerTest(
             return group.id
         }
 
-        fun statusOf(roomId: Long, memberId: Long): InvitationStatus? =
-            groupMatchMemberRepository.findByRoomIdAndMemberId(roomId, memberId)?.status
+        fun statusOf(groupMatchId: Long, memberId: Long): InvitationStatus? =
+            groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)?.status
 
         "마감이 지나면 대기 초대만 거절로 바뀐다" {
-            val roomId = groupWith(
+            val groupMatchId = saveGroupWith(
                 mapOf(
                     1L to InvitationStatus.PENDING,
                     2L to InvitationStatus.ACCEPTED,
@@ -62,55 +65,59 @@ class UnansweredGroupInvitationDeclinerTest(
                 ),
             )
 
-            val declined = unansweredGroupInvitationDecliner.declineUnanswered(atDeadline)
+            val declinedCount = unansweredGroupInvitationDecliner.declineUnanswered(deadline)
 
-            declined shouldBe 2L
-            statusOf(roomId, 1L) shouldBe InvitationStatus.DECLINED
-            statusOf(roomId, 2L) shouldBe InvitationStatus.ACCEPTED
-            statusOf(roomId, 3L) shouldBe InvitationStatus.DECLINED
-            statusOf(roomId, 4L) shouldBe InvitationStatus.DECLINED
+            declinedCount shouldBe 2L
+            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.DECLINED
+            statusOf(groupMatchId, 2L) shouldBe InvitationStatus.ACCEPTED
+            statusOf(groupMatchId, 3L) shouldBe InvitationStatus.DECLINED
+            statusOf(groupMatchId, 4L) shouldBe InvitationStatus.DECLINED
         }
 
         "마감 전에는 바꾸지 않는다" {
-            val roomId = groupWith(mapOf(1L to InvitationStatus.PENDING))
+            val groupMatchId = saveGroupWith(mapOf(1L to InvitationStatus.PENDING))
 
-            unansweredGroupInvitationDecliner.declineUnanswered(beforeDeadline) shouldBe 0L
+            unansweredGroupInvitationDecliner.declineUnanswered(oneMinuteBeforeDeadline) shouldBe 0L
 
-            statusOf(roomId, 1L) shouldBe InvitationStatus.PENDING
+            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.PENDING
         }
 
-        "마감 다음 주 월~목에도 그 주를 처리한다 — 주말에 스케줄러가 멈춰도 따라잡는다" {
-            val roomId = groupWith(mapOf(1L to InvitationStatus.PENDING))
+        "마감 뒤 다음 주 목요일까지는 그 주 대기 초대를 거절로 바꾼다" {
+            // 주말 동안 스케줄러가 멈춰도 따라잡는지 본다.
+            val groupMatchId = saveGroupWith(mapOf(1L to InvitationStatus.PENDING))
 
-            unansweredGroupInvitationDecliner.declineUnanswered(atDeadline.plusDays(6)) shouldBe 1L
+            unansweredGroupInvitationDecliner.declineUnanswered(deadline.plusDays(6)) shouldBe 1L
 
-            statusOf(roomId, 1L) shouldBe InvitationStatus.DECLINED
+            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.DECLINED
         }
 
         "서버 시각을 다음 주 금요일로 옮겨도 이번 주 대기 초대는 그대로다" {
-            val thisWeekRoomId = groupWith(mapOf(1L to InvitationStatus.PENDING))
+            val thisWeekGroupId = saveGroupWith(mapOf(1L to InvitationStatus.PENDING))
 
-            unansweredGroupInvitationDecliner.declineUnanswered(atDeadline.plusWeeks(1))
+            unansweredGroupInvitationDecliner.declineUnanswered(deadline.plusWeeks(1))
 
-            statusOf(thisWeekRoomId, 1L) shouldBe InvitationStatus.PENDING
+            statusOf(thisWeekGroupId, 1L) shouldBe InvitationStatus.PENDING
         }
 
         "다음 주 그룹은 이번 주 마감에 거절되지 않는다" {
-            val nextWeekRoomId = groupWith(mapOf(1L to InvitationStatus.PENDING), weekStartedOn = monday.plusWeeks(1))
+            val nextWeekGroupId = saveGroupWith(
+                mapOf(1L to InvitationStatus.PENDING),
+                weekStartedOn = thisWeekStartedOn.plusWeeks(1),
+            )
 
-            unansweredGroupInvitationDecliner.declineUnanswered(atDeadline)
+            unansweredGroupInvitationDecliner.declineUnanswered(deadline)
 
-            statusOf(nextWeekRoomId, 1L) shouldBe InvitationStatus.PENDING
+            statusOf(nextWeekGroupId, 1L) shouldBe InvitationStatus.PENDING
         }
 
         "다시 돌려도 결과가 같다" {
-            val roomId = groupWith(mapOf(1L to InvitationStatus.PENDING))
+            val groupMatchId = saveGroupWith(mapOf(1L to InvitationStatus.PENDING))
 
-            unansweredGroupInvitationDecliner.declineUnanswered(atDeadline)
-            val secondRun = unansweredGroupInvitationDecliner.declineUnanswered(atDeadline.plusMinutes(1))
+            unansweredGroupInvitationDecliner.declineUnanswered(deadline)
+            val declinedCountOnSecondRun = unansweredGroupInvitationDecliner.declineUnanswered(deadline.plusMinutes(1))
 
-            secondRun shouldBe 0L
-            statusOf(roomId, 1L) shouldBe InvitationStatus.DECLINED
+            declinedCountOnSecondRun shouldBe 0L
+            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.DECLINED
         }
     },
 )

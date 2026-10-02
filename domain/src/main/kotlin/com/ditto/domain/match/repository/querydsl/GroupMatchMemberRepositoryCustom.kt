@@ -16,10 +16,9 @@ interface GroupMatchMemberRepositoryCustom {
     fun existsSharedCandidateGroup(memberId: Long, otherMemberId: Long, quizSetId: Long): Boolean
 
     /**
-     * 주어진 그룹들의 대기(PENDING) 초대를 거절로 바꾼다. 바꾼 행 수를 돌려준다.
-     *
-     * 엔티티를 읽어 바꾸지 않고 `status = PENDING` 조건으로 한 번에 바꾼다. 같은 순간 커밋되는 수락이 있어도
-     * UPDATE가 최신 행을 다시 보므로 ACCEPTED를 덮지 않는다.
+     * 주어진 그룹의 대기 초대를 거절로 바꾸고 바꾼 행 수를 돌려준다. GroupMatchMember.decline()과 같은 전이다.
+     * 상태 조건이 UPDATE 안에 있어서 동시에 커밋된 수락을 덮지 않는다. 엔티티를 거치지 않으므로
+     * 호출 트랜잭션에 이미 올라온 초대는 갱신되지 않는다.
      */
-    fun declinePendingByRoomIdIn(roomIds: Collection<Long>, updatedAt: LocalDateTime): Long
+    fun declinePendingInvitations(groupMatchIds: Collection<Long>, updatedAt: LocalDateTime): Long
 }

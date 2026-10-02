@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 private val log = KotlinLogging.logger {}
 
 /**
- * 수락 마감까지 최소 인원([com.ditto.domain.match.entity.GroupMatch.ACTIVATION_THRESHOLD])을
+ * 응답 마감까지 최소 인원([com.ditto.domain.match.entity.GroupMatch.ACTIVATION_THRESHOLD])을
  * 채우지 못한 그룹의 수락자에게 취소를 알린다.
  *
  * 알리지 않으면 수락한 사람은 왜 채팅방이 열리지 않는지 알 수 없다 — 성사 알림만 있고
@@ -36,10 +36,10 @@ class UnformedGroupNotifier(
 
     /** @return 알림을 받은 회원 수. */
     fun notifyUnformed(now: LocalDateTime): Int {
-        val lastWeekStartedOn = GroupResponseDeadline.latestPassedWeekStartedOn(now)
+        val newestWeekStartedOn = GroupResponseDeadline.latestClosedWeek(now).startedOn
         val unformed = groupMatchRepository.findUnformedBetween(
-            oldestWeekStartedOn = lastWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
-            lastWeekStartedOn = lastWeekStartedOn,
+            oldestWeekStartedOn = newestWeekStartedOn.minusDays(NOTIFIABLE_WINDOW_DAYS),
+            newestWeekStartedOn = newestWeekStartedOn,
         )
         if (unformed.isEmpty()) return 0
 

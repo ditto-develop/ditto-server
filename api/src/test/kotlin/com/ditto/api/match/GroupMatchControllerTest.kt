@@ -55,7 +55,7 @@ class GroupMatchControllerTest : ControllerUnitTest() {
                                 "후보 그룹 초대를 수락합니다. 되돌릴 수 없습니다. " +
                                     "수락 인원이 최소 인원(3명)에 닿으면 그룹이 성사되고 금요일에 채팅방이 열립니다. " +
                                     "수락하면 같은 퀴즈셋의 남은 초대는 자동으로 거절 처리됩니다. " +
-                                    "그 주 금요일 00:00(채팅 개방) 이후에는 5008(NOT_MATCHING_PERIOD)로 실패하며, " +
+                                    "그 주 금요일 00:00(채팅 개방) 이후에는 5008(NOT_MATCHING_PERIOD)로 실패합니다. " +
                                     "그때까지 응답하지 않은 초대는 자동으로 거절됩니다.",
                             )
                             .pathParameters(parameterWithName("groupMatchId").description("수락할 그룹 ID"))

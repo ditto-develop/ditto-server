@@ -37,24 +37,25 @@ class MatchWeekPolicy(
      * 그룹이 오늘 성사돼 채팅방이 열릴 수 있다. 쓰기 경로에서 막는다.
      */
     fun validateCurrentWeek(quizSetId: Long) {
-        val quizSet = quizSetRepository.findById(quizSetId)
-            .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-
-        if (quizSet.weekStartedOn != currentWeek().startedOn) {
+        if (findQuizSetOrThrow(quizSetId).weekStartedOn != currentWeek().startedOn) {
             throw WarnException(ErrorCode.NOT_MATCHING_PERIOD)
         }
     }
 
     /**
-     * 그룹 초대 응답은 이번 주 퀴즈셋이면서 그 주 채팅이 열리기 전([GroupResponseDeadline])까지만 받는다.
-     * 마감 뒤 수락으로 성사되면 이미 인원 미달 알림을 받은 그룹에 방이 열린다.
+     * 그룹 초대 응답은 이번 주 퀴즈셋이고 응답 마감([GroupResponseDeadline]) 전일 때만 받는다.
+     * 시각을 한 번만 읽는다. 두 번 읽으면 일요일 자정에 걸쳐 지난 주 그룹 수락이 통과한다.
      */
-    fun validateGroupResponseOpen(quizSetId: Long) {
-        validateCurrentWeek(quizSetId)
-        if (GroupResponseDeadline.isPassed(serverTimeProvider.now())) {
+    fun validateGroupResponsePeriod(quizSetId: Long) {
+        val now = serverTimeProvider.now()
+        val week = OperationWeek(findQuizSetOrThrow(quizSetId).weekStartedOn)
+        if (week != OperationWeek.containing(now.toLocalDate()) || GroupResponseDeadline.hasPassed(week, now)) {
             throw WarnException(ErrorCode.NOT_MATCHING_PERIOD)
         }
     }
 
     fun currentWeek(): OperationWeek = OperationWeek.containing(serverTimeProvider.now().toLocalDate())
+
+    private fun findQuizSetOrThrow(quizSetId: Long): QuizSet =
+        quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
 }
