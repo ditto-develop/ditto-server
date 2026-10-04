@@ -40,7 +40,7 @@
 - **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
 - **어드민 참여 현황(`/admin/quiz-sets/{id}/participants`)의 "후보가 없는 이유"는 지금 DB 상태로 다시 계산한 값이다.** 매칭 이력을 따로 저장하지 않기 때문이다. 배치와 같은 풀(`MatchmakingService.loadMatchingPoolParticipants`)과 단계(`OneToOneMatchingProcessor.scoreEligibleDuos`·`selectTopRatio`)를 쓰고, 단계 순서는 `OneToOneMissFinder` 한 곳에서 정한다.
   - 완주 시각이 저장된 후보보다 늦으면 "매칭 이후 완주"로 따로 표시하고, 다시 계산하는 풀에서도 뺀다. 섞이면 컷 점수가 바뀌어 원래 참여자의 이유가 흔들린다(매칭 뒤에 만든 더미가 흔한 경우).
-  - 동점 무작위가 끼는 5명 제한은 다시 돌리지 않는다. 상위 비율 컷을 넘었는데 저장된 후보가 없으면, 매칭 전이면 "매칭 전", 두 사람 모두 선발 페어가 5개 이하인 짝이 있으면(제한이 버릴 수 없음, `OneToOneMatchingProcessor.memberIdsCertainToKeepCandidate`) "매칭 뒤 상태 변경", 그 밖에는 5명 제한에서 빠진 것으로 본다.
+  - 동점 무작위가 끼는 5명 제한은 다시 돌리지 않는다. 상위 비율 컷을 넘었는데 저장된 후보가 없으면, 매칭 전이면 "매칭 전", 두 사람 모두에게서 반드시 남는 짝이 있으면(선발 페어가 5개 이하이거나, 넘더라도 6번째 점수보다 엄격히 높은 페어는 섞는 순서와 상관없이 남는다. `OneToOneMatchingProcessor.memberIdsCertainToKeepCandidate`) "매칭 뒤 상태 변경", 그 밖에는 5명 제한에서 빠진 것으로 본다.
   - 제외 정책에 걸린 이유는 회원 상태와 이 퀴즈셋의 성사 기록으로 확인한다. 생성 뒤에 성사·정지된 변화는 지금 상태로 반영된다.
 - `group_match_decline` 테이블은 남아 있으나 코드가 쓰지 않는다 — 거절은 `InvitationStatus.DECLINED`로 그룹별로 남는다.
 

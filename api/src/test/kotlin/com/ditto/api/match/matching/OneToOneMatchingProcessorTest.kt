@@ -85,7 +85,7 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 processor.memberIdsCertainToKeepCandidate(selected) shouldBe setOf(1L, 2L, 3L, 4L)
             }
 
-            "한 사람의 선발 페어가 5개를 넘으면 그 사람이 낀 페어는 보장하지 않는다" {
+            "선발 페어가 5개를 넘고 점수가 모두 같으면 그 사람이 낀 페어는 보장하지 않는다" {
                 val center = scored(1L, mapOf(101L to 1L))
                 val leaves = (2L..7L).map { scored(it, mapOf(101L to 1L)) }
                 val starDuos = leaves.map { leaf ->
@@ -93,6 +93,14 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 }
 
                 processor.memberIdsCertainToKeepCandidate(starDuos).shouldBeEmpty()
+            }
+
+            "선발 페어가 5개를 넘어도 6번째 점수보다 높은 페어는 보장한다" {
+                val starDuos = (2L..7L).mapIndexed { index, leafId ->
+                    ScoredMatch.duo(1L, leafId, MatchScore(score = 100.0 - index * 10, matchedQuestionCount = 1, totalQuestionCount = 1))
+                }
+
+                processor.memberIdsCertainToKeepCandidate(starDuos) shouldBe setOf(1L, 2L, 3L, 4L, 5L, 6L)
             }
         }
 
