@@ -2,6 +2,7 @@ package com.ditto.api.admin.qa.dto
 
 import com.ditto.api.admin.qa.QaSystemMessageMeaning
 import com.ditto.domain.chat.entity.ChatEndReason
+import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -47,6 +48,9 @@ class QaRoomView(
 
     /** 개방 전 방을 열어 보려고 서버 시각을 옮길 때 쓰는 시각. 스케줄러가 다음 분에 연다. */
     val justAfterOpen: LocalDateTime = opensAt.plusMinutes(1)
+
+    /** 다음 주 이후에 열리는 방(재매칭 등). 그 시각으로 옮기면 이번 주 열린 방이 모두 마감된다. */
+    val opensAfterCurrentWeekend: Boolean = opensAt >= ChatPeriod.weekendOf(now).expiresAt
 
     val openVote: QaVote? = votes.firstOrNull { it.isOpen }
 

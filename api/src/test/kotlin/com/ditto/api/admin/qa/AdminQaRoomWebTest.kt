@@ -19,6 +19,7 @@ import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -37,6 +38,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -130,6 +132,18 @@ class AdminQaRoomWebTest(
             }
             view.members.map { it.member.id } shouldBe listOf(tester.id, dummy.id)
             view.activeDummies.map { it.id } shouldBe listOf(dummy.id)
+        }
+
+        "다음 주 이후에 열리는 방은 시각을 옮기기 전에 확인받는다" {
+            val nextMonday = OperationWeek.containing(LocalDate.now()).startedOn.plusWeeks(1)
+            val nextWeekWednesday = nextMonday.plusDays(2).atTime(12, 0)
+            val room = saveRoom(
+                ChatRoomFixture.personal(now = nextWeekWednesday),
+                listOf(saveMember("테스터"), saveMember("dummy-female-aaaa")),
+            )
+
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(content().string(containsString("이 방은 다음 주 이후에 열립니다")))
         }
 
         "없는 방은 콘솔로 돌려보낸다" {

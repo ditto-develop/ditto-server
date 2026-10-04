@@ -114,16 +114,25 @@
         form.elements.content.focus();
     }
 
+    // 체크를 모두 풀면 고르던 것이 없으니 다시 갱신한다.
     document.addEventListener('change', (event) => {
         if (!event.target.matches('input[type="checkbox"], input[type="radio"]')) return;
         const region = event.target.closest('[data-qa-live]');
-        if (region) region.dataset.editing = 'true';
+        if (!region) return;
+        const anyChecked = region.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked') !== null;
+        if (anyChecked) region.dataset.editing = 'true';
+        else delete region.dataset.editing;
     });
 
     // 버튼마다 다른 엔드포인트(formaction)와 확인 문구(data-confirm)를 둘 수 있다.
     document.addEventListener('submit', async (event) => {
         const form = event.target;
-        if (!form.matches('form[data-qa-async]')) return;
+        // 일반 폼은 곧 페이지가 바뀐다. 그 사이 폴링이 영역을 갈아 끼우면 잠근 버튼이 되살아나고 결과 알림을 가로챌 수 있다.
+        // 확인 창에서 취소한 제출(qa-forms.js 가 먼저 막는다)은 그대로 둔다.
+        if (!form.matches('form[data-qa-async]')) {
+            if (!event.defaultPrevented) submitting = true;
+            return;
+        }
         event.preventDefault();
         const submitter = event.submitter;
         const confirmMessage = submitter?.dataset.confirm || form.dataset.confirm;
@@ -141,6 +150,11 @@
                 return;
             }
             const doc = parse(await response.text());
+            // CSRF 거부(403)나 서버 오류 JSON 처럼 화면이 아닌 응답은 결과를 알 수 없다.
+            if (!response.ok || doc.getElementById('qa-alerts') === null) {
+                showError(`요청이 처리됐는지 확인하지 못했습니다(${response.status}). 새로고침해서 확인하세요.`);
+                return;
+            }
             // 갈아 끼우면 노드가 응답 문서에서 빠져나오므로 오류 여부는 그 전에 본다.
             const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);

@@ -28,7 +28,10 @@
             <div id="qa-status" data-qa-live>
                 <div class="alert error qa-alert-with-action" th:if="${room.status.name() == 'SCHEDULED'}">
                     <span>개방 전인 방이라 전송이 막힙니다(7005). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.</span>
-                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}">
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
+                          th:attr="data-confirm=${room.opensAfterCurrentWeekend}
+                                ? '이 방은 다음 주 이후에 열립니다. 시각을 옮기면 이번 주에 열린 방이 모두 마감되고 평가가 열립니다. 되돌릴 수 없습니다.'
+                                : null">
                         <input type="hidden" name="dateTime" th:value="${room.justAfterOpen}"/>
                         <input type="hidden" name="returnTo" th:value="|/admin/qa/rooms/${room.roomId}|"/>
                         <button class="btn sm" type="submit"

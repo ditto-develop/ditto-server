@@ -318,8 +318,9 @@ class AdminQaWebTest(
     }
 
     "시각 바로가기" - {
-        "이번 운영 주의 그룹 마감 직전·채팅 개방 직후·채팅 마감 직후를 보여준다" {
+        "이번 운영 주의 퀴즈 마감 직전·그룹 마감 직전·채팅 개방 직후·채팅 마감 직후를 보여준다" {
             console().timeShortcuts.map { it.dateTime } shouldBe listOf(
+                thisMonday.plusDays(2).atTime(23, 49, 59),
                 thisMonday.plusDays(3).atTime(23, 50),
                 thisMonday.plusDays(4).atTime(0, 1),
                 thisMonday.plusDays(7).atTime(0, 1),
