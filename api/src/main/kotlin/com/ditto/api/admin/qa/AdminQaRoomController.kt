@@ -32,6 +32,9 @@ class AdminQaRoomController(
             return QaRoutes.ROOMS_SECTION
         }
         model.addAttribute("room", room)
+        model.addAttribute("timelineSize", AdminQaRoomService.TIMELINE_SIZE)
+        model.addAttribute("messagePresets", QaMessagePreset.entries)
+        model.addAttribute("sampleVoteDescription", QaSampleVote.description)
         model.addAttribute("active", "qa")
         return "qa/room"
     }

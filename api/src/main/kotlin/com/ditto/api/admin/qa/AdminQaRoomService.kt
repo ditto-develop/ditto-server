@@ -25,8 +25,6 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * QA 콘솔의 채팅방 조회. 어드민은 방 멤버가 아니라서 앱의 조회 API를 쓰지 않고 저장소를 직접 읽는다.
@@ -168,7 +166,7 @@ class AdminQaRoomService(
             closedReason = closedReason,
             placeOptions = placeOptions.map { QaVoteOption(it.optionId, it.label, it.voterIds.map(members::of)) },
             timeOptions = timeOptions.map {
-                QaVoteOption(it.optionId, MEET_AT_FORMAT.format(it.meetAt), it.voterIds.map(members::of))
+                QaVoteOption(it.optionId, QaTimeFormat.format(it.meetAt), it.voterIds.map(members::of))
             },
         )
 
@@ -197,6 +195,5 @@ class AdminQaRoomService(
 
     companion object {
         const val TIMELINE_SIZE = 50
-        private val MEET_AT_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd(E) HH:mm", Locale.KOREAN)
     }
 }

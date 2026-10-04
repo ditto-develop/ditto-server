@@ -12,12 +12,12 @@
                 앱이 부르는 API를 그대로 타므로 알림·실시간 반영도 실제와 같습니다. 대상은 <code>dummy-</code> 회원뿐입니다.</p>
             <div id="qa-alerts" aria-live="polite"><div th:replace="~{fragments :: alerts}"></div></div>
             <p class="qa-live-row">
-                <span id="qa-live-state" class="qa-live-dot" aria-live="polite">3초마다 자동 갱신</span>
+                <span id="qa-live-state" class="qa-live-dot" aria-live="polite">자동 갱신</span>
                 <span class="muted">앱에서 한 응답·메시지가 새로고침 없이 반영됩니다.</span>
             </p>
 
             <div class="qa-bar" id="qa-bar" data-qa-live>
-                <span>서버 시각 <b th:text="${#temporals.format(console.now, 'MM/dd(E) HH:mm')}">-</b>
+                <span>서버 시각 <b th:text="${@qaTime.of(console.now)}">-</b>
                     <span class="badge matching" th:if="${console.timeOverridden}">조정 중</span></span>
                 <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
@@ -32,7 +32,7 @@
                           th:attr="data-confirm=${shortcut.confirmMessage}">
                         <input type="hidden" name="dateTime" th:value="${shortcut.dateTime}"/>
                         <button class="btn secondary sm" type="submit"
-                                th:text="|${shortcut.label} · ${#temporals.format(shortcut.dateTime, 'MM/dd(E) HH:mm')}|">
+                                th:text="|${shortcut.label} · ${@qaTime.of(shortcut.dateTime)}|">
                             채팅 개방 직후 · 10/10(금) 00:01</button>
                     </form>
                     <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
@@ -67,7 +67,7 @@
                 <table class="tbl" th:unless="${rooms.isEmpty()}">
                     <thead><tr><th>방</th><th>상태</th><th>실회원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
                     <tbody>
-                    <tr th:each="summary : ${rooms}" th:classappend="${summary.status.name() == 'ENDED'} ? 'qa-row-ended'">
+                    <tr th:each="summary : ${rooms}" th:classappend="${summary.ended} ? 'qa-row-ended'">
                         <td>
                             <b th:text="|#${summary.roomId}|">#88</b>
                             <th:block th:replace="~{qa/parts :: roomType(${summary.sourceType})}"></th:block>
@@ -80,7 +80,7 @@
                             <span class="muted" th:text="|+ 더미 ${summary.dummyCount}|">+ 더미 3</span>
                         </td>
                         <td class="num"
-                            th:text="|${#temporals.format(summary.opensAt, 'MM/dd(E) HH:mm')} ~ ${#temporals.format(summary.expiresAt, 'MM/dd(E) HH:mm')}|">-</td>
+                            th:text="|${@qaTime.of(summary.opensAt)} ~ ${@qaTime.of(summary.expiresAt)}|">-</td>
                         <td class="num"
                             th:text="${summary.lastMessageAt != null} ? ${#temporals.format(summary.lastMessageAt, 'MM/dd HH:mm')} : '-'">-</td>
                         <td class="actions">
@@ -175,7 +175,8 @@
                 <h2>그룹 · 초대 응답
                     <span class="count" th:text="${console.group.groups.size()}">0</span></h2>
                 <div class="alert info" th:if="${console.group.responseClosed and console.group.hasPendingInvitation}">
-                    이번 주 그룹 응답 마감(금 00:00)이 지나 남은 초대에 응답할 수 없습니다(5008).
+                    <th:block th:text="|이번 주 그룹 응답 마감(${@qaTime.of(console.group.responseDeadline)})이 지나 남은 초대에 응답할 수 없습니다(${console.group.closedErrorCode}).|">
+                        이번 주 그룹 응답 마감이 지나 남은 초대에 응답할 수 없습니다.</th:block>
                     응답하려면 위 [그룹 응답 마감 직전]으로 시각을 옮기세요.</div>
                 <p class="muted" th:if="${console.group.groups.isEmpty()}">
                     더미가 들어 있는 그룹이 없습니다. 이번 주 그룹 퀴즈셋으로 더미를 만들고 매칭을 재생성하세요.</p>

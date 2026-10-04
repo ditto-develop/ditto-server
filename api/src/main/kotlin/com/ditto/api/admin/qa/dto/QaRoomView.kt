@@ -1,6 +1,7 @@
 package com.ditto.api.admin.qa.dto
 
 import com.ditto.api.admin.qa.QaSystemMessageMeaning
+import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatRoom
@@ -23,6 +24,8 @@ class QaRoomSummary(
     val lastMessageAt: LocalDateTime?,
 ) {
     val memberCount: Int = realMembers.size + dummyCount
+
+    val isEnded: Boolean = status == ChatRoomStatus.ENDED
 }
 
 class QaRoomView(
@@ -46,6 +49,12 @@ class QaRoomView(
     val isGroup: Boolean = sourceType == ChatRoomType.GROUP
 
     val isEnded: Boolean = status == ChatRoomStatus.ENDED
+
+    val isScheduled: Boolean = status == ChatRoomStatus.SCHEDULED
+
+    val notOpenedErrorCode: String = ErrorCode.CHAT_ROOM_NOT_OPENED.code
+
+    val endedErrorCode: String = ErrorCode.CHAT_ROOM_ENDED.code
 
     /** 개방 전 방을 열어 보려고 서버 시각을 옮길 때 쓰는 시각. 스케줄러가 다음 분에 연다. */
     val justAfterOpen: LocalDateTime = opensAt.plusMinutes(1)
@@ -75,6 +84,8 @@ class QaRoomMessage(
     val unreadCount: Int,
 ) {
     val isSystem: Boolean = messageType == ChatMessageType.SYSTEM
+
+    val isImage: Boolean = messageType == ChatMessageType.IMAGE
 
     val systemMeaning: String? = if (isSystem) QaSystemMessageMeaning.of(content) else null
 }

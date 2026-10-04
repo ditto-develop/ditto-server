@@ -4,6 +4,7 @@
     const POLL_INTERVAL_MS = 3000;
     const NEAR_BOTTOM_PX = 40;
     const LOGIN_PATH = '/admin/login';
+    const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
 
     // 제출이 끝날 때마다 올린다. 그 전에 출발한 폴링 응답은 낡은 화면이라 버린다.
     let submitGeneration = 0;
@@ -95,7 +96,7 @@
             if (startedGeneration !== submitGeneration || submitting) return;
             swapLiveRegions(parse(html));
             const editing = document.querySelector('[data-qa-live][data-editing="true"]');
-            showLiveState(editing ? '3초마다 자동 갱신 (고르던 투표 영역은 제출 전까지 멈춤)' : '3초마다 자동 갱신', true);
+            showLiveState(editing ? `${LIVE_TEXT} (고르던 투표 영역은 제출 전까지 멈춤)` : LIVE_TEXT, true);
         } catch (ignored) {
             showLiveState('갱신 실패(네트워크), 다시 시도 중', false);
         } finally {
@@ -170,6 +171,7 @@
         }
     });
 
+    showLiveState(LIVE_TEXT, true);
     scrollTimelineToBottom();
     window.setInterval(refresh, POLL_INTERVAL_MS);
 })();

@@ -42,6 +42,7 @@ import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -300,12 +301,17 @@ class AdminQaWebTest(
             rooms.single().dummyCount shouldBe 3
         }
 
-        "응답 마감이 지나면 콘솔이 알려준다" {
+        "응답 마감이 지나면 남은 초대가 있을 때 마감 시각과 코드를 알려준다" {
+            val quizSet = saveCurrentWeekQuizSet(MatchingType.GROUP)
+            saveGroup(quizSet, listOf("테스터", "dummy-male-aaaa", "dummy-female-bbbb").map { saveMember(it) })
             console().group.isResponseClosed shouldBe false
 
             overrideServerTime(thisMonday.plusDays(4).atStartOfDay())
 
             console().group.isResponseClosed shouldBe true
+            mockMvc.perform(get("/admin/qa").with(authentication(admin)))
+                .andExpect(content().string(containsString("이번 주 그룹 응답 마감(")))
+                .andExpect(content().string(containsString("(5008)")))
         }
 
         "대기 중인 더미가 없으면 알려준다" {
@@ -341,7 +347,8 @@ class AdminQaWebTest(
         }
 
         "콘솔 밖 주소로는 돌려보내지 않는다" {
-            val outsideConsole = listOf("//evil.example.com", "/admin/qa//evil.example.com", "/admin/qaXYZ", "/admin/members")
+            val outsideConsole =
+                listOf("//evil.example.com", "/admin/qa//evil.example.com", "/admin/qaXYZ", "/admin/members")
             outsideConsole.forEach { returnTo ->
                 mockMvc.perform(
                     post("/admin/qa/server-time")

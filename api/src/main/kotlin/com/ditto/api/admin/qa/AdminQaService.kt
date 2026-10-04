@@ -61,6 +61,7 @@ class AdminQaService(
             personal = composePersonalSection(personalQuizSets, dummyIds),
             group = QaGroupSection(
                 groups = composeGroups(groupQuizSets, dummyIds),
+                responseDeadline = GroupResponseDeadline.deadlineOf(week),
                 isResponseClosed = GroupResponseDeadline.hasPassed(week, now),
             ),
             timeShortcuts = QaTimeShortcut.entries.map {

@@ -22,6 +22,16 @@
     <th:block th:case="*" th:text="${reason}">사유</th:block>
 </th:block>
 
+<div class="qa-vote-group" th:fragment="voteOptions(title, inputName, options, allowMultiple)">
+    <div class="qa-vote-title" th:text="${title}">장소</div>
+    <label class="qa-vote-option" th:each="option : ${options}">
+        <input th:type="${allowMultiple} ? 'checkbox' : 'radio'" th:name="${inputName}" th:value="${option.optionId}"/>
+        <span th:text="${option.label}">성수 카페</span>
+        <span class="qa-voters"
+              th:text="${option.voters.isEmpty()} ? '' : |${option.voters.size()}표 · ${#strings.listJoin(option.voters.![nickname], ', ')}|"></span>
+    </label>
+</div>
+
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
     <span class="badge matching" th:case="'SCHEDULED'">개방 전</span>
     <span class="badge on" th:case="'ACTIVE'">진행 중</span>

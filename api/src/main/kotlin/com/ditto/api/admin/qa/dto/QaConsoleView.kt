@@ -1,5 +1,6 @@
 package com.ditto.api.admin.qa.dto
 
+import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.PersonalMatchStatus
@@ -68,8 +69,11 @@ class QaPersonalRequestOption(
 
 class QaGroupSection(
     val groups: List<QaGroupMatch>,
+    val responseDeadline: LocalDateTime,
     val isResponseClosed: Boolean,
 ) {
+    val closedErrorCode: String = ErrorCode.NOT_MATCHING_PERIOD.code
+
     /** 마감 안내는 아직 응답할 초대가 남았을 때만 의미가 있다. 금요일 이후 채팅 QA 중에는 정상 상태다. */
     val hasPendingInvitation: Boolean =
         groups.any { group -> group.members.any { it.isPending } }
