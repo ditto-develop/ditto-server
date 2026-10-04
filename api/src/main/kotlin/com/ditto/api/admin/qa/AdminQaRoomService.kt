@@ -15,7 +15,10 @@ import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -35,6 +38,9 @@ class AdminQaRoomService(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val chatVoteService: ChatVoteService,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val personalMatchRepository: PersonalMatchRepository,
+    private val quizSetRepository: QuizSetRepository,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -44,22 +50,29 @@ class AdminQaRoomService(
         val roomIds = chatRoomMemberRepository.findByMemberIdIn(dummyIds).map { it.roomId }.toSet()
         if (roomIds.isEmpty()) return emptyList()
 
-        val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(roomIds).groupBy { it.roomId }
-        return chatRoomRepository.findAllById(roomIds)
+        val rooms = chatRoomRepository.findAllById(roomIds)
             .sortedWith(compareBy<ChatRoom> { it.isEnded }.thenByDescending { it.id })
-            .map { room ->
-                val activeMembers = membersByRoomId[room.id].orEmpty().filterNot { it.hasLeft }
-                QaRoomSummary(
-                    roomId = room.id,
-                    sourceType = room.sourceType,
-                    status = room.status,
-                    opensAt = room.opensAt,
-                    expiresAt = room.expiresAt,
-                    memberCount = activeMembers.size,
-                    dummyCount = activeMembers.count { it.memberId in dummyIds },
-                    lastMessageAt = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(room.id)?.createdAt,
-                )
-            }
+        val activeMembersByRoomId = chatRoomMemberRepository.findByRoomIdIn(roomIds)
+            .filterNot { it.hasLeft }
+            .groupBy { it.roomId }
+        val everyActiveMemberId = activeMembersByRoomId.values.flatten().map { it.memberId }
+        val members = QaMembers(memberRepository.findAllById(everyActiveMemberId))
+        val sourceLabels = composeSourceLabels(rooms)
+
+        return rooms.map { room ->
+            val activeMemberIds = activeMembersByRoomId[room.id].orEmpty().map { it.memberId }
+            QaRoomSummary(
+                roomId = room.id,
+                sourceType = room.sourceType,
+                sourceLabel = sourceLabels[room.id],
+                status = room.status,
+                opensAt = room.opensAt,
+                expiresAt = room.expiresAt,
+                realMembers = activeMemberIds.filterNot { it in dummyIds }.map(members::of),
+                dummyCount = activeMemberIds.count { it in dummyIds },
+                lastMessageAt = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(room.id)?.createdAt,
+            )
+        }
     }
 
     /** 최근 메시지 [TIMELINE_SIZE]개를 오래된 순서로 준다. 방이 없으면 null. */
@@ -119,6 +132,29 @@ class AdminQaRoomService(
         return chatRoomMemberRepository.findByRoomId(roomId)
             .filter { !it.hasLeft && it.memberId in dummyIds }
             .map { it.memberId }
+    }
+
+    /** 그룹 방은 그룹 번호와 퀴즈셋, 1:1 방은 퀴즈셋, 재매칭 방은 쌍 번호. 화면에서 테스트한 방을 찾는 단서다. */
+    private fun composeSourceLabels(rooms: List<ChatRoom>): Map<Long, String> {
+        val quizSetIdByGroupMatchId = groupMatchRepository
+            .findAllById(rooms.filter { it.sourceType == ChatRoomType.GROUP }.map { it.sourceId })
+            .associate { it.id to it.quizSetId }
+        val quizSetIdByPersonalMatchId = personalMatchRepository
+            .findAllById(rooms.filter { it.sourceType == ChatRoomType.PERSONAL }.map { it.sourceId })
+            .associate { it.id to it.quizSetId }
+        val quizSetTitles = quizSetRepository
+            .findAllById(quizSetIdByGroupMatchId.values + quizSetIdByPersonalMatchId.values)
+            .associate { it.id to it.title }
+
+        return rooms.mapNotNull { room ->
+            val label = when (room.sourceType) {
+                ChatRoomType.GROUP ->
+                    quizSetIdByGroupMatchId[room.sourceId]?.let { "그룹 #${room.sourceId} · ${quizSetTitles[it]}" }
+                ChatRoomType.PERSONAL -> quizSetIdByPersonalMatchId[room.sourceId]?.let { quizSetTitles[it] }
+                ChatRoomType.REMATCH -> "재매칭 #${room.sourceId}"
+            }
+            label?.let { room.id to it }
+        }.toMap()
     }
 
     /**

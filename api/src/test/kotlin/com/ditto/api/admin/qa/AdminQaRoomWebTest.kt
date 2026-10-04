@@ -110,6 +110,7 @@ class AdminQaRoomWebTest(
             rooms.map { it.roomId } shouldBe listOf(activeRoom.id, endedRoom.id)
             rooms.first().memberCount shouldBe 2
             rooms.first().dummyCount shouldBe 1
+            rooms.first().realMembers.map { it.id } shouldBe listOf(tester.id)
         }
 
         "방 화면은 최근 메시지와 참여자의 읽음 커서를 보여준다" {

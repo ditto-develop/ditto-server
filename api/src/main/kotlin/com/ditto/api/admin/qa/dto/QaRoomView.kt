@@ -11,13 +11,16 @@ import java.time.LocalDateTime
 class QaRoomSummary(
     val roomId: Long,
     val sourceType: ChatRoomType,
+    val sourceLabel: String?,
     val status: ChatRoomStatus,
     val opensAt: LocalDateTime,
     val expiresAt: LocalDateTime,
-    val memberCount: Int,
+    val realMembers: List<QaMember>,
     val dummyCount: Int,
     val lastMessageAt: LocalDateTime?,
-)
+) {
+    val memberCount: Int = realMembers.size + dummyCount
+}
 
 class QaRoomView(
     val roomId: Long,

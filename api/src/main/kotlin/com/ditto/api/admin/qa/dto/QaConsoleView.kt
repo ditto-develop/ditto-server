@@ -61,6 +61,7 @@ class QaGroupMatch(
     val quizSetTitle: String,
     val acceptedCount: Int,
     val formed: Boolean,
+    val chatRoomId: Long?,
     val members: List<QaGroupMember>,
 ) {
     val requiredCount: Int = GroupMatch.ACTIVATION_THRESHOLD

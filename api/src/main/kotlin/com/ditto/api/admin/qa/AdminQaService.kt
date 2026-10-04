@@ -10,6 +10,9 @@ import com.ditto.api.admin.qa.dto.QaPersonalSection
 import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
@@ -35,6 +38,7 @@ class AdminQaService(
     private val matchCandidateRepository: MatchCandidateRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val chatRoomRepository: ChatRoomRepository,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
     /** 시각은 한 번만 읽는다. 운영 주와 그룹 응답 마감이 같은 순간을 기준으로 해야 화면 안에서 어긋나지 않는다. */
@@ -53,7 +57,7 @@ class AdminQaService(
                 responseClosed = GroupResponseDeadline.hasPassed(week, now),
             ),
             timeShortcuts = QaTimeShortcut.entries.map {
-                QaTimeShortcutOption(label = it.label, dateTime = it.dateTimeIn(week), confirmMessage = it.confirmMessage)
+                QaTimeShortcutOption(it.label, dateTime = it.dateTimeIn(week), confirmMessage = it.confirmMessage)
             },
         )
     }
@@ -115,19 +119,27 @@ class AdminQaService(
             .sortedWith(compareBy({ it.otherMemberId }, { it.ownerMemberId }))
     }
 
-    /** 실회원을 위에, 더미를 아래에 둔다. 화면에서 테스트 계정을 바로 찾게 하려는 것이다. */
+    /**
+     * 실회원이 든 그룹을 위에, 그룹 안에서는 실회원을 위에 둔다. 화면에서 테스트 계정을 바로 찾게 하려는 것이다.
+     * 성사된 그룹은 열린 방으로 바로 갈 수 있게 방 id 를 함께 준다.
+     */
     private fun composeGroups(quizSets: List<QuizSet>, dummyIds: Set<Long>): List<QaGroupMatch> {
+        if (quizSets.isEmpty() || dummyIds.isEmpty()) return emptyList()
         val titlesByQuizSetId = quizSets.associate { it.id to it.title }
         val groups = titlesByQuizSetId.keys.flatMap { groupMatchRepository.findByQuizSetId(it) }
-        if (groups.isEmpty() || dummyIds.isEmpty()) return emptyList()
+        if (groups.isEmpty()) return emptyList()
 
         val invitationsByGroupId = groupMatchMemberRepository.findByRoomIdIn(groups.map { it.id })
             .groupBy { it.roomId }
+        fun hasNoRealMember(group: GroupMatch) = invitationsByGroupId.getValue(group.id).all { it.memberId in dummyIds }
         val groupsWithDummy = groups
             .filter { group -> invitationsByGroupId[group.id].orEmpty().any { it.memberId in dummyIds } }
-            .sortedByDescending { it.id }
+            .sortedWith(compareBy<GroupMatch> { hasNoRealMember(it) }.thenByDescending { it.id })
         val memberIds = groupsWithDummy.flatMap { invitationsByGroupId.getValue(it.id) }.map { it.memberId }
         val members = QaMembers(memberRepository.findAllById(memberIds))
+        val chatRoomIdByGroupMatchId = chatRoomRepository
+            .findBySourceTypeAndSourceIdIn(ChatRoomType.GROUP, groupsWithDummy.map { it.id })
+            .associate { it.sourceId to it.id }
 
         return groupsWithDummy.map { group ->
             QaGroupMatch(
@@ -135,6 +147,7 @@ class AdminQaService(
                 quizSetTitle = titlesByQuizSetId.getValue(group.quizSetId),
                 acceptedCount = group.acceptedCount,
                 formed = group.isActive,
+                chatRoomId = chatRoomIdByGroupMatchId[group.id],
                 members = invitationsByGroupId.getValue(group.id)
                     .sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId }))
                     .map { invitation ->

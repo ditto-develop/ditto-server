@@ -448,6 +448,7 @@ table.tbl td.actions form + form { margin-left: 6px; }
 .qa-group table.tbl td { padding: 8px 6px; }
 .alert a { text-decoration: underline; }
 table.tbl tr.qa-row-ended td { color: var(--text-muted); }
+.qa-room-source { font-size: 12px; margin-top: 2px; }
 
 /* QA 콘솔 방 화면 */
 .content.qa-room-page { max-width: 1240px; }

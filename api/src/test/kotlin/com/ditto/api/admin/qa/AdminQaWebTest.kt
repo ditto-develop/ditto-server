@@ -2,6 +2,7 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.admin.qa.dto.QaConsoleView
+import com.ditto.api.admin.qa.dto.QaRoomSummary
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -269,6 +270,29 @@ class AdminQaWebTest(
             invitationStatusOf(group, tester) shouldBe InvitationStatus.PENDING
             groupMatchRepository.findByIdOrNull(group.id)?.isActive shouldBe true
             chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, group.id).shouldNotBeNull()
+        }
+
+        "실회원이 든 그룹이 위에 오고, 성사된 그룹은 열린 방으로 이어진다" {
+            val quizSet = saveCurrentWeekQuizSet(MatchingType.GROUP)
+            val tester = saveMember("테스터")
+            val dummies = listOf("dummy-male-aaaa", "dummy-female-bbbb", "dummy-male-cccc").map { saveMember(it) }
+            val testerGroup = saveGroup(quizSet, dummies + tester)
+            val dummyOnlyGroup = saveGroup(quizSet, listOf("dummy-a", "dummy-b", "dummy-c").map { saveMember(it) })
+            mockMvc.perform(post("/admin/qa/group-matches/{id}/accept-pending-dummies", testerGroup.id).asAdmin())
+
+            val groups = console().group.groups
+
+            groups.map { it.groupMatchId } shouldBe listOf(testerGroup.id, dummyOnlyGroup.id)
+            groups.first().chatRoomId shouldBe
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, testerGroup.id)?.id
+            groups.last().chatRoomId shouldBe null
+
+            @Suppress("UNCHECKED_CAST")
+            val rooms = mockMvc.perform(get("/admin/qa").with(authentication(admin)))
+                .andReturn().modelAndView.shouldNotBeNull().model["rooms"] as List<QaRoomSummary>
+            rooms.single().sourceLabel shouldBe "그룹 #${testerGroup.id} · 이번 주 퀴즈"
+            rooms.single().realMembers shouldBe emptyList()
+            rooms.single().dummyCount shouldBe 3
         }
 
         "응답 마감이 지나면 콘솔이 알려준다" {

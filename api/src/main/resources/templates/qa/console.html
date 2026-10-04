@@ -57,15 +57,20 @@
                 <p class="muted" th:if="${rooms.isEmpty()}">
                     더미가 들어 있는 방이 없습니다. 1:1이나 그룹이 성사되면 여기에 나타납니다.</p>
                 <table class="tbl" th:unless="${rooms.isEmpty()}">
-                    <thead><tr><th>방</th><th>상태</th><th>인원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
+                    <thead><tr><th>방</th><th>상태</th><th>실회원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
                     <tbody>
                     <tr th:each="summary : ${rooms}" th:classappend="${summary.status.name() == 'ENDED'} ? 'qa-row-ended'">
                         <td>
                             <b th:text="|#${summary.roomId}|">#88</b>
                             <th:block th:replace="~{qa/parts :: roomType(${summary.sourceType})}"></th:block>
+                            <div class="muted qa-room-source" th:if="${summary.sourceLabel != null}"
+                                 th:text="${summary.sourceLabel}">그룹 #31 · 주말 취향 그룹</div>
                         </td>
                         <td><th:block th:replace="~{qa/parts :: roomStatus(${summary.status})}"></th:block></td>
-                        <td class="num" th:text="|${summary.memberCount}명 (더미 ${summary.dummyCount})|">4명 (더미 3)</td>
+                        <td>
+                            <b th:text="${summary.realMembers.isEmpty()} ? '없음' : ${#strings.listJoin(summary.realMembers.![nickname], ', ')}">준표</b>
+                            <span class="muted" th:text="|+ 더미 ${summary.dummyCount}|">+ 더미 3</span>
+                        </td>
                         <td class="num"
                             th:text="|${#temporals.format(summary.opensAt, 'MM/dd(E) HH:mm')} ~ ${#temporals.format(summary.expiresAt, 'MM/dd(E) HH:mm')}|">-</td>
                         <td class="num"
@@ -148,6 +153,8 @@
                             <span class="muted" th:text="${group.quizSetTitle}">퀴즈셋</span>
                             <span class="muted" th:text="|수락 ${group.acceptedCount} / ${group.requiredCount}|">수락 1 / 3</span>
                             <span class="badge on" th:if="${group.formed}">성사됨</span>
+                            <a class="btn secondary sm" th:if="${group.chatRoomId != null}"
+                               th:href="@{/admin/qa/rooms/{id}(id=${group.chatRoomId})}">방 열기</a>
                         </div>
                         <form class="inline-form" method="post" th:if="${group.hasPendingDummy}"
                               th:action="@{/admin/qa/group-matches/{id}/accept-pending-dummies(id=${group.groupMatchId})}">
