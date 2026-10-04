@@ -203,7 +203,7 @@ class EndedChatReviewOpenerTest(
             // openFor 를 건너뛴 상태 = 종료 직후 생성이 실패했거나 그 사이 앱이 죽은 경우
             memberReviewRepository.findAll().size shouldBe 0
 
-            endedChatReviewOpener.openMissing() shouldBe 1
+            endedChatReviewOpener.openMissing().size shouldBe 1
 
             memberReviewRepository.findAll().size shouldBe 2
         }
@@ -212,7 +212,7 @@ class EndedChatReviewOpenerTest(
             val roomId = saveEndedPersonalChat()
             endedChatReviewOpener.openFor(listOf(roomId))
 
-            endedChatReviewOpener.openMissing() shouldBe 0
+            endedChatReviewOpener.openMissing().size shouldBe 0
 
             memberReviewRepository.findAll().size shouldBe 2
         }
@@ -228,7 +228,7 @@ class EndedChatReviewOpenerTest(
                 ),
             )
 
-            endedChatReviewOpener.openMissing() shouldBe 0
+            endedChatReviewOpener.openMissing().size shouldBe 0
 
             memberReviewRepository.findAll().size shouldBe 0
         }
@@ -238,7 +238,7 @@ class EndedChatReviewOpenerTest(
         "참여자마다 평가가 열린다" {
             saveEndedGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
 
-            endedChatReviewOpener.openMissing() shouldBe 1
+            endedChatReviewOpener.openMissing().size shouldBe 1
 
             memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe
                 setOf(MEMBER_A, MEMBER_B, MEMBER_C)
@@ -413,7 +413,7 @@ class EndedChatReviewOpenerTest(
 
             // 반환값은 "조회된 방 수"가 아니라 "평가가 실제로 열린 방 수"다 —
             // 조회 건수를 돌려주면 영영 열 수 없는 방을 매 주기 "복구 성공"으로 집계한다.
-            endedChatReviewOpener.openMissing() shouldBe 0
+            endedChatReviewOpener.openMissing().size shouldBe 0
 
             memberReviewRepository.findAll().size shouldBe 0
         }
@@ -431,7 +431,7 @@ class EndedChatReviewOpenerTest(
             )
             chatRoomEndService.endExpired(AFTER_EXPIRY)
 
-            endedChatReviewOpener.openMissing() shouldBe 1
+            endedChatReviewOpener.openMissing().size shouldBe 1
 
             memberReviewRepository.findAll().map { it.chatRoomId }.toSet() shouldBe setOf(healthyRoomId)
         }
@@ -448,7 +448,7 @@ class EndedChatReviewOpenerTest(
             chatRoomRepository.save(ChatRoomFixture.personal(sourceId = emptyMatch.id, now = FRIDAY))
             chatRoomEndService.endExpired(AFTER_EXPIRY)
 
-            endedChatReviewOpener.openMissing() shouldBe 1
+            endedChatReviewOpener.openMissing().size shouldBe 1
 
             memberReviewRepository.findAll().map { it.chatRoomId }.toSet() shouldBe setOf(healthyRoomId)
         }

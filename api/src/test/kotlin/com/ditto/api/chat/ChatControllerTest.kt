@@ -14,6 +14,7 @@ import com.ditto.api.chat.dto.ChatRoomResponse
 import com.ditto.api.chat.dto.ChatRoomReviewStatus
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.support.ControllerUnitTest
@@ -53,6 +54,7 @@ class ChatControllerTest : ControllerUnitTest() {
     private val messagingTemplate: SimpMessagingTemplate = mockk(relaxed = true)
     private val endedChatReviewOpener: EndedChatReviewOpener = mockk(relaxed = true)
     private val reviewRequestNotifier: ReviewRequestNotifier = mockk(relaxed = true)
+    private val rematchNotifier: RematchNotifier = mockk(relaxed = true)
 
     override val controller = ChatController(
         chatService,
@@ -60,6 +62,7 @@ class ChatControllerTest : ControllerUnitTest() {
         messagingTemplate,
         endedChatReviewOpener,
         reviewRequestNotifier,
+        rematchNotifier,
     )
 
     private fun sampleMessage(id: Long = 3L, imageUrl: String? = null) = ChatMessageResponse(
@@ -456,6 +459,7 @@ class ChatControllerTest : ControllerUnitTest() {
 
         verify(exactly = 1) { endedChatReviewOpener.openFor(listOf(1L)) }
         verify(exactly = 1) { reviewRequestNotifier.notifyFor(listOf(1L)) }
+        verify(exactly = 1) { rematchNotifier.notifyWaitingRequestsFor(listOf(1L)) }
     }
 
     @Test

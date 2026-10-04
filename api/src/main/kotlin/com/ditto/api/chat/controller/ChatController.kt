@@ -9,6 +9,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
@@ -33,6 +34,7 @@ class ChatController(
     private val messagingTemplate: SimpMessagingTemplate,
     private val endedChatReviewOpener: EndedChatReviewOpener,
     private val reviewRequestNotifier: ReviewRequestNotifier,
+    private val rematchNotifier: RematchNotifier,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -108,6 +110,7 @@ class ChatController(
         if (result.isRoomEnded) {
             endedChatReviewOpener.openFor(listOf(roomId))
             reviewRequestNotifier.notifyFor(listOf(roomId))
+            rematchNotifier.notifyWaitingRequestsFor(listOf(roomId))
         }
         if (result.hasLeftOpenRoom) {
             openReviewForLeaver(roomId, principal.memberId, now)
