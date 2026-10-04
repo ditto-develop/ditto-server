@@ -22,12 +22,12 @@ class OneToOneMissFinder(
 ) {
     fun findMisses(input: OneToOneMissInput): Map<Long, MatchMiss> {
         val withoutCandidate = input.source.progresses.filter { it.memberId !in input.candidateOwnerIds }
-        val prePoolMissByMemberId = withoutCandidate
-            .mapNotNull { progress ->
+        val prePoolMissByMemberId = buildMap {
+            withoutCandidate.forEach { progress ->
                 val miss = PrePoolMiss.of(progress, input.source.membersById[progress.memberId], input.generatedAt)
-                miss?.let { progress.memberId to it }
+                if (miss != null) put(progress.memberId, miss)
             }
-            .toMap()
+        }
         val poolEntrantIds = withoutCandidate.map { it.memberId }.toSet() - prePoolMissByMemberId.keys
         if (poolEntrantIds.isEmpty()) return prePoolMissByMemberId
 
