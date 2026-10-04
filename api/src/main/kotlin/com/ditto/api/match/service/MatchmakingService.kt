@@ -94,6 +94,20 @@ class MatchmakingService(
             .toSet()
     }
 
+    /**
+     * 매칭 풀 참여자(답변·성별·선호·차단 포함). [generateMatchingCandidates]와 같은 계산이라, 어드민이
+     * 후보가 없는 이유를 다시 계산할 때 배치와 같은 입력을 쓴다. 퀴즈셋이 없으면 빈 목록.
+     */
+    @Transactional(readOnly = true)
+    fun loadMatchingPoolParticipants(quizSetId: Long): List<MatchParticipant> {
+        val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return emptyList()
+        val completedProgresses =
+            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
+        val poolMemberIds = availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
+        if (poolMemberIds.isEmpty()) return emptyList()
+        return loadParticipants(quizSetId, poolMemberIds, completedProgresses)
+    }
+
     private fun logGeneration(summary: CandidateGenerationSummary) {
         logger.info {
             "매칭 후보 생성: quizSetId=${summary.quizSetId} type=${summary.matchingType} " +
