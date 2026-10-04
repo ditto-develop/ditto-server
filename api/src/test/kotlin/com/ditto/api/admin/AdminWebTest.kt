@@ -235,8 +235,7 @@ class AdminWebTest {
             post("/admin/dummy").with(authentication(admin())).with(csrf())
                 .param("quizSetId", quizSet.id.toString())
                 .param("maleCount", "2").param("femaleCount", "2")
-                .param("minAge", "20").param("maxAge", "30")
-                .param("preferredGender", "OPPOSITE"),
+                .param("minAge", "20").param("maxAge", "30"),
         ).andExpect(status().is3xxRedirection)
 
         mockMvc.perform(post("/admin/dummy/clear").with(authentication(admin())).with(csrf()))

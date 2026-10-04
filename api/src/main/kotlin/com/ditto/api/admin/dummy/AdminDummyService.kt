@@ -6,7 +6,6 @@ import com.ditto.api.admin.dummy.dto.DummyGenerateForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
-import com.ditto.domain.member.entity.GenderPreference
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
@@ -101,7 +100,7 @@ class AdminDummyService(
 
     private fun createDummy(gender: Gender, form: DummyGenerateForm, context: SolveContext) {
         val member = memberRepository.save(newDummyMember(gender, form))
-        saveCompletedProgress(member.id, context, form.preferredGender)
+        saveCompletedProgress(member.id, context)
         saveRandomAnswers(member.id, context)
     }
 
@@ -141,9 +140,8 @@ class AdminDummyService(
         return "$CARICATURE_PATH_PREFIX$genderInitial$avatarNumber.svg"
     }
 
-    private fun saveCompletedProgress(memberId: Long, context: SolveContext, preferredGender: GenderPreference) {
+    private fun saveCompletedProgress(memberId: Long, context: SolveContext) {
         val progress = QuizProgress.create(memberId, context.quizSetId, context.quizzes.size)
-        progress.selectPreferredGender(preferredGender)
         // status·answeredCount 는 protected set 이라 recordAnswer 를 문항 수만큼 호출해야 COMPLETED 가 된다.
         repeat(context.quizzes.size) { progress.recordAnswer() }
         quizProgressRepository.save(progress)

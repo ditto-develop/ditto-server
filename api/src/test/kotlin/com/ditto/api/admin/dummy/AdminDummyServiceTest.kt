@@ -78,14 +78,14 @@ class AdminDummyServiceTest(
             val quizSetId = setupQuizSet(quizCount = 3)
 
             adminDummyService.generate(
-                DummyGenerateForm(quizSetId = quizSetId, maleCount = 1, femaleCount = 1, preferredGender = GenderPreference.SAME),
+                DummyGenerateForm(quizSetId = quizSetId, maleCount = 1, femaleCount = 1),
             )
 
             val quizIds = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId).map { it.id }
             memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach { dummy ->
                 val progress = quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, quizSetId).shouldNotBeNull()
                 progress.status shouldBe QuizProgressStatus.COMPLETED
-                progress.preferredGender shouldBe GenderPreference.SAME
+                progress.preferredGender shouldBe GenderPreference.OPPOSITE
                 quizAnswerRepository.findByMemberIdAndQuizIdIn(dummy.id, quizIds).size shouldBe 3
             }
         }
