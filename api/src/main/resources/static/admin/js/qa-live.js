@@ -1,5 +1,5 @@
-// QA 콘솔 방 화면. 폼은 페이지를 다시 그리지 않고 보내고, [data-qa-live] 영역만 주기적으로 갈아 끼운다.
-// 서버는 일반 폼 POST → 리다이렉트로 답하므로 fetch 가 따라간 방 화면 HTML 에서 같은 id 영역을 골라 바꾼다.
+// QA 콘솔·방 화면 공용. [data-qa-live] 영역을 같은 주소의 HTML 로 주기적으로 갈아 끼우고, 비동기 폼([data-qa-async])을 보낸다.
+// 서버는 일반 폼 POST → 리다이렉트로 답하므로 fetch 가 따라간 화면 HTML 에서 같은 id 영역을 골라 바꾼다.
 (() => {
     const POLL_INTERVAL_MS = 3000;
     const NEAR_BOTTOM_PX = 40;
