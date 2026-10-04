@@ -3,7 +3,7 @@ package com.ditto.domain.notification.entity
 /**
  * 알림 유형. 화면(피그마 7.2)에 찍힌 카드 종류와 1:1 이다.
  *
- * 유형이 필터 칩 분류, 아이콘, target_id 가 가리키는 대상, 눌렀을 때 갈 화면을 정한다.
+ * 유형이 필터 칩 분류, 아이콘, target_id 가 가리키는 대상([target]), 눌렀을 때 갈 화면([deepLinkTarget])을 정한다.
  * 대상을 유형이 정하므로 targetType 컬럼은 따로 두지 않는다.
  *
  * ONCE_PER_TARGET 은 같은 대상에 한 번만 알린다는 뜻이다. 스케줄러가 매 주기 같은 방이나 퀴즈셋을
@@ -12,7 +12,7 @@ package com.ditto.domain.notification.entity
  */
 enum class NotificationType(
     val category: NotificationCategory,
-    val targetDescription: String,
+    val target: NotificationTarget,
     val duplicatePolicy: DuplicatePolicy,
     val deepLinkTarget: DeepLinkTarget,
 ) {
@@ -22,7 +22,7 @@ enum class NotificationType(
      */
     QUIZ_OPENED(
         NotificationCategory.MATCHING,
-        "quiz_set.id (이번 주 대표 셋)",
+        NotificationTarget.QUIZ_SET,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CURRENT_QUIZ,
     ),
@@ -30,7 +30,7 @@ enum class NotificationType(
     /** 이번 주 퀴즈 마감이 가깝다. 아직 끝내지 않은 활성 회원에게. 대상은 [QUIZ_OPENED]와 같은 대표 셋. */
     QUIZ_CLOSING_SOON(
         NotificationCategory.MATCHING,
-        "quiz_set.id (이번 주 대표 셋)",
+        NotificationTarget.QUIZ_SET,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CURRENT_QUIZ,
     ),
@@ -41,7 +41,7 @@ enum class NotificationType(
      */
     MATCH_RESULT(
         NotificationCategory.MATCHING,
-        "quiz_set.id (이번 주 퀴즈셋)",
+        NotificationTarget.QUIZ_SET,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.MATCHING_RESULT,
     ),
@@ -49,7 +49,7 @@ enum class NotificationType(
     /** 퀴즈를 끝냈지만 이번 주 후보가 없다. 수신자는 매칭 풀에 든 회원. 대상이 퀴즈셋인 이유는 [MATCH_RESULT]와 같다. */
     NO_MATCH(
         NotificationCategory.MATCHING,
-        "quiz_set.id (이번 주 퀴즈셋)",
+        NotificationTarget.QUIZ_SET,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.MATCHING_RESULT,
     ),
@@ -57,7 +57,7 @@ enum class NotificationType(
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
     GROUP_FORMED(
         NotificationCategory.MATCHING,
-        "chat_room.id (그룹 방)",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.GROUP_CHAT_ROOM,
     ),
@@ -68,7 +68,7 @@ enum class NotificationType(
      */
     GROUP_NOT_FORMED(
         NotificationCategory.MATCHING,
-        "group_match.id (미성사 그룹)",
+        NotificationTarget.GROUP_MATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.GROUP_MATCHING,
     ),
@@ -76,7 +76,7 @@ enum class NotificationType(
     /** 그룹 멤버가 나와 1:1 재매칭을 원한다고 냈다. 쌍마다 한 번. 신청/수락 모델(ADR 0031). */
     REMATCH_REQUESTED(
         NotificationCategory.MATCHING,
-        "rematch.id",
+        NotificationTarget.REMATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.REMATCH_PAIR_RATING,
     ),
@@ -84,7 +84,7 @@ enum class NotificationType(
     /** 한쪽이 원했는데 성사되지 않았다. 원했던 쪽에게. 쌍마다 한 번. */
     REMATCH_REJECTED(
         NotificationCategory.MATCHING,
-        "rematch.id",
+        NotificationTarget.REMATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.REMATCH_PAIR_RATING,
     ),
@@ -92,7 +92,7 @@ enum class NotificationType(
     /** 재매칭이 성사돼 채팅방이 예약됐다. */
     REMATCH_MATCHED(
         NotificationCategory.MATCHING,
-        "chat_room.id (재매칭 방)",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.REMATCH_CHAT_ROOM,
     ),
@@ -100,7 +100,7 @@ enum class NotificationType(
     /** 상대가 나에게 1:1 대화를 신청했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
     MATCH_REQUESTED(
         NotificationCategory.MATCHING,
-        "personal_match.id",
+        NotificationTarget.PERSONAL_MATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.ONE_TO_ONE_MATCHING,
     ),
@@ -108,7 +108,7 @@ enum class NotificationType(
     /** 내가 보낸 1:1 대화 신청을 상대가 수락했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */
     MATCH_ACCEPTED(
         NotificationCategory.MATCHING,
-        "personal_match.id",
+        NotificationTarget.PERSONAL_MATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.ONE_TO_ONE_MATCHING,
     ),
@@ -120,7 +120,7 @@ enum class NotificationType(
      */
     MATCH_REJECTED(
         NotificationCategory.MATCHING,
-        "personal_match.id",
+        NotificationTarget.PERSONAL_MATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.ONE_TO_ONE_MATCHING,
     ),
@@ -128,7 +128,7 @@ enum class NotificationType(
     /** 채팅이 끝나 상대 평가가 열렸다. */
     REVIEW_REQUEST(
         NotificationCategory.MATCHING,
-        "chat_room.id (끝난 방)",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CHAT_ROOM_RATING,
     ),
@@ -139,7 +139,7 @@ enum class NotificationType(
      */
     REVIEW_REMINDER(
         NotificationCategory.MATCHING,
-        "chat_room.id (끝난 방)",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CHAT_ROOM_RATING,
     ),
@@ -147,7 +147,7 @@ enum class NotificationType(
     /** 채팅방이 열려 대화를 시작할 수 있다. 방마다 한 번만 알린다. */
     CHAT_ROOM_OPENED(
         NotificationCategory.CHAT,
-        "chat_room.id (열린 방)",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CHAT_ROOM,
     ),
@@ -155,7 +155,7 @@ enum class NotificationType(
     /** 상대가 메시지를 보냈다. 같은 방의 안읽은 알림은 접힌다. */
     CHAT_MESSAGE(
         NotificationCategory.CHAT,
-        "chat_room.id",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.COLLAPSE_UNREAD,
         DeepLinkTarget.CHAT_ROOM,
     ),
@@ -163,7 +163,7 @@ enum class NotificationType(
     /** 방이 열린 뒤 한동안 아무도 말하지 않았다. 방마다 한 번만 알린다. */
     CHAT_NO_MESSAGE(
         NotificationCategory.CHAT,
-        "chat_room.id",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CHAT_ROOM,
     ),
@@ -171,7 +171,7 @@ enum class NotificationType(
     /** 채팅 종료가 가까워졌다. 방마다 한 번만 알린다. */
     CHAT_ENDING_SOON(
         NotificationCategory.CHAT,
-        "chat_room.id",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.CHAT_ROOM,
     ),
@@ -179,7 +179,7 @@ enum class NotificationType(
     /** 만남 투표가 시작됐다. 생성이 방당 열린 투표 1개로 막혀 있어 중복을 유형이 막지 않는다. [VOTE_CLOSED]와 같다. */
     VOTE_CREATED(
         NotificationCategory.CHAT,
-        "chat_room.id",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ALLOW,
         DeepLinkTarget.GROUP_CHAT_ROOM,
     ),
@@ -190,7 +190,7 @@ enum class NotificationType(
      */
     VOTE_CLOSED(
         NotificationCategory.CHAT,
-        "chat_room.id",
+        NotificationTarget.CHAT_ROOM,
         DuplicatePolicy.ALLOW,
         DeepLinkTarget.GROUP_CHAT_ROOM,
     ),
@@ -201,7 +201,7 @@ enum class NotificationType(
      */
     SYSTEM_NOTICE(
         NotificationCategory.SYSTEM,
-        "system_notice.id",
+        NotificationTarget.SYSTEM_NOTICE,
         DuplicatePolicy.ALLOW,
         DeepLinkTarget.NONE,
     ),
@@ -212,7 +212,7 @@ enum class NotificationType(
      */
     REPORT_ACTIONED(
         NotificationCategory.SYSTEM,
-        "member_report.id",
+        NotificationTarget.MEMBER_REPORT,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.NONE,
     ),
@@ -223,7 +223,7 @@ enum class NotificationType(
      */
     SANCTION_IMPOSED(
         NotificationCategory.SYSTEM,
-        "sanction.id",
+        NotificationTarget.SANCTION,
         DuplicatePolicy.ONCE_PER_TARGET,
         DeepLinkTarget.SANCTION,
     ),
@@ -233,6 +233,9 @@ enum class NotificationType(
 
         /** 해당 카테고리에 속한 유형들. 목록 조회의 필터 조건으로 쓰인다. */
         fun of(category: NotificationCategory): List<NotificationType> = entries.filter { it.category == category }
+
+        /** [target]을 가리키는 유형들. 대상이 지워질 때 함께 지울 알림을 고르는 데 쓴다. */
+        fun pointingTo(target: NotificationTarget): List<NotificationType> = entries.filter { it.target == target }
     }
 }
 

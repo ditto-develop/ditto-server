@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional
 
 interface ChatVoteRepository : JpaRepository<ChatVote, Long> {
 
+    fun findByRoomIdIn(roomIds: Collection<Long>): List<ChatVote>
+
     /** 방의 투표 전체 — 방 진입·재접속 복구용. 최신이 앞이다. */
     fun findAllByRoomIdOrderByIdDesc(roomId: Long): List<ChatVote>
 

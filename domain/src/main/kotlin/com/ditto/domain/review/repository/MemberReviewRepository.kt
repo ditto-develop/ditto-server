@@ -9,6 +9,11 @@ import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 interface MemberReviewRepository : JpaRepository<MemberReview, Long>, MemberReviewRepositoryCustom {
+
+    fun findByChatRoomIdInOrAuthorMemberIdIn(
+        chatRoomIds: Collection<Long>,
+        authorMemberIds: Collection<Long>,
+    ): List<MemberReview>
     /** 동일 종료 이벤트 재처리 시 기존 진행 단위를 찾아 멱등 처리한다. */
     fun findByChatRoomIdAndAuthorMemberId(chatRoomId: Long, authorMemberId: Long): MemberReview?
 

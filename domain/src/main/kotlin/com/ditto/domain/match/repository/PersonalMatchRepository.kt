@@ -7,6 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, PersonalMatchRepositoryCustom {
 
+    fun findByMemberId1InOrMemberId2In(
+        memberId1s: Collection<Long>,
+        memberId2s: Collection<Long>,
+    ): List<PersonalMatch>
+
     /** 내가 보낸 요청 목록 (requester 기준) */
     fun findByRequesterIdAndQuizSetId(requesterId: Long, quizSetId: Long): List<PersonalMatch>
 
@@ -42,4 +47,6 @@ interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, Personal
 
     /** 특정 quizSetId + status 의 모든 매칭 (이미 매칭된 회원 추출용) */
     fun findByQuizSetIdAndStatus(quizSetId: Long, status: PersonalMatchStatus): List<PersonalMatch>
+
+    fun findByQuizSetIdIn(quizSetIds: Collection<Long>): List<PersonalMatch>
 }

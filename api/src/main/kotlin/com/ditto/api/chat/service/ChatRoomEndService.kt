@@ -132,14 +132,13 @@ class ChatRoomEndService(
         me: ChatRoomMember,
         now: LocalDateTime,
     ): ChatLeaveResult {
-        val remainingAfterLeave = roomMembers.count { !it.hasLeft } - 1
+        val shouldDissolve = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft })
         val wasOpen = room.status == ChatRoomStatus.ACTIVE
         me.leave(now)
 
         val messages = mutableListOf(
             chatMessageRepository.save(ChatMessage.system(roomId = room.id, senderId = me.memberId, content = MEMBER_LEFT)),
         )
-        val shouldDissolve = remainingAfterLeave <= 1
         if (shouldDissolve) {
             room.endByInsufficientMembers(now)
             chatRoomRepository.save(room)

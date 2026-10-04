@@ -23,6 +23,6 @@ object GroupResponseDeadline {
         return OperationWeek(thisWeek.startedOn.minusWeeks(1))
     }
 
-    private fun deadlineOf(week: OperationWeek): LocalDateTime =
+    fun deadlineOf(week: OperationWeek): LocalDateTime =
         ChatPeriod.weekendOf(week.startedOn.atStartOfDay()).opensAt
 }

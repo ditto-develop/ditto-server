@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ChatVoteChoiceRepository : JpaRepository<ChatVoteChoice, Long> {
 
+    fun findByVoteIdIn(voteIds: Collection<Long>): List<ChatVoteChoice>
+
     /** 투표의 표 전체 — 집계(선택지별 투표자)와 내 표 조회가 메모리에서 가른다. */
     fun findAllByVoteId(voteId: Long): List<ChatVoteChoice>
 }

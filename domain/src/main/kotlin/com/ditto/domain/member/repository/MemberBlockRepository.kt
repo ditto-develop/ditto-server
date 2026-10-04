@@ -6,6 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface MemberBlockRepository : JpaRepository<MemberBlock, Long>, MemberBlockRepositoryCustom {
 
+    fun findByBlockerIdInOrBlockedMemberIdIn(
+        blockerIds: Collection<Long>,
+        blockedMemberIds: Collection<Long>,
+    ): List<MemberBlock>
+
     /** 내 차단 목록 — 화면이 최신순으로 노출한다. */
     fun findAllByBlockerIdOrderByCreatedAtDesc(blockerId: Long): List<MemberBlock>
 

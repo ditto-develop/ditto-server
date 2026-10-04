@@ -92,6 +92,9 @@ class ChatRoom private constructor(
      */
     fun canEndByUser(): Boolean = sourceType != ChatRoomType.GROUP
 
+    /** 그룹은 한 명이 나가 남은 사람이 [MIN_MEMBERS_TO_CONTINUE]명보다 적어지면 해체한다. 아무도 없는 방에 말을 걸게 되기 때문이다. */
+    fun dissolvesWhenOneLeaves(activeMemberCount: Int): Boolean = activeMemberCount - 1 < MIN_MEMBERS_TO_CONTINUE
+
     /** 기한이 지나 마감한다. 이미 끝난 방이면 [isEnded]로 걸러낸 뒤 호출해야 한다. */
     fun expire(at: LocalDateTime) = end(ChatEndReason.EXPIRED, at)
 
@@ -134,6 +137,8 @@ class ChatRoom private constructor(
     }
 
     companion object {
+        const val MIN_MEMBERS_TO_CONTINUE = 2
+
         fun personal(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
             of(ChatRoomType.PERSONAL, sourceId, period, now)
 

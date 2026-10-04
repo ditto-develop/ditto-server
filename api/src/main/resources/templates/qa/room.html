@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('채팅방 #' + ${room.roomId})}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('qa')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content qa-room-page">
+            <a class="qa-back" th:href="@{/admin/qa#rooms}">← QA 콘솔</a>
+            <h1 class="page-title">채팅방 #<span th:text="${room.roomId}">88</span>
+                <th:block th:replace="~{qa/parts :: roomType(${room.sourceType})}"></th:block>
+            </h1>
+            <p class="page-desc">
+                <span th:text="|개방 ${@qaTime.of(room.opensAt)} ~ 종료 ${@qaTime.of(room.expiresAt)}|">-</span>
+                · 서버 시각 <span th:text="${@qaTime.of(room.now)}">-</span>
+                · 더미의 전송·읽음은 앱과 같은 경로로 처리돼 테스트 폰에 실시간으로 반영됩니다.
+            </p>
+
+            <div id="qa-alerts" aria-live="polite"><div th:replace="~{fragments :: alerts}"></div></div>
+
+            <div class="qa-status-row">
+                <span id="qa-room-status" data-qa-live>
+                    <th:block th:replace="~{qa/parts :: roomStatus(${room.status})}"></th:block>
+                </span>
+                <span id="qa-live-state" class="qa-live-dot" aria-live="polite">자동 갱신</span>
+            </div>
+            <div id="qa-status" data-qa-live>
+                <div class="alert error qa-alert-with-action" th:if="${room.scheduled}">
+                    <span th:text="|개방 전인 방이라 전송이 막힙니다(${room.notOpenedErrorCode}). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.|">
+                        개방 전인 방이라 전송이 막힙니다.</span>
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
+                          th:attr="data-confirm=${room.opensAfterCurrentWeekend}
+                                ? '이 방은 다음 주 이후에 열립니다. 시각을 옮기면 이번 주에 열린 방이 모두 마감되고 평가가 열립니다. 되돌릴 수 없습니다.'
+                                : null">
+                        <input type="hidden" name="dateTime" th:value="${room.justAfterOpen}"/>
+                        <input type="hidden" name="returnTo" th:value="|/admin/qa/rooms/${room.roomId}|"/>
+                        <button class="btn sm" type="submit"
+                                th:text="|${@qaTime.of(room.justAfterOpen)}로 옮기기|">옮기기</button>
+                    </form>
+                </div>
+                <div class="alert error" th:if="${room.ended}">
+                    종료된 방입니다(<th:block th:replace="~{qa/parts :: endReason(${room.endReason})}"></th:block>).
+                    <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block></div>
+            </div>
+
+            <div class="qa-room">
+                <div class="qa-room-main">
+                    <section class="card qa-timeline-card">
+                        <h2>대화 <span class="muted" th:text="|최근 ${timelineSize}개 · 오른쪽이 더미, 왼쪽이 실회원|">최근 메시지 · 오른쪽이 더미, 왼쪽이 실회원</span></h2>
+                        <div class="qa-timeline" id="qa-timeline" data-qa-live>
+                            <p class="muted" th:if="${room.messages.isEmpty()}">아직 메시지가 없습니다.</p>
+                            <th:block th:each="message : ${room.messages}">
+                                <div class="qa-msg system" th:if="${message.system}">
+                                    <span th:text="${message.systemMeaning != null}
+                                            ? |${message.systemMeaning} (${message.content}) · ${message.sender.nickname} · #${message.messageId}|
+                                            : |${message.content} · ${message.sender.nickname} · #${message.messageId}|">MEMBER_LEFT</span>
+                                </div>
+                                <div class="qa-msg" th:unless="${message.system}"
+                                     th:classappend="${message.fromDummy} ? 'mine'">
+                                    <div class="qa-msg-meta">
+                                        <b th:text="${message.sender.nickname}">홍길동</b>
+                                        <span th:text="|${#temporals.format(message.sentAt, 'HH:mm:ss')} · #${message.messageId}|">12:00:00</span>
+                                    </div>
+                                    <div class="qa-msg-line">
+                                        <div class="qa-bubble"
+                                             th:text="${message.image} ? '[이미지] ' + ${message.content} : ${message.content}">
+                                            안녕하세요</div>
+                                        <span class="qa-unread" th:if="${message.unreadCount > 0}"
+                                              th:text="${message.unreadCount}">1</span>
+                                    </div>
+                                </div>
+                            </th:block>
+                        </div>
+                    </section>
+
+                    <section class="card" th:unless="${room.activeDummies.isEmpty()}">
+                        <form id="qa-composer" class="qa-composer" data-qa-async method="post"
+                              th:action="@{/admin/qa/rooms/{id}/messages(id=${room.roomId})}">
+                            <div class="qa-composer-row">
+                                <span id="qa-composer-dummies" class="qa-composer-dummies" data-qa-live>
+                                    <select name="dummyId" aria-label="보낼 더미">
+                                        <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
+                                                th:text="${dummy.nickname}">dummy</option>
+                                    </select>
+                                </span>
+                                <input type="text" name="content" placeholder="더미로 보낼 메시지 (Enter로 전송)"
+                                       aria-label="더미로 보낼 메시지" autocomplete="off" autofocus/>
+                                <button class="btn" type="submit">보내기</button>
+                            </div>
+                            <div class="qa-presets">
+                                <span class="muted">빠른 입력</span>
+                                <button class="btn secondary sm" type="submit" name="preset"
+                                        th:each="preset : ${messagePresets}" th:value="${preset.name()}" th:text="${preset.label}">인사</button>
+                                <span class="muted">연속 전송은 메시지마다 테스트 폰에 알림이 갑니다.</span>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+
+                <div class="qa-room-side">
+                    <section class="card qa-members" id="qa-members" data-qa-live>
+                        <h2>참여자</h2>
+                        <div class="qa-member" th:each="roomMember : ${room.members}"
+                             th:classappend="${roomMember.hasLeft} ? 'left'">
+                            <div>
+                                <b th:text="${roomMember.member.nickname}">홍길동</b>
+                                <span class="badge cat" th:unless="${roomMember.dummy}">실회원</span>
+                                <span class="badge off" th:if="${roomMember.hasLeft}">나감</span>
+                                <div class="muted"
+                                     th:text="${roomMember.lastReadMessageId != null} ? |읽음 #${roomMember.lastReadMessageId}| : '읽음 없음'">
+                                    읽음 #1042</div>
+                            </div>
+                            <div class="qa-member-actions" th:if="${roomMember.dummy and !roomMember.hasLeft}">
+                                <form class="inline-form" method="post" data-qa-async
+                                      th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/read(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                    <button class="btn secondary sm" type="submit">읽음</button>
+                                </form>
+                                <form class="inline-form" method="post" data-qa-async
+                                      th:if="${!room.canEndByUser and !room.ended}"
+                                      th:attr="data-confirm=${room.leaveDissolvesRoom}
+                                        ? |${roomMember.member.nickname} 이(가) 방을 나갑니다. 남은 사람이 1명이 되어 방이 해체됩니다. 되돌릴 수 없습니다.|
+                                        : |${roomMember.member.nickname} 이(가) 방을 나갑니다. 되돌릴 수 없습니다.|"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                    <button class="btn danger sm" type="submit">나가기</button>
+                                </form>
+                                <form class="inline-form" method="post" data-qa-async
+                                      th:if="${room.canEndByUser and !room.ended}"
+                                      th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 채팅을 종료합니다. 되돌릴 수 없습니다.|"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/end(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                    <button class="btn danger sm" type="submit">채팅 종료</button>
+                                </form>
+                            </div>
+                        </div>
+                        <form method="post" data-qa-async th:unless="${room.activeDummies.isEmpty()}"
+                              th:action="@{/admin/qa/rooms/{id}/read-all-dummies(id=${room.roomId})}">
+                            <button class="btn secondary sm qa-wide" type="submit">더미 모두 읽음</button>
+                        </form>
+                    </section>
+
+                    <section class="card qa-votes" id="qa-votes" data-qa-live th:if="${room.group}">
+                        <h2>투표</h2>
+                        <p class="muted qa-note">앱에는 투표 생성·마감만 실시간으로 뜹니다. 집계는 앱에서 투표 화면에 다시 들어가야 갱신됩니다.</p>
+                        <th:block th:if="${room.openVote == null}">
+                            <p class="muted" th:text="|열린 투표가 없습니다. 더미로 샘플 투표(${sampleVoteDescription})를 만들 수 있습니다.|">
+                                열린 투표가 없습니다.</p>
+                            <form method="post" data-qa-async th:unless="${room.activeDummies.isEmpty() or room.ended}"
+                                  th:action="@{/admin/qa/rooms/{id}/votes(id=${room.roomId})}">
+                                <select name="dummyId" class="qa-select" aria-label="투표를 만들 더미">
+                                    <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
+                                            th:text="${dummy.nickname}">dummy</option>
+                                </select>
+                                <label class="check qa-check"><input type="checkbox" name="allowMultiple" value="true"/> 복수 선택</label>
+                                <button class="btn sm qa-wide" type="submit">샘플 투표 만들기</button>
+                            </form>
+                        </th:block>
+
+                        <th:block th:with="vote=${room.openVote}" th:if="${room.openVote != null}">
+                            <p class="muted">
+                                <span th:text="|투표 #${vote.voteId}|">투표 #1</span> ·
+                                <span th:text="${vote.allowMultiple} ? '복수 선택' : '단일 선택'">단일 선택</span> ·
+                                <span th:text="|${vote.votedCount}/${vote.totalMembers}명 투표|">0/3명 투표</span>
+                            </p>
+                            <form method="post" data-qa-async
+                                  th:action="@{/admin/qa/rooms/{roomId}/votes/{voteId}/cast(roomId=${room.roomId},voteId=${vote.voteId})}">
+                                <th:block th:replace="~{qa/parts :: voteOptions('장소', 'placeIds', ${vote.placeOptions}, ${vote.allowMultiple})}"></th:block>
+                                <th:block th:replace="~{qa/parts :: voteOptions('시간', 'timeIds', ${vote.timeOptions}, ${vote.allowMultiple})}"></th:block>
+                                <select name="dummyId" class="qa-select" aria-label="투표할 더미">
+                                    <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
+                                            th:text="${dummy.nickname}">dummy</option>
+                                </select>
+                                <div class="btn-row qa-vote-actions">
+                                    <button class="btn sm" type="submit">이 더미로 투표</button>
+                                    <button class="btn danger sm" type="submit" data-confirm="이 더미로 투표를 마감합니다. 되돌릴 수 없습니다."
+                                            th:formaction="@{/admin/qa/rooms/{roomId}/votes/{voteId}/close(roomId=${room.roomId},voteId=${vote.voteId})}">
+                                        마감</button>
+                                </div>
+                            </form>
+                            <form method="post" data-qa-async
+                                  th:action="@{/admin/qa/rooms/{roomId}/votes/{voteId}/cast-random-all-dummies(roomId=${room.roomId},voteId=${vote.voteId})}">
+                                <button class="btn secondary sm qa-wide" type="submit">더미 모두 무작위 투표</button>
+                            </form>
+                        </th:block>
+
+                        <div class="qa-closed-votes" th:unless="${room.closedVotes.isEmpty()}">
+                            <div class="qa-vote-title">마감된 투표</div>
+                            <div class="muted" th:each="closed : ${room.closedVotes}">
+                                <span th:text="|#${closed.voteId} · ${closed.votedCount}/${closed.totalMembers}명 투표 · |">#1 · 3/3명 투표 · </span><th:block th:replace="~{qa/parts :: voteCloseReason(${closed.closedReason})}"></th:block></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script th:src="@{/admin/js/qa-forms.js}"></script>
+<script th:src="@{/admin/js/qa-live.js}"></script>
+</body>
+</html>

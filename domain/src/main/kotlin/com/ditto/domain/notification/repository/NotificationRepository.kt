@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface NotificationRepository : JpaRepository<Notification, Long>, NotificationRepositoryCustom {
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<Notification>
+
+    fun findByTypeInAndTargetIdIn(types: Collection<NotificationType>, targetIds: Collection<Long>): List<Notification>
+
     /**
      * 내 알림 단건. 남의 알림을 id로 찍어 읽음 처리하는 것을 막으려고 회원 조건을 함께 둔다 —
      * 조회 후 소유자를 비교하는 방식은 비교를 빠뜨릴 수 있다.

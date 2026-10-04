@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface IntroNoteRepository : JpaRepository<IntroNote, Long> {
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<IntroNote>
+
     fun findAllByMemberId(memberId: Long): List<IntroNote>
 
     fun findByMemberIdAndQuestion(memberId: Long, question: IntroQuestion): IntroNote?

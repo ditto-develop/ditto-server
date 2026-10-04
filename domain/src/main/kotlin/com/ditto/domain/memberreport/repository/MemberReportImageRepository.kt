@@ -5,5 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface MemberReportImageRepository : JpaRepository<MemberReportImage, Long> {
 
+    fun findByMemberReportIdIn(memberReportIds: Collection<Long>): List<MemberReportImage>
+
     fun findAllByMemberReportIdOrderByDisplayOrder(memberReportId: Long): List<MemberReportImage>
 }

@@ -39,7 +39,7 @@ class ChatMessage private constructor(
     val messageType: ChatMessageType,
 
     @Comment("메시지 내용")
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, length = MAX_CONTENT_LENGTH)
     val content: String,
 ) : BaseEntity() {
 
@@ -56,6 +56,9 @@ class ChatMessage private constructor(
     }
 
     companion object {
+        /** 텍스트 메시지 상한. 컬럼 길이이기도 하다. */
+        const val MAX_CONTENT_LENGTH = 1000
+
         fun of(
             roomId: Long,
             senderId: Long,

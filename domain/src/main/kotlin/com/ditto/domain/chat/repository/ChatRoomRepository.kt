@@ -13,6 +13,8 @@ interface ChatRoomRepository : JpaRepository<ChatRoom, Long>, ChatRoomRepository
 
     fun findBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): ChatRoom?
 
+    fun findBySourceTypeAndSourceIdIn(sourceType: ChatRoomType, sourceIds: Collection<Long>): List<ChatRoom>
+
     fun existsBySourceTypeAndSourceId(sourceType: ChatRoomType, sourceId: Long): Boolean
 
     /**

@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 
 interface GroupMatchMemberRepository : JpaRepository<GroupMatchMember, Long>, GroupMatchMemberRepositoryCustom {
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<GroupMatchMember>
+
     fun existsByRoomIdAndMemberId(roomId: Long, memberId: Long): Boolean
 
     fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): GroupMatchMember?
