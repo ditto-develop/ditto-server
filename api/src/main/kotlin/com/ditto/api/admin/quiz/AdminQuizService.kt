@@ -218,6 +218,9 @@ class AdminQuizService(
 
     fun deleteQuizSet(id: Long) = quizSetDeleter.delete(id)
 
+    @Transactional(readOnly = true)
+    fun hasMatching(quizSetId: Long): Boolean = quizSetDeleter.hasMatching(quizSetId)
+
     /**
      * 한 주차·타입의 활성 셋은 하나뿐이다. 둘이면 매칭이 어느 셋을 가리키는지 정해지지 않는다
      * (`findCompletedQuizSetInWeek`). 기존 셋을 말없이 끄지 않고 거부해, 운영 중인 셋이 실수로 닫히지 않게 한다.

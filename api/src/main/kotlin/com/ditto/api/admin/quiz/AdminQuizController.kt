@@ -65,6 +65,7 @@ class AdminQuizController(
         model.addAttribute("quizSet", adminQuizService.getQuizSet(id))
         model.addAttribute("quizzes", quizzes)
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
+        model.addAttribute("hasMatching", adminQuizService.hasMatching(id))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -124,11 +125,19 @@ class AdminQuizController(
     }
 
     @PostMapping("/admin/quiz-sets/{id}/delete")
-    fun delete(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
-        adminQuizService.deleteQuizSet(id)
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
-        return "redirect:/admin/quiz-sets"
-    }
+    fun delete(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String =
+        runCatching { adminQuizService.deleteQuizSet(id) }
+            .fold(
+                onSuccess = {
+                    redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
+                    "redirect:/admin/quiz-sets"
+                },
+                onFailure = { exception ->
+                    if (exception !is WarnException) throw exception
+                    redirectAttributes.addFlashAttribute("error", exception.message)
+                    "redirect:/admin/quiz-sets/$id"
+                },
+            )
 
     companion object {
         private const val NEW_QUIZ_ROW_COUNT = 3
