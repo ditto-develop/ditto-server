@@ -60,6 +60,7 @@ class AdminDummyController(
     @GetMapping("/admin/dummy/single")
     fun singleForm(
         @RequestParam(required = false) quizSetId: Long?,
+        @RequestParam(required = false) answersFromMemberId: Long?,
         model: Model,
         redirectAttributes: RedirectAttributes,
     ): String {
@@ -68,8 +69,14 @@ class AdminDummyController(
             return "redirect:/admin/dummy"
         }
         val formCarriedOver = (model.getAttribute(FORM) as? SingleDummyForm)?.takeIf { it.quizSetId == quizSetId }
-        val form = formCarriedOver ?: SingleDummyForm.withRandomProfile(quizSetId)
-        return showSingleForm(form, model, redirectAttributes)
+        model.addAttribute("answersFromMemberId", answersFromMemberId)
+        return showSingleForm(model, redirectAttributes) {
+            val questions = dummyAnswerRecorder.findQuestionsOf(quizSetId)
+            val form = formCarriedOver
+                ?: answersFromMemberId?.let { singleDummyCreator.formMatching(it, questions) }
+                ?: SingleDummyForm.withRandomProfile(quizSetId)
+            questions to form
+        }
     }
 
     @PostMapping("/admin/dummy/single")
@@ -90,7 +97,9 @@ class AdminDummyController(
             onFailure = { e ->
                 // 입력한 값을 잃지 않게 리다이렉트하지 않고 같은 폼을 다시 그린다.
                 model.addAttribute("error", warnOrRethrow(e).message)
-                showSingleForm(form, model, redirectAttributes)
+                showSingleForm(model, redirectAttributes) {
+                    dummyAnswerRecorder.findQuestionsOf(form.quizSetId) to form
+                }
             },
         )
 
@@ -105,10 +114,15 @@ class AdminDummyController(
         return "redirect:/admin/dummy"
     }
 
-    private fun showSingleForm(form: SingleDummyForm, model: Model, redirectAttributes: RedirectAttributes): String =
-        runCatching { dummyAnswerRecorder.findQuestionsOf(form.quizSetId) }
+    /** [questionsAndForm] 이 입력 오류로 실패하면 더미 페이지로 돌려보낸다. */
+    private fun showSingleForm(
+        model: Model,
+        redirectAttributes: RedirectAttributes,
+        questionsAndForm: () -> Pair<QuizQuestions, SingleDummyForm>,
+    ): String =
+        runCatching(questionsAndForm)
             .fold(
-                onSuccess = { questions -> renderSingleForm(model, form, questions) },
+                onSuccess = { (questions, form) -> renderSingleForm(model, form, questions) },
                 onFailure = { e ->
                     redirectAttributes.addFlashAttribute("error", warnOrRethrow(e).message)
                     "redirect:/admin/dummy"

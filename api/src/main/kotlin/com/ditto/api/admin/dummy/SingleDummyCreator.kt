@@ -6,9 +6,11 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class SingleDummyCreator(
     private val memberRepository: MemberRepository,
+    private val quizAnswerRepository: QuizAnswerRepository,
     private val dummyAnswerRecorder: DummyAnswerRecorder,
 ) {
 
@@ -29,6 +32,27 @@ class SingleDummyCreator(
         val member = save(profile)
         dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices)
         return CreatedDummy(member, answeredCount = pickedChoices.size, quizCount = questions.quizzes.size)
+    }
+
+    /**
+     * [memberId] 회원과 점수를 맞춘 더미를 만들 폼. 그 회원의 답을 그대로 채우고 성별은 반대, 나이는 같게 둔다.
+     * 1:1 은 이성끼리, 나이 차가 작은 회원만 후보가 되기 때문이다.
+     */
+    @Transactional(readOnly = true)
+    fun formMatching(memberId: Long, questions: QuizQuestions): SingleDummyForm {
+        val member = memberRepository.findByIdOrNull(memberId)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "회원 #$memberId 를 찾을 수 없습니다.")
+        val choiceIdByQuizId = quizAnswerRepository
+            .findByMemberIdAndQuizIdIn(memberId, questions.quizzes.map { it.id })
+            .associateTo(mutableMapOf<Long, Long?>()) { it.quizId to it.choiceId }
+        if (choiceIdByQuizId.isEmpty()) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "회원 #$memberId 는 이 퀴즈셋에 답한 문항이 없습니다.")
+        }
+        return SingleDummyForm.withRandomProfile(questions.quizSetId).also { form ->
+            form.gender = member.gender?.opposite() ?: form.gender
+            form.age = member.age ?: form.age
+            form.choiceIdByQuizId = choiceIdByQuizId
+        }
     }
 
     // 존재 확인과 저장 사이에 같은 닉네임이 먼저 들어오면 유일 제약에 걸린다. 같은 안내로 돌려준다.

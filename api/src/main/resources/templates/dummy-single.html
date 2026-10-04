@@ -21,6 +21,8 @@
                 · <a class="text-link" th:href="@{/admin/qa}">QA 콘솔 →</a>
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
+            <div class="alert success" th:if="${answersFromMemberId}"
+                 th:text="|회원 #${answersFromMemberId} 의 답을 불러왔습니다. 성별은 반대로, 나이는 같게 채웠습니다. 점수를 낮추려면 몇 문항만 바꾸세요.|">답을 불러왔습니다</div>
 
             <form th:object="${form}" th:action="@{/admin/dummy/single}" method="post"
                   onsubmit="return confirm('운영 환경을 포함한 모든 환경에서 실행됩니다.\n이 값으로 더미를 생성할까요?');">

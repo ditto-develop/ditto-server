@@ -62,6 +62,8 @@
                                     <th:block th:case="*">
                                         <span th:text="|${p.nickname} (#${p.memberId})|">닉네임 (#1)</span>
                                         <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
+                                        <a class="text-link" th:if="${p.answeredCount > 0}"
+                                           th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
                                     </th:block>
                                 </td>
                                 <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>

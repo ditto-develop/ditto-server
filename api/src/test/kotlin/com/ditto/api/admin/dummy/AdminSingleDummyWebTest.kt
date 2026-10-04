@@ -8,8 +8,10 @@ import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgressStatus
@@ -136,6 +138,65 @@ class AdminSingleDummyWebTest(
             mockMvc.perform(get("/admin/dummy/single").param("quizSetId", "999999").with(authentication(admin)))
                 .andExpect(redirectedUrl("/admin/dummy"))
                 .andExpect(flash().attributeExists("error"))
+        }
+    }
+
+    "회원 답으로 더미" - {
+        fun saveRealMemberWhoAnswered(setup: QuizSetSetup): Long {
+            val member = memberRepository.save(
+                MemberFixture.create(nickname = "실회원", email = "real@ditto.pics", gender = Gender.MALE, age = 33),
+            )
+            setup.choicesByOrder.forEach { choices ->
+                quizAnswerRepository.save(
+                    QuizAnswerFixture.create(
+                        memberId = member.id,
+                        quizId = choices[1].quizId,
+                        choiceId = choices[1].id,
+                    ),
+                )
+            }
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = member.id, quizSetId = setup.quizSetId, totalCount = 2)
+                    .apply { repeat(2) { recordAnswer() } },
+            )
+            return member.id
+        }
+
+        "참여 현황의 행에서 그 회원 답으로 폼을 연다" {
+            val setup = setupQuizSet()
+            val memberId = saveRealMemberWhoAnswered(setup)
+
+            mockMvc.perform(get("/admin/quiz-sets/{id}/participants", setup.quizSetId).with(authentication(admin)))
+                .andExpect(content().string(containsString("answersFromMemberId=$memberId")))
+        }
+
+        "그 회원의 답을 채우고 성별은 반대, 나이는 같게 둔다" {
+            val setup = setupQuizSet()
+            val memberId = saveRealMemberWhoAnswered(setup)
+
+            val form = mockMvc.perform(
+                get("/admin/dummy/single").param("quizSetId", setup.quizSetId.toString())
+                    .param("answersFromMemberId", memberId.toString()).with(authentication(admin)),
+            )
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString("회원 #$memberId 의 답을 불러왔습니다")))
+                .andReturn().modelAndView.shouldNotBeNull().model["form"] as SingleDummyForm
+
+            form.gender shouldBe Gender.FEMALE
+            form.age shouldBe 33
+            form.choiceIdByQuizId shouldBe setup.choicesByOrder.associate { it[1].quizId to it[1].id }
+        }
+
+        "답한 문항이 없는 회원이면 더미 페이지로 돌려보낸다" {
+            val setup = setupQuizSet()
+            val member = memberRepository.save(MemberFixture.create(nickname = "안푼회원", email = "none@ditto.pics"))
+
+            mockMvc.perform(
+                get("/admin/dummy/single").param("quizSetId", setup.quizSetId.toString())
+                    .param("answersFromMemberId", member.id.toString()).with(authentication(admin)),
+            )
+                .andExpect(redirectedUrl("/admin/dummy"))
+                .andExpect(flash().attribute("error", "회원 #${member.id} 는 이 퀴즈셋에 답한 문항이 없습니다."))
         }
     }
 
