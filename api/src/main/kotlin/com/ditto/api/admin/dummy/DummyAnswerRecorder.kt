@@ -2,11 +2,9 @@ package com.ditto.api.admin.dummy
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgress
-import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -27,7 +25,7 @@ class DummyAnswerRecorder(
     fun findQuestionsOf(quizSetId: Long): QuizQuestions {
         val quizSet = quizSetRepository.findById(quizSetId)
             .orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
-        val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id)
+        val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId)
             .ifEmpty { throw WarnException(ErrorCode.BAD_REQUEST, "문항이 없는 퀴즈셋에는 더미를 생성할 수 없습니다.") }
         val choicesByQuizId = quizChoiceRepository
             .findByQuizIdInOrderByDisplayOrderAsc(quizzes.map { it.id })
@@ -53,20 +51,4 @@ class DummyAnswerRecorder(
     private fun progressOf(memberId: Long, questions: QuizQuestions, answeredCount: Int): QuizProgress =
         QuizProgress.create(memberId, questions.quizSetId, questions.quizzes.size)
             .apply { repeat(answeredCount) { recordAnswer() } }
-}
-
-class QuizQuestions(
-    val quizSet: QuizSet,
-    val quizzes: List<Quiz>,
-    private val choicesByQuizId: Map<Long, List<QuizChoice>>,
-) {
-    val quizSetId: Long get() = quizSet.id
-
-    fun choicesOf(quiz: Quiz): List<QuizChoice> = choicesByQuizId.getValue(quiz.id)
-
-    /** 앞에서 [answeredCount]개 문항의 답을 고른다. */
-    fun pickChoices(answeredCount: Int, pick: (Quiz, List<QuizChoice>) -> QuizChoice): List<QuizChoice> =
-        quizzes.take(answeredCount).map { quiz -> pick(quiz, choicesOf(quiz)) }
-
-    fun pickAllRandomly(): List<QuizChoice> = pickChoices(quizzes.size) { _, choices -> choices.random() }
 }

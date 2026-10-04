@@ -51,23 +51,13 @@ class AdminDummyController(
                 redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미 ${created}명을 생성했습니다.")
                 redirectAttributes.addFlashAttribute("createdQuizSetId", form.quizSetId)
             }
-            .onFailure { e ->
-                // 입력값 오류(WarnException)는 화면에 안내하고, 예기치 못한 예외는 전역 핸들러로 전파한다.
-                if (e !is WarnException) throw e
-                redirectAttributes.addFlashAttribute("error", e.message)
-            }
+            .onFailure { e -> redirectAttributes.addFlashAttribute("error", warnOrRethrow(e).message) }
         return "redirect:/admin/dummy"
     }
 
     @GetMapping("/admin/dummy/single")
     fun singleForm(@RequestParam quizSetId: Long, model: Model, redirectAttributes: RedirectAttributes): String =
-        runCatching { dummyAnswerRecorder.findQuestionsOf(quizSetId) }
-            .fold(
-                onSuccess = { questions ->
-                    renderSingleForm(model, SingleDummyForm.withRandomProfile(quizSetId), questions)
-                },
-                onFailure = { e -> backToDummyPage(e, redirectAttributes) },
-            )
+        showSingleForm(SingleDummyForm.withRandomProfile(quizSetId), model, redirectAttributes)
 
     @PostMapping("/admin/dummy/single")
     fun createSingle(
@@ -83,10 +73,9 @@ class AdminDummyController(
                 "redirect:/admin/dummy/single?quizSetId=${form.quizSetId}"
             },
             onFailure = { e ->
-                if (e !is WarnException) throw e
                 // 입력한 값을 잃지 않게 리다이렉트하지 않고 같은 폼을 다시 그린다.
-                model.addAttribute("error", e.message)
-                singleFormAgain(form, model, redirectAttributes)
+                model.addAttribute("error", warnOrRethrow(e).message)
+                showSingleForm(form, model, redirectAttributes)
             },
         )
 
@@ -101,11 +90,14 @@ class AdminDummyController(
         return "redirect:/admin/dummy"
     }
 
-    private fun singleFormAgain(form: SingleDummyForm, model: Model, redirectAttributes: RedirectAttributes): String =
+    private fun showSingleForm(form: SingleDummyForm, model: Model, redirectAttributes: RedirectAttributes): String =
         runCatching { dummyAnswerRecorder.findQuestionsOf(form.quizSetId) }
             .fold(
                 onSuccess = { questions -> renderSingleForm(model, form, questions) },
-                onFailure = { e -> backToDummyPage(e, redirectAttributes) },
+                onFailure = { e ->
+                    redirectAttributes.addFlashAttribute("error", warnOrRethrow(e).message)
+                    "redirect:/admin/dummy"
+                },
             )
 
     private fun renderSingleForm(model: Model, form: SingleDummyForm, questions: QuizQuestions): String {
@@ -116,15 +108,16 @@ class AdminDummyController(
         model.addAttribute("jobs", Job.entries)
         model.addAttribute("interests", Interest.entries)
         model.addAttribute("avatarNumbers", 1..DummyMemberFactory.CARICATURE_COUNT_PER_GENDER)
+        model.addAttribute("ageRange", DummyMemberFactory.AGE_RANGE)
+        model.addAttribute("interestCountRange", DummyMemberFactory.INTEREST_COUNT_RANGE)
+        model.addAttribute("nicknamePrefix", DummyMarker.NICKNAME_PREFIX)
+        model.addAttribute("nicknameSuffixMaxLength", DummyMemberFactory.NICKNAME_SUFFIX_MAX_LENGTH)
         model.addAttribute("active", "dummy")
         return "dummy-single"
     }
 
-    private fun backToDummyPage(exception: Throwable, redirectAttributes: RedirectAttributes): String {
-        if (exception !is WarnException) throw exception
-        redirectAttributes.addFlashAttribute("error", exception.message)
-        return "redirect:/admin/dummy"
-    }
+    /** 입력 오류(WarnException)는 화면에 안내하고, 예기치 못한 예외는 전역 핸들러로 넘긴다. */
+    private fun warnOrRethrow(exception: Throwable): WarnException = exception as? WarnException ?: throw exception
 
     companion object {
         private val log = KotlinLogging.logger {}

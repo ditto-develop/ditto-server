@@ -26,8 +26,8 @@
                     <div class="field">
                         <label>닉네임</label>
                         <div class="dummy-nickname">
-                            <span class="muted">dummy-</span>
-                            <input type="text" th:field="*{nicknameSuffix}" maxlength="20" placeholder="비우면 자동 생성"/>
+                            <span class="muted" th:text="${nicknamePrefix}">dummy-</span>
+                            <input type="text" th:field="*{nicknameSuffix}" th:maxlength="${nicknameSuffixMaxLength}" placeholder="비우면 자동 생성"/>
                         </div>
                     </div>
                     <div class="field-row">
@@ -36,11 +36,11 @@
                             <div class="dummy-options">
                                 <label class="check" th:each="g : ${genders}">
                                     <input type="radio" th:field="*{gender}" th:value="${g}"/>
-                                    <span th:text="${g.name() == 'MALE'} ? '남' : '여'">남</span>
+                                    <span th:text="${g.description}">남성</span>
                                 </label>
                             </div>
                         </div>
-                        <div class="field"><label>나이</label><input type="number" th:field="*{age}" min="20" max="100"/></div>
+                        <div class="field"><label>나이</label><input type="number" th:field="*{age}" th:min="${ageRange.first}" th:max="${ageRange.last}"/></div>
                         <div class="field">
                             <label>캐리커쳐</label>
                             <select th:field="*{avatarNumber}">
@@ -64,7 +64,7 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label>관심사 (1~5개)</label>
+                        <label th:text="|관심사 (${interestCountRange.first}~${interestCountRange.last}개)|">관심사</label>
                         <div class="dummy-options">
                             <label class="check" th:each="i : ${interests}">
                                 <input type="checkbox" th:field="*{interests}" th:value="${i}"/>

@@ -13,6 +13,13 @@ object DummyMemberFactory {
     const val CARICATURE_COUNT_PER_GENDER = 8
     val INTEREST_COUNT_RANGE = 1..5
 
+    // 실회원 가입 검증(CreateUserRequest)과 같은 범위다.
+    val AGE_RANGE = 20..100
+
+    // 실회원 닉네임 규칙보다 넓게 '-'와 20자까지 허용한다. 접두어를 붙여도 컬럼 길이(50) 안이다.
+    const val NICKNAME_SUFFIX_MAX_LENGTH = 20
+    val NICKNAME_SUFFIX_PATTERN = Regex("^[a-zA-Z0-9가-힣-]{1,$NICKNAME_SUFFIX_MAX_LENGTH}$")
+
     private const val EMAIL_DOMAIN = "dummy.local"
 
     // FE 가입 화면이 고르는 아바타 경로와 같은 형식이다. FE가 이 경로를 바꾸면 함께 고쳐야 한다.
@@ -36,8 +43,10 @@ object DummyMemberFactory {
             )
         }
 
+    fun nicknameOf(suffix: String): String = DummyMarker.NICKNAME_PREFIX + suffix
+
     fun autoNickname(gender: Gender): String =
-        "${DummyMarker.NICKNAME_PREFIX}${gender.name.lowercase()}-${UUID.randomUUID().toString().take(8)}"
+        nicknameOf("${gender.name.lowercase()}-${UUID.randomUUID().toString().take(8)}")
 
     fun caricatureOf(gender: Gender, avatarNumber: Int): String {
         val genderInitial = when (gender) {
