@@ -29,6 +29,11 @@ class QaRoomView(
     val messages: List<QaRoomMessage>,
 ) {
     val activeDummies: List<QaMember> = members.filter { it.dummy && !it.left }.map { it.member }
+
+    /** 그룹은 한 명이 나가도 방이 이어지고, 두 사람 방은 나가는 것이 곧 종료다. */
+    val group: Boolean = sourceType == ChatRoomType.GROUP
+
+    val ended: Boolean = status == ChatRoomStatus.ENDED
 }
 
 class QaRoomMember(

@@ -7,7 +7,9 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessage
+import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
@@ -21,6 +23,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
@@ -233,6 +236,51 @@ class AdminQaRoomWebTest(
 
             mockMvc.perform(post("/admin/qa/dummies/{dummyId}/rooms/{roomId}/read", dummy.id, room.id).asAdmin())
                 .andExpect(flash().attribute("error", containsString("읽을 메시지가 없습니다")))
+        }
+    }
+
+    "나가기·종료" - {
+        val dummyRoomUrl = "/admin/qa/dummies/{dummyId}/rooms/{roomId}"
+
+        "그룹 방에서 더미가 나가면 방은 이어지고 MEMBER_LEFT가 남는다" {
+            val tester = saveMember("테스터")
+            val leaving = saveMember("dummy-male-aaaa")
+            val room = saveRoom(ChatRoomFixture.group(), listOf(tester, leaving, saveMember("dummy-female-bbbb")))
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(status().isOk)
+
+            mockMvc.perform(post("$dummyRoomUrl/leave", leaving.id, room.id).asAdmin())
+                .andExpect(flash().attributeExists("message"))
+
+            chatRoomRepository.findByIdOrNull(room.id)?.isEnded shouldBe false
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, leaving.id)?.hasLeft shouldBe true
+            messagesIn(room).last().let {
+                it.messageType shouldBe ChatMessageType.SYSTEM
+                it.content shouldBe "MEMBER_LEFT"
+                it.senderId shouldBe leaving.id
+            }
+        }
+
+        "그룹 방에 한 명만 남으면 방이 해체된다" {
+            val leaving = saveMember("dummy-male-aaaa")
+            val room = saveRoom(ChatRoomFixture.group(), listOf(saveMember("테스터"), leaving))
+
+            mockMvc.perform(post("$dummyRoomUrl/leave", leaving.id, room.id).asAdmin())
+                .andExpect(flash().attributeExists("message"))
+
+            chatRoomRepository.findByIdOrNull(room.id)?.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+            messagesIn(room).last().content shouldBe "INSUFFICIENT_MEMBERS"
+        }
+
+        "1:1 방에서 더미가 종료하면 방이 끝나고 USER_LEFT가 남는다" {
+            val dummy = saveMember("dummy-female-aaaa")
+            val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))
+
+            mockMvc.perform(post("$dummyRoomUrl/end", dummy.id, room.id).asAdmin())
+                .andExpect(flash().attributeExists("message"))
+
+            chatRoomRepository.findByIdOrNull(room.id)?.endReason shouldBe ChatEndReason.USER_ENDED
+            messagesIn(room).last().content shouldBe "USER_LEFT"
         }
     }
 })

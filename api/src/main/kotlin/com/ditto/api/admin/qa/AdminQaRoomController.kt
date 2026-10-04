@@ -78,6 +78,30 @@ class AdminQaRoomController(
         return roomRedirect(roomId)
     }
 
+    @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave")
+    fun leaveAsDummy(
+        @PathVariable dummyId: Long,
+        @PathVariable roomId: Long,
+        redirectAttributes: RedirectAttributes,
+    ): String {
+        redirectAttributes.reportDummyAction("더미 #$dummyId · 방 #$roomId 나가기") {
+            chatController.leave(qaDummies.principalOf(dummyId), roomId)
+        }
+        return roomRedirect(roomId)
+    }
+
+    @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/end")
+    fun endAsDummy(
+        @PathVariable dummyId: Long,
+        @PathVariable roomId: Long,
+        redirectAttributes: RedirectAttributes,
+    ): String {
+        redirectAttributes.reportDummyAction("더미 #$dummyId · 방 #$roomId 종료") {
+            chatController.end(qaDummies.principalOf(dummyId), roomId)
+        }
+        return roomRedirect(roomId)
+    }
+
     private fun readLatest(dummyId: Long, roomId: Long) {
         val latestMessageId = adminQaRoomService.findLatestMessageId(roomId)
             ?: throw WarnException(ErrorCode.BAD_REQUEST, "읽을 메시지가 없습니다.")

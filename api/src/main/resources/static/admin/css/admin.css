@@ -510,6 +510,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     border-bottom: 1px solid var(--border);
 }
 .qa-member .muted { font-size: 12px; }
+.qa-member-actions { display: flex; gap: 6px; flex: none; }
 .qa-member.left b { color: var(--text-muted); text-decoration: line-through; }
 .qa-wide { width: 100%; justify-content: center; margin-top: 12px; }
 

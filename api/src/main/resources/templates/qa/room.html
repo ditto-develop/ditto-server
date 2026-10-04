@@ -94,11 +94,24 @@
                                  th:text="${roomMember.lastReadMessageId != null} ? |읽음 #${roomMember.lastReadMessageId}| : '읽음 없음'">
                                 읽음 #1042</div>
                         </div>
-                        <form class="inline-form" method="post" data-qa-async
-                              th:if="${roomMember.dummy and !roomMember.left}"
-                              th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/read(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
-                            <button class="btn secondary sm" type="submit">읽음</button>
-                        </form>
+                        <div class="qa-member-actions" th:if="${roomMember.dummy and !roomMember.left}">
+                            <form class="inline-form" method="post" data-qa-async
+                                  th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/read(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                <button class="btn secondary sm" type="submit">읽음</button>
+                            </form>
+                            <form class="inline-form" method="post" data-qa-async
+                                  th:if="${room.group and !room.ended}"
+                                  th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 방을 나갑니다. 되돌릴 수 없습니다.|"
+                                  th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                <button class="btn danger sm" type="submit">나가기</button>
+                            </form>
+                            <form class="inline-form" method="post" data-qa-async
+                                  th:if="${!room.group and !room.ended}"
+                                  th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 채팅을 종료합니다. 되돌릴 수 없습니다.|"
+                                  th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/end(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
+                                <button class="btn danger sm" type="submit">종료</button>
+                            </form>
+                        </div>
                     </div>
                     <form method="post" data-qa-async th:unless="${room.activeDummies.isEmpty()}"
                           th:action="@{/admin/qa/rooms/{id}/read-all-dummies(id=${room.roomId})}">
