@@ -83,10 +83,9 @@ class EndedChatRoomLoader(
     private fun findWeekStartedOnByQuizSetId(quizSetIds: Collection<Long>): Map<Long, LocalDate> =
         quizSetRepository.findAllById(quizSetIds).associate { it.id to it.weekStartedOn }
 
-    // 이탈자는 평가·재매칭 대상이 아니다(확정 정책) — 여기서 걸러지면 평가 대상과 재매칭 쌍 조합이 함께 좁혀진다.
+    // 나간 사람도 넣는다. 평가 대상과 재매칭 쌍이 모두 이 명단에서 나온다.
     private fun findParticipantIdsByRoomId(rooms: List<ChatRoom>): Map<Long, List<Long>> =
         chatRoomMemberRepository.findByRoomIdIn(rooms.map { it.id })
-            .filter { !it.hasLeft }
             .groupBy({ it.roomId }, { it.memberId })
 
     /**

@@ -111,14 +111,13 @@ class MemberReviewRepositoryTest(
 
         "given: 인원 미달로 해체된 그룹 방일 때" - {
             "when: 조회하면" - {
-                // 해체 방은 정의상 남은 사람이 1명뿐이라 평가가 영원히 열리지 않는다(2명 미만은 열지 않음).
-                // 재매칭 방과 같은 이유로 빼지 않으면 배치 앞자리를 영구 점유한다.
-                "then: 대상에서 빠진다" {
+                // 해체 방도 나간 사람까지 평가가 열리니 복구 대상이다.
+                "then: 대상이다" {
                     val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 600L, now = FRIDAY))
                     room.endByInsufficientMembers(AFTER_EXPIRY)
                     chatRoomRepository.save(room)
 
-                    memberReviewRepository.findEndedChatRoomIdsWithoutReview(100).size shouldBe 0
+                    memberReviewRepository.findEndedChatRoomIdsWithoutReview(100) shouldBe listOf(room.id)
                 }
             }
         }

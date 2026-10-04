@@ -172,8 +172,7 @@ class EndedChatReviewOpenerTest(
                 setOf(MEMBER_A to MEMBER_B, MEMBER_A to MEMBER_C, MEMBER_B to MEMBER_C)
         }
 
-        // 인원 미달 해체 방은 남은 사람이 1명뿐이라 평가가 성립하지 않는다(2명 미만은 열지 않음).
-        "인원 미달로 해체된 방은 평가도 재매칭 쌍도 만들지 않는다" {
+        "인원 미달로 해체된 방도 나간 사람까지 평가와 재매칭 쌍을 만든다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             val match = groupMatchRepository.save(
                 GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3),
@@ -189,13 +188,12 @@ class EndedChatReviewOpenerTest(
 
             endedChatReviewOpener.openFor(listOf(room.id))
 
-            memberReviewRepository.findAll().size shouldBe 0
-            rematchRepository.findAll().size shouldBe 0
+            memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe
+                setOf(MEMBER_A, MEMBER_B, MEMBER_C)
+            rematchRepository.findAll().size shouldBe 3
         }
 
-        // 이탈자는 평가·재매칭 대상이 아니다(#142 확정 정책) — 포함하면 나간 사람에게 평가 화면이 열리고
-        // 이탈자와의 재매칭이 성사될 수 있다. 대상 명단이 한 곳(EndedChatRoomLoader)에서 걸러지므로 둘이 함께 좁혀진다.
-        "이탈한 멤버는 평가와 재매칭 쌍에서 함께 빠진다" {
+        "나간 멤버도 평가하고 평가받으며 재매칭 쌍에 들어간다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())
             val match = groupMatchRepository.save(
                 GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3),
@@ -211,9 +209,10 @@ class EndedChatReviewOpenerTest(
 
             endedChatReviewOpener.openFor(listOf(room.id))
 
-            memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe setOf(MEMBER_A, MEMBER_B)
-            val pair = rematchRepository.findAll().single()
-            (pair.memberId1 to pair.memberId2) shouldBe (MEMBER_A to MEMBER_B)
+            memberReviewRepository.findAll().map { it.authorMemberId }.toSet() shouldBe
+                setOf(MEMBER_A, MEMBER_B, MEMBER_C)
+            rematchRepository.findAll().map { it.memberId1 to it.memberId2 }.toSet() shouldBe
+                setOf(MEMBER_A to MEMBER_B, MEMBER_A to MEMBER_C, MEMBER_B to MEMBER_C)
         }
 
         "다시 열어도 쌍이 늘지 않는다(멱등)" {

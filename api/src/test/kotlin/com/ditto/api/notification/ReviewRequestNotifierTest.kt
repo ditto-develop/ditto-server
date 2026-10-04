@@ -60,8 +60,7 @@ class ReviewRequestNotifierTest(
                 "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
         }
 
-        // 이탈자는 평가 대상이 아니다 — 알리면 평가할 상대가 없는 화면으로 보낸다.
-        "방을 나간 멤버는 받지도 않고 남의 문구 인원에도 세지 않는다" {
+        "방을 나간 멤버도 받고 다른 사람 문구의 인원에도 들어간다" {
             val me = saveMember("나")
             val other = saveMember("남은멤버")
             val leaver = saveMember("나간사람")
@@ -74,24 +73,32 @@ class ReviewRequestNotifierTest(
                     .apply { leave(ChatRoomFixture.DEFAULT_NOW.plusDays(1)) },
             )
 
-            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 2
+            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 3
 
-            notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(me.id, other.id)
-            // 문구의 상대 집계에서도 이탈자가 빠진다 — 상대가 1명으로 줄면 닉네임 문구로 내려간다
+            notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(me.id, other.id, leaver.id)
             notificationRepository.findAll().single { it.memberId == me.id }.body shouldBe
-                "남은멤버님과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+                "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
         }
 
-        // 인원 미달 해체 방은 잔여 1명이라 평가가 열리지 않는다 — 알리면 평가할 것이 없는 화면으로 보낸다.
-        "잔여 인원이 평가 최소(2명) 미만인 방에는 알리지 않는다" {
+        "인원 미달로 해체된 방은 남은 사람과 나간 사람 모두 받는다" {
             val survivor = saveMember("남은사람")
-            val leaver = saveMember("나간사람")
+            val leavers = listOf(saveMember("나간사람1"), saveMember("나간사람2"))
             val room = chatRoomRepository.save(ChatRoomFixture.group())
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = survivor.id))
-            chatRoomMemberRepository.save(
-                ChatRoomMemberFixture.create(roomId = room.id, memberId = leaver.id)
-                    .apply { leave(ChatRoomFixture.DEFAULT_NOW.plusDays(1)) },
-            )
+            leavers.forEach {
+                chatRoomMemberRepository.save(
+                    ChatRoomMemberFixture.create(roomId = room.id, memberId = it.id)
+                        .apply { leave(ChatRoomFixture.DEFAULT_NOW.plusDays(1)) },
+                )
+            }
+
+            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 3
+        }
+
+        "참여자가 평가 최소(2명) 미만인 방에는 알리지 않는다" {
+            val alone = saveMember("혼자")
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = alone.id))
 
             reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 0
 
