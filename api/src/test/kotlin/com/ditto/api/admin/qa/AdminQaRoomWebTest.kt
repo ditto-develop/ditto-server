@@ -3,6 +3,7 @@ package com.ditto.api.admin.qa
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.admin.qa.dto.QaRoomSummary
 import com.ditto.api.admin.qa.dto.QaRoomView
+import com.ditto.api.admin.qa.dto.QaVote
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
@@ -72,6 +73,21 @@ class AdminQaRoomWebTest(
 
     fun messagesIn(room: ChatRoom): List<ChatMessage> =
         chatMessageRepository.findByRoomIdWithCursor(room.id, cursor = null, size = 100).reversed()
+
+    /** 실회원 한 명과 [actor], 다른 더미 한 명이 있는 그룹 방. */
+    fun saveGroupRoomWith(actor: Member): ChatRoom =
+        saveRoom(ChatRoomFixture.group(), listOf(saveMember("테스터"), actor, saveMember("dummy-female-bbbb")))
+
+    fun roomView(room: ChatRoom): QaRoomView =
+        mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+            .andExpect(status().isOk)
+            .andReturn().modelAndView.shouldNotBeNull().model["room"] as QaRoomView
+
+    fun createSampleVote(room: ChatRoom, creator: Member): QaVote {
+        mockMvc.perform(post("/admin/qa/rooms/{id}/votes", room.id).param("dummyId", creator.id.toString()).asAdmin())
+            .andExpect(flash().attributeExists("message"))
+        return roomView(room).openVote.shouldNotBeNull()
+    }
 
     fun lastReadMessageIdOf(room: ChatRoom, member: Member): Long? =
         chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, member.id)?.lastReadMessageId
@@ -281,6 +297,82 @@ class AdminQaRoomWebTest(
 
             chatRoomRepository.findByIdOrNull(room.id)?.endReason shouldBe ChatEndReason.USER_ENDED
             messagesIn(room).last().content shouldBe "USER_LEFT"
+        }
+    }
+
+    "투표" - {
+        "더미가 샘플 투표를 만들면 열린 투표와 VOTE_CREATED가 남는다" {
+            val creator = saveMember("dummy-male-aaaa")
+            val room = saveGroupRoomWith(creator)
+
+            val vote = createSampleVote(room, creator)
+
+            vote.placeOptions shouldHaveSize 3
+            vote.timeOptions shouldHaveSize 2
+            messagesIn(room).last().let {
+                it.content shouldBe "VOTE_CREATED:${vote.voteId}"
+                it.senderId shouldBe creator.id
+            }
+        }
+
+        "더미가 고른 선택지로 투표한다" {
+            val voter = saveMember("dummy-male-aaaa")
+            val room = saveGroupRoomWith(voter)
+            val vote = createSampleVote(room, voter)
+            val place = vote.placeOptions[1]
+            val time = vote.timeOptions[0]
+
+            mockMvc.perform(
+                post("/admin/qa/rooms/{roomId}/votes/{voteId}/cast", room.id, vote.voteId)
+                    .param("dummyId", voter.id.toString())
+                    .param("placeIds", place.optionId.toString())
+                    .param("timeIds", time.optionId.toString())
+                    .asAdmin(),
+            ).andExpect(flash().attributeExists("message"))
+
+            val updated = roomView(room).openVote.shouldNotBeNull()
+            updated.votedCount shouldBe 1
+            updated.placeOptions[1].voters.map { it.id } shouldBe listOf(voter.id)
+            updated.timeOptions[0].voters.map { it.id } shouldBe listOf(voter.id)
+        }
+
+        "더미 모두 무작위 투표하면 나가지 않은 더미가 모두 투표한다" {
+            val dummies = listOf("dummy-male-aaaa", "dummy-female-bbbb").map { saveMember(it) }
+            val room = saveRoom(ChatRoomFixture.group(), dummies + saveMember("테스터"))
+            val vote = createSampleVote(room, dummies.first())
+
+            mockMvc.perform(
+                post("/admin/qa/rooms/{roomId}/votes/{voteId}/cast-random-all-dummies", room.id, vote.voteId).asAdmin(),
+            ).andExpect(flash().attributeExists("message"))
+
+            val updated = roomView(room).openVote.shouldNotBeNull()
+            updated.votedCount shouldBe 2
+            updated.placeOptions.sumOf { it.voters.size } shouldBe 2
+        }
+
+        "더미가 투표를 마감하면 VOTE_CLOSED가 남는다" {
+            val closer = saveMember("dummy-male-aaaa")
+            val room = saveGroupRoomWith(closer)
+            val vote = createSampleVote(room, closer)
+
+            mockMvc.perform(
+                post("/admin/qa/rooms/{roomId}/votes/{voteId}/close", room.id, vote.voteId)
+                    .param("dummyId", closer.id.toString())
+                    .asAdmin(),
+            ).andExpect(flash().attributeExists("message"))
+
+            val view = roomView(room)
+            view.openVote shouldBe null
+            view.closedVotes.single().voteId shouldBe vote.voteId
+            messagesIn(room).last().content shouldBe "VOTE_CLOSED:${vote.voteId}"
+        }
+
+        "1:1 방에서는 앱과 같은 거부를 보여준다" {
+            val dummy = saveMember("dummy-male-aaaa")
+            val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))
+
+            mockMvc.perform(post("/admin/qa/rooms/{id}/votes", room.id).param("dummyId", dummy.id.toString()).asAdmin())
+                .andExpect(flash().attribute("error", containsString("(8208)")))
         }
     }
 })

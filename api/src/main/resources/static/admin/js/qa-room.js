@@ -17,10 +17,12 @@
     }
 
     // 스크롤을 올려 지난 대화를 보는 중이면 갱신이 바닥으로 끌어내리지 않는다.
-    function swapLiveRegions(doc) {
+    // 주기 갱신은 사용자가 고르던 영역(투표 체크 등)을 건너뛴다. 제출하면 다시 갱신된다.
+    function swapLiveRegions(doc, { fromPolling = false } = {}) {
         const current = timeline();
         const stickToBottom = !current || isNearBottom(current);
         document.querySelectorAll('[data-qa-live]').forEach((region) => {
+            if (fromPolling && region.dataset.editing === 'true') return;
             const next = doc.getElementById(region.id);
             if (next) region.replaceWith(next);
         });
@@ -43,7 +45,9 @@
         try {
             const response = await fetch(window.location.pathname, { credentials: 'same-origin' });
             // 세션이 끝나 로그인으로 넘어간 응답은 버린다.
-            if (response.ok && !response.redirected) swapLiveRegions(parse(await response.text()));
+            if (response.ok && !response.redirected) {
+                swapLiveRegions(parse(await response.text()), { fromPolling: true });
+            }
         } catch (ignored) {
             // 다음 주기에 다시 시도한다.
         } finally {
@@ -55,17 +59,26 @@
         form.querySelectorAll('button').forEach((button) => { button.disabled = disabled; });
     }
 
+    document.addEventListener('change', (event) => {
+        const region = event.target.closest('[data-qa-live]');
+        if (region) region.dataset.editing = 'true';
+    });
+
+    // 버튼마다 다른 엔드포인트(formaction)와 확인 문구(data-confirm)를 둘 수 있다.
     document.addEventListener('submit', async (event) => {
         const form = event.target;
         if (!form.matches('form[data-qa-async]')) return;
         event.preventDefault();
-        if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) return;
+        const submitter = event.submitter;
+        const confirmMessage = submitter?.dataset.confirm || form.dataset.confirm;
+        if (confirmMessage && !window.confirm(confirmMessage)) return;
 
-        const body = new FormData(form, event.submitter);
+        const body = new FormData(form, submitter);
+        const action = submitter?.hasAttribute('formaction') ? submitter.formAction : form.action;
         busy = true;
         setButtonsDisabled(form, true);
         try {
-            const response = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin' });
+            const response = await fetch(action, { method: 'POST', body, credentials: 'same-origin' });
             const doc = parse(await response.text());
             swapAlerts(doc);
             swapLiveRegions(doc);

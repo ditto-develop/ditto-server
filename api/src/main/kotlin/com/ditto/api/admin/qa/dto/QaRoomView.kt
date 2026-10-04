@@ -4,6 +4,7 @@ import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.entity.ChatVoteCloseReason
 import java.time.LocalDateTime
 
 /** 콘솔 목록의 한 줄. 인원은 나가지 않은 사람만 센다. */
@@ -27,6 +28,7 @@ class QaRoomView(
     val endReason: ChatEndReason?,
     val members: List<QaRoomMember>,
     val messages: List<QaRoomMessage>,
+    val votes: List<QaVote>,
 ) {
     val activeDummies: List<QaMember> = members.filter { it.dummy && !it.left }.map { it.member }
 
@@ -34,6 +36,10 @@ class QaRoomView(
     val group: Boolean = sourceType == ChatRoomType.GROUP
 
     val ended: Boolean = status == ChatRoomStatus.ENDED
+
+    val openVote: QaVote? = votes.firstOrNull { it.open }
+
+    val closedVotes: List<QaVote> = votes.filterNot { it.open }
 }
 
 class QaRoomMember(
@@ -54,3 +60,21 @@ class QaRoomMessage(
 ) {
     val system: Boolean = messageType == ChatMessageType.SYSTEM
 }
+
+/** 그룹 만남 투표. 투표자는 나가지 않은 멤버만 센다(앱 집계와 같다). */
+class QaVote(
+    val voteId: Long,
+    val open: Boolean,
+    val allowMultiple: Boolean,
+    val votedCount: Int,
+    val totalMembers: Int,
+    val closedReason: ChatVoteCloseReason?,
+    val placeOptions: List<QaVoteOption>,
+    val timeOptions: List<QaVoteOption>,
+)
+
+class QaVoteOption(
+    val optionId: Long,
+    val label: String,
+    val voters: List<QaMember>,
+)
