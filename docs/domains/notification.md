@@ -10,7 +10,7 @@
 - `Notification` — 알림 한 행. **수신자 1명당 1행**이다(같은 사건이라도 받는 사람마다 문구가 다르고 읽음도 따로다).
 - `NotificationType` — 알림 유형. 카테고리·`target_id`의 대상·중복 정책을 이 enum이 정한다.
 - `NotificationCategory` — 화면 필터 칩(`MATCHING`/`CHAT`/`SYSTEM`). **컬럼이 아니라 유형에서 파생**된다. "전체" 칩은 값이 아니라 필터 없음이다.
-- `NotificationTarget` — `target_id`가 가리키는 대상 종류(`CHAT_ROOM`·`PERSONAL_MATCH` 등). 유형마다 `NotificationType.target`으로 하나씩 정한다. 아래 표의 `target_id` 열과 같은 정보를 코드가 판단에 쓸 수 있게 둔 것이다. 대상이 지워질 때 그 대상을 가리키는 알림을 고르는 기준이다(`NotificationType.pointingTo`, 어드민 더미 정리가 쓴다). 알림 목록이 deepLink 대상을 종류별로 묶어 조회하는 기준이기도 하다. 새 유형을 추가하면 생성자 인자라 빠뜨릴 수 없다.
+- `NotificationTarget` — `target_id`가 가리키는 대상 종류(`CHAT_ROOM`·`PERSONAL_MATCH` 등). 유형마다 `NotificationType.target`으로 하나씩 정한다. 아래 표의 `target_id` 열과 같은 정보를 코드가 판단에 쓸 수 있게 둔 것이다. 대상이 지워질 때 그 대상을 가리키는 알림을 고르는 기준이다(`NotificationType.pointingTo`, 어드민 더미 정리가 쓴다). 새 유형을 추가하면 생성자 인자라 빠뜨릴 수 없다.
 - `DuplicatePolicy` — 같은 대상에 다시 발생했을 때의 처리(`ALLOW`/`ONCE_PER_TARGET`/`COLLAPSE_UNREAD`).
 - `NotificationAppender` — 알림을 남기는 유일한 입구. 실패를 삼킨다.
 - `NotificationWriter` — 실제 저장. `REQUIRES_NEW`로 자기 트랜잭션에서 커밋한다.
@@ -101,7 +101,7 @@
   푸시와 어긋나고, 방 목록에 없는 방(나간 방)은 찾지 못하기 때문이다. 유형마다 갈 화면의 종류는
   `NotificationType.deepLinkTarget`(domain `DeepLinkTarget`)이 정하고, 실제 경로 문자열은 api 의 `NotificationDeepLinks`가 만든다.
   목록은 한 페이지의 대상을 종류별(방, 퀴즈셋, 재매칭 쌍)로 한 번씩만 조회한다. 대상을 읽을지는
-  `DeepLinkTarget.readsTarget`이, 그 종류는 `NotificationType.target`이 정한다. 화면과 `target`이 엇갈리면(방 화면인데 대상이 1:1 매칭 등)
+  `DeepLinkTarget.readsTargetRow`가, 그 종류는 `NotificationType.target`이 정한다. 화면과 `target`이 엇갈리면(방 화면인데 대상이 1:1 매칭 등)
   `NotificationDeepLinksTest`의 단건/일괄 일치 검사가 깨진다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.

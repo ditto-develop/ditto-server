@@ -119,11 +119,15 @@ class NotificationDeepLinksTest : FreeSpec({
     "조회가 필요 없는 유형만 있으면 아무것도 조회하지 않는다" {
         val matchRequest = notification(NotificationType.MATCH_REQUESTED, targetId = 1L)
         val quizOpened = notification(NotificationType.QUIZ_OPENED, targetId = 2L)
+        val groupFormed = notification(NotificationType.GROUP_FORMED, targetId = 3L)
 
-        val deepLinkById = notificationDeepLinks.deepLinksByNotificationId(listOf(matchRequest, quizOpened))
+        val deepLinkById = notificationDeepLinks.deepLinksByNotificationId(
+            listOf(matchRequest, quizOpened, groupFormed),
+        )
 
         deepLinkById[matchRequest.id] shouldBe "/matching/"
         deepLinkById[quizOpened.id] shouldBe "/quiz/current/"
+        deepLinkById[groupFormed.id] shouldBe "/chat/group/3/"
         verify(exactly = 0) { chatRoomRepository.findAllById(any<Iterable<Long>>()) }
         verify(exactly = 0) { quizSetRepository.findAllById(any<Iterable<Long>>()) }
         verify(exactly = 0) { rematchRepository.findAllById(any<Iterable<Long>>()) }

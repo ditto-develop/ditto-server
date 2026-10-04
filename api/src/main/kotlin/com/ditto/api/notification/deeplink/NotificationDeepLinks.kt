@@ -74,18 +74,18 @@ class NotificationDeepLinks(
     )
 
     private fun batchLookup(notifications: List<Notification>): TargetLookup {
-        val targetIdsByTarget = notifications
-            .filter { it.type.deepLinkTarget.readsTarget }
+        val targetIdsByKind = notifications
+            .filter { it.type.deepLinkTarget.readsTargetRow }
             .mapNotNull { notification -> notification.targetId?.let { notification.type.target to it } }
             .groupBy({ (target, _) -> target }, { (_, targetId) -> targetId })
 
-        val chatRoomTypeById = targetIdsByTarget[NotificationTarget.CHAT_ROOM]
+        val chatRoomTypeById = targetIdsByKind[NotificationTarget.CHAT_ROOM]
             ?.let { ids -> chatRoomRepository.findAllById(ids.distinct()).associate { it.id to it.sourceType } }
             .orEmpty()
-        val matchingTypeByQuizSetId = targetIdsByTarget[NotificationTarget.QUIZ_SET]
+        val matchingTypeByQuizSetId = targetIdsByKind[NotificationTarget.QUIZ_SET]
             ?.let { ids -> quizSetRepository.findAllById(ids.distinct()).associate { it.id to it.matchingType } }
             .orEmpty()
-        val sourceChatRoomIdByRematchId = targetIdsByTarget[NotificationTarget.REMATCH]
+        val sourceChatRoomIdByRematchId = targetIdsByKind[NotificationTarget.REMATCH]
             ?.let { ids -> rematchRepository.findAllById(ids.distinct()).associate { it.id to it.sourceChatRoomId } }
             .orEmpty()
 
