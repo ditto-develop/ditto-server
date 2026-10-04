@@ -24,16 +24,19 @@ class DummyMemberDataCleaner(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val introNoteRepository: IntroNoteRepository,
 ) {
-    /** 더미가 신고했거나 신고당한 건과 그에 딸린 제재. 지운 id 는 그것을 가리키는 알림을 지우는 데 쓴다. */
-    fun deleteReportsAndSanctionsWith(dummyIds: Collection<Long>): DeletedReportIds {
-        val reportIds = memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds).map { it.id }
-        val sanctionIds = sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds).map { it.id }
-        val imageIds = memberReportImageRepository.findByMemberReportIdIn(reportIds).map { it.id }
+    /** 더미가 신고했거나 신고당한 건. */
+    fun findReportIdsWith(dummyIds: Collection<Long>): Set<Long> =
+        memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds).map { it.id }.toSet()
 
+    /** 더미가 받은 제재와, 지울 신고에서 나온 제재. */
+    fun findSanctionIdsWith(dummyIds: Collection<Long>, reportIds: Collection<Long>): Set<Long> =
+        sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds).map { it.id }.toSet()
+
+    fun deleteReportsAndSanctions(reportIds: Collection<Long>, sanctionIds: Collection<Long>) {
+        val imageIds = memberReportImageRepository.findByMemberReportIdIn(reportIds).map { it.id }
         memberReportImageRepository.deleteAllByIdInBatch(imageIds)
         memberReportRepository.deleteAllByIdInBatch(reportIds)
         sanctionRepository.deleteAllByIdInBatch(sanctionIds)
-        return DeletedReportIds(reportIds = reportIds.toSet(), sanctionIds = sanctionIds.toSet())
     }
 
     /** 차단·알림 설정·닉네임 예약·기기·리프레시 토큰·소개노트. */
@@ -44,13 +47,11 @@ class DummyMemberDataCleaner(
         memberNotificationSettingRepository.deleteAllByIdInBatch(settingIds)
         val reservationIds = nicknameReservationRepository.findByMemberIdIn(dummyIds).map { it.id }
         nicknameReservationRepository.deleteAllByIdInBatch(reservationIds)
-        memberDeviceRepository.deleteAllByIdInBatch(memberDeviceRepository.findByMemberIdIn(dummyIds).map { it.id })
-        refreshTokenRepository.deleteAllByIdInBatch(refreshTokenRepository.findByMemberIdIn(dummyIds).map { it.id })
-        introNoteRepository.deleteAllByIdInBatch(introNoteRepository.findByMemberIdIn(dummyIds).map { it.id })
+        val deviceIds = memberDeviceRepository.findByMemberIdIn(dummyIds).map { it.id }
+        memberDeviceRepository.deleteAllByIdInBatch(deviceIds)
+        val refreshTokenIds = refreshTokenRepository.findByMemberIdIn(dummyIds).map { it.id }
+        refreshTokenRepository.deleteAllByIdInBatch(refreshTokenIds)
+        val introNoteIds = introNoteRepository.findByMemberIdIn(dummyIds).map { it.id }
+        introNoteRepository.deleteAllByIdInBatch(introNoteIds)
     }
-
-    class DeletedReportIds(
-        val reportIds: Set<Long>,
-        val sanctionIds: Set<Long>,
-    )
 }

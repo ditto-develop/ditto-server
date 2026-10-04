@@ -13,6 +13,8 @@ interface GroupMatchRepository : JpaRepository<GroupMatch, Long>, GroupMatchRepo
     /** 해당 퀴즈셋의 그룹 전체 — 후보 재생성 시 기존 그룹을 판별하는 데 쓴다. */
     fun findByQuizSetId(quizSetId: Long): List<GroupMatch>
 
+    fun findByQuizSetIdIn(quizSetIds: Collection<Long>): List<GroupMatch>
+
     /**
      * 수락 트랜잭션 전용 잠금 조회 — 동시 수락의 성사 판정을 행 잠금으로 직렬화한다.
      * PK 단건 조회로만 잠근다 (비인덱스 조건 잠금 금지 — ADR 0011).

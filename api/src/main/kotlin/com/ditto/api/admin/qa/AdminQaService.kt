@@ -23,7 +23,6 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizSetRepository
@@ -36,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class AdminQaService(
     private val qaDummies: QaDummies,
-    private val memberRepository: MemberRepository,
+    private val qaMemberLabels: QaMemberLabels,
     private val quizSetRepository: QuizSetRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
@@ -75,7 +74,7 @@ class AdminQaService(
         val pendingDummyIds = groupMatchMemberRepository.findByRoomId(groupMatchId)
             .filter { it.isPending() && it.memberId in dummyIds }
             .map { it.memberId }
-        val members = QaMembers(memberRepository.findAllById(pendingDummyIds))
+        val members = qaMemberLabels.load(pendingDummyIds)
         return pendingDummyIds.map(members::of)
     }
 
@@ -91,7 +90,7 @@ class AdminQaService(
         val requestableCandidates = findRequestableCandidates(titlesByQuizSetId.keys, dummyIds, matches)
         val memberIds = (receivedRequests + sentRequests).flatMap { listOf(it.memberId1, it.memberId2) } +
             requestableCandidates.flatMap { listOf(it.ownerMemberId, it.otherMemberId) }
-        val rows = PersonalRows(QaMembers(memberRepository.findAllById(memberIds)), titlesByQuizSetId)
+        val rows = PersonalRows(qaMemberLabels.load(memberIds), titlesByQuizSetId)
 
         return QaPersonalSection(
             receivedRequests = receivedRequests.map(rows::received),
@@ -120,7 +119,7 @@ class AdminQaService(
     private fun composeGroups(quizSets: List<QuizSet>, dummyIds: Set<Long>): List<QaGroupMatch> {
         if (quizSets.isEmpty() || dummyIds.isEmpty()) return emptyList()
         val titlesByQuizSetId = quizSets.associate { it.id to it.title }
-        val groups = titlesByQuizSetId.keys.flatMap { groupMatchRepository.findByQuizSetId(it) }
+        val groups = groupMatchRepository.findByQuizSetIdIn(titlesByQuizSetId.keys)
         if (groups.isEmpty()) return emptyList()
 
         val invitationsByGroupId = groupMatchMemberRepository.findByRoomIdIn(groups.map { it.id }).groupBy { it.roomId }
@@ -129,7 +128,7 @@ class AdminQaService(
             .filter { group -> invitationsByGroupId[group.id].orEmpty().any { it.memberId in dummyIds } }
             .sortedWith(compareBy<GroupMatch> { hasNoRealMember(it) }.thenByDescending { it.id })
         val memberIds = groupsWithDummy.flatMap { invitationsByGroupId.getValue(it.id) }.map { it.memberId }
-        val members = QaMembers(memberRepository.findAllById(memberIds))
+        val members = qaMemberLabels.load(memberIds)
         val chatRoomIdByGroupMatchId = chatRoomRepository
             .findBySourceTypeAndSourceIdIn(ChatRoomType.GROUP, groupsWithDummy.map { it.id })
             .associate { it.sourceId to it.id }

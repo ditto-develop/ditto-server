@@ -28,10 +28,11 @@ class DummyMatchDataCleaner(
             .map { it.id }
             .toSet()
 
-    fun deletePersonalMatchesWith(dummyIds: Collection<Long>): Set<Long> {
-        val matchIds = personalMatchRepository.findByMemberId1InOrMemberId2In(dummyIds, dummyIds).map { it.id }.toSet()
+    fun findPersonalMatchIdsWith(dummyIds: Collection<Long>): Set<Long> =
+        personalMatchRepository.findByMemberId1InOrMemberId2In(dummyIds, dummyIds).map { it.id }.toSet()
+
+    fun deletePersonalMatches(matchIds: Collection<Long>) {
         personalMatchRepository.deleteAllByIdInBatch(matchIds)
-        return matchIds
     }
 
     /** 구성원 전원의 초대까지 지운다. */

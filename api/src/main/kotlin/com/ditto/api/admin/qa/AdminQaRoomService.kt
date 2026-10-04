@@ -11,6 +11,7 @@ import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatMessage
+import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -18,10 +19,6 @@ import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.match.repository.GroupMatchRepository
-import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -34,15 +31,13 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class AdminQaRoomService(
     private val qaDummies: QaDummies,
-    private val memberRepository: MemberRepository,
+    private val qaMemberLabels: QaMemberLabels,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val chatVoteService: ChatVoteService,
-    private val groupMatchRepository: GroupMatchRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
-    private val quizSetRepository: QuizSetRepository,
     private val serverTimeProvider: ServerTimeProvider,
+    private val qaRoomSourceLabels: QaRoomSourceLabels,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -58,8 +53,10 @@ class AdminQaRoomService(
             .filterNot { it.hasLeft }
             .groupBy { it.roomId }
         val everyActiveMemberId = activeMembersByRoomId.values.flatten().map { it.memberId }
-        val members = QaMembers(memberRepository.findAllById(everyActiveMemberId))
-        val sourceLabels = composeSourceLabels(rooms)
+        val members = qaMemberLabels.load(everyActiveMemberId)
+        val sourceLabels = qaRoomSourceLabels.of(rooms)
+        val lastMessageAtByRoomId = chatMessageRepository.findLastMessageTimes(roomIds)
+            .associate { it.roomId to it.lastMessageAt }
 
         return rooms.map { room ->
             val activeMemberIds = activeMembersByRoomId[room.id].orEmpty().map { it.memberId }
@@ -72,7 +69,7 @@ class AdminQaRoomService(
                 expiresAt = room.expiresAt,
                 realMembers = activeMemberIds.filterNot { it in dummyIds }.map(members::of),
                 dummyCount = activeMemberIds.count { it in dummyIds },
-                lastMessageAt = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(room.id)?.createdAt,
+                lastMessageAt = lastMessageAtByRoomId[room.id],
             )
         }
     }
@@ -85,7 +82,7 @@ class AdminQaRoomService(
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor = null, size = TIMELINE_SIZE)
             .reversed()
         val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }
-        val members = QaMembers(memberRepository.findAllById(memberIds))
+        val members = qaMemberLabels.load(memberIds)
         val rows = RoomRows(members, dummyIds)
         val votes = findVotes(room, roomMembers)
 
@@ -109,7 +106,7 @@ class AdminQaRoomService(
         val room = chatRoomRepository.findByIdOrNull(roomId) ?: return null
         val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
         val vote = findVotes(room, roomMembers).firstOrNull { it.voteId == voteId } ?: return null
-        return vote.toQaVote(QaMembers(memberRepository.findAllById(roomMembers.map { it.memberId })))
+        return vote.toQaVote(qaMemberLabels.load(roomMembers.map { it.memberId }))
     }
 
     fun findLatestMessageId(roomId: Long): Long? = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(roomId)?.id
@@ -119,31 +116,8 @@ class AdminQaRoomService(
         val activeDummyIds = chatRoomMemberRepository.findByRoomId(roomId)
             .filter { !it.hasLeft && it.memberId in dummyIds }
             .map { it.memberId }
-        val members = QaMembers(memberRepository.findAllById(activeDummyIds))
+        val members = qaMemberLabels.load(activeDummyIds)
         return activeDummyIds.map(members::of)
-    }
-
-    /** 그룹 방은 그룹 번호와 퀴즈셋, 1:1 방은 퀴즈셋, 재매칭 방은 쌍 번호. 화면에서 테스트한 방을 찾는 단서다. */
-    private fun composeSourceLabels(rooms: List<ChatRoom>): Map<Long, String> {
-        val quizSetIdByGroupMatchId = groupMatchRepository
-            .findAllById(rooms.filter { it.sourceType == ChatRoomType.GROUP }.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
-        val quizSetIdByPersonalMatchId = personalMatchRepository
-            .findAllById(rooms.filter { it.sourceType == ChatRoomType.PERSONAL }.map { it.sourceId })
-            .associate { it.id to it.quizSetId }
-        val quizSetTitles = quizSetRepository
-            .findAllById(quizSetIdByGroupMatchId.values + quizSetIdByPersonalMatchId.values)
-            .associate { it.id to it.title }
-
-        return rooms.mapNotNull { room ->
-            val label = when (room.sourceType) {
-                ChatRoomType.GROUP ->
-                    quizSetIdByGroupMatchId[room.sourceId]?.let { "그룹 #${room.sourceId} · ${quizSetTitles[it]}" }
-                ChatRoomType.PERSONAL -> quizSetIdByPersonalMatchId[room.sourceId]?.let { quizSetTitles[it] }
-                ChatRoomType.REMATCH -> "재매칭 #${room.sourceId}"
-            }
-            label?.let { room.id to it }
-        }.toMap()
     }
 
     /**
@@ -188,6 +162,8 @@ class AdminQaRoomService(
             isFromDummy = message.senderId in dummyIds,
             messageType = message.messageType,
             content = message.content,
+            systemMeaning = message.content.takeIf { message.messageType == ChatMessageType.SYSTEM }
+                ?.let(QaSystemMessageMeaning::of),
             sentAt = message.createdAt,
             unreadCount = message.unreadCountAmong(roomMembers),
         )

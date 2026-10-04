@@ -1,6 +1,5 @@
 package com.ditto.api.admin.qa.dto
 
-import com.ditto.api.admin.qa.QaSystemMessageMeaning
 import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatPeriod
@@ -80,14 +79,13 @@ class QaRoomMessage(
     val isFromDummy: Boolean,
     val messageType: ChatMessageType,
     val content: String,
+    val systemMeaning: String?,
     val sentAt: LocalDateTime,
     val unreadCount: Int,
 ) {
     val isSystem: Boolean = messageType == ChatMessageType.SYSTEM
 
     val isImage: Boolean = messageType == ChatMessageType.IMAGE
-
-    val systemMeaning: String? = if (isSystem) QaSystemMessageMeaning.of(content) else null
 }
 
 /** 그룹 만남 투표. 투표자는 나가지 않은 멤버만 센다(앱 집계와 같다). */

@@ -21,6 +21,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQaRoomController(
     private val adminQaRoomService: AdminQaRoomService,
     private val qaDummies: QaDummies,
+    private val qaMemberLabels: QaMemberLabels,
     private val chatController: ChatController,
     private val chatStompController: ChatStompController,
 ) {
@@ -49,7 +50,7 @@ class AdminQaRoomController(
         redirectAttributes: RedirectAttributes,
     ): String {
         val contents = preset?.contents() ?: listOf(content.orEmpty())
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "메시지 ${contents.size}개 전송") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "메시지 ${contents.size}개 전송") {
             val sender = authenticationOf(dummyId)
             contents.forEach { chatStompController.sendMessage(roomId, ChatSendRequest(content = it), sender) }
         }
@@ -62,7 +63,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "최신 메시지까지 읽음") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "최신 메시지까지 읽음") {
             readLatest(dummyId, roomId)
         }
         return QaRoutes.room(roomId)
@@ -83,7 +84,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 나가기") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "방 #$roomId 나가기") {
             chatController.leave(qaDummies.principalOf(dummyId), roomId)
         }
         return QaRoutes.room(roomId)
@@ -95,7 +96,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 채팅 종료") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "방 #$roomId 채팅 종료") {
             chatController.end(qaDummies.principalOf(dummyId), roomId)
         }
         return QaRoutes.room(roomId)

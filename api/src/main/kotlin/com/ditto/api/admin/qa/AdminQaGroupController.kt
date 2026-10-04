@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQaGroupController(
     private val adminQaService: AdminQaService,
     private val qaDummies: QaDummies,
+    private val qaMemberLabels: QaMemberLabels,
     private val groupMatchController: GroupMatchController,
 ) {
     @PostMapping("/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/accept")
@@ -19,7 +20,7 @@ class AdminQaGroupController(
         @PathVariable groupMatchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "그룹 #$groupMatchId 수락") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "그룹 #$groupMatchId 수락") {
             groupMatchController.accept(qaDummies.principalOf(dummyId), groupMatchId)
         }
         return QaRoutes.GROUP_SECTION
@@ -31,7 +32,7 @@ class AdminQaGroupController(
         @PathVariable groupMatchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "그룹 #$groupMatchId 거절") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "그룹 #$groupMatchId 거절") {
             groupMatchController.decline(qaDummies.principalOf(dummyId), groupMatchId)
         }
         return QaRoutes.GROUP_SECTION

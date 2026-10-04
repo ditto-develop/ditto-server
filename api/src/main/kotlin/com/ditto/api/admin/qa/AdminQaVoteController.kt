@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQaVoteController(
     private val adminQaRoomService: AdminQaRoomService,
     private val qaDummies: QaDummies,
+    private val qaMemberLabels: QaMemberLabels,
     private val serverTimeProvider: ServerTimeProvider,
     private val chatVoteController: ChatVoteController,
 ) {
@@ -24,7 +25,7 @@ class AdminQaVoteController(
         @RequestParam(defaultValue = "false") allowMultiple: Boolean,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "샘플 투표 만들기") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "샘플 투표 만들기") {
             val request = QaSampleVote.request(allowMultiple, serverTimeProvider.now())
             chatVoteController.createVote(qaDummies.principalOf(dummyId), roomId, request)
         }
@@ -47,7 +48,7 @@ class AdminQaVoteController(
         }
 
         val request = ChatVoteCastRequest(placeIds = placeIds, timeIds = timeIds)
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "투표 #$voteId 투표") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #$voteId 투표") {
             chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, request)
         }
         return QaRoutes.room(roomId)
@@ -81,7 +82,7 @@ class AdminQaVoteController(
         @RequestParam dummyId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "투표 #$voteId 마감") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #$voteId 마감") {
             chatVoteController.close(qaDummies.principalOf(dummyId), roomId, voteId)
         }
         return QaRoutes.room(roomId)

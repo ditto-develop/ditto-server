@@ -15,7 +15,7 @@ internal fun RedirectAttributes.flashDummyAction(dummy: QaMember, action: String
         flashSuccess(actionLabel)
         return
     }
-    addFlashAttribute("error", "$actionLabel 실패: ${rejection.toDisplayText()}")
+    flashRejection("$actionLabel 실패: ${rejection.toDisplayText()}")
 }
 
 /** 더미마다 따로 실행한다. 앞 더미가 거부돼도 나머지는 계속한다. */
@@ -37,15 +37,18 @@ internal fun RedirectAttributes.flashEachDummyAction(
         return
     }
     val succeededCount = dummies.size - rejections.size
-    addFlashAttribute(
-        "error",
-        "$action: ${succeededCount}명 성공, ${rejections.size}명 실패. ${rejections.joinToString(", ")}",
-    )
+    flashRejection("$action: ${succeededCount}명 성공, ${rejections.size}명 실패. ${rejections.joinToString(", ")}")
 }
 
 /** 그 밖의 예외는 서버 오류라 그대로 던진다. */
 private fun rejectionOf(block: () -> Unit): WarnException? =
     runCatching(block).exceptionOrNull()?.let { it as? WarnException ?: throw it }
+
+/** 앱이 받는 거부라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
+private fun RedirectAttributes.flashRejection(text: String) {
+    log.info { "QA 콘솔 거부: $text" }
+    addFlashAttribute("error", text)
+}
 
 private fun RedirectAttributes.flashSuccess(actionLabel: String) {
     log.info { "QA 콘솔: $actionLabel" }

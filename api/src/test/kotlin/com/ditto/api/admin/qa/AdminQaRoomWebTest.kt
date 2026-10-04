@@ -103,6 +103,8 @@ class AdminQaRoomWebTest(
             val endedRoom = saveRoom(ChatRoomFixture.personal(sourceId = 2L), listOf(tester, dummy))
                 .also { chatRoomRepository.save(it.apply { expire(LocalDateTime.now()) }) }
             saveRoom(ChatRoomFixture.personal(sourceId = 3L), listOf(tester, saveMember("실회원")))
+            saveMessage(activeRoom, tester, "첫 메시지")
+            val latest = saveMessage(activeRoom, dummy, "마지막 메시지")
 
             @Suppress("UNCHECKED_CAST")
             val rooms = mockMvc.perform(get("/admin/qa").with(authentication(admin)))
@@ -113,6 +115,8 @@ class AdminQaRoomWebTest(
             rooms.first().memberCount shouldBe 2
             rooms.first().dummyCount shouldBe 1
             rooms.first().realMembers.map { it.id } shouldBe listOf(tester.id)
+            rooms.first().lastMessageAt shouldBe latest.createdAt
+            rooms.last().lastMessageAt shouldBe null
         }
 
         "방 화면은 최근 메시지와 참여자의 읽음 커서를 보여준다" {

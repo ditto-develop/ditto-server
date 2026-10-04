@@ -15,32 +15,38 @@ class DummyDataCleaner(
     private val notificationRepository: NotificationRepository,
 ) {
     fun deleteDataOf(dummyIds: Collection<Long>): DummyCleanupSummary {
-        val groupMatchIds = dummyMatchDataCleaner.findGroupMatchIdsWith(dummyIds)
-        val rematchIds = dummyMatchDataCleaner.findRematchIdsWith(dummyIds, groupMatchIds)
-        val roomIds = findRoomIdsToDelete(dummyIds, groupMatchIds, rematchIds)
-
-        dummyChatDataCleaner.deleteRooms(roomIds)
-        val personalMatchIds = dummyMatchDataCleaner.deletePersonalMatchesWith(dummyIds)
-        dummyMatchDataCleaner.deleteGroupMatches(groupMatchIds)
-        dummyMatchDataCleaner.deleteRematches(rematchIds)
-        dummyMatchDataCleaner.deleteReviewsWith(dummyIds, roomIds)
-        val reports = dummyMemberDataCleaner.deleteReportsAndSanctionsWith(dummyIds)
-        dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
-
-        val deletedTargets = DeletedTargetIds(
-            roomIds = roomIds,
-            personalMatchIds = personalMatchIds,
-            groupMatchIds = groupMatchIds,
-            rematchIds = rematchIds,
-            reportIds = reports.reportIds,
-            sanctionIds = reports.sanctionIds,
-        )
+        val targets = findTargetsOf(dummyIds)
+        deleteTargets(dummyIds, targets)
         return DummyCleanupSummary(
             dummyCount = dummyIds.size,
-            roomCount = roomIds.size,
-            matchCount = personalMatchIds.size + groupMatchIds.size,
-            notificationCount = deleteNotifications(dummyIds, deletedTargets),
+            roomCount = targets.roomIds.size,
+            matchCount = targets.personalMatchIds.size + targets.groupMatchIds.size,
+            notificationCount = deleteNotifications(dummyIds, targets),
         )
+    }
+
+    private fun findTargetsOf(dummyIds: Collection<Long>): DeletedTargetIds {
+        val groupMatchIds = dummyMatchDataCleaner.findGroupMatchIdsWith(dummyIds)
+        val rematchIds = dummyMatchDataCleaner.findRematchIdsWith(dummyIds, groupMatchIds)
+        val reportIds = dummyMemberDataCleaner.findReportIdsWith(dummyIds)
+        return DeletedTargetIds(
+            roomIds = findRoomIdsToDelete(dummyIds, groupMatchIds, rematchIds),
+            personalMatchIds = dummyMatchDataCleaner.findPersonalMatchIdsWith(dummyIds),
+            groupMatchIds = groupMatchIds,
+            rematchIds = rematchIds,
+            reportIds = reportIds,
+            sanctionIds = dummyMemberDataCleaner.findSanctionIdsWith(dummyIds, reportIds),
+        )
+    }
+
+    private fun deleteTargets(dummyIds: Collection<Long>, targets: DeletedTargetIds) {
+        dummyChatDataCleaner.deleteRooms(targets.roomIds)
+        dummyMatchDataCleaner.deletePersonalMatches(targets.personalMatchIds)
+        dummyMatchDataCleaner.deleteGroupMatches(targets.groupMatchIds)
+        dummyMatchDataCleaner.deleteRematches(targets.rematchIds)
+        dummyMatchDataCleaner.deleteReviewsWith(dummyIds, targets.roomIds)
+        dummyMemberDataCleaner.deleteReportsAndSanctions(targets.reportIds, targets.sanctionIds)
+        dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
     }
 
     /**

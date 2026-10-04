@@ -12,6 +12,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminQaPersonalController(
     private val qaDummies: QaDummies,
+    private val qaMemberLabels: QaMemberLabels,
     private val personalMatchController: PersonalMatchController,
 ) {
     @PostMapping("/admin/qa/dummies/{dummyId}/personal-matches")
@@ -21,8 +22,8 @@ class AdminQaPersonalController(
         @RequestParam quizSetId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        val receiver = qaDummies.memberOf(receiverId)
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "→ ${receiver.label} 1:1 신청") {
+        val receiver = qaMemberLabels.one(receiverId)
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "→ ${receiver.label} 1:1 신청") {
             personalMatchController.requestMatch(
                 qaDummies.principalOf(dummyId),
                 PersonalMatchRequest(receiverId = receiverId, quizSetId = quizSetId),
@@ -37,7 +38,7 @@ class AdminQaPersonalController(
         @PathVariable matchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "1:1 신청 #$matchId 수락") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "1:1 신청 #$matchId 수락") {
             personalMatchController.acceptMatch(qaDummies.principalOf(dummyId), matchId)
         }
         return QaRoutes.PERSONAL_SECTION
@@ -49,7 +50,7 @@ class AdminQaPersonalController(
         @PathVariable matchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "1:1 신청 #$matchId 거절") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "1:1 신청 #$matchId 거절") {
             personalMatchController.rejectMatch(qaDummies.principalOf(dummyId), matchId)
         }
         return QaRoutes.PERSONAL_SECTION
