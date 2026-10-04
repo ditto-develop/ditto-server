@@ -126,9 +126,8 @@ class AdminDummyService(
         }
     }
 
-    // FE 가입 화면처럼 1~5개를 고른다.
     private fun randomInterests(): Set<Interest> =
-        Interest.entries.shuffled().take(Random.nextInt(1, MAX_INTEREST_COUNT + 1)).toSet()
+        Interest.entries.shuffled().take(INTEREST_COUNT_RANGE.random()).toSet()
 
     // FE 가입 화면이 고르는 아바타 경로와 같은 형식이다. FE가 이 경로를 바꾸면 함께 고쳐야 한다.
     private fun randomCaricatureOf(gender: Gender): String {
@@ -166,6 +165,6 @@ class AdminDummyService(
         private const val EMAIL_DOMAIN = "dummy.local"
         private const val CARICATURE_PATH_PREFIX = "/onboarding/profileimg/avatar/"
         private const val CARICATURE_COUNT_PER_GENDER = 8
-        private const val MAX_INTEREST_COUNT = 5
+        private val INTEREST_COUNT_RANGE = 1..5
     }
 }

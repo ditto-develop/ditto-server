@@ -85,8 +85,17 @@ class AdminDummyServiceTest(
             memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach { dummy ->
                 val progress = quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, quizSetId).shouldNotBeNull()
                 progress.status shouldBe QuizProgressStatus.COMPLETED
-                progress.preferredGender shouldBe GenderPreference.OPPOSITE
                 quizAnswerRepository.findByMemberIdAndQuizIdIn(dummy.id, quizIds).size shouldBe 3
+            }
+        }
+
+        "더미의 매칭 성별 선호는 실회원과 같은 OPPOSITE 다" {
+            val quizSetId = setupQuizSet(quizCount = 1)
+            adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 1, femaleCount = 1))
+
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach { dummy ->
+                val progress = quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, quizSetId).shouldNotBeNull()
+                progress.preferredGender shouldBe GenderPreference.OPPOSITE
             }
         }
 
