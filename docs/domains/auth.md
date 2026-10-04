@@ -37,6 +37,7 @@
 - `/admin/**`(Thymeleaf 서버 렌더 UI) — 별도 `AdminSecurityConfig` 체인(`@Order(0)`, 세션 기반, CSRF 활성, `hasRole("ADMIN")`). **카카오·애플 OAuth 로그인**이며 `AdminLoginService`가 기존 회원 매칭 후 `role=ADMIN`만 허용(회원 생성 안 함). 로그인·콜백·정적 리소스만 공개.
 - **어드민 권한은 로그인 시점에만 DB를 읽는다.** 세션에 `ROLE_ADMIN` authority 를 심는 것이 인가의 근거이고(`AdminOAuthController`), 이후 요청은 `member.role` 을 다시 보지 않는다. 따라서 DB 의 role 을 바꿔도 **재로그인 전까지는 반영되지 않는다**(반대로 권한을 뺏어도 기존 세션은 만료 전까지 살아 있다).
 - 어드민 애플 로그인은 `POST /admin/oauth/apple/callback`(폼 POST)으로 받고, **이 한 경로만 CSRF 예외**다 — 폼 값을 믿지 않고 애플이 서명한 ID 토큰 검증만으로 인증하기 때문이다. 검증기는 앱·유저 웹과 같은 `AppleIdTokenVerifier`. 애플 Return URL 은 https 만 허용해 **로컬에서는 동작하지 않는다**(로컬은 `/admin/oauth/dev`). [ADR 0028](../adr/0028-admin-apple-login-csrf-exemption.md)
+- **QA 콘솔(`/admin/qa/**`)은 앱 API 컨트롤러를 더미의 `MemberPrincipal`로 직접 호출한다.** 어드민 세션 안에서 회원 principal 을 만들어 쓰는 유일한 경로이며, 대상은 `dummy-` 회원으로만 막는다(`QaDummies`). 토큰을 발급하거나 로그인 상태를 바꾸지는 않는다. [ADR 0038](../adr/0038-admin-qa-console-acts-as-dummy.md)
 - TODO: 두 표면의 책임 경계·향후 모듈 분리 계획을 ADR로 정리(현재 ADR 0006은 `/api/v1/admin` JSON 경로 기준).
 
 ## 결정 배경 (ADR)
