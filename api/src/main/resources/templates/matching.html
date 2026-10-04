@@ -14,7 +14,7 @@
             <div class="card" th:if="${regeneration}">
                 <h2>재생성 결과 — 퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span>
                     <span class="badge cat" th:text="${regeneration.matchingType}">type</span>
-                    <a class="dummy-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${regeneration.quizSetId})}">참여 현황 보기 →</a></h2>
+                    <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${regeneration.quizSetId})}">참여 현황 보기 →</a></h2>
                 <p class="muted">
                     후보 풀 <b th:text="${regeneration.participantCount}">0</b>명 ·
                     매칭 <b th:text="${regeneration.matches.size()}">0</b>건 ·
@@ -60,7 +60,7 @@
                             <span class="badge on" th:if="${qs.isActive}">활성</span>
                             <span class="badge off" th:unless="${qs.isActive}">비활성</span>
                         </td>
-                        <td>
+                        <td class="actions">
                             <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post">
                                 <button class="btn secondary sm" type="submit">매칭 재생성</button>
                             </form>

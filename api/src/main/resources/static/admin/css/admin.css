@@ -178,8 +178,21 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input { width: auto; }
 .dummy-options { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+/* .field 안에 놓여도 필드 라벨·입력칸 스타일을 받지 않게 덮는다. */
+.dummy-options .check {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin: 0; font-size: 14px; font-weight: 400; color: var(--text); cursor: pointer;
+}
+.dummy-options .check input {
+    flex: none; width: auto; margin: 4px 0 0; padding: 0; border: 0; box-shadow: none;
+    accent-color: var(--primary);
+}
+.dummy-options .check input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.field-row .dummy-options { margin-top: 0; min-height: 41px; align-items: center; }
+.ro-quiz .dummy-options { margin-top: 0; }
 .dummy-nickname { display: flex; align-items: center; gap: 6px; }
-.dummy-link { margin-left: 10px; color: var(--primary); font-size: 13px; font-weight: 600; }
+.text-link { color: var(--primary); font-size: 13px; font-weight: 600; }
+h2 .text-link, .muted + .text-link { margin-left: 10px; }
 
 /* Alerts */
 .alert { padding: 12px 16px; border-radius: 9px; margin-bottom: 18px; font-weight: 600; font-size: 13px; }
@@ -445,7 +458,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     font-size: 12px;
 }
 table.tbl td.actions { text-align: right; white-space: nowrap; }
-table.tbl td.actions form + form { margin-left: 6px; }
+table.tbl td.actions form + form, table.tbl td.actions form + a { margin-left: 6px; }
 .qa-group { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
 .qa-group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .qa-group-head > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

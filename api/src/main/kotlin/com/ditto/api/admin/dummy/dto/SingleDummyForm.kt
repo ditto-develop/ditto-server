@@ -6,7 +6,7 @@ import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 
-/** 더미 한 명 만들기 폼(스프링 폼 바인딩). 비운 값은 무작위나 자동으로 채운다. */
+/** 더미 한 명 생성 폼(스프링 폼 바인딩). 비운 값은 무작위나 자동으로 채운다. */
 class SingleDummyForm(
     var quizSetId: Long = 0L,
     /** `dummy-` 뒤에 붙일 부분. 비우면 자동으로 만든다. */

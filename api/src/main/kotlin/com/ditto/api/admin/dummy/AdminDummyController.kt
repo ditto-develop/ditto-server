@@ -64,7 +64,7 @@ class AdminDummyController(
         redirectAttributes: RedirectAttributes,
     ): String {
         if (quizSetId == null) {
-            redirectAttributes.addFlashAttribute("error", "더미를 만들 퀴즈셋을 골라 주세요.")
+            redirectAttributes.addFlashAttribute("error", "더미를 생성할 퀴즈셋을 골라 주세요.")
             return "redirect:/admin/dummy"
         }
         return showSingleForm(SingleDummyForm.withRandomProfile(quizSetId), model, redirectAttributes)
@@ -81,7 +81,7 @@ class AdminDummyController(
             onSuccess = { created ->
                 val summary = created.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 생성: $summary" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 만들었습니다: $summary")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 생성했습니다: $summary")
                 "redirect:/admin/dummy/single?quizSetId=${form.quizSetId}"
             },
             onFailure = { e ->

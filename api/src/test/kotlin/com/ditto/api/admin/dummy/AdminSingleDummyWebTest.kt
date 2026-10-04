@@ -87,7 +87,7 @@ class AdminSingleDummyWebTest(
         "더미 페이지에서 퀴즈셋을 골라 들어가는 폼이 있다" {
             mockMvc.perform(get("/admin/dummy").with(authentication(admin)))
                 .andExpect(status().isOk)
-                .andExpect(content().string(containsString("더미 한 명 만들기")))
+                .andExpect(content().string(containsString("더미 한 명 생성")))
                 .andExpect(content().string(containsString("/admin/dummy/single")))
         }
 
@@ -116,7 +116,7 @@ class AdminSingleDummyWebTest(
         "퀴즈셋 없이 들어오면 더미 페이지로 돌려보낸다" {
             mockMvc.perform(get("/admin/dummy/single").with(authentication(admin)))
                 .andExpect(redirectedUrl("/admin/dummy"))
-                .andExpect(flash().attribute("error", "더미를 만들 퀴즈셋을 골라 주세요."))
+                .andExpect(flash().attribute("error", "더미를 생성할 퀴즈셋을 골라 주세요."))
         }
 
         "없는 퀴즈셋이면 더미 페이지로 돌려보낸다" {
@@ -142,7 +142,7 @@ class AdminSingleDummyWebTest(
 
             val dummy = memberRepository.findByNicknameStartingWith("dummy-웹테스트").single()
             result.flashMap["message"] shouldBe
-                "퀴즈셋 #${setup.quizSetId} 에 더미를 만들었습니다: dummy-웹테스트 (#${dummy.id} · 여성 · 2/2 풀이)"
+                "퀴즈셋 #${setup.quizSetId} 에 더미를 생성했습니다: dummy-웹테스트 (#${dummy.id} · 여성 · 2/2 풀이)"
             dummy.gender shouldBe Gender.FEMALE
             dummy.age shouldBe 30
             dummy.location shouldBe Location.BUSAN

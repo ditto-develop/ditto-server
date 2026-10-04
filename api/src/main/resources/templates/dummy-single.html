@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments :: head('더미 한 명 만들기')}"></head>
+<head th:replace="~{fragments :: head('더미 한 명 생성')}"></head>
 <body>
 <div class="layout">
     <aside th:replace="~{fragments :: sidebar('dummy')}"></aside>
@@ -8,18 +8,18 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <a class="muted" th:href="@{/admin/dummy}">← 더미 생성</a>
-            <a class="dummy-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
-            <h1 class="page-title" style="margin-top:8px">더미 한 명 만들기</h1>
+            <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
+            <h1 class="page-title" style="margin-top:8px">더미 한 명 생성</h1>
             <p class="page-desc">
                 <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>
-                에 프로필과 답을 지정해 더미를 만듭니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,
+                에 프로필과 답을 지정해 더미를 생성합니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,
                 닉네임·캐리커쳐·문항별 답은 비우면 무작위로 정합니다.
-                매칭 후보는 만들지 않으니, 만든 뒤 '매칭 실행'에서 재생성하세요.
+                매칭 후보는 만들지 않으니, 생성한 뒤 '매칭 실행'에서 재생성하세요.
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <form th:object="${form}" th:action="@{/admin/dummy/single}" method="post"
-                  onsubmit="return confirm('운영 환경을 포함한 모든 환경에서 실행됩니다.\n이 값으로 더미를 만들까요?');">
+                  onsubmit="return confirm('운영 환경을 포함한 모든 환경에서 실행됩니다.\n이 값으로 더미를 생성할까요?');">
                 <input type="hidden" th:field="*{quizSetId}"/>
 
                 <div class="card">
@@ -89,8 +89,8 @@
                     </div>
                     <div class="ro-quiz" th:each="quiz, stat : ${questions.quizzes}">
                         <span class="no" th:text="${stat.count}">1</span>
-                        <div>
-                            <div th:text="${quiz.question}">질문</div>
+                        <div style="min-width:0">
+                            <div class="q" th:text="${quiz.question}">질문</div>
                             <div class="dummy-options">
                                 <label class="check">
                                     <input type="radio" th:name="|choiceIdByQuizId[${quiz.id}]|" value=""
@@ -107,8 +107,11 @@
                     </div>
                 </div>
 
-                <div class="btn-row">
-                    <button type="submit" class="btn">더미 만들기</button>
+                <div class="savebar">
+                    <div class="counts" th:text="|퀴즈셋 #${questions.quizSetId} · ${#lists.size(questions.quizzes)}문항|">퀴즈셋</div>
+                    <div class="btn-row">
+                        <button type="submit" class="btn">더미 생성</button>
+                    </div>
                 </div>
             </form>
         </main>
