@@ -125,6 +125,16 @@ class ReviewRequestNotifierTest(
             notificationRepository.findAll().count { it.memberId == leaver.id } shouldBe 1
         }
 
+        "참여자가 평가 최소(2명) 미만이면 나간 사람에게도 알리지 않는다" {
+            val alone = saveMember("혼자")
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = alone.id))
+
+            reviewRequestNotifier.notifyLeaver(room.id, alone.id) shouldBe false
+
+            notificationRepository.count() shouldBe 0
+        }
+
         "참여자가 평가 최소(2명) 미만인 방에는 알리지 않는다" {
             val alone = saveMember("혼자")
             val room = chatRoomRepository.save(ChatRoomFixture.group())

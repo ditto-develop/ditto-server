@@ -416,6 +416,7 @@ class ChatControllerTest : ControllerUnitTest() {
             isRoomEnded = false,
             hasLeftOpenRoom = true,
         )
+        every { endedChatReviewOpener.openForLeaver(any(), any(), any()) } returns true
 
         mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/leave", 1L))
             .andExpect(status().isOk)
@@ -423,6 +424,22 @@ class ChatControllerTest : ControllerUnitTest() {
         verify(exactly = 1) { endedChatReviewOpener.openForLeaver(1L, any(), any()) }
         verify(exactly = 1) { reviewRequestNotifier.notifyLeaver(1L, any()) }
         verify(exactly = 0) { endedChatReviewOpener.openFor(any()) }
+    }
+
+    @Test
+    @DisplayName("나간 사람 평가를 못 열었으면 평가 요청을 보내지 않는다")
+    fun leaveOpenGroupRoomWithoutReview() {
+        every { chatRoomEndService.leave(any(), any(), any()) } returns ChatLeaveResult(
+            systemMessages = listOf(sampleMessage()),
+            isRoomEnded = false,
+            hasLeftOpenRoom = true,
+        )
+        every { endedChatReviewOpener.openForLeaver(any(), any(), any()) } returns false
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/leave", 1L))
+            .andExpect(status().isOk)
+
+        verify(exactly = 0) { reviewRequestNotifier.notifyLeaver(any(), any()) }
     }
 
     @Test

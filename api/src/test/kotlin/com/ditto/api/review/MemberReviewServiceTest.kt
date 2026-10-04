@@ -49,7 +49,7 @@ class MemberReviewServiceTest(
         quizSetId = 3L,
         weekStartedOn = LocalDate.of(2026, 7, 27),
         participantIds = participantIds,
-        endedAt = chatEndedAt,
+        reviewAvailableAt = chatEndedAt,
     )
 
     "1:1 채팅 종료" - {

@@ -186,7 +186,7 @@ class MemberReviewService(
                 chatRoomId = endedChatRoom.chatRoomId,
                 quizSetId = endedChatRoom.quizSetId,
                 weekStartedOn = endedChatRoom.weekStartedOn,
-                availableAt = endedChatRoom.endedAt,
+                availableAt = endedChatRoom.reviewAvailableAt,
             ),
         )
         val pendingAnswers = endedChatRoom

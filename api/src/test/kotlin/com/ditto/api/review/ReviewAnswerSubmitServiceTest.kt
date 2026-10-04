@@ -48,7 +48,7 @@ class ReviewAnswerSubmitServiceTest(
         quizSetId = 3L,
         weekStartedOn = LocalDate.of(2026, 7, 27),
         participantIds = participantIds,
-        endedAt = endedAt,
+        reviewAvailableAt = endedAt,
     )
 
     fun openPersonalReview(): Long {

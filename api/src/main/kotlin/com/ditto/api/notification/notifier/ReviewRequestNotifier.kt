@@ -56,13 +56,7 @@ class ReviewRequestNotifier(
         if (memberIds.size < MemberReviewService.MIN_REVIEWER_COUNT) {
             return false
         }
-        val counterpartIds = memberIds.filter { it != memberId }
-        val nicknamesById = nicknamesOf(counterpartIds)
-        return notificationAppender.append(
-            memberId = memberId,
-            content = NotificationMessages.reviewRequest(counterpartIds.mapNotNull { nicknamesById[it] }),
-            targetId = roomId,
-        )
+        return appendReviewRequest(roomId, memberId, memberIds, nicknamesOf(memberIds))
     }
 
     private fun appendReviewRequests(endedRoomIds: Collection<Long>): Int {
@@ -85,22 +79,29 @@ class ReviewRequestNotifier(
 
         val appended = reviewableRoomIds.sumOf { roomId ->
             val memberIds = membersByRoomId[roomId].orEmpty().map { it.memberId }
-            memberIds.count { memberId ->
-                val counterpartNicknames = memberIds
-                    .filter { it != memberId }
-                    .mapNotNull { nicknamesById[it] }
-                notificationAppender.append(
-                    memberId = memberId,
-                    content = NotificationMessages.reviewRequest(counterpartNicknames),
-                    targetId = roomId,
-                )
-            }
+            memberIds.count { memberId -> appendReviewRequest(roomId, memberId, memberIds, nicknamesById) }
         }
 
         if (appended > 0) {
             logger.info { "평가 요청 알림: ${appended}건 (방 ${reviewableRoomIds.size}개)" }
         }
         return appended
+    }
+
+    private fun appendReviewRequest(
+        roomId: Long,
+        memberId: Long,
+        roomMemberIds: List<Long>,
+        nicknamesById: Map<Long, String>,
+    ): Boolean {
+        val counterpartNicknames = roomMemberIds
+            .filter { it != memberId }
+            .mapNotNull { nicknamesById[it] }
+        return notificationAppender.append(
+            memberId = memberId,
+            content = NotificationMessages.reviewRequest(counterpartNicknames),
+            targetId = roomId,
+        )
     }
 
     private fun nicknamesOf(memberIds: Collection<Long>): Map<Long, String> =

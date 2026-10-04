@@ -50,11 +50,13 @@ class EndedChatReviewOpener(
     /**
      * 열린 그룹 방에서 나간 사람 한 명의 평가를 바로 연다. 실패해도 예외를 올리지 않는다.
      * 놓쳐도 방이 끝날 때 방 전원의 평가를 열면서 이 사람 것도 만든다.
+     * 그 사람의 평가지가 있으면 true 다. 이미 있던 평가지도 true 라 알림 중복은 알림 쪽이 막는다.
+     * 실패했거나 열 대상이 아니면(방이 없거나 명단이 2명 미만) false 다.
      */
-    fun openForLeaver(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
+    fun openForLeaver(roomId: Long, memberId: Long, leftAt: LocalDateTime): Boolean =
         runCatchingExceptions { openLeaverReview(roomId, memberId, leftAt) }
             .onFailure { logger.warn(it) { "나간 사람 평가 열기 실패, 방이 끝날 때 열린다: roomId=$roomId, memberId=$memberId" } }
-    }
+            .getOrDefault(false)
 
     /**
      * 끝났는데 평가가 없는 방을 찾아 복구한다. 스케줄러가 주기적으로 부른다.
@@ -99,11 +101,11 @@ class EndedChatReviewOpener(
             }
 
     /** 그 사람이 낀 재매칭 쌍을 먼저 만든다. 쌍이 없으면 그룹 평가를 제출할 수 없다. */
-    private fun openLeaverReview(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
-        val room = chatRoomRepository.findById(roomId).orElse(null) ?: return
-        val leaverChatRoom = endedChatRoomLoader.loadForLeaver(room, leftAt) ?: return
-        rematchPairCreator.createPairsOf(memberId, leaverChatRoom)
-        memberReviewService.createReviewOf(memberId, leaverChatRoom)
+    private fun openLeaverReview(roomId: Long, memberId: Long, leftAt: LocalDateTime): Boolean {
+        val room = chatRoomRepository.findById(roomId).orElse(null) ?: return false
+        val leaverChatRoom = endedChatRoomLoader.loadForLeaver(room, leftAt) ?: return false
+        rematchPairCreator.createPairsInvolving(memberId, leaverChatRoom)
+        return memberReviewService.createReviewOf(memberId, leaverChatRoom) != null
     }
 
     /** 그룹이면 재매칭 쌍을 먼저 만든 뒤 평가를 연다. 1:1 은 쌍 생성이 no-op 이다. */

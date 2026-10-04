@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 
 /**
- * 끝난 방으로 평가 입력 계약([EndedChatRoom])을 만든다.
+ * 끝난 방, 또는 열린 방에서 나간 사람 한 명분으로 평가 입력 계약([EndedChatRoom])을 만든다.
  *
  * `chat_room`에 없는 값을 원본 매칭에서 읽어 채우므로 순수 변환이 아니다 — `quizSetId`는 원본 매칭에,
  * `weekStartedOn`은 그 퀴즈셋에 있다. 원본이 유형별로 다른 테이블이라는 사실도 여기서 흡수해,
@@ -43,10 +43,10 @@ class EndedChatRoomLoader(
     fun loadForLeaver(room: ChatRoom, leftAt: LocalDateTime): EndedChatRoom? =
         loadOpenedAt(listOf(room)) { _ -> leftAt }.singleOrNull()
 
-    /** 평가가 열리는 시각만 부르는 쪽이 정한다. 방이 끝난 시각이거나, 그 사람이 나간 시각이다. */
+    /** 평가 가능 시각만 부르는 쪽이 정한다. 방이 끝난 시각이거나, 그 사람이 나간 시각이다. */
     private fun loadOpenedAt(
         rooms: List<ChatRoom>,
-        reviewOpenedAtOf: (ChatRoom) -> LocalDateTime?,
+        reviewAvailableAtOf: (ChatRoom) -> LocalDateTime?,
     ): List<EndedChatRoom> {
         val reviewableRooms = rooms.filter { it.sourceType in MemberReview.REVIEWABLE_MATCH_TYPES }
         if (reviewableRooms.isEmpty()) {
@@ -63,7 +63,7 @@ class EndedChatRoomLoader(
                 quizSetId = quizSetIdByRoomId[room.id],
                 weekStartedOnByQuizSetId = weekStartedOnByQuizSetId,
                 participantIds = participantIdsByRoomId[room.id].orEmpty(),
-                availableAt = reviewOpenedAtOf(room),
+                reviewAvailableAt = reviewAvailableAtOf(room),
             )
         }
     }
@@ -114,15 +114,15 @@ class EndedChatRoomLoader(
         quizSetId: Long?,
         weekStartedOnByQuizSetId: Map<Long, LocalDate>,
         participantIds: List<Long>,
-        availableAt: LocalDateTime?,
+        reviewAvailableAt: LocalDateTime?,
     ): EndedChatRoom? {
         val weekStartedOn = quizSetId?.let { weekStartedOnByQuizSetId[it] }
 
-        if (quizSetId == null || weekStartedOn == null || availableAt == null) {
+        if (quizSetId == null || weekStartedOn == null || reviewAvailableAt == null) {
             logger.warn {
                 "평가를 열 수 없어 건너뜀: roomId=${room.id}, sourceType=${room.sourceType}, " +
                     "sourceId=${room.sourceId}, quizSetId=$quizSetId, " +
-                    "weekStartedOn=${weekStartedOn != null}, availableAt=$availableAt"
+                    "weekStartedOn=${weekStartedOn != null}, reviewAvailableAt=$reviewAvailableAt"
             }
             return null
         }
@@ -134,7 +134,7 @@ class EndedChatRoomLoader(
             quizSetId = quizSetId,
             weekStartedOn = weekStartedOn,
             participantIds = participantIds,
-            endedAt = availableAt,
+            reviewAvailableAt = reviewAvailableAt,
         )
     }
 

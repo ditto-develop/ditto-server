@@ -101,7 +101,7 @@ class EndedChatReviewOpenerTest(
             val roomId = saveOpenGroupChat(MEMBER_A, MEMBER_B, MEMBER_C)
             chatRoomEndService.leave(roomId, MEMBER_C, leftAt)
 
-            endedChatReviewOpener.openForLeaver(roomId, MEMBER_C, leftAt)
+            endedChatReviewOpener.openForLeaver(roomId, MEMBER_C, leftAt) shouldBe true
 
             val review = memberReviewRepository.findAll().single()
             review.authorMemberId shouldBe MEMBER_C
@@ -144,6 +144,21 @@ class EndedChatReviewOpenerTest(
                 listOf(MEMBER_A, MEMBER_B, MEMBER_C)
             rematchRepository.findAll().size shouldBe 3
             memberReviewRepository.findAll().single { it.authorMemberId == MEMBER_C }.availableAt shouldBe leftAt
+        }
+
+        "명단이 평가 최소(2명) 미만이면 평가를 열지 않고 false 를 돌려준다" {
+            val roomId = saveOpenGroupChat(MEMBER_C)
+
+            endedChatReviewOpener.openForLeaver(roomId, MEMBER_C, leftAt) shouldBe false
+
+            memberReviewRepository.count() shouldBe 0
+        }
+
+        "방이 없으면 아무것도 만들지 않고 false 를 돌려준다" {
+            endedChatReviewOpener.openForLeaver(roomId = 999L, memberId = MEMBER_C, leftAt = leftAt) shouldBe false
+
+            memberReviewRepository.count() shouldBe 0
+            rematchRepository.count() shouldBe 0
         }
     }
 

@@ -14,6 +14,7 @@ import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
+import java.time.LocalDateTime
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -24,7 +25,6 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.LocalDateTime
 
 @RestController
 class ChatController(
@@ -110,8 +110,7 @@ class ChatController(
             reviewRequestNotifier.notifyFor(listOf(roomId))
         }
         if (result.hasLeftOpenRoom) {
-            endedChatReviewOpener.openForLeaver(roomId, principal.memberId, now)
-            reviewRequestNotifier.notifyLeaver(roomId, principal.memberId)
+            openReviewForLeaver(roomId, principal.memberId, now)
         }
         return ApiResponse.ok(Unit)
     }
@@ -161,4 +160,11 @@ class ChatController(
         @Valid @RequestBody request: ChatImageUploadUrlsRequest,
     ): ApiResponse<ChatImageUploadUrlsResponse> =
         ApiResponse.ok(chatService.issueImageUploadUrls(principal.memberId, roomId, request))
+
+    private fun openReviewForLeaver(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
+        if (!endedChatReviewOpener.openForLeaver(roomId, memberId, leftAt)) {
+            return
+        }
+        reviewRequestNotifier.notifyLeaver(roomId, memberId)
+    }
 }

@@ -130,6 +130,14 @@ class NotifierFailureTest {
     }
 
     @Test
+    @DisplayName("나간 사람 평가 요청 — 멤버 조회가 실패해도 예외 대신 false 를 돌려준다")
+    fun reviewRequestToLeaverAbsorbsMemberQueryFailure() {
+        every { chatRoomMemberRepository.findByRoomId(any()) } throws connectionFailure()
+
+        reviewRequestNotifier.notifyLeaver(ROOM_ID, memberId = 1L) shouldBe false
+    }
+
+    @Test
     @DisplayName("새 메시지 — 참여자 조회가 실패해도 예외 대신 0 을 돌려준다")
     fun chatMessageAbsorbsMemberQueryFailure() {
         every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()

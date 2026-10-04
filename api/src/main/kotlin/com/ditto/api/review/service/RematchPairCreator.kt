@@ -40,7 +40,7 @@ class RematchPairCreator(
         createPairs(endedChatRoom, unorderedPairsOf(endedChatRoom.reviewerIds))
 
     /** 열린 방에서 나간 사람의 평가를 먼저 열 때 쓴다. 그 사람이 낀 쌍만 만들고, 나머지는 방이 끝날 때 만든다. */
-    fun createPairsOf(memberId: Long, endedChatRoom: EndedChatRoom): Int =
+    fun createPairsInvolving(memberId: Long, endedChatRoom: EndedChatRoom): Int =
         createPairs(endedChatRoom, endedChatRoom.targetIdsFor(memberId).map { memberId to it })
 
     private fun createPairs(endedChatRoom: EndedChatRoom, candidatePairs: List<Pair<Long, Long>>): Int {
