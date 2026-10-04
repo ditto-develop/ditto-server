@@ -28,6 +28,8 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         status: QuizProgressStatus,
     ): Long
 
+    fun findByQuizSetIdOrderByIdAsc(quizSetId: Long): List<QuizProgress>
+
     /** 해당 퀴즈셋에서 특정 상태(예: COMPLETED)인 참여자 진행 목록 */
     fun findByQuizSetIdAndStatus(
         quizSetId: Long,

@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminQuizController(
     private val adminQuizService: AdminQuizService,
+    private val adminQuizParticipantService: AdminQuizParticipantService,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -69,6 +70,13 @@ class AdminQuizController(
         model.addAttribute("hasMatchRecords", adminQuizService.hasMatchRecords(id))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
+    }
+
+    @GetMapping("/admin/quiz-sets/{id}/participants")
+    fun participants(@PathVariable id: Long, model: Model): String {
+        model.addAttribute("view", adminQuizParticipantService.getParticipants(id))
+        model.addAttribute("active", "quiz")
+        return "quiz/participants"
     }
 
     @GetMapping("/admin/quiz-sets/{id}/edit")
