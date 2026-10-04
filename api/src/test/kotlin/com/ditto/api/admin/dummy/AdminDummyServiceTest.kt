@@ -21,6 +21,7 @@ import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.ints.shouldBeInRange
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -113,6 +114,15 @@ class AdminDummyServiceTest(
                 val caricature = it.caricature.shouldNotBeNull()
                 val expectedAvatar = if (it.gender == Gender.MALE) maleAvatar else femaleAvatar
                 caricature shouldMatch expectedAvatar
+            }
+        }
+
+        "관심사는 1~5개로 채워진다" {
+            val quizSetId = setupQuizSet(quizCount = 1)
+            adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 5, femaleCount = 5))
+
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach {
+                it.interests.size shouldBeInRange 1..5
             }
         }
 
