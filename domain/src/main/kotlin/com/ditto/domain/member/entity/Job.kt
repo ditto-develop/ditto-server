@@ -11,7 +11,7 @@ import com.ditto.common.exception.WarnException
  */
 enum class Job(
     val code: String,
-    private val description: String,
+    val description: String,
 ) {
     IT_TECH("it-tech", "IT/기술"),
     MANAGEMENT("management", "경영/사무"),

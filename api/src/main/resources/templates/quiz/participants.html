@@ -8,6 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content" th:with="quizSet=${view.quizSet}">
             <a class="muted" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}">← 퀴즈셋 상세</a>
+            <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id})}">이 퀴즈셋에 더미 한 명 생성 →</a>
             <h1 class="page-title" style="margin-top:8px" th:text="|${quizSet.title} 참여 현황|">참여 현황</h1>
             <p class="page-desc">
                 <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
@@ -61,6 +62,9 @@
                                     <th:block th:case="*">
                                         <span th:text="|${p.nickname} (#${p.memberId})|">닉네임 (#1)</span>
                                         <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
+                                        <div th:if="${p.answeredCount > 0}">
+                                            <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
+                                        </div>
                                     </th:block>
                                 </td>
                                 <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>

@@ -11,7 +11,7 @@ import com.ditto.common.exception.WarnException
  */
 enum class Location(
     val code: String,
-    private val description: String,
+    val description: String,
 ) {
     SEOUL("seoul", "서울"),
     GYEONGGI("gyeonggi", "경기"),

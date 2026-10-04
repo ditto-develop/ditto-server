@@ -317,6 +317,9 @@ class AdminWebTest {
                 .param("maleCount", "2").param("femaleCount", "2")
                 .param("minAge", "20").param("maxAge", "30"),
         ).andExpect(status().is3xxRedirection)
+            .andExpect(flash().attribute("createdQuizSetId", quizSet.id))
+        mockMvc.perform(get("/admin/dummy").with(authentication(admin())).flashAttr("createdQuizSetId", quizSet.id))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants")))
 
         mockMvc.perform(post("/admin/dummy/clear").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
@@ -468,6 +471,7 @@ class AdminWebTest {
             .andExpect(content().string(containsString("재생성 결과")))
             .andExpect(content().string(containsString("5, 12")))
             .andExpect(content().string(containsString("2 / 2")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/7/participants")))
     }
 
     @Test
