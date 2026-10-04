@@ -225,6 +225,7 @@ class ChatRoomEndServiceTest(
             val result = chatRoomEndService.leave(room.id, memberId = 1L, now = FRIDAY)
 
             result.isRoomEnded shouldBe false
+            result.hasLeftOpenRoom shouldBe true
             result.systemMessages.size shouldBe 1
             result.systemMessages.first().content shouldBe ChatRoomEndService.MEMBER_LEFT
             // 조회자는 이 senderId 로 "○○님이 나갔습니다"를 렌더링한다
@@ -240,6 +241,8 @@ class ChatRoomEndServiceTest(
             val result = chatRoomEndService.leave(room.id, memberId = 2L, now = FRIDAY)
 
             result.isRoomEnded shouldBe true
+            // 해체되면 방 전원의 평가가 열리므로 나간 사람 몫을 따로 열지 않는다
+            result.hasLeftOpenRoom shouldBe false
             result.systemMessages.map { it.content } shouldBe listOf(
                 ChatRoomEndService.MEMBER_LEFT,
                 ChatRoomEndService.INSUFFICIENT_MEMBERS,
@@ -250,6 +253,19 @@ class ChatRoomEndServiceTest(
             val reloaded = chatRoomRepository.findAll().first()
             reloaded.isEnded shouldBe true
             reloaded.endReason shouldBe ChatEndReason.INSUFFICIENT_MEMBERS
+        }
+
+        "개방 전에 나가면 나간 사람 평가를 바로 열지 않는다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 300L, now = WEDNESDAY)).also { room ->
+                chatRoomMemberRepository.saveAll(
+                    listOf(1L, 2L, 3L).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+                )
+            }
+
+            val result = chatRoomEndService.leave(room.id, memberId = 1L, now = WEDNESDAY)
+
+            room.status shouldBe ChatRoomStatus.SCHEDULED
+            result.hasLeftOpenRoom shouldBe false
         }
 
         "해체되는 방의 열린 투표를 함께 닫는다" {

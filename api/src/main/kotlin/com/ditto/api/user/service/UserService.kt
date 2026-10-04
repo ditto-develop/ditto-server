@@ -213,11 +213,12 @@ class UserService(
         }
 
         // "진행 중인 매칭이나 채팅이 있으면 탈퇴가 제한됩니다" — 상대가 기다리는 상태를 남기지 않는다.
-        if (leaveProgressChecker.hasInProgress(id)) {
+        val now = serverTimeProvider.now()
+        if (leaveProgressChecker.hasInProgress(id, now)) {
             throw WarnException(ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS)
         }
 
-        member.leave(reason = request.reason, reasonDetail = request.reasonDetail, now = serverTimeProvider.now())
+        member.leave(reason = request.reason, reasonDetail = request.reasonDetail, now = now)
 
         leftMemberRematchCanceller.cancelWaitingPairs(id)
 

@@ -1,9 +1,10 @@
 package com.ditto.api.notification.push
 
+import com.ditto.api.notification.deeplink.NotificationDeepLinks
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
-import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -85,10 +86,8 @@ class PushNotifierTest : FreeSpec({
             memberNotificationSettingRepository = settingRepository,
             memberDeviceRepository = deviceRepository,
             notificationRepository = notificationRepository,
-            chatRoomRepository = chatRoomRepository,
             chatRoomMemberRepository = chatRoomMemberRepository,
-            rematchRepository = rematchRepository,
-            quizSetRepository = quizSetRepository,
+            notificationDeepLinks = NotificationDeepLinks(chatRoomRepository, quizSetRepository, rematchRepository),
             pushDeadDeviceCleaner = cleaner,
             pushSender = pushSender,
         )
@@ -316,10 +315,8 @@ class PushNotifierTest : FreeSpec({
             memberNotificationSettingRepository = settingRepository,
             memberDeviceRepository = mockk(),
             notificationRepository = mockk(),
-            chatRoomRepository = mockk(),
             chatRoomMemberRepository = mockk(),
-            rematchRepository = mockk(),
-            quizSetRepository = mockk(),
+            notificationDeepLinks = mockk(),
             pushDeadDeviceCleaner = mockk(),
             pushSender = mockk(),
         )

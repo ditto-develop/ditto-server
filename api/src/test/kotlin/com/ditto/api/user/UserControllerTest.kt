@@ -10,6 +10,8 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
@@ -74,6 +76,9 @@ class UserControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var reviewAnswerRepository: ReviewAnswerRepository
+
+    @Autowired
+    private lateinit var chatRoomRepository: ChatRoomRepository
 
     @Autowired
     private lateinit var quizSetRepository: QuizSetRepository
@@ -729,7 +734,8 @@ class UserControllerTest : RestDocsTest() {
                             .description(
                                 "회원을 탈퇴 처리합니다(소프트 삭제). 계정은 즉시 사용 불가가 되지만 데이터는 남으며, " +
                                     "30일 이내 같은 소셜 계정으로 재로그인하면 복구됩니다. 30일이 지나면 배치가 완전 삭제합니다. " +
-                                    "진행 중인 매칭이나 채팅이 있으면 거부합니다.",
+                                    "진행 중인 매칭이나 채팅이 있으면 거부합니다. " +
+                                    "그룹 초대를 수락해 두고 아직 성사 전이면 응답 마감(금요일 00:00)까지 거부합니다.",
                             )
                             .pathParameters(
                                 parameterWithName("id").description("사용자 ID"),
@@ -784,7 +790,10 @@ class UserControllerTest : RestDocsTest() {
         comment: String?,
     ) {
         val author = memberRepository.save(Member(nickname = "평가자${reviewerSequence++}").apply { activate() })
-        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = author.id))
+        val room = chatRoomRepository.save(ChatRoomFixture.endedGroup(sourceId = author.id))
+        val review = memberReviewRepository.save(
+            MemberReviewFixture.create(authorMemberId = author.id, chatRoomId = room.id),
+        )
         val answer = reviewAnswerRepository.save(
             ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
         )

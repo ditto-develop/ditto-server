@@ -41,6 +41,8 @@ class NotificationControllerTest : RestDocsTest() {
         val read = save(member.id, NotificationType.MATCH_RESULT, "이번 주 매칭 결과가 나왔어요", targetId = 11L)
         read.markRead(LocalDateTime.of(2026, 8, 21, 9, 0))
         notificationRepository.save(read)
+        // 대상 조회 없이 경로가 정해지는 유형을 하나 섞는다. deepLink 가 전부 null 이면 스키마에서 빠진다.
+        save(member.id, NotificationType.MATCH_REQUESTED, "산책러버님이 대화를 신청했어요", targetId = 33L)
         save(member.id, NotificationType.CHAT_MESSAGE, "산책러버님의 새 메시지", targetId = 22L)
 
         mockMvc.perform(
@@ -49,11 +51,12 @@ class NotificationControllerTest : RestDocsTest() {
                 .withBearerToken(member.id),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.data.notifications.length()").value(2))
+            .andExpect(jsonPath("$.data.notifications.length()").value(3))
             // 최신순 — 나중에 저장한 알림이 앞에 온다.
             .andExpect(jsonPath("$.data.notifications[0].title").value("산책러버님의 새 메시지"))
             .andExpect(jsonPath("$.data.notifications[0].category").value("CHAT"))
             .andExpect(jsonPath("$.data.notifications[0].readAt").isEmpty)
+            .andExpect(jsonPath("$.data.notifications[1].deepLink").value("/matching/"))
             .andExpect(jsonPath("$.data.nextCursor").isEmpty)
             .andDo(
                 document(
@@ -68,7 +71,8 @@ class NotificationControllerTest : RestDocsTest() {
                                 "알림 센터의 목록을 최신순으로 조회합니다. 보관 기간(30일)이 지난 알림은 조회되지 않습니다. " +
                                     "category 를 생략하면 '전체' 탭입니다. " +
                                     "안읽음 여부는 readAt 이 null 인지로 판단하세요. " +
-                                    "nextCursor 가 null 이면 마지막 페이지입니다.",
+                                    "nextCursor 가 null 이면 마지막 페이지입니다. " +
+                                    "deepLink 는 푸시의 deepLink 와 같은 이동 경로이며, 있으면 그 경로로 이동하세요.",
                             )
                             .queryParameters(
                                 queryParameterWithName("category")
@@ -91,6 +95,8 @@ class NotificationControllerTest : RestDocsTest() {
                                 fieldWithPath("data.notifications[].body").description("본문").optional(),
                                 fieldWithPath("data.notifications[].targetId")
                                     .description("이동 대상 ID. 무엇을 가리키는지는 type 이 정한다").optional(),
+                                fieldWithPath("data.notifications[].deepLink")
+                                    .description("눌렀을 때 이동할 FE 경로(끝 슬래시 포함). 이동할 곳이 없으면 null").optional(),
                                 fieldWithPath("data.notifications[].readAt")
                                     .description("읽은 시각. null 이면 안읽음").optional(),
                                 fieldWithPath("data.notifications[].createdAt")

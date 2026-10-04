@@ -13,8 +13,12 @@ import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
@@ -22,6 +26,9 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.MemberDeviceFixture
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
@@ -31,6 +38,8 @@ import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import com.ditto.domain.system.entity.ServerTimeOverride
+import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -40,6 +49,8 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 
 private val SUBMITTED_AT = LocalDateTime.of(2026, 3, 9, 10, 0)
+private val GROUP_WEEK_MONDAY = LocalDateTime.of(2026, 4, 6, 0, 0)
+private val GROUP_RESPONSE_DEADLINE = LocalDateTime.of(2026, 4, 10, 0, 0)
 
 /**
  * 탈퇴 소프트 삭제와 30일 복구. 명세는 탈퇴 화면(피그마 6.2.4)의 안내 문구다.
@@ -57,6 +68,10 @@ class MemberLeaveTest(
     private val notificationRepository: NotificationRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
     private val rematchRepository: RematchRepository,
+    private val quizSetRepository: QuizSetRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val authService: AuthService,
     transactionManager: PlatformTransactionManager,
@@ -70,6 +85,27 @@ class MemberLeaveTest(
         val rematch = RematchFixture.create(memberIdA = memberId, memberIdB = counterpartId)
         submittedBy?.let { rematch.submitWants(it, wants = true, now = SUBMITTED_AT) }
         return rematchRepository.save(rematch)
+    }
+
+    fun overrideServerTime(at: LocalDateTime) {
+        serverTimeOverrideRepository.save(
+            ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") },
+        )
+    }
+
+    /** 그 주 그룹에 초대된 상태. [accepted]면 수락해 둔다. 수락자 한 명이라 아직 성사 전이다. */
+    fun inviteToUnformedGroup(memberId: Long, accepted: Boolean) {
+        val quizSet = quizSetRepository.save(
+            QuizSetFixture.create(startDate = GROUP_WEEK_MONDAY, matchingType = MatchingType.GROUP),
+        )
+        val group = groupMatchRepository.save(
+            GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = if (accepted) 1 else 0),
+        )
+        val invitation = GroupMatchMember.candidate(roomId = group.id, memberId = memberId)
+        if (accepted) {
+            invitation.accept()
+        }
+        groupMatchMemberRepository.save(invitation)
     }
 
     fun saveMatchedRematch(memberId: Long, counterpartId: Long): Rematch {
@@ -263,6 +299,37 @@ class MemberLeaveTest(
             }
             chatRoomRepository.save(room)
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
+        }
+
+        "성사 전 그룹에 수락해 두었으면 응답 마감 전에는 거부한다" {
+            val member = saveActive("그룹수락회원")
+            inviteToUnformedGroup(member.id, accepted = true)
+            overrideServerTime(GROUP_RESPONSE_DEADLINE.minusMinutes(1))
+
+            val exception = shouldThrow<WarnException> {
+                userService.leaveUser(member.id, member.id, LeaveRequest())
+            }
+            exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
+        }
+
+        "응답 마감이 지나 미성사로 끝난 그룹은 막지 않는다" {
+            val member = saveActive("미성사그룹회원")
+            inviteToUnformedGroup(member.id, accepted = true)
+            overrideServerTime(GROUP_RESPONSE_DEADLINE)
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
+        }
+
+        "그룹 초대에 응답하지 않았으면 막지 않는다" {
+            val member = saveActive("그룹대기회원")
+            inviteToUnformedGroup(member.id, accepted = false)
+            overrideServerTime(GROUP_RESPONSE_DEADLINE.minusMinutes(1))
 
             userService.leaveUser(member.id, member.id, LeaveRequest())
 

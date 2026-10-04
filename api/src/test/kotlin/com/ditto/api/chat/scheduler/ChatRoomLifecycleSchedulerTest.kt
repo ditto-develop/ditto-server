@@ -6,6 +6,7 @@ import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
 import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
 import com.ditto.api.match.service.UnformedGroupNotifier
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
@@ -32,6 +33,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val endedChatReviewOpener = mockk<EndedChatReviewOpener>(relaxed = true)
     val rematchChatRoomOpener = mockk<RematchChatRoomOpener>(relaxed = true)
     val reviewRequestNotifier = mockk<ReviewRequestNotifier>(relaxed = true)
+    val rematchNotifier = mockk<RematchNotifier>(relaxed = true)
     val chatEndingSoonNotifier = mockk<ChatEndingSoonNotifier>(relaxed = true)
     val chatRoomOpenedNotifier = mockk<ChatRoomOpenedNotifier>(relaxed = true)
     val chatNoMessageNotifier = mockk<ChatNoMessageNotifier>(relaxed = true)
@@ -44,6 +46,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         endedChatReviewOpener,
         rematchChatRoomOpener,
         reviewRequestNotifier,
+        rematchNotifier,
         chatEndingSoonNotifier,
         chatRoomOpenedNotifier,
         chatNoMessageNotifier,
@@ -59,6 +62,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             endedChatReviewOpener,
             rematchChatRoomOpener,
             reviewRequestNotifier,
+            rematchNotifier,
             chatEndingSoonNotifier,
             chatRoomOpenedNotifier,
             chatNoMessageNotifier,
@@ -91,12 +95,23 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         (reservedAt.captured > LocalDateTime.of(2026, 1, 1, 0, 0)) shouldBe true
     }
 
-    "마감된 방은 평가 개방과 평가 요청 알림으로 이어진다" {
+    "마감된 방은 평가 개방과 평가 요청, 미뤄 둔 재매칭 신청 알림으로 이어진다" {
         scheduler.sweep()
 
         verify { endedChatReviewOpener.openFor(emptyList()) }
         verify { endedChatReviewOpener.openMissing() }
         verify { reviewRequestNotifier.notifyFor(emptyList()) }
+        verify { rematchNotifier.notifyWaitingRequestsFor(emptyList()) }
+    }
+
+    "누락 복구로 평가가 열린 방에도 미뤄 둔 재매칭 신청을 보낸다" {
+        every { chatRoomEndService.endExpired(any()) } returns listOf(ChatRoomFixture.group(id = 21L))
+        every { endedChatReviewOpener.openMissing() } returns listOf(21L, 22L)
+
+        scheduler.sweep()
+
+        verify { reviewRequestNotifier.notifyFor(listOf(21L)) }
+        verify { rematchNotifier.notifyWaitingRequestsFor(listOf(21L, 22L)) }
     }
 
     "이번 주기에 열린 방만 오픈 알림으로 넘긴다" {

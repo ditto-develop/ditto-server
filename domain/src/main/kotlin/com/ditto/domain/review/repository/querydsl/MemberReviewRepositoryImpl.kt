@@ -2,6 +2,7 @@ package com.ditto.domain.review.repository.querydsl
 
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
+import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.review.entity.MemberReview
@@ -49,10 +50,21 @@ class MemberReviewRepositoryImpl(
                 chatRoom.status.eq(ChatRoomStatus.ENDED),
                 // 평가를 열지 않는 유형은 영원히 "평가 없음"이라 빼지 않으면 배치 앞자리를 점유한다.
                 chatRoom.sourceType.`in`(MemberReview.REVIEWABLE_MATCH_TYPES),
+                // 멤버마다 자기 평가지가 만들어졌는지 본다. 열린 방에서 나간 사람의 평가지가 먼저 생기므로,
+                // "평가지가 하나도 없는 방"으로 찾으면 방이 끝날 때 나머지 생성이 실패한 방을 놓친다.
                 queryFactory.selectOne()
-                    .from(memberReview)
-                    .where(memberReview.chatRoomId.eq(chatRoom.id))
-                    .notExists(),
+                    .from(chatRoomMember)
+                    .where(
+                        chatRoomMember.roomId.eq(chatRoom.id),
+                        queryFactory.selectOne()
+                            .from(memberReview)
+                            .where(
+                                memberReview.chatRoomId.eq(chatRoom.id),
+                                memberReview.authorMemberId.eq(chatRoomMember.memberId),
+                            )
+                            .notExists(),
+                    )
+                    .exists(),
             )
             // 오래 밀린 것부터 — 가장 오래 기다린 참여자가 먼저 평가를 받는다.
             .orderBy(chatRoom.endedAt.asc(), chatRoom.id.asc())

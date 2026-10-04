@@ -22,17 +22,20 @@ data class NotificationResponse(
     val body: String?,
     /** 눌렀을 때 이동할 대상 ID. 무엇을 가리키는지는 [type]이 정한다. 대상이 없으면 null */
     val targetId: Long?,
+    /** 눌렀을 때 이동할 FE 경로. 푸시의 deepLink 와 같은 값이다. 이동할 곳이 없으면 null */
+    val deepLink: String?,
     val readAt: LocalDateTime?,
     val createdAt: LocalDateTime,
 ) {
     companion object {
-        fun from(notification: Notification): NotificationResponse = NotificationResponse(
+        fun of(notification: Notification, deepLink: String?): NotificationResponse = NotificationResponse(
             id = notification.id,
             type = notification.type,
             category = notification.category,
             title = notification.title,
             body = notification.body,
             targetId = notification.targetId,
+            deepLink = deepLink,
             readAt = notification.readAt,
             createdAt = notification.createdAt,
         )

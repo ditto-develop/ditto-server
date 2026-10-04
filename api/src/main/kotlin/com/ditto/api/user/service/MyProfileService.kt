@@ -100,7 +100,7 @@ class MyProfileService(
             status = QuizProgressStatus.COMPLETED,
         ),
         matchCount = chatRoomMemberRepository.countByMemberId(memberId),
-        meetingCount = reviewAnswerRepository.countByReviewedMemberIdAndMeetingStatusAndAnsweredAtIsNotNull(
+        meetingCount = reviewAnswerRepository.countAnsweredInEndedRoomsByReviewedMemberIdAndMeetingStatus(
             reviewedMemberId = memberId,
             meetingStatus = MeetingStatus.MET,
         ),

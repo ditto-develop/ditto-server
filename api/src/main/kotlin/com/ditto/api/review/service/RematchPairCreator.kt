@@ -36,7 +36,14 @@ class RematchPairCreator(
      *
      * @return 이번 호출로 새로 만들어진 쌍 수
      */
-    fun createPairsFor(endedChatRoom: EndedChatRoom): Int {
+    fun createPairsFor(endedChatRoom: EndedChatRoom): Int =
+        createPairs(endedChatRoom, unorderedPairsOf(endedChatRoom.reviewerIds))
+
+    /** 열린 방에서 나간 사람의 평가를 먼저 열 때 쓴다. 그 사람이 낀 쌍만 만들고, 나머지는 방이 끝날 때 만든다. */
+    fun createPairsInvolving(memberId: Long, endedChatRoom: EndedChatRoom): Int =
+        createPairs(endedChatRoom, endedChatRoom.targetIdsFor(memberId).map { memberId to it })
+
+    private fun createPairs(endedChatRoom: EndedChatRoom, candidatePairs: List<Pair<Long, Long>>): Int {
         if (endedChatRoom.matchType != ChatRoomType.GROUP) {
             return 0
         }
@@ -46,7 +53,7 @@ class RematchPairCreator(
             .toSet()
 
         val leftMemberIds = findLeftMemberIds(endedChatRoom.reviewerIds)
-        val newPairs = unorderedPairsOf(endedChatRoom.reviewerIds)
+        val newPairs = candidatePairs
             .filterNot { (memberA, memberB) -> normalize(memberA, memberB) in existingPairs }
             .map { (memberA, memberB) ->
                 Rematch.create(

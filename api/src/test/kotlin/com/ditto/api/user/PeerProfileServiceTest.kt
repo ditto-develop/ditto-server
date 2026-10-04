@@ -4,6 +4,8 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.service.PeerProfileService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
@@ -49,6 +51,7 @@ class PeerProfileServiceTest(
     private val matchCandidateRepository: MatchCandidateRepository,
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
+    private val chatRoomRepository: ChatRoomRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -100,7 +103,10 @@ class PeerProfileServiceTest(
     /** 다른 회원이 [reviewedMemberId]에게 남긴 확정 평가 하나를 만든다. */
     fun saveReceivedAnswer(reviewedMemberId: Long, meetingStatus: MeetingStatus, rating: Int, comment: String?) {
         val author = saveMember("평가자${reviewerSequence++}")
-        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = author.id))
+        val room = chatRoomRepository.save(ChatRoomFixture.endedGroup(sourceId = author.id))
+        val review = memberReviewRepository.save(
+            MemberReviewFixture.create(authorMemberId = author.id, chatRoomId = room.id),
+        )
         val answer = reviewAnswerRepository.save(
             ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
         )

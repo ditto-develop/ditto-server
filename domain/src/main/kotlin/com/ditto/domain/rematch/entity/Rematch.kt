@@ -102,6 +102,14 @@ class Rematch private constructor(
     /** 상대의 탈퇴로 취소된 쌍인지. 성사될 수 없으므로 제출된 재매칭 의사를 버려야 한다. */
     fun isCancelledByMemberLeave(): Boolean = cancelReason() == RematchCancelReason.MEMBER_LEFT
 
+    /** 한쪽만 원한다고 내고 상대 답을 기다리는 쌍이면 원한 사람. 아니면 null. */
+    fun requesterId(): Long? {
+        if (status != RematchStatus.WAITING) {
+            return null
+        }
+        return listOf(memberId1, memberId2).singleOrNull { wantsOf(it) == true }
+    }
+
     /** memberId 기준 페어의 상대방 ID */
     fun counterpartOf(memberId: Long): Long {
         validatePairMember(memberId)

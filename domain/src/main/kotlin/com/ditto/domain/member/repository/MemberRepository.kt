@@ -38,6 +38,9 @@ interface MemberRepository : JpaRepository<Member, Long>, MemberRepositoryCustom
     /** 주어진 ID 중 해당 상태인 회원 수 — 탈퇴자가 섞였는지 확인하는 데 쓴다. */
     fun countByIdInAndStatus(ids: Collection<Long>, status: MemberStatus): Long
 
+    /** 알림 적재에서 탈퇴자를 거르는 데 쓴다. */
+    fun existsByIdAndStatus(id: Long, status: MemberStatus): Boolean
+
     /** 특정 상태이면서 정지 해제 예정일이 지난 회원 목록 (만료 원복 배치용). */
     fun findAllByStatusAndSuspendedUntilLessThanEqual(status: MemberStatus, until: LocalDateTime): List<Member>
 

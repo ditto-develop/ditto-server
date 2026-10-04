@@ -1,9 +1,8 @@
 package com.ditto.api.notification.push
 
+import com.ditto.api.notification.deeplink.NotificationDeepLinks
 import com.ditto.api.support.runCatchingExceptions
-import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
-import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.MemberNotificationSetting
 import com.ditto.domain.member.repository.MemberNotificationSettingRepository
 import com.ditto.domain.notification.entity.Notification
@@ -11,9 +10,6 @@ import com.ditto.domain.notification.entity.NotificationCategory
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
-import com.ditto.domain.quiz.entity.MatchingType
-import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -33,10 +29,8 @@ class PushNotifier(
     private val memberNotificationSettingRepository: MemberNotificationSettingRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
     private val notificationRepository: NotificationRepository,
-    private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
-    private val rematchRepository: RematchRepository,
-    private val quizSetRepository: QuizSetRepository,
+    private val notificationDeepLinks: NotificationDeepLinks,
     private val pushDeadDeviceCleaner: PushDeadDeviceCleaner,
     private val pushSender: PushSender,
 ) {
@@ -53,7 +47,7 @@ class PushNotifier(
     fun pushAll(notifications: List<Notification>) {
         val first = notifications.firstOrNull() ?: return
         runCatchingExceptions {
-            val deepLink = deepLinkOf(first)
+            val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
             notifications
                 .filter { it.memberId !in mutedMemberIds }
@@ -111,68 +105,6 @@ class PushNotifier(
         )
     }
 
-    /**
-     * 알림을 탭했을 때 앱 웹뷰가 이동할 경로. FE 라우트 그대로이며 끝 슬래시 필수
-     * (FE 가 `trailingSlash: true` — 없으면 리다이렉트가 한 번 낀다).
-     * 방이 그새 지워졌으면 deepLink 없이 보낸다.
-     */
-    private fun deepLinkOf(notification: Notification): String? {
-        val targetId = notification.targetId
-        return when (notification.type) {
-            // 결과 화면은 그 주의 매칭 유형으로 갈린다. targetId 는 quiz_set.id 다.
-            NotificationType.MATCH_RESULT, NotificationType.NO_MATCH -> matchResultPathOf(targetId)
-            // 1:1 전용. 수락된 방은 금요일까지 SCHEDULED 라 아직 열 수 없다.
-            NotificationType.MATCH_REQUESTED,
-            NotificationType.MATCH_ACCEPTED,
-            NotificationType.MATCH_REJECTED,
-            -> ONE_TO_ONE_MATCHING_PATH
-            // 그룹 전용. targetId 가 group_match.id 라 열 방이 없고, 미달 상태는 그룹 결과 화면이 보여준다.
-            NotificationType.GROUP_NOT_FORMED -> GROUP_MATCHING_PATH
-            NotificationType.GROUP_FORMED, NotificationType.VOTE_CREATED, NotificationType.VOTE_CLOSED ->
-                targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
-            NotificationType.REMATCH_MATCHED -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
-            // 신청·거절은 의사를 제출하는 그룹 평가 화면으로. targetId 는 쌍이라 방은 쌍에서 읽는다.
-            NotificationType.REMATCH_REQUESTED, NotificationType.REMATCH_REJECTED ->
-                targetId?.let { rematchRepository.findById(it).orElse(null) }
-                    ?.let { chatRoomPath(ChatRoomType.GROUP, it.sourceChatRoomId) + "rate/" }
-            NotificationType.REVIEW_REQUEST, NotificationType.REVIEW_REMINDER ->
-                chatRoomPathOf(targetId)?.let { it + "rate/" }
-            NotificationType.CHAT_ROOM_OPENED,
-            NotificationType.CHAT_MESSAGE,
-            NotificationType.CHAT_NO_MESSAGE,
-            NotificationType.CHAT_ENDING_SOON,
-            -> chatRoomPathOf(targetId)
-            NotificationType.QUIZ_OPENED, NotificationType.QUIZ_CLOSING_SOON -> "/quiz/current/"
-            NotificationType.SYSTEM_NOTICE, NotificationType.REPORT_ACTIONED -> null
-            // 정지·차단 회원도 열 수 있는 제재 안내 화면. 경고도 같은 화면이 사유와 기간을 보여준다.
-            NotificationType.SANCTION_IMPOSED -> "/sanction/"
-        }
-    }
-
-    /**
-     * 결과 화면이 매칭 유형마다 다르다(채팅의 group/one-on-one 과 같은 이분법). `/matching/`은 1:1 화면이라
-     * 그룹 주에 보내면 후보가 없다고 뜬다. 퀴즈셋이 그새 지워졌으면 유형을 알 수 없어 deepLink 없이 보낸다.
-     */
-    private fun matchResultPathOf(quizSetId: Long?): String? {
-        val quizSet = quizSetId?.let { quizSetRepository.findById(it).orElse(null) } ?: return null
-        return when (quizSet.matchingType) {
-            MatchingType.GROUP -> GROUP_MATCHING_PATH
-            MatchingType.ONE_TO_ONE -> ONE_TO_ONE_MATCHING_PATH
-        }
-    }
-
-    private fun chatRoomPathOf(roomId: Long?): String? {
-        if (roomId == null) {
-            return null
-        }
-        val room = chatRoomRepository.findById(roomId).orElse(null) ?: return null
-        return chatRoomPath(room.sourceType, roomId)
-    }
-
-    /** FE 방 목록과 같은 이분법 — 재매칭 방도 1:1 화면으로 연다. */
-    private fun chatRoomPath(sourceType: ChatRoomType, roomId: Long): String =
-        if (sourceType == ChatRoomType.GROUP) "/chat/group/$roomId/" else "/chat/one-on-one/$roomId/"
-
     /** 벨 배지 API 와 같은 창을 써야 인앱과 아이콘 뱃지가 같은 수가 된다. */
     private fun countUnread(memberId: Long): Int =
         notificationRepository.countUnread(memberId, Notification.retentionFrom()).toInt()
@@ -191,8 +123,6 @@ class PushNotifier(
     }
 
     companion object {
-        private const val ONE_TO_ONE_MATCHING_PATH = "/matching/"
-        private const val GROUP_MATCHING_PATH = "/matching/group/"
         private val logger = KotlinLogging.logger {}
     }
 }
