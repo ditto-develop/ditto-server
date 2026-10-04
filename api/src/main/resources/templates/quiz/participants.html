@@ -47,9 +47,9 @@
                         <tbody>
                         <tr th:each="p : ${view.participants}">
                             <td>
-                                <span class="badge off" th:if="${p.isDeletedMember}">삭제됨</span>
-                                <span class="badge matching" th:if="${p.isDummy}">더미</span>
-                                <span class="badge on" th:unless="${p.isDeletedMember or p.isDummy}">실회원</span>
+                                <span class="badge off" th:if="${p.kind.name() == 'DELETED'}">삭제됨</span>
+                                <span class="badge matching" th:if="${p.kind.name() == 'DUMMY'}">더미</span>
+                                <span class="badge on" th:if="${p.kind.name() == 'REAL'}">실회원</span>
                             </td>
                             <td th:text="|${p.nickname ?: '삭제된 회원'}(#${p.memberId})|">닉네임(#1)</td>
                             <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>
