@@ -9,6 +9,7 @@ import com.ditto.api.admin.qa.dto.QaVote
 import com.ditto.api.admin.qa.dto.QaVoteOption
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -42,6 +43,7 @@ class AdminQaRoomService(
     private val groupMatchRepository: GroupMatchRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val quizSetRepository: QuizSetRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -88,6 +90,7 @@ class AdminQaRoomService(
         val votes = findVotes(room, roomMembers)
 
         return QaRoomView(
+            now = serverTimeProvider.now(),
             roomId = room.id,
             sourceType = room.sourceType,
             status = room.status,

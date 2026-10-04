@@ -4,7 +4,6 @@ import com.ditto.api.chat.controller.ChatController
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatSendRequest
 import com.ditto.api.chat.websocket.ChatStompController
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -25,7 +24,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQaRoomController(
     private val adminQaRoomService: AdminQaRoomService,
     private val qaDummies: QaDummies,
-    private val serverTimeProvider: ServerTimeProvider,
     private val chatController: ChatController,
     private val chatStompController: ChatStompController,
 ) {
@@ -34,10 +32,9 @@ class AdminQaRoomController(
         val room = adminQaRoomService.findRoom(roomId)
         if (room == null) {
             redirectAttributes.addFlashAttribute("error", "채팅방 #$roomId 이 없습니다.")
-            return "redirect:/admin/qa#rooms"
+            return QaRoutes.ROOMS_SECTION
         }
         model.addAttribute("room", room)
-        model.addAttribute("currentTime", serverTimeProvider.now())
         model.addAttribute("active", "qa")
         return "qa/room"
     }
@@ -56,7 +53,7 @@ class AdminQaRoomController(
             val sender = authenticationOf(dummyId)
             contents.forEach { chatStompController.sendMessage(roomId, ChatSendRequest(content = it), sender) }
         }
-        return roomRedirect(roomId)
+        return QaRoutes.room(roomId)
     }
 
     @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/read")
@@ -68,7 +65,7 @@ class AdminQaRoomController(
         redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "최신 메시지까지 읽음") {
             readLatest(dummyId, roomId)
         }
-        return roomRedirect(roomId)
+        return QaRoutes.room(roomId)
     }
 
     @PostMapping("/admin/qa/rooms/{roomId}/read-all-dummies")
@@ -77,7 +74,7 @@ class AdminQaRoomController(
             "방 #$roomId 더미 모두 읽음",
             adminQaRoomService.findActiveDummiesIn(roomId),
         ) { dummy -> readLatest(dummy.id, roomId) }
-        return roomRedirect(roomId)
+        return QaRoutes.room(roomId)
     }
 
     @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave")
@@ -89,7 +86,7 @@ class AdminQaRoomController(
         redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 나가기") {
             chatController.leave(qaDummies.principalOf(dummyId), roomId)
         }
-        return roomRedirect(roomId)
+        return QaRoutes.room(roomId)
     }
 
     @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/end")
@@ -101,7 +98,7 @@ class AdminQaRoomController(
         redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 채팅 종료") {
             chatController.end(qaDummies.principalOf(dummyId), roomId)
         }
-        return roomRedirect(roomId)
+        return QaRoutes.room(roomId)
     }
 
     private fun readLatest(dummyId: Long, roomId: Long) {
@@ -113,6 +110,4 @@ class AdminQaRoomController(
     /** STOMP 핸들러는 세션 principal 을 받으므로 앱 연결과 같은 모양으로 만든다. */
     private fun authenticationOf(dummyId: Long): Authentication =
         UsernamePasswordAuthenticationToken(qaDummies.principalOf(dummyId), null, emptyList())
-
-    private fun roomRedirect(roomId: Long): String = "redirect:/admin/qa/rooms/$roomId"
 }

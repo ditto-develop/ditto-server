@@ -18,7 +18,7 @@
 
             <div class="qa-bar" id="qa-bar" data-qa-live>
                 <span>서버 시각 <b th:text="${#temporals.format(console.now, 'MM/dd(E) HH:mm')}">-</b>
-                    <span class="badge matching" th:if="${timeOverridden}">조정 중</span></span>
+                    <span class="badge matching" th:if="${console.timeOverridden}">조정 중</span></span>
                 <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
                 <span class="qa-bar-links">
@@ -35,7 +35,7 @@
                                 th:text="|${shortcut.label} · ${#temporals.format(shortcut.dateTime, 'MM/dd(E) HH:mm')}|">
                             채팅 개방 직후 · 10/10(금) 00:01</button>
                     </form>
-                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${timeOverridden}">
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
                         <button class="btn secondary sm" type="submit">실제 시각으로</button>
                     </form>
                     <a th:href="@{/admin/time-override}">직접 설정 →</a>

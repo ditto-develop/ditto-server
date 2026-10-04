@@ -13,7 +13,7 @@
             </h1>
             <p class="page-desc">
                 <span th:text="|개방 ${#temporals.format(room.opensAt, 'MM/dd(E) HH:mm')} ~ 종료 ${#temporals.format(room.expiresAt, 'MM/dd(E) HH:mm')}|">-</span>
-                · 서버 시각 <span th:text="${#temporals.format(currentTime, 'MM/dd(E) HH:mm')}">-</span>
+                · 서버 시각 <span th:text="${#temporals.format(room.now, 'MM/dd(E) HH:mm')}">-</span>
                 · 더미의 전송·읽음은 앱과 같은 경로로 처리돼 테스트 폰에 실시간으로 반영됩니다.
             </p>
 

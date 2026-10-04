@@ -19,7 +19,7 @@ class AdminQaTimeController(
     @PostMapping("/admin/qa/server-time")
     fun override(
         @RequestParam dateTime: LocalDateTime,
-        @RequestParam(defaultValue = CONSOLE_PATH) returnTo: String,
+        @RequestParam(defaultValue = QaRoutes.CONSOLE_PATH) returnTo: String,
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
@@ -28,25 +28,20 @@ class AdminQaTimeController(
             "message",
             "서버 시각을 ${DISPLAY_FORMAT.format(dateTime)}로 옮겼습니다. 방 개방·마감은 1분 안에 스케줄러가 반영합니다.",
         )
-        return "redirect:${safeReturnPath(returnTo)}"
+        return QaRoutes.backTo(returnTo)
     }
 
     @PostMapping("/admin/qa/server-time/disable")
     fun disable(
-        @RequestParam(defaultValue = CONSOLE_PATH) returnTo: String,
+        @RequestParam(defaultValue = QaRoutes.CONSOLE_PATH) returnTo: String,
         redirectAttributes: RedirectAttributes,
     ): String {
         serverTimeService.disable()
         redirectAttributes.addFlashAttribute("message", "서버 시각 조정을 끄고 실제 시각으로 돌아왔습니다.")
-        return "redirect:${safeReturnPath(returnTo)}"
+        return QaRoutes.backTo(returnTo)
     }
 
-    /** 콘솔 밖이나 다른 호스트로 보내지 않는다. */
-    private fun safeReturnPath(returnTo: String): String =
-        returnTo.takeIf { it.startsWith(CONSOLE_PATH) && !it.contains("//") } ?: CONSOLE_PATH
-
     companion object {
-        private const val CONSOLE_PATH = "/admin/qa"
         private val DISPLAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd(E) HH:mm", Locale.KOREAN)
     }
 }

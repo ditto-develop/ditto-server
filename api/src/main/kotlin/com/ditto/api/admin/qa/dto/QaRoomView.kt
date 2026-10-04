@@ -24,6 +24,7 @@ class QaRoomSummary(
 }
 
 class QaRoomView(
+    val now: LocalDateTime,
     val roomId: Long,
     val sourceType: ChatRoomType,
     val status: ChatRoomStatus,

@@ -8,6 +8,7 @@ import java.time.LocalDateTime
 
 class QaConsoleView(
     val now: LocalDateTime,
+    val timeOverridden: Boolean,
     val weekStartedOn: LocalDate,
     val dummyCount: Int,
     val personal: QaPersonalSection,

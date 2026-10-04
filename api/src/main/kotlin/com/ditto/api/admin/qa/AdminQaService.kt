@@ -12,6 +12,7 @@ import com.ditto.api.admin.qa.dto.QaPersonalSection
 import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.api.system.ServerTimeService
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.entity.GroupMatch
@@ -42,6 +43,7 @@ class AdminQaService(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val serverTimeProvider: ServerTimeProvider,
+    private val serverTimeService: ServerTimeService,
 ) {
     /** 시각은 한 번만 읽는다. 운영 주와 그룹 응답 마감이 같은 순간을 기준으로 해야 화면 안에서 어긋나지 않는다. */
     fun getConsole(): QaConsoleView {
@@ -51,6 +53,7 @@ class AdminQaService(
         val quizSets = quizSetRepository.findByWeekStartedOn(week.startedOn)
         return QaConsoleView(
             now = now,
+            timeOverridden = serverTimeService.getOverride().enabled,
             weekStartedOn = week.startedOn,
             dummyCount = dummyIds.size,
             personal = composePersonalSection(quizSets.filter { it.matchingType == MatchingType.ONE_TO_ONE }, dummyIds),
