@@ -115,7 +115,7 @@ class AdminQaRoomWebTest(
             rooms.first().memberCount shouldBe 2
             rooms.first().dummyCount shouldBe 1
             rooms.first().realMembers.map { it.id } shouldBe listOf(tester.id)
-            rooms.first().lastMessageAt shouldBe latest.createdAt
+            rooms.first().lastMessageAt shouldBe chatMessageRepository.findByIdOrNull(latest.id)?.createdAt
             rooms.last().lastMessageAt shouldBe null
         }
 
