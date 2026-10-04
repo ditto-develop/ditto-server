@@ -390,8 +390,11 @@ class AdminQuizServiceTest(
             return quizSet.id to quizIds
         }
 
-        "매칭 전이면 문항·선택지·답변·진행과 셋을 가리키는 알림까지 지운다" {
+        "매칭 전이면 문항·선택지·답변·진행과 셋을 읽는 매칭 결과 알림까지 지운다" {
             val (quizSetId, quizIds) = answeredQuizSet()
+            val noMatch = notificationRepository.save(
+                NotificationFixture.create(type = NotificationType.NO_MATCH, targetId = quizSetId),
+            )
             val quizOpened = notificationRepository.save(
                 NotificationFixture.create(type = NotificationType.QUIZ_OPENED, targetId = quizSetId),
             )
@@ -399,7 +402,7 @@ class AdminQuizServiceTest(
                 NotificationFixture.create(type = NotificationType.CHAT_MESSAGE, targetId = quizSetId),
             )
             val otherQuizSet = notificationRepository.save(
-                NotificationFixture.create(type = NotificationType.QUIZ_OPENED, targetId = quizSetId + 1),
+                NotificationFixture.create(type = NotificationType.NO_MATCH, targetId = quizSetId + 1),
             )
 
             adminQuizService.deleteQuizSet(quizSetId)
@@ -409,9 +412,17 @@ class AdminQuizServiceTest(
             quizChoiceRepository.findByQuizIdInOrderByDisplayOrderAsc(quizIds).shouldBeEmpty()
             quizAnswerRepository.findByMemberIdAndQuizIdIn(7L, quizIds).shouldBeEmpty()
             quizProgressRepository.existsByQuizSetId(quizSetId) shouldBe false
-            notificationRepository.findByIdOrNull(quizOpened.id) shouldBe null
+            notificationRepository.findByIdOrNull(noMatch.id) shouldBe null
+            // 퀴즈 열림 알림은 그 주의 대표 셋을 가리킬 뿐이라 다른 셋이 열려 있으면 여전히 맞는 알림이다.
+            notificationRepository.findByIdOrNull(quizOpened.id).shouldNotBeNull()
             notificationRepository.findByIdOrNull(sameIdOtherTarget.id).shouldNotBeNull()
             notificationRepository.findByIdOrNull(otherQuizSet.id).shouldNotBeNull()
+        }
+
+        "없는 셋은 NOT_FOUND 로 거부한다" {
+            val exception = shouldThrow<WarnException> { adminQuizService.deleteQuizSet(999_999L) }
+
+            exception.errorCode shouldBe ErrorCode.NOT_FOUND
         }
 
         "문항이 없는 셋도 지운다" {

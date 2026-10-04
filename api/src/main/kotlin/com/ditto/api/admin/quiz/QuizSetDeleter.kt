@@ -14,12 +14,9 @@ import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
-/**
- * 퀴즈셋을 문항·선택지·답변·진행, 셋을 가리키는 알림과 함께 지운다. FK 가 없어 직접 정리한다.
- * 매칭이 돈 셋은 그 주 매칭·채팅·평가·재매칭이 셋을 기준으로 남아 있어 지우지 않는다.
- * 평가·재매칭은 매칭에서만 생기므로 매칭 기록만 본다.
- */
+/** 퀴즈셋과 그 셋에 딸린 행을 FK 없이 직접 지운다. 삭제 조건과 범위는 docs/domains/quiz.md 에 있다. */
 @Component
 class QuizSetDeleter(
     private val quizSetRepository: QuizSetRepository,
@@ -33,27 +30,34 @@ class QuizSetDeleter(
     private val notificationRepository: NotificationRepository,
 ) {
 
+    @Transactional
     fun delete(quizSetId: Long) {
-        if (hasMatching(quizSetId)) {
+        if (!quizSetRepository.existsById(quizSetId)) {
+            throw WarnException(ErrorCode.NOT_FOUND)
+        }
+        if (hasMatchRecords(quizSetId)) {
             throw WarnException(
                 ErrorCode.BAD_REQUEST,
                 "매칭이 진행된 퀴즈셋은 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.",
             )
         }
-        deleteNotificationsPointingTo(quizSetId)
+        deleteNotificationsReadingQuizSet(quizSetId)
         deleteQuizzesWithAnswers(quizSetId)
         quizProgressRepository.deleteByQuizSetId(quizSetId)
         quizSetRepository.deleteById(quizSetId)
     }
 
-    fun hasMatching(quizSetId: Long): Boolean =
+    fun hasMatchRecords(quizSetId: Long): Boolean =
         matchCandidateRepository.existsByQuizSetId(quizSetId) ||
             personalMatchRepository.existsByQuizSetId(quizSetId) ||
             groupMatchRepository.existsByQuizSetId(quizSetId)
 
-    private fun deleteNotificationsPointingTo(quizSetId: Long) {
+    /** 퀴즈 열림·마감 알림은 그 주의 대표 셋을 가리킬 뿐이라 남기고, 셋 행을 읽는 매칭 결과 알림만 지운다. */
+    private fun deleteNotificationsReadingQuizSet(quizSetId: Long) {
+        val typesReadingQuizSet = NotificationType.pointingTo(NotificationTarget.QUIZ_SET)
+            .filter { it.deepLinkTarget.readsTargetRow }
         val notificationIds = notificationRepository
-            .findByTypeInAndTargetIdIn(NotificationType.pointingTo(NotificationTarget.QUIZ_SET), listOf(quizSetId))
+            .findByTypeInAndTargetIdIn(typesReadingQuizSet, listOf(quizSetId))
             .map { it.id }
         if (notificationIds.isEmpty()) return
         notificationRepository.deleteAllByIdInBatch(notificationIds)

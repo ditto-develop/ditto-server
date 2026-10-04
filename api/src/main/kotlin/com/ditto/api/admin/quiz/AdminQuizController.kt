@@ -1,6 +1,7 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -65,7 +66,7 @@ class AdminQuizController(
         model.addAttribute("quizSet", adminQuizService.getQuizSet(id))
         model.addAttribute("quizzes", quizzes)
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
-        model.addAttribute("hasMatching", adminQuizService.hasMatching(id))
+        model.addAttribute("hasMatchRecords", adminQuizService.hasMatchRecords(id))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -135,7 +136,8 @@ class AdminQuizController(
                 onFailure = { exception ->
                     if (exception !is WarnException) throw exception
                     redirectAttributes.addFlashAttribute("error", exception.message)
-                    "redirect:/admin/quiz-sets/$id"
+                    val quizSetGone = exception.errorCode == ErrorCode.NOT_FOUND
+                    if (quizSetGone) "redirect:/admin/quiz-sets" else "redirect:/admin/quiz-sets/$id"
                 },
             )
 

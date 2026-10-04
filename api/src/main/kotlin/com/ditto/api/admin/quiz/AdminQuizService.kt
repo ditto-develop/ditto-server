@@ -219,7 +219,7 @@ class AdminQuizService(
     fun deleteQuizSet(id: Long) = quizSetDeleter.delete(id)
 
     @Transactional(readOnly = true)
-    fun hasMatching(quizSetId: Long): Boolean = quizSetDeleter.hasMatching(quizSetId)
+    fun hasMatchRecords(quizSetId: Long): Boolean = quizSetDeleter.hasMatchRecords(quizSetId)
 
     /**
      * 한 주차·타입의 활성 셋은 하나뿐이다. 둘이면 매칭이 어느 셋을 가리키는지 정해지지 않는다
