@@ -6,6 +6,7 @@ import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgress
+import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -38,7 +39,7 @@ class DummyAnswerRecorder(
                 "선택지가 없는 문항이 있어 더미를 생성할 수 없습니다: quizId=${quizWithoutChoice.id}",
             )
         }
-        return QuizQuestions(quizSet.id, quizzes, choicesByQuizId)
+        return QuizQuestions(quizSet, quizzes, choicesByQuizId)
     }
 
     /** [pickedChoices]는 문항 순서대로 앞에서부터의 답이다. 비어 있으면 퀴즈를 시작하지 않은 회원으로 둔다. */
@@ -55,10 +56,12 @@ class DummyAnswerRecorder(
 }
 
 class QuizQuestions(
-    val quizSetId: Long,
+    val quizSet: QuizSet,
     val quizzes: List<Quiz>,
     private val choicesByQuizId: Map<Long, List<QuizChoice>>,
 ) {
+    val quizSetId: Long get() = quizSet.id
+
     fun choicesOf(quiz: Quiz): List<QuizChoice> = choicesByQuizId.getValue(quiz.id)
 
     /** 앞에서 [answeredCount]개 문항의 답을 고른다. */

@@ -14,7 +14,7 @@ import com.ditto.common.exception.WarnException
  */
 enum class Interest(
     val code: String,
-    private val description: String,
+    val description: String,
 ) {
     WORKOUT("workout", "운동"),
     MOVIE_DRAMA("movie-drama", "영화/드라마"),
