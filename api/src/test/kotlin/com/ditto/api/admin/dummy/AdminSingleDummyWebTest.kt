@@ -72,15 +72,16 @@ class AdminSingleDummyWebTest(
         return QuizSetSetup(quizSet.id, choicesByOrder)
     }
 
-    fun createRequest(setup: QuizSetSetup): MockHttpServletRequestBuilder = post("/admin/dummy/single").asAdmin()
-        .param("quizSetId", setup.quizSetId.toString())
-        .param("gender", "FEMALE")
-        .param("age", "30")
-        .param("location", "BUSAN")
-        .param("job", "DESIGN")
-        .param("interests", "TRAVEL", "MUSIC")
-        .param("avatarNumber", "")
-        .param("answeredCount", "")
+    fun createRequest(setup: QuizSetSetup, age: String = "30"): MockHttpServletRequestBuilder =
+        post("/admin/dummy/single").asAdmin()
+            .param("quizSetId", setup.quizSetId.toString())
+            .param("gender", "FEMALE")
+            .param("age", age)
+            .param("location", "BUSAN")
+            .param("job", "DESIGN")
+            .param("interests", "TRAVEL", "MUSIC")
+            .param("avatarNumber", "")
+            .param("answeredCount", "")
 
     "한 명 만들기 화면" - {
         "더미 페이지에서 퀴즈셋을 골라 들어가는 폼이 있다" {
@@ -104,6 +105,18 @@ class AdminSingleDummyWebTest(
                 .andExpect(content().string(containsString("영화/드라마")))
                 .andExpect(content().string(containsString("경기")))
                 .andExpect(content().string(containsString("/admin/quiz-sets/${setup.quizSetId}/participants")))
+                .andExpect(content().string(containsString("나이 차가 10살 이내")))
+        }
+
+        "퀴즈셋이 하나도 없으면 고르는 폼 대신 안내를 보여 준다" {
+            mockMvc.perform(get("/admin/dummy").with(authentication(admin)))
+                .andExpect(content().string(containsString("퀴즈셋이 없습니다. 퀴즈셋을 먼저 만드세요.")))
+        }
+
+        "퀴즈셋 없이 들어오면 더미 페이지로 돌려보낸다" {
+            mockMvc.perform(get("/admin/dummy/single").with(authentication(admin)))
+                .andExpect(redirectedUrl("/admin/dummy"))
+                .andExpect(flash().attribute("error", "더미를 만들 퀴즈셋을 골라 주세요."))
         }
 
         "없는 퀴즈셋이면 더미 페이지로 돌려보낸다" {
@@ -118,16 +131,18 @@ class AdminSingleDummyWebTest(
             val setup = setupQuizSet()
             val chosen = setup.choicesByOrder[1][1]
 
-            mockMvc.perform(
+            val result = mockMvc.perform(
                 createRequest(setup)
                     .param("nicknameSuffix", "웹테스트")
                     .param("choiceIdByQuizId[${setup.choicesByOrder[0][0].quizId}]", "")
                     .param("choiceIdByQuizId[${chosen.quizId}]", chosen.id.toString()),
             )
                 .andExpect(redirectedUrl("/admin/dummy/single?quizSetId=${setup.quizSetId}"))
-                .andExpect(flash().attribute("message", containsString("dummy-웹테스트")))
+                .andReturn()
 
             val dummy = memberRepository.findByNicknameStartingWith("dummy-웹테스트").single()
+            result.flashMap["message"] shouldBe
+                "퀴즈셋 #${setup.quizSetId} 에 더미를 만들었습니다: dummy-웹테스트 (#${dummy.id} · 여성 · 2/2 풀이)"
             dummy.gender shouldBe Gender.FEMALE
             dummy.age shouldBe 30
             dummy.location shouldBe Location.BUSAN
@@ -139,6 +154,15 @@ class AdminSingleDummyWebTest(
             choiceIdByQuizId[chosen.quizId] shouldBe chosen.id
             quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, setup.quizSetId)
                 .shouldNotBeNull().status shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "나이를 비우고 내도 JSON 오류가 아니라 같은 폼에 안내를 보여 준다" {
+            val setup = setupQuizSet()
+
+            mockMvc.perform(createRequest(setup, age = "").param("nicknameSuffix", "나이없음"))
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString("나이를 입력해 주세요.")))
+                .andExpect(content().string(containsString("value=\"나이없음\"")))
         }
 
         "거부되면 입력한 값을 그대로 둔 채 같은 폼에 사유를 보여 준다" {

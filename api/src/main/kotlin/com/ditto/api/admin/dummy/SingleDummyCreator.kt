@@ -8,6 +8,7 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizChoice
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -19,16 +20,24 @@ class SingleDummyCreator(
 ) {
 
     @Transactional
-    fun create(form: SingleDummyForm): Member {
+    fun create(form: SingleDummyForm): CreatedDummy {
         val questions = dummyAnswerRecorder.findQuestionsOf(form.quizSetId)
         val profile = profileOf(form)
         val pickedChoices = questions.pickChoices(answeredCountOf(form, questions)) { quiz ->
             chosenOrRandom(form, quiz, questions.choicesOf(quiz))
         }
-        val member = memberRepository.save(DummyMemberFactory.create(profile))
+        val member = save(profile)
         dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices)
-        return member
+        return CreatedDummy(member, answeredCount = pickedChoices.size, quizCount = questions.quizzes.size)
     }
+
+    // 존재 확인과 저장 사이에 같은 닉네임이 먼저 들어오면 유일 제약에 걸린다. 같은 안내로 돌려준다.
+    private fun save(profile: DummyProfile): Member =
+        runCatching { memberRepository.save(DummyMemberFactory.create(profile)) }
+            .getOrElse { e ->
+                if (e !is DataIntegrityViolationException) throw e
+                throw nicknameTaken(profile.nickname)
+            }
 
     private fun profileOf(form: SingleDummyForm): DummyProfile = DummyProfile(
         nickname = nicknameOf(form),
@@ -41,11 +50,12 @@ class SingleDummyCreator(
     )
 
     private fun ageOf(form: SingleDummyForm): Int {
+        val age = form.age ?: throw WarnException(ErrorCode.BAD_REQUEST, "나이를 입력해 주세요.")
         val ageRange = DummyMemberFactory.AGE_RANGE
-        if (form.age !in ageRange) {
+        if (age !in ageRange) {
             throw WarnException(ErrorCode.BAD_REQUEST, "나이는 ${ageRange.first}~${ageRange.last} 사이여야 합니다.")
         }
-        return form.age
+        return age
     }
 
     private fun interestsOf(form: SingleDummyForm): Set<Interest> {
@@ -66,11 +76,12 @@ class SingleDummyCreator(
             )
         }
         val nickname = DummyMemberFactory.nicknameOf(suffix)
-        if (memberRepository.existsByNickname(nickname)) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "이미 있는 닉네임입니다: $nickname")
-        }
+        if (memberRepository.existsByNickname(nickname)) throw nicknameTaken(nickname)
         return nickname
     }
+
+    private fun nicknameTaken(nickname: String) =
+        WarnException(ErrorCode.BAD_REQUEST, "이미 있는 닉네임입니다: $nickname")
 
     private fun caricatureOf(form: SingleDummyForm): String {
         val avatarNumber = form.avatarNumber ?: return DummyMemberFactory.randomCaricatureOf(form.gender)
@@ -95,4 +106,10 @@ class SingleDummyCreator(
         return choices.firstOrNull { it.id == chosenId }
             ?: throw WarnException(ErrorCode.BAD_REQUEST, "문항에 없는 선택지입니다: quizId=${quiz.id}, choiceId=$chosenId")
     }
+}
+
+class CreatedDummy(val member: Member, val answeredCount: Int, val quizCount: Int) {
+    /** 매칭 재생성 결과가 구성원을 ID로만 보여 줘서 ID를 함께 적는다. */
+    fun toDisplayText(): String =
+        "${member.nickname} (#${member.id} · ${member.gender?.description} · $answeredCount/$quizCount 풀이)"
 }

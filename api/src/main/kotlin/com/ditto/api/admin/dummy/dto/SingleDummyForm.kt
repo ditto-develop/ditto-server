@@ -12,7 +12,8 @@ class SingleDummyForm(
     /** `dummy-` 뒤에 붙일 부분. 비우면 자동으로 만든다. */
     var nicknameSuffix: String = "",
     var gender: Gender = Gender.MALE,
-    var age: Int = DEFAULT_AGE,
+    /** 비어 오면 바인딩이 실패하지 않게 null 로 받아 서비스가 안내한다. */
+    var age: Int? = DEFAULT_AGE,
     var location: Location = Location.SEOUL,
     var job: Job = Job.IT_TECH,
     var interests: MutableSet<Interest> = mutableSetOf(),

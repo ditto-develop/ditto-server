@@ -3,11 +3,13 @@ package com.ditto.api.admin.dummy
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.admin.dummy.dto.DummyGenerateForm
 import com.ditto.api.admin.dummy.dto.SingleDummyForm
+import com.ditto.api.match.matching.OneToOneMatchingProcessor
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -56,8 +58,17 @@ class AdminDummyController(
     }
 
     @GetMapping("/admin/dummy/single")
-    fun singleForm(@RequestParam quizSetId: Long, model: Model, redirectAttributes: RedirectAttributes): String =
-        showSingleForm(SingleDummyForm.withRandomProfile(quizSetId), model, redirectAttributes)
+    fun singleForm(
+        @RequestParam(required = false) quizSetId: Long?,
+        model: Model,
+        redirectAttributes: RedirectAttributes,
+    ): String {
+        if (quizSetId == null) {
+            redirectAttributes.addFlashAttribute("error", "더미를 만들 퀴즈셋을 골라 주세요.")
+            return "redirect:/admin/dummy"
+        }
+        return showSingleForm(SingleDummyForm.withRandomProfile(quizSetId), model, redirectAttributes)
+    }
 
     @PostMapping("/admin/dummy/single")
     fun createSingle(
@@ -67,9 +78,10 @@ class AdminDummyController(
         redirectAttributes: RedirectAttributes,
     ): String = runCatching { singleDummyCreator.create(form) }
         .fold(
-            onSuccess = { dummy ->
-                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 ${dummy.nickname} 생성" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 만들었습니다: ${dummy.nickname}")
+            onSuccess = { created ->
+                val summary = created.toDisplayText()
+                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 생성: $summary" }
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 만들었습니다: $summary")
                 "redirect:/admin/dummy/single?quizSetId=${form.quizSetId}"
             },
             onFailure = { e ->
@@ -112,6 +124,8 @@ class AdminDummyController(
         model.addAttribute("interestCountRange", DummyMemberFactory.INTEREST_COUNT_RANGE)
         model.addAttribute("nicknamePrefix", DummyMarker.NICKNAME_PREFIX)
         model.addAttribute("nicknameSuffixMaxLength", DummyMemberFactory.NICKNAME_SUFFIX_MAX_LENGTH)
+        model.addAttribute("isOneToOne", questions.quizSet.matchingType == MatchingType.ONE_TO_ONE)
+        model.addAttribute("maxAgeGap", OneToOneMatchingProcessor.MAX_AGE_GAP)
         model.addAttribute("active", "dummy")
         return "dummy-single"
     }

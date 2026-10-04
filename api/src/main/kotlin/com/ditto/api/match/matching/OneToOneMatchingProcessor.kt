@@ -60,6 +60,6 @@ class OneToOneMatchingProcessor : MatchingProcessor {
     companion object {
         private const val TOP_RATIO = 0.2 // 상위 20% 선발
         private const val HARD_LIMIT = 5 // 1인 최대 노출 5명
-        private const val MAX_AGE_GAP = 10 // 나이차 10 초과 페어 제외
+        const val MAX_AGE_GAP = 10 // 나이차 10 초과 페어 제외
     }
 }

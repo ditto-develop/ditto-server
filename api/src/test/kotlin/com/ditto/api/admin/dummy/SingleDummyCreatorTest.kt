@@ -80,7 +80,7 @@ class SingleDummyCreatorTest(
                     interests = mutableSetOf(Interest.TRAVEL, Interest.COOKING)
                     avatarNumber = 3
                 },
-            )
+            ).member
 
             dummy.nickname shouldBe "dummy-고득점"
             dummy.status shouldBe MemberStatus.ACTIVE
@@ -95,7 +95,7 @@ class SingleDummyCreatorTest(
         "닉네임 뒷부분과 캐리커쳐를 비우면 자동으로 채운다" {
             val setup = setupQuizSet()
 
-            val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { gender = Gender.MALE })
+            val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { gender = Gender.MALE }).member
 
             dummy.nickname shouldMatch Regex("dummy-male-[0-9a-f]{8}")
             dummy.caricature.shouldNotBeNull() shouldMatch Regex("/onboarding/profileimg/avatar/m[1-8]\\.svg")
@@ -110,7 +110,7 @@ class SingleDummyCreatorTest(
                 form(setup.quizSetId).apply {
                     choiceIdByQuizId = chosenBs.associate { it.quizId to it.id }.toMutableMap()
                 },
-            )
+            ).member
 
             val answered = answeredChoiceIdsOf(dummy.id, setup)
             answered.size shouldBe 8
@@ -123,7 +123,8 @@ class SingleDummyCreatorTest(
         "푼 문항 수를 주면 앞에서부터 그만큼만 답하고 진행 중으로 둔다" {
             val setup = setupQuizSet(quizCount = 3)
 
-            val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { answeredCount = 2 })
+            val created = singleDummyCreator.create(form(setup.quizSetId).apply { answeredCount = 2 })
+            val dummy = created.member
 
             val answeredQuizIds = quizAnswerRepository
                 .findByMemberIdAndQuizIdIn(dummy.id, setup.choicesByOrder.map { it.first().quizId })
@@ -133,12 +134,13 @@ class SingleDummyCreatorTest(
                 .shouldNotBeNull()
             progress.status shouldBe QuizProgressStatus.IN_PROGRESS
             progress.answeredCount shouldBe 2
+            created.toDisplayText() shouldBe "${dummy.nickname} (#${dummy.id} · 남성 · 2/3 풀이)"
         }
 
         "푼 문항 수가 0이면 답과 진행 없이 회원만 만든다" {
             val setup = setupQuizSet()
 
-            val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { answeredCount = 0 })
+            val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { answeredCount = 0 }).member
 
             answeredChoiceIdsOf(dummy.id, setup).shouldBeEmpty()
             quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, setup.quizSetId) shouldBe null
@@ -167,6 +169,7 @@ class SingleDummyCreatorTest(
         listOf<Pair<String, SingleDummyForm.() -> Unit>>(
             "닉네임 뒷부분에 허용하지 않는 문자가 있으면" to { nicknameSuffix = "a b" },
             "닉네임 뒷부분이 20자를 넘으면" to { nicknameSuffix = "a".repeat(21) },
+            "나이를 비우면" to { age = null },
             "나이가 20 미만이면" to { age = 19 },
             "관심사가 없으면" to { interests = mutableSetOf() },
             "관심사가 5개를 넘으면" to { interests = Interest.entries.take(6).toMutableSet() },

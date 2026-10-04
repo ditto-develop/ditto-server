@@ -12,7 +12,8 @@
             <h1 class="page-title" style="margin-top:8px">더미 한 명 만들기</h1>
             <p class="page-desc">
                 <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>
-                에 프로필과 답을 지정해 더미를 만듭니다. 비워 둔 값은 무작위로 채웁니다.
+                에 프로필과 답을 지정해 더미를 만듭니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,
+                닉네임·캐리커쳐·문항별 답은 비우면 무작위로 정합니다.
                 매칭 후보는 만들지 않으니, 만든 뒤 '매칭 실행'에서 재생성하세요.
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
@@ -72,7 +73,9 @@
                             </label>
                         </div>
                     </div>
-                    <p class="muted" style="margin:0">캐리커쳐는 성별에 맞는 아바타 중 그 번호를 씁니다. 매칭 성별 선호는 실회원처럼 이성(OPPOSITE)입니다.</p>
+                    <p class="muted" style="margin:0">캐리커쳐는 성별에 맞는 아바타 중 그 번호를 씁니다.</p>
+                    <p class="muted" style="margin:4px 0 0" th:if="${isOneToOne}"
+                       th:text="|1:1은 실회원처럼 이성끼리, 나이 차가 ${maxAgeGap}살 이내인 회원만 후보가 됩니다.|">1:1 후보 조건</p>
                 </div>
 
                 <div class="card">
@@ -81,7 +84,8 @@
                         <label>푼 문항 수</label>
                         <input type="number" th:field="*{answeredCount}" min="0"
                                th:max="${#lists.size(questions.quizzes)}" placeholder="비우면 전부 풀이(완료)"/>
-                        <p class="muted" style="margin:6px 0 0">값을 주면 위에서부터 그 수만큼만 답하고 진행 중으로 둡니다. 0이면 퀴즈를 시작하지 않은 회원이 됩니다.</p>
+                        <p class="muted" style="margin:6px 0 0">값을 주면 위에서부터 그 수만큼만 답하고 진행 중으로 둡니다. 그 뒤 문항에서 고른 답은 쓰지 않습니다.
+                            0이면 퀴즈를 시작하지 않은 회원이 되어 진행 기록이 없으므로 참여 현황에 나오지 않습니다.</p>
                     </div>
                     <div class="ro-quiz" th:each="quiz, stat : ${questions.quizzes}">
                         <span class="no" th:text="${stat.count}">1</span>
