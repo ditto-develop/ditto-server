@@ -1,5 +1,6 @@
 package com.ditto.api.notification.push
 
+import com.ditto.api.notification.deeplink.NotificationDeepLinks
 import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.member.entity.MemberNotificationSetting
@@ -46,7 +47,7 @@ class PushNotifier(
     fun pushAll(notifications: List<Notification>) {
         val first = notifications.firstOrNull() ?: return
         runCatchingExceptions {
-            val deepLink = notificationDeepLinks.deepLinkOf(first)
+            val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
             notifications
                 .filter { it.memberId !in mutedMemberIds }

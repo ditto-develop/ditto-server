@@ -1,4 +1,4 @@
-package com.ditto.api.notification.push
+package com.ditto.api.notification.deeplink
 
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -23,15 +23,15 @@ class NotificationDeepLinks(
 ) {
 
     /** 푸시 한 건용. 대상을 그때그때 조회한다. */
-    fun deepLinkOf(notification: Notification): String? = pathOf(notification, lookupById())
+    fun deepLinkFor(notification: Notification): String? = deepLinkOf(notification, singleLookup())
 
     /** 알림 목록 한 페이지용. 대상을 종류별로 한 번에 조회한다. 알림 ID로 찾는다. */
-    fun deepLinksOf(notifications: List<Notification>): Map<Long, String?> {
-        val lookup = lookupInBatch(notifications)
-        return notifications.associate { it.id to pathOf(it, lookup) }
+    fun deepLinksByNotificationId(notifications: List<Notification>): Map<Long, String?> {
+        val lookup = batchLookup(notifications)
+        return notifications.associate { it.id to deepLinkOf(it, lookup) }
     }
 
-    private fun pathOf(notification: Notification, lookup: TargetLookup): String? {
+    private fun deepLinkOf(notification: Notification, lookup: TargetLookup): String? {
         val targetId = notification.targetId
         return when (notification.type.deepLinkTarget) {
             DeepLinkTarget.MATCHING_RESULT -> targetId?.let(lookup.matchingTypeOf)?.let(::matchResultPath)
@@ -67,14 +67,15 @@ class NotificationDeepLinks(
     private fun chatRoomPath(sourceType: ChatRoomType, roomId: Long): String =
         if (sourceType == ChatRoomType.GROUP) "/chat/group/$roomId/" else "/chat/one-on-one/$roomId/"
 
-    private fun lookupById() = TargetLookup(
+    private fun singleLookup() = TargetLookup(
         chatRoomTypeOf = { roomId -> chatRoomRepository.findById(roomId).orElse(null)?.sourceType },
         matchingTypeOf = { quizSetId -> quizSetRepository.findById(quizSetId).orElse(null)?.matchingType },
         sourceChatRoomIdOf = { rematchId -> rematchRepository.findById(rematchId).orElse(null)?.sourceChatRoomId },
     )
 
-    private fun lookupInBatch(notifications: List<Notification>): TargetLookup {
+    private fun batchLookup(notifications: List<Notification>): TargetLookup {
         val targetIdsByLookup = notifications
+            .filter { it.type.deepLinkTarget.lookup != DeepLinkLookup.NONE }
             .mapNotNull { notification ->
                 notification.targetId?.let { notification.type.deepLinkTarget.lookup to it }
             }

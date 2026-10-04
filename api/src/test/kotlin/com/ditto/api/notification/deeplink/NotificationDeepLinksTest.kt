@@ -1,4 +1,4 @@
-package com.ditto.api.notification.push
+package com.ditto.api.notification.deeplink
 
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -9,14 +9,16 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.repository.RematchRepository
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.Optional
 
-/** 알림 목록 한 페이지의 경로 계산. 경로 규칙 자체는 PushNotifierTest 가 푸시 경로로 검증한다. */
+/** 경로 규칙은 PushNotifierTest 가 푸시로 검증한다. 여기서는 목록용 일괄 조회를 본다. */
 class NotificationDeepLinksTest : FreeSpec({
 
     val chatRoomRepository = mockk<ChatRoomRepository>()
@@ -50,7 +52,7 @@ class NotificationDeepLinksTest : FreeSpec({
         val sanction = notification(NotificationType.SANCTION_IMPOSED, targetId = 50L)
         val notice = notification(NotificationType.SYSTEM_NOTICE, targetId = null)
 
-        val deepLinkById = notificationDeepLinks.deepLinksOf(
+        val deepLinkById = notificationDeepLinks.deepLinksByNotificationId(
             listOf(
                 groupChat,
                 sameGroupChat,
@@ -77,11 +79,48 @@ class NotificationDeepLinksTest : FreeSpec({
         verify(exactly = 0) { chatRoomRepository.findById(any()) }
     }
 
+    "모든 유형에서 푸시용 단건 조회와 목록용 일괄 조회가 같은 경로를 낸다" {
+        val room = ChatRoomFixture.group(id = 10L)
+        val quizSet = QuizSetFixture.create(matchingType = MatchingType.GROUP, id = 10L)
+        val pair = RematchFixture.create(sourceChatRoomId = 55L, id = 10L)
+        every { chatRoomRepository.findById(10L) } returns Optional.of(room)
+        every { quizSetRepository.findById(10L) } returns Optional.of(quizSet)
+        every { rematchRepository.findById(10L) } returns Optional.of(pair)
+        every { chatRoomRepository.findAllById(any<Iterable<Long>>()) } returns listOf(room)
+        every { quizSetRepository.findAllById(any<Iterable<Long>>()) } returns listOf(quizSet)
+        every { rematchRepository.findAllById(any<Iterable<Long>>()) } returns listOf(pair)
+
+        NotificationType.entries.forEach { type ->
+            val notification = notification(type, targetId = 10L)
+
+            val batch = notificationDeepLinks.deepLinksByNotificationId(listOf(notification))[notification.id]
+
+            withClue(type) { batch shouldBe notificationDeepLinks.deepLinkFor(notification) }
+        }
+    }
+
+    "일괄 조회에서 대상이 사라졌거나 없으면 null 이다" {
+        every { chatRoomRepository.findAllById(any<Iterable<Long>>()) } returns emptyList()
+        every { quizSetRepository.findAllById(any<Iterable<Long>>()) } returns emptyList()
+        every { rematchRepository.findAllById(any<Iterable<Long>>()) } returns emptyList()
+        val missingQuizSet = notification(NotificationType.MATCH_RESULT, targetId = 1L)
+        val missingPair = notification(NotificationType.REMATCH_REQUESTED, targetId = 2L)
+        val noTargetRoom = notification(NotificationType.GROUP_FORMED, targetId = null)
+
+        val deepLinkById = notificationDeepLinks.deepLinksByNotificationId(
+            listOf(missingQuizSet, missingPair, noTargetRoom),
+        )
+
+        deepLinkById[missingQuizSet.id] shouldBe null
+        deepLinkById[missingPair.id] shouldBe null
+        deepLinkById[noTargetRoom.id] shouldBe null
+    }
+
     "조회가 필요 없는 유형만 있으면 아무것도 조회하지 않는다" {
         val matchRequest = notification(NotificationType.MATCH_REQUESTED, targetId = 1L)
         val quizOpened = notification(NotificationType.QUIZ_OPENED, targetId = 2L)
 
-        val deepLinkById = notificationDeepLinks.deepLinksOf(listOf(matchRequest, quizOpened))
+        val deepLinkById = notificationDeepLinks.deepLinksByNotificationId(listOf(matchRequest, quizOpened))
 
         deepLinkById[matchRequest.id] shouldBe "/matching/"
         deepLinkById[quizOpened.id] shouldBe "/quiz/current/"
