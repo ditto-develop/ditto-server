@@ -20,6 +20,8 @@
 - 답변이 등록된 문항은 삭제할 수 없고 선택지 수도 바꿀 수 없다(문구 수정만 허용). `quiz_answer`가 `quiz_id`·`choice_id`를 FK 없이 참조해 지워도 DB가 막지 않고, `MatchScoreCalculator`가 그 짝의 일치로 점수를 내므로 답변이 매칭에서 조용히 빠진다.
 - 폼의 `quizzes`가 비어 있으면 문항을 건드리지 않는다 — 문항 전체 삭제는 퀴즈셋 삭제로만 한다. 제출된 행은 모두 채워져 있어야 하며(빈 행도 거부) 삭제는 `문항 삭제` 버튼으로 id를 아예 안 보내는 한 경로뿐이다. 같은 문항 id 중복 제출도 거부한다.
 - 참여가 시작된 퀴즈셋(`quiz_progress` 행 존재)은 문항 **개수**를 바꿀 수 없다 — `QuizProgress.totalCount`가 첫 답변 시점의 문항 수로 굳는 `val`이라, 문항이 줄면 그 회원이 `answeredCount >= totalCount`에 닿지 못해 완주할 수 없고 그 주 매칭에서 빠진다. 문구 수정은 허용.
+- 매칭이 진행된 퀴즈셋(`match_candidate`·`personal_match`·`group_match` 중 하나라도 있음)은 삭제할 수 없다. 그 주 매칭·채팅·평가·재매칭이 `quiz_set_id`로 셋을 FK 없이 참조해, 지우면 그 주 데이터가 통째로 기준을 잃는다(평가 누락 복구가 그 방들을 매 주기 다시 집어 배치를 막은 적이 있다, #130). 평가·재매칭은 매칭에서만 생기므로 매칭 기록만 본다. 어드민 상세 화면은 이런 셋에 삭제 버튼 대신 안내를 띄운다.
+  - 매칭 전 셋은 문항·선택지와 함께 회원 답변(`quiz_answer`)·진행(`quiz_progress`), 셋을 가리키는 알림(`NotificationType.pointingTo(QUIZ_SET)`)까지 지운다(`QuizSetDeleter`). 응답 기간 중에 지우면 그 주 참여자의 답변도 사라진다.
 - `GET /api/v1/quiz-progress/current`는 활성 퀴즈셋이 없어도 오류를 내지 않고 `NOT_STARTED`·`participantCount=0`을 준다. 응답 기간이 월~수로 고정되면서 목~일은 항상 이 상태이고, 이번 주 퀴즈셋을 아직 만들지 않은 월~수도 같다 — 정상 운영을 5xx(ERROR 로그)로 다루지 않는다. FE 홈은 `period=QUIZ`일 때만 이 API를 부르며, 실패든 빈 응답이든 같은 화면(미완료·참여자 0)을 그린다.
 - TODO: 퀴즈셋 구성·중복 응답 방지·진행 완료 조건을 코드 확인 후 기술.
 
