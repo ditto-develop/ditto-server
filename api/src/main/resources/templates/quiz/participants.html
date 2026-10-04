@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('퀴즈셋 참여 현황')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('quiz')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content" th:with="quizSet=${view.quizSet}">
+            <a class="muted" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}">← 퀴즈셋 상세</a>
+            <h1 class="page-title" style="margin-top:8px" th:text="|${quizSet.title} 참여 현황|">참여 현황</h1>
+            <p class="page-desc">
+                <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
+                <span class="badge cat" th:text="${quizSet.matchingType}">TYPE</span>
+                · 진행 기록이 있는 회원을 참여 순서대로 보여 줍니다. 더미와 실회원을 모두 담습니다.
+            </p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="grid cols-3">
+                <div class="card stat">
+                    <span class="label">참여자</span>
+                    <span class="value" th:text="${view.participants.size()}">0</span>
+                </div>
+                <div class="card stat">
+                    <span class="label">다 풂 · 푸는 중 · 시작 안 함</span>
+                    <span class="value" th:text="|${view.completedCount} · ${view.inProgressCount} · ${view.notStartedCount}|">0 · 0 · 0</span>
+                </div>
+                <div class="card stat">
+                    <span class="label">실회원 · 더미</span>
+                    <span class="value" th:text="|${view.realMemberCount} · ${view.dummyCount}|">0 · 0</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>참여자</h2>
+                <p class="muted" th:if="${view.participants.isEmpty()}" style="margin:0">아직 참여한 회원이 없습니다.</p>
+                <div style="overflow-x:auto" th:unless="${view.participants.isEmpty()}">
+                    <table class="tbl" style="white-space:nowrap">
+                        <thead>
+                        <tr>
+                            <th>구분</th><th>회원</th><th>회원 상태</th>
+                            <th>진행</th><th>성별 선호</th>
+                            <th>성별</th><th>나이</th><th>지역</th><th>직업</th><th>관심사</th><th>캐리커쳐</th>
+                            <th th:each="quiz, stat : ${view.quizzes}" th:title="${quiz.question}" th:text="|Q${stat.count}|">Q1</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="p : ${view.participants}">
+                            <td>
+                                <span class="badge off" th:if="${p.isDeletedMember}">삭제됨</span>
+                                <span class="badge matching" th:if="${p.isDummy}">더미</span>
+                                <span class="badge on" th:unless="${p.isDeletedMember or p.isDummy}">실회원</span>
+                            </td>
+                            <td th:text="|${p.nickname ?: '삭제된 회원'}(#${p.memberId})|">닉네임(#1)</td>
+                            <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>
+                            <td th:text="|${p.progressStatus} ${p.answeredCount}/${p.totalCount}|">COMPLETED 3/3</td>
+                            <td th:text="${p.preferredGender}">OPPOSITE</td>
+                            <td th:text="${p.gender} ?: '-'">-</td>
+                            <td class="num" th:text="${p.age} ?: '-'">-</td>
+                            <td th:text="${p.location} ?: '-'">-</td>
+                            <td th:text="${p.job} ?: '-'">-</td>
+                            <td th:text="${p.interests.isEmpty()} ? '-' : ${#strings.setJoin(p.interests, ', ')}">-</td>
+                            <td th:text="${p.caricatureFileName} ?: '-'">-</td>
+                            <td th:each="answer : ${p.answerContents}" th:text="${answer} ?: ''"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="muted" style="margin:12px 0 0">문항 머리글(Q1…)에 마우스를 올리면 질문이 보입니다. 안 푼 문항은 빈칸입니다.</p>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

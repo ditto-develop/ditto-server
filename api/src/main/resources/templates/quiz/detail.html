@@ -20,6 +20,7 @@
             <div class="card">
                 <div class="btn-row">
                     <a class="btn" th:href="@{/admin/quiz-sets/{id}/edit(id=${quizSet.id})}">정보·문항 수정</a>
+                    <a class="btn secondary" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id})}">참여 현황</a>
                     <form class="inline-form" th:if="${!quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/activate(id=${quizSet.id})}" method="post">
                         <button class="btn secondary" type="submit">활성화</button>
                     </form>

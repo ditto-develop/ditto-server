@@ -17,11 +17,15 @@ import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.notification.repository.SystemNoticeRepository
+import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
@@ -72,6 +76,12 @@ class AdminWebTest {
 
     @Autowired
     lateinit var quizChoiceRepository: QuizChoiceRepository
+
+    @Autowired
+    lateinit var quizProgressRepository: QuizProgressRepository
+
+    @Autowired
+    lateinit var quizAnswerRepository: QuizAnswerRepository
 
     @Autowired
     lateinit var memberRepository: MemberRepository
@@ -187,6 +197,32 @@ class AdminWebTest {
             .andExpect(status().isOk)
         mockMvc.perform(get("/admin/quiz-sets/{id}/edit", created.id).with(authentication(admin())))
             .andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("퀴즈셋 참여 현황은 참여자의 프로필과 고른 선택지를 그린다")
+    fun quizSetParticipantsPage() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
+        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "아래부터", displayOrder = 1))
+        val picked = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "중간부터", displayOrder = 2))
+        val dummy = memberRepository.save(
+            MemberFixture.create(
+                nickname = "dummy-female-1a2b",
+                status = MemberStatus.ACTIVE,
+                caricature = "/onboarding/profileimg/avatar/f3.svg",
+            ),
+        )
+        val progress = QuizProgressFixture.create(memberId = dummy.id, quizSetId = quizSet.id, totalCount = 1)
+        progress.recordAnswer()
+        quizProgressRepository.save(progress)
+        quizAnswerRepository.save(QuizAnswerFixture.create(memberId = dummy.id, quizId = quiz.id, choiceId = picked.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("dummy-female-1a2b")))
+            .andExpect(content().string(containsString("중간부터")))
+            .andExpect(content().string(containsString(">f3<")))
     }
 
     @Test
