@@ -281,7 +281,7 @@ class ChatService(
             }
             else -> {
                 val trimmed = content.trim()
-                if (trimmed.isEmpty() || trimmed.length > MAX_CONTENT_LENGTH) {
+                if (trimmed.isEmpty() || trimmed.length > ChatMessage.MAX_CONTENT_LENGTH) {
                     throw WarnException(ErrorCode.BAD_REQUEST)
                 }
                 trimmed
@@ -379,7 +379,6 @@ class ChatService(
 
     companion object {
         private const val MAX_PAGE_SIZE = 100
-        private const val MAX_CONTENT_LENGTH = 1000
         private const val MAX_IMAGE_BYTES = 10L * 1024 * 1024 // 10MB
         private const val IMAGE_CONTENT_TYPE_PREFIX = "image/"
         private const val IMAGE_KEY_ROOT = "chat"

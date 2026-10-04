@@ -16,10 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/**
- * QA 콘솔의 채팅방 화면. 더미의 전송은 STOMP 핸들러를, 읽음은 REST 핸들러를 그대로 불러
- * 실제 앱이 받는 브로드캐스트와 알림이 똑같이 나간다.
- */
+/** QA 콘솔의 채팅방 화면과 더미의 전송(STOMP 핸들러)·읽음·나가기·종료. */
 @Controller
 class AdminQaRoomController(
     private val adminQaRoomService: AdminQaRoomService,

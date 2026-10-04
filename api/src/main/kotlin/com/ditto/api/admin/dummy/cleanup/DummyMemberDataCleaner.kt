@@ -36,7 +36,8 @@ class DummyMemberDataCleaner(
         return DeletedReportIds(reportIds = reportIds.toSet(), sanctionIds = sanctionIds.toSet())
     }
 
-    fun deleteOwnedDataOf(dummyIds: Collection<Long>) {
+    /** 차단·알림 설정·닉네임 예약·기기·리프레시 토큰·소개노트. */
+    fun deleteAccountDataOf(dummyIds: Collection<Long>) {
         val blockIds = memberBlockRepository.findByBlockerIdInOrBlockedMemberIdIn(dummyIds, dummyIds).map { it.id }
         memberBlockRepository.deleteAllByIdInBatch(blockIds)
         val settingIds = memberNotificationSettingRepository.findByMemberIdIn(dummyIds).map { it.id }

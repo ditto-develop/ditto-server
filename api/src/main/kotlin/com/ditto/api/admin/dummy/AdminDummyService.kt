@@ -29,8 +29,7 @@ import kotlin.random.Random
 /**
  * 어드민 편의 기능 — 특정 퀴즈셋을 랜덤하게 푼(COMPLETED) 더미 회원을 남/여 인원수만큼 생성한다.
  * 회원(member)·진행(quiz_progress)·답변(quiz_answer)만 만들고 매칭 후보(match_candidate)는
- * 만들지 않는다(어드민 '매칭 재생성'으로 분리). 더미는 닉네임/이메일 마커로 식별·정리한다.
- * QA 콘솔로 더미를 움직였다면 매칭·채팅방도 생기므로 정리할 때 함께 지운다.
+ * 만들지 않는다(어드민 '매칭 재생성'으로 분리). 더미는 닉네임 마커([DummyMarker])로 식별·정리한다.
  */
 @Service
 @Transactional
@@ -67,12 +66,9 @@ class AdminDummyService(
         }
     }
 
-    /**
-     * 마커로 식별된 모든 더미 회원과 더미가 남긴 데이터를 지운다. 더미가 낀 채팅방·매칭은 QA로 만든 것이라
-     * 같은 방·그룹에 있던 실회원 쪽 행과 알림까지 함께 지운다([DummyDataCleaner]).
-     */
+    /** 더미가 낀 채팅방·매칭은 같은 방·그룹의 실회원 쪽 행과 알림까지 함께 지운다(ADR 0038). */
     fun deleteAllDummies(): DummyCleanupSummary {
-        val dummyIds = memberRepository.findByNicknameStartingWith(NICKNAME_PREFIX).map { it.id }
+        val dummyIds = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).map { it.id }
         if (dummyIds.isEmpty()) return DummyCleanupSummary.NONE
 
         val summary = dummyDataCleaner.deleteDataOf(dummyIds)
@@ -85,7 +81,7 @@ class AdminDummyService(
 
     /** 현재 더미 회원 수(현황 표시용). */
     @Transactional(readOnly = true)
-    fun countDummies(): Long = memberRepository.countByNicknameStartingWith(NICKNAME_PREFIX)
+    fun countDummies(): Long = memberRepository.countByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX)
 
     private fun validate(form: DummyGenerateForm) {
         if (form.maleCount < 0 || form.femaleCount < 0) {
@@ -109,7 +105,7 @@ class AdminDummyService(
     }
 
     private fun newDummyMember(gender: Gender, form: DummyGenerateForm): Member {
-        val nickname = "$NICKNAME_PREFIX${gender.name.lowercase()}-${UUID.randomUUID().toString().take(8)}"
+        val nickname = "${DummyMarker.NICKNAME_PREFIX}${gender.name.lowercase()}-${UUID.randomUUID().toString().take(8)}"
         // 실제 가입과 동일하게 register() 로 활성화한다(ACTIVE 전이·joinedAt·필수 프로필을 도메인이 소유).
         // gender·age 가 null 이면 매칭 후보 풀에서 제외되므로 더미는 반드시 채운다.
         return Member(nickname = nickname, email = "$nickname@$EMAIL_DOMAIN").apply {
@@ -153,7 +149,6 @@ class AdminDummyService(
     )
 
     companion object {
-        const val NICKNAME_PREFIX = "dummy-"
         private const val EMAIL_DOMAIN = "dummy.local"
         private const val DUMMY_CARICATURE = "dummy"
     }

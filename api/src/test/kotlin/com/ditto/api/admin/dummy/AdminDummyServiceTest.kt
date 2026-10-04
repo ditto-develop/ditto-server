@@ -60,7 +60,7 @@ class AdminDummyServiceTest(
             )
 
             created shouldBe 5
-            val dummies = memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX)
+            val dummies = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX)
             dummies.size shouldBe 5
             dummies.count { it.gender == Gender.MALE } shouldBe 2
             dummies.count { it.gender == Gender.FEMALE } shouldBe 3
@@ -80,7 +80,7 @@ class AdminDummyServiceTest(
             )
 
             val quizIds = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId).map { it.id }
-            memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX).forEach { dummy ->
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach { dummy ->
                 val progress = quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, quizSetId).shouldNotBeNull()
                 progress.status shouldBe QuizProgressStatus.COMPLETED
                 progress.preferredGender shouldBe GenderPreference.SAME
@@ -96,7 +96,7 @@ class AdminDummyServiceTest(
             val choiceIdsByQuizId = quizzes.associate { quiz ->
                 quiz.id to quizChoiceRepository.findByQuizIdOrderByDisplayOrderAsc(quiz.id).map { it.id }.toSet()
             }
-            val dummy = memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX).first()
+            val dummy = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).first()
             quizAnswerRepository.findByMemberIdAndQuizIdIn(dummy.id, quizzes.map { it.id }).forEach { answer ->
                 (answer.choiceId in choiceIdsByQuizId.getValue(answer.quizId)) shouldBe true
             }
@@ -108,7 +108,7 @@ class AdminDummyServiceTest(
                 DummyGenerateForm(quizSetId = quizSetId, maleCount = 5, femaleCount = 0, minAge = 25, maxAge = 27),
             )
 
-            memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX).forEach {
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach {
                 val age = it.age.shouldNotBeNull()
                 (age in 25..27) shouldBe true
             }
@@ -161,7 +161,7 @@ class AdminDummyServiceTest(
             val deleted = adminDummyService.deleteAllDummies().dummyCount
 
             deleted shouldBe 3
-            memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX).size shouldBe 0
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).size shouldBe 0
             quizProgressRepository.findAll().size shouldBe 0
             quizAnswerRepository.findAll().size shouldBe 0
         }
@@ -169,7 +169,7 @@ class AdminDummyServiceTest(
         "더미가 포함된 매칭 후보도 함께 삭제된다" {
             val quizSetId = setupQuizSet()
             adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 1, femaleCount = 1))
-            val dummies = memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX)
+            val dummies = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX)
             matchCandidateRepository.save(
                 MatchCandidate.create(dummies[0].id, dummies[1].id, quizSetId, 50.0, 1, 2),
             )

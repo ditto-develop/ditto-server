@@ -6,10 +6,7 @@ import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import org.springframework.stereotype.Component
 
-/**
- * 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 외래키가 없어 회원만 지우면 나머지 행이 사라진 회원을 가리킨 채 남는다.
- * 알림은 지운 방·매칭·신고 등의 id 가 다 모인 뒤 마지막에 지운다. 실회원이 받은 알림도 그것들을 가리키면 함께 지운다.
- */
+/** 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 알림은 지울 대상의 id 가 다 모인 뒤 마지막에 지운다. */
 @Component
 class DummyDataCleaner(
     private val dummyChatDataCleaner: DummyChatDataCleaner,
@@ -28,7 +25,7 @@ class DummyDataCleaner(
         dummyMatchDataCleaner.deleteRematches(rematchIds)
         dummyMatchDataCleaner.deleteReviewsWith(dummyIds, roomIds)
         val reports = dummyMemberDataCleaner.deleteReportsAndSanctionsWith(dummyIds)
-        dummyMemberDataCleaner.deleteOwnedDataOf(dummyIds)
+        dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
 
         val deletedTargets = DeletedTargetIds(
             roomIds = roomIds,
@@ -100,6 +97,9 @@ class DummyCleanupSummary(
     val matchCount: Int,
     val notificationCount: Int,
 ) {
+    fun toDisplayText(): String =
+        "더미 ${dummyCount}명, 채팅방 ${roomCount}개, 매칭 ${matchCount}건, 알림 ${notificationCount}개"
+
     companion object {
         val NONE = DummyCleanupSummary(dummyCount = 0, roomCount = 0, matchCount = 0, notificationCount = 0)
     }

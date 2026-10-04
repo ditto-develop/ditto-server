@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** QA 콘솔 방 화면의 그룹 투표. 생성·투표·마감 모두 앱의 [ChatVoteController]를 더미 principal 로 그대로 부른다. */
+/** QA 콘솔 방 화면의 그룹 투표 생성·투표·마감. */
 @Controller
 class AdminQaVoteController(
     private val adminQaRoomService: AdminQaRoomService,

@@ -55,11 +55,9 @@ class AdminDummyController(
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
-        val deleted = adminDummyService.deleteAllDummies()
-        val summary = "더미 ${deleted.dummyCount}명, 채팅방 ${deleted.roomCount}개, " +
-            "매칭 ${deleted.matchCount}건, 알림 ${deleted.notificationCount}개"
-        log.info { "어드민[${admin.displayName}] 이 $summary 삭제" }
-        redirectAttributes.addFlashAttribute("message", "$summary 를 삭제했습니다.")
+        val deletedText = adminDummyService.deleteAllDummies().toDisplayText()
+        log.info { "어드민[${admin.displayName}] 이 $deletedText 삭제" }
+        redirectAttributes.addFlashAttribute("message", "$deletedText 를 삭제했습니다.")
         return "redirect:/admin/dummy"
     }
 
