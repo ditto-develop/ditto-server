@@ -45,6 +45,18 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         TopRatioSelector.select(scoredDuos, TOP_RATIO)
 
     /**
+     * 동점 무작위와 상관없이 1인 제한을 반드시 통과하는 페어를 가진 회원. 두 사람 모두 선발 페어가 제한 이하면
+     * 둘 다 그 페어를 버리지 않는다. 저장된 후보가 없는데 여기 들면 매칭 뒤에 상태가 바뀐 것이다.
+     */
+    fun memberIdsCertainToKeepCandidate(selectedDuos: List<ScoredMatch>): Set<Long> {
+        val selectedDuoCountByMemberId = selectedDuos.flatMap { it.memberIds }.groupingBy { it }.eachCount()
+        return selectedDuos
+            .filter { duo -> duo.memberIds.all { selectedDuoCountByMemberId.getValue(it) <= HARD_LIMIT } }
+            .flatMap { it.memberIds }
+            .toSet()
+    }
+
+    /**
      * 매칭 자격: 성별 상호호환 + 나이차 [MAX_AGE_GAP] 이내 + 차단 없음.
      * 세 조건 모두 대칭이라 양방향 원칙을 깨지 않는다.
      */

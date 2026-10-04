@@ -4,6 +4,7 @@ import com.ditto.api.admin.quiz.dto.GroupCandidate
 import com.ditto.api.admin.quiz.dto.GroupCandidateMember
 import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
+import com.ditto.api.admin.quiz.dto.OutsideRequest
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
 import com.ditto.api.admin.quiz.dto.PersonalCandidate
 import com.ditto.api.admin.quiz.dto.PersonalRequestState
@@ -12,26 +13,29 @@ import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
+import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgress
-import com.ditto.domain.quiz.entity.QuizProgressStatus
-import com.ditto.domain.quiz.entity.QuizSet
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
 
-/** 참여 현황 화면용으로 퀴즈셋의 저장된 매칭 후보를 참여자별로 모으고, 후보가 없는 참여자의 이유를 붙인다. */
+/**
+ * 참여 현황 화면용으로 퀴즈셋의 저장된 매칭 후보와 1:1 신청을 참여자별로 모은다.
+ * 1:1 후보가 없는 이유는 [OneToOneMissFinder]가 정한다.
+ */
 @Component
 class AdminParticipantMatchingReader(
     private val matchCandidateRepository: MatchCandidateRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
-    private val oneToOneMissReasonFinder: OneToOneMissReasonFinder,
+    private val memberRepository: MemberRepository,
+    private val oneToOneMissFinder: OneToOneMissFinder,
 ) {
     fun read(source: MatchingReadSource): QuizSetMatching = when (source.quizSet.matchingType) {
         MatchingType.ONE_TO_ONE -> readOneToOne(source)
@@ -39,19 +43,31 @@ class AdminParticipantMatchingReader(
     }
 
     private fun readOneToOne(source: MatchingReadSource): QuizSetMatching {
-        val quizSetId = source.quizSet.id
-        val candidatesByOwnerId = findCandidates(quizSetId, source.memberIds).groupBy { it.ownerMemberId }
+        val candidatesByOwnerId = findCandidates(source).groupBy { it.ownerMemberId }
         val generatedAt = candidatesByOwnerId.values.flatten().minOfOrNull { it.createdAt }
-        val personalMatchByPair = personalMatchRepository.findByQuizSetIdIn(listOf(quizSetId))
-            .associateBy { setOf(it.memberId1, it.memberId2) }
+        val personalMatches = personalMatchRepository.findByQuizSetIdIn(listOf(source.quizSet.id))
+        val nicknames = loadNicknames(
+            source,
+            partnerIds = candidatesByOwnerId.values.flatten().map { it.otherMemberId } +
+                personalMatches.flatMap { listOf(it.memberId1, it.memberId2) },
+        )
+        val missByMemberId = oneToOneMissFinder.findMisses(
+            OneToOneMissInput(
+                source = source,
+                candidateOwnerIds = candidatesByOwnerId.keys,
+                acceptedMemberIds = acceptedMemberIdsOf(personalMatches),
+                generatedAt = generatedAt,
+            ),
+        )
 
-        val withoutCandidate = source.progresses.filter { it.memberId !in candidatesByOwnerId }
-        val missByMemberId = findOneToOneMisses(source, withoutCandidate, generatedAt)
         val byMemberId = source.memberIds.associateWith { memberId ->
+            val candidates = candidatesByOwnerId[memberId].orEmpty().sortedByDescending { it.score }
+            val (requestsWithCandidates, outsideRequests) = personalMatches
+                .filter { memberId in setOf(it.memberId1, it.memberId2) }
+                .partition { match -> candidates.any { it.otherMemberId == match.counterpartOf(memberId) } }
             ParticipantMatching(
-                personalCandidates = candidatesByOwnerId[memberId].orEmpty()
-                    .sortedByDescending { it.score }
-                    .map { candidate -> toPersonalCandidate(candidate, source, personalMatchByPair) },
+                personalCandidates = candidates.map { toPersonalCandidate(it, requestsWithCandidates, nicknames) },
+                outsideRequests = outsideRequests.map { toOutsideRequest(it, memberId, nicknames) },
                 miss = missByMemberId[memberId],
             )
         }
@@ -62,71 +78,58 @@ class AdminParticipantMatchingReader(
         val groupMatches = groupMatchRepository.findByQuizSetId(source.quizSet.id)
         val generatedAt = groupMatches.minOfOrNull { it.createdAt }
         val invitationsByGroupMatchId = findInvitations(groupMatches).groupBy { it.roomId }
-        // 배치는 한 사람을 한 그룹에만 넣는다(ADR 0033).
-        val groupRoomByMemberId = groupMatches
-            .map { GroupRoom(it, invitationsByGroupMatchId[it.id].orEmpty()) }
-            .flatMap { room -> room.invitations.map { invitation -> invitation.memberId to room } }
-            .toMap()
+        val rooms = groupMatches.map { GroupRoom(it, invitationsByGroupMatchId[it.id].orEmpty()) }
+        val invitedMemberIds = rooms.flatMap { room -> room.invitations.map { it.memberId } }
+        val nicknames = loadNicknames(source, partnerIds = invitedMemberIds)
 
         val byMemberId = source.progresses.associate { progress ->
-            val room = groupRoomByMemberId[progress.memberId]
-            val matching = if (room == null) {
-                val miss = preliminaryMissOf(progress, source.membersById[progress.memberId], generatedAt)
-                ParticipantMatching(miss = miss ?: MatchMiss(MatchMissReason.NOT_ASSIGNED_TO_GROUP))
-            } else {
-                ParticipantMatching(groupCandidate = toGroupCandidate(room, progress.memberId, source))
-            }
-            progress.memberId to matching
+            val myRooms = rooms.filter { room -> room.invitations.any { it.memberId == progress.memberId } }
+            progress.memberId to groupMatchingOf(progress, myRooms, GroupReadContext(source, nicknames, generatedAt))
         }
         return QuizSetMatching(generatedAt, byMemberId)
     }
 
-    /** 풀에 들기 전 단계에서 빠진 이유. 풀 이후 단계는 매칭 타입마다 다르게 본다. */
-    private fun preliminaryMissOf(progress: QuizProgress, member: Member?, generatedAt: LocalDateTime?): MatchMiss? =
-        when {
-            member == null -> MatchMiss(MatchMissReason.MEMBER_DELETED)
-            progress.status != QuizProgressStatus.COMPLETED -> MatchMiss(MatchMissReason.NOT_COMPLETED)
-            generatedAt != null && progress.updatedAt.isAfter(generatedAt) ->
-                MatchMiss(MatchMissReason.COMPLETED_AFTER_GENERATION)
-            else -> null
+    // 지금 배치는 한 사람을 한 그룹에만 넣지만(ADR 0033) 그 전에 겹쳐 만든 그룹도 남아 있어 모두 보여 준다.
+    private fun groupMatchingOf(
+        progress: QuizProgress,
+        myRooms: List<GroupRoom>,
+        context: GroupReadContext,
+    ): ParticipantMatching {
+        if (myRooms.isNotEmpty()) {
+            val groupCandidates = myRooms.map { toGroupCandidate(it, progress.memberId, context.nicknames) }
+            return ParticipantMatching(groupCandidates = groupCandidates)
         }
+        val member = context.source.membersById[progress.memberId]
+        val prePoolMiss = PrePoolMiss.of(progress, member, context.generatedAt)
+        if (prePoolMiss != null) return ParticipantMatching(miss = prePoolMiss)
 
-    private fun findOneToOneMisses(
-        source: MatchingReadSource,
-        withoutCandidate: List<QuizProgress>,
-        generatedAt: LocalDateTime?,
-    ): Map<Long, MatchMiss> {
-        val preliminaryMissByMemberId = withoutCandidate.mapNotNull { progress ->
-            preliminaryMissOf(progress, source.membersById[progress.memberId], generatedAt)?.let { progress.memberId to it }
-        }.toMap()
-        val poolCandidateIds = withoutCandidate.map { it.memberId }.toSet() - preliminaryMissByMemberId.keys
-        val poolMissByMemberId = oneToOneMissReasonFinder.findPoolMisses(source.quizSet.id, poolCandidateIds)
-        val exclusionMissByMemberId = (poolCandidateIds - poolMissByMemberId.keys).associateWith { memberId ->
-            exclusionMissOf(source.membersById.getValue(memberId))
-        }
-        return preliminaryMissByMemberId + poolMissByMemberId + exclusionMissByMemberId
+        if (context.generatedAt == null) return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_GENERATED))
+        return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_ASSIGNED_TO_GROUP))
     }
-
-    // 1:1 제외 정책(OneToOneExclusionPolicy)은 비활성과 이미 성사 두 가지만 본다.
-    private fun exclusionMissOf(member: Member): MatchMiss =
-        if (member.isActive()) MatchMiss(MatchMissReason.EXCLUDED_ALREADY_MATCHED) else MatchMiss(MatchMissReason.EXCLUDED_INACTIVE)
 
     private fun toPersonalCandidate(
         candidate: MatchCandidate,
-        source: MatchingReadSource,
-        personalMatchByPair: Map<Set<Long>, PersonalMatch>,
-    ): PersonalCandidate =
-        PersonalCandidate(
+        requests: List<PersonalMatch>,
+        nicknames: Map<Long, String>,
+    ): PersonalCandidate {
+        val request = requests.firstOrNull { it.counterpartOf(candidate.ownerMemberId) == candidate.otherMemberId }
+        return PersonalCandidate(
             otherMemberId = candidate.otherMemberId,
-            otherNickname = source.membersById[candidate.otherMemberId]?.nickname,
+            otherNickname = nicknames[candidate.otherMemberId],
             score = candidate.score,
             matchedQuestionCount = candidate.matchedQuestionCount,
             totalQuestionCount = candidate.totalQuestionCount,
-            requestState = personalMatchByPair[setOf(candidate.ownerMemberId, candidate.otherMemberId)]
-                ?.let { PersonalRequestState.of(it, viewerId = candidate.ownerMemberId) },
+            requestState = request?.let { PersonalRequestState.of(it, viewerId = candidate.ownerMemberId) },
         )
+    }
 
-    private fun toGroupCandidate(room: GroupRoom, memberId: Long, source: MatchingReadSource): GroupCandidate {
+    private fun toOutsideRequest(request: PersonalMatch, memberId: Long, nicknames: Map<Long, String>): OutsideRequest {
+        val otherMemberId = request.counterpartOf(memberId)
+        val requestState = PersonalRequestState.of(request, viewerId = memberId)
+        return OutsideRequest(otherMemberId, nicknames[otherMemberId], requestState)
+    }
+
+    private fun toGroupCandidate(room: GroupRoom, memberId: Long, nicknames: Map<Long, String>): GroupCandidate {
         val (myInvitations, otherInvitations) = room.invitations.partition { it.memberId == memberId }
         return GroupCandidate(
             groupMatchId = room.groupMatch.id,
@@ -134,14 +137,27 @@ class AdminParticipantMatchingReader(
             isFormed = room.groupMatch.isActive,
             myStatus = myInvitations.single().status,
             otherMembers = otherInvitations.map { invitation ->
-                GroupCandidateMember(invitation.memberId, source.membersById[invitation.memberId]?.nickname, invitation.status)
+                GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], invitation.status)
             },
         )
     }
 
-    private fun findCandidates(quizSetId: Long, memberIds: List<Long>): List<MatchCandidate> {
-        if (memberIds.isEmpty()) return emptyList()
-        return matchCandidateRepository.findByQuizSetIdInAndOwnerMemberIdIn(listOf(quizSetId), memberIds)
+    private fun acceptedMemberIdsOf(personalMatches: List<PersonalMatch>): Set<Long> =
+        personalMatches
+            .filter { it.status == PersonalMatchStatus.ACCEPTED }
+            .flatMap { listOf(it.memberId1, it.memberId2) }
+            .toSet()
+
+    // 상대가 이 퀴즈셋의 진행 기록이 없으면 참여자 회원 맵에 없으므로 따로 읽는다.
+    private fun loadNicknames(source: MatchingReadSource, partnerIds: List<Long>): Map<Long, String> {
+        val missingIds = partnerIds.toSet() - source.membersById.keys
+        val missingMembers = if (missingIds.isEmpty()) emptyList() else memberRepository.findAllById(missingIds)
+        return (source.membersById.values + missingMembers).associate { it.id to it.nickname }
+    }
+
+    private fun findCandidates(source: MatchingReadSource): List<MatchCandidate> {
+        if (source.memberIds.isEmpty()) return emptyList()
+        return matchCandidateRepository.findByQuizSetIdInAndOwnerMemberIdIn(listOf(source.quizSet.id), source.memberIds)
     }
 
     private fun findInvitations(groupMatches: List<GroupMatch>): List<GroupMatchMember> {
@@ -150,12 +166,10 @@ class AdminParticipantMatchingReader(
     }
 
     private class GroupRoom(val groupMatch: GroupMatch, val invitations: List<GroupMatchMember>)
-}
 
-class MatchingReadSource(
-    val quizSet: QuizSet,
-    val progresses: List<QuizProgress>,
-    val membersById: Map<Long, Member>,
-) {
-    val memberIds: List<Long> = progresses.map { it.memberId }
+    private class GroupReadContext(
+        val source: MatchingReadSource,
+        val nicknames: Map<Long, String>,
+        val generatedAt: LocalDateTime?,
+    )
 }

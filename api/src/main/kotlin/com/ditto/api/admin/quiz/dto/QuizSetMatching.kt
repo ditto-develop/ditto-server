@@ -15,9 +15,11 @@ class QuizSetMatching(
     fun of(memberId: Long): ParticipantMatching = byMemberId[memberId] ?: ParticipantMatching.EMPTY
 }
 
+/** [outsideRequests]는 저장된 후보와 겹치지 않는 1:1 신청·성사다. 재생성하면 후보가 바뀌어도 신청은 남는다. */
 class ParticipantMatching(
     val personalCandidates: List<PersonalCandidate> = emptyList(),
-    val groupCandidate: GroupCandidate? = null,
+    val outsideRequests: List<OutsideRequest> = emptyList(),
+    val groupCandidates: List<GroupCandidate> = emptyList(),
     val miss: MatchMiss? = null,
 ) {
     companion object {
@@ -32,6 +34,12 @@ class PersonalCandidate(
     val matchedQuestionCount: Int,
     val totalQuestionCount: Int,
     val requestState: PersonalRequestState?,
+)
+
+class OutsideRequest(
+    val otherMemberId: Long,
+    val otherNickname: String?,
+    val requestState: PersonalRequestState,
 )
 
 enum class PersonalRequestState(val label: String) {
@@ -76,13 +84,16 @@ class MatchMiss(
 /** 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지. */
 enum class MatchMissReason(val label: String) {
     MEMBER_DELETED("회원 정보 없음"),
+    NOT_GENERATED("매칭 전"),
     NOT_COMPLETED("미완주"),
     COMPLETED_AFTER_GENERATION("매칭 이후 완주(재생성 필요)"),
     EXCLUDED_INACTIVE("풀 제외: 비활성"),
     EXCLUDED_ALREADY_MATCHED("풀 제외: 이미 성사"),
+    EXCLUDED_OTHER("풀 제외"),
     UNKNOWN_GENDER_OR_AGE("성별·나이 미상"),
     NO_ELIGIBLE_PAIR("자격 있는 짝 없음(성별 선호·나이차·차단)"),
     CUT_BY_TOP_RATIO("상위 20% 컷 탈락"),
     CUT_BY_HARD_LIMIT("5명 제한·양방향 생존에서 탈락"),
+    STATE_CHANGED_AFTER_GENERATION("매칭 뒤 상태 변경(재생성 필요)"),
     NOT_ASSIGNED_TO_GROUP("그룹 미배정(인원 나머지·차단)"),
 }

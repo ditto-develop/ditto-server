@@ -75,6 +75,27 @@ class OneToOneMatchingProcessorTest : FreeSpec(
             }
         }
 
+        "memberIdsCertainToKeepCandidate" - {
+            "두 사람 모두 선발 페어가 5개 이하면 그 페어를 가진 회원은 반드시 후보를 받는다" {
+                val center = scored(1L, mapOf(101L to 1L))
+                val others = (2L..4L).map { scored(it, mapOf(101L to 1L)) }
+
+                val selected = processor.selectTopRatio(processor.scoreEligibleDuos(listOf(center) + others))
+
+                processor.memberIdsCertainToKeepCandidate(selected) shouldBe setOf(1L, 2L, 3L, 4L)
+            }
+
+            "한 사람의 선발 페어가 5개를 넘으면 그 사람이 낀 페어는 보장하지 않는다" {
+                val center = scored(1L, mapOf(101L to 1L))
+                val leaves = (2L..7L).map { scored(it, mapOf(101L to 1L)) }
+                val starDuos = leaves.map { leaf ->
+                    ScoredMatch.duo(center.memberId, leaf.memberId, MatchScoreCalculator.calculate(center, leaf))
+                }
+
+                processor.memberIdsCertainToKeepCandidate(starDuos).shouldBeEmpty()
+            }
+        }
+
         "성별 상호호환 하드 필터" - {
             "서로의 성별 선호를 모두 충족하면 페어가 된다 (남↔여, 둘 다 이성 선호)" {
                 val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)

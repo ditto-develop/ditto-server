@@ -98,7 +98,12 @@
                                             </th:block>
                                         </th:block>
                                     </div>
-                                    <th:block th:if="${m.groupCandidate != null}" th:with="g=${m.groupCandidate}">
+                                    <div th:each="r : ${m.outsideRequests}" style="white-space:nowrap">
+                                        <span class="muted">후보 밖:</span>
+                                        <span th:text="|${r.otherNickname ?: '삭제된 회원'} (#${r.otherMemberId})|">닉네임 (#2)</span>
+                                        <span class="badge off" th:text="${r.requestState.label}">성사</span>
+                                    </div>
+                                    <th:block th:each="g : ${m.groupCandidates}">
                                         <div style="white-space:nowrap">
                                             <span th:text="|그룹 #${g.groupMatchId} · ${#numbers.formatDecimal(g.score, 1, 1)}|">그룹 #1 · 75.0</span>
                                             <span class="badge on" th:if="${g.isFormed}">성사</span>

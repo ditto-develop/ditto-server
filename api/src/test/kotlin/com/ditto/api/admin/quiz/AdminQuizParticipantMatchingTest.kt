@@ -166,7 +166,7 @@ class AdminQuizParticipantMatchingTest(
             miss.detail shouldBe "최고 0.0 < 컷 100.0"
         }
 
-        "컷을 넘었는데 저장된 후보가 없으면 5명 제한에서 빠진 것으로 본다" {
+        "매칭 전이면 컷을 넘은 참여자는 탈락이 아니라 매칭 전으로 표시한다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val male = saveMember("남")
             val female = saveMember("여", gender = Gender.FEMALE)
@@ -174,7 +174,85 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(male).miss?.reason shouldBe MatchMissReason.CUT_BY_HARD_LIMIT
+            matching.isGenerated shouldBe false
+            matching.of(male).miss?.reason shouldBe MatchMissReason.NOT_GENERATED
+        }
+
+        "선발 페어가 5개를 넘는 상대 쪽에서 밀렸으면 5명 제한 탈락이다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val center = saveMember("가운데")
+            val leaves = (1..6).map { saveMember("상대$it", gender = Gender.FEMALE) }
+            (listOf(center) + leaves).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
+            leaves.take(5).forEach { saveCandidatePair(quizSetId, center, it, score = 100.0) }
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
+
+            matching.of(leaves.last()).miss?.reason shouldBe MatchMissReason.CUT_BY_HARD_LIMIT
+        }
+
+        "5명 제한을 반드시 통과할 짝이 있는데 후보가 없으면 매칭 뒤 상태가 바뀐 것이다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val matchedMale = saveMember("저장남")
+            val matchedFemale = saveMember("저장여", gender = Gender.FEMALE)
+            val changedMale = saveMember("바뀐남")
+            val changedFemale = saveMember("바뀐여", gender = Gender.FEMALE)
+            listOf(matchedMale, matchedFemale, changedMale, changedFemale).forEach {
+                saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+            }
+            saveCandidatePair(quizSetId, matchedMale, matchedFemale, score = 100.0)
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
+
+            matching.of(changedMale).miss?.reason shouldBe MatchMissReason.STATE_CHANGED_AFTER_GENERATION
+        }
+
+        "매칭 뒤에 완주한 사람은 다시 계산하는 풀에 넣지 않는다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val matchedMale = saveMember("저장남")
+            val matchedFemale = saveMember("저장여", gender = Gender.FEMALE)
+            val lonelyMale = saveMember("혼자남", age = 50)
+            listOf(matchedMale, matchedFemale, lonelyMale).forEach {
+                saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+            }
+            saveCandidatePair(quizSetId, matchedMale, matchedFemale, score = 100.0)
+            Thread.sleep(5)
+            val lateFemale = saveMember("나중여", gender = Gender.FEMALE, age = 50)
+            saveCompleted(lateFemale, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
+
+            matching.of(lonelyMale).miss?.reason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
+            matching.of(lateFemale).miss?.reason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
+        }
+
+        "후보 밖의 신청·성사도 상대와 상태를 보여 주고 성사는 실제 기록으로 확인한다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val me = saveMember("나")
+            val partner = saveMember("성사상대", gender = Gender.FEMALE)
+            val rejecter = saveMember("거절한사람", gender = Gender.FEMALE)
+            listOf(me, partner, rejecter).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
+            personalMatchRepository.save(PersonalMatchFixture.create(me, partner, quizSetId, status = PersonalMatchStatus.ACCEPTED))
+            personalMatchRepository.save(PersonalMatchFixture.create(me, rejecter, quizSetId, status = PersonalMatchStatus.REJECTED))
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me)
+
+            matching.outsideRequests.map { it.otherNickname to it.requestState } shouldContainExactlyInAnyOrder listOf(
+                "성사상대" to PersonalRequestState.ACCEPTED,
+                "거절한사람" to PersonalRequestState.REJECTED,
+            )
+            matching.miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
+        }
+
+        "진행 기록이 없는 후보 상대도 닉네임을 보여 준다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val me = saveMember("나")
+            saveCompleted(me, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+            val progressReset = saveMember("진행초기화", gender = Gender.FEMALE)
+            saveCandidatePair(quizSetId, me, progressReset, score = 100.0)
+
+            val candidate = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me).personalCandidates.single()
+
+            candidate.otherNickname shouldBe "진행초기화"
         }
     }
 
@@ -190,7 +268,7 @@ class AdminQuizParticipantMatchingTest(
             groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, accepted).also { it.accept() })
             groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, pending))
 
-            val groupCandidate = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me).groupCandidate.shouldNotBeNull()
+            val groupCandidate = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me).groupCandidates.single()
 
             groupCandidate.groupMatchId shouldBe group.id
             groupCandidate.score shouldBe 75.0
@@ -200,10 +278,35 @@ class AdminQuizParticipantMatchingTest(
                 listOf("수락한사람" to InvitationStatus.ACCEPTED, "대기중" to InvitationStatus.PENDING)
         }
 
+        "예전에 겹쳐 만든 그룹에 함께 있으면 모든 그룹을 보여 준다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes(MatchingType.GROUP)
+            val me = saveMember("나")
+            saveCompleted(me, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+            val groups = (1..2).map { groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId)) }
+            groups.forEach { groupMatchMemberRepository.save(GroupMatchMember.candidate(it.id, me)) }
+
+            val groupCandidates = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me).groupCandidates
+
+            groupCandidates.map { it.groupMatchId } shouldContainExactlyInAnyOrder groups.map { it.id }
+        }
+
+        "그룹을 만들기 전이면 완주자는 미배정이 아니라 매칭 전이다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes(MatchingType.GROUP)
+            val member = saveMember("완주자")
+            saveCompleted(member, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching.of(member)
+
+            matching.miss?.reason shouldBe MatchMissReason.NOT_GENERATED
+        }
+
         "그룹에 들지 못한 완주자는 미배정으로 표시하고 1:1 후보는 비어 있다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes(MatchingType.GROUP)
             val leftOver = saveMember("남은사람")
             saveCompleted(leftOver, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
+            val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSetId))
+            val grouped = saveMember("그룹원")
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, grouped))
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching.of(leftOver)
 
