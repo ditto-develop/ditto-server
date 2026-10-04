@@ -1,14 +1,14 @@
 package com.ditto.api.admin.qa
 
-import com.ditto.api.admin.qa.dto.DummyPersonalRequestOption
-import com.ditto.api.admin.qa.dto.DummyReceivedPersonalRequest
-import com.ditto.api.admin.qa.dto.DummySentPersonalRequest
 import com.ditto.api.admin.qa.dto.QaConsoleView
 import com.ditto.api.admin.qa.dto.QaGroupMatch
 import com.ditto.api.admin.qa.dto.QaGroupMember
 import com.ditto.api.admin.qa.dto.QaGroupSection
 import com.ditto.api.admin.qa.dto.QaMember
+import com.ditto.api.admin.qa.dto.QaPersonalRequestOption
 import com.ditto.api.admin.qa.dto.QaPersonalSection
+import com.ditto.api.admin.qa.dto.QaReceivedPersonalRequest
+import com.ditto.api.admin.qa.dto.QaSentPersonalRequest
 import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.system.ServerTimeProvider
@@ -16,6 +16,7 @@ import com.ditto.api.system.ServerTimeService
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
@@ -50,16 +51,17 @@ class AdminQaService(
         val now = serverTimeProvider.now()
         val week = OperationWeek.containing(now.toLocalDate())
         val dummyIds = qaDummies.findIds()
-        val quizSets = quizSetRepository.findByWeekStartedOn(week.startedOn)
+        val (personalQuizSets, groupQuizSets) = quizSetRepository.findByWeekStartedOn(week.startedOn)
+            .partition { it.matchingType == MatchingType.ONE_TO_ONE }
         return QaConsoleView(
             now = now,
-            timeOverridden = serverTimeService.getOverride().enabled,
+            isTimeOverridden = serverTimeService.getOverride().enabled,
             weekStartedOn = week.startedOn,
             dummyCount = dummyIds.size,
-            personal = composePersonalSection(quizSets.filter { it.matchingType == MatchingType.ONE_TO_ONE }, dummyIds),
+            personal = composePersonalSection(personalQuizSets, dummyIds),
             group = QaGroupSection(
-                groups = composeGroups(quizSets.filter { it.matchingType == MatchingType.GROUP }, dummyIds),
-                responseClosed = GroupResponseDeadline.hasPassed(week, now),
+                groups = composeGroups(groupQuizSets, dummyIds),
+                isResponseClosed = GroupResponseDeadline.hasPassed(week, now),
             ),
             timeShortcuts = QaTimeShortcut.entries.map {
                 QaTimeShortcutOption(it.label, dateTime = it.dateTimeIn(week), confirmMessage = it.confirmMessage)
@@ -84,45 +86,16 @@ class AdminQaService(
         val receivedRequests = matches
             .filter { it.isPending() && it.receiverId() in dummyIds }
             .sortedByDescending { it.id }
-        val sentRequests = matches
-            .filter { it.requesterId in dummyIds }
-            .sortedByDescending { it.id }
+        val sentRequests = matches.filter { it.requesterId in dummyIds }.sortedByDescending { it.id }
         val requestableCandidates = findRequestableCandidates(titlesByQuizSetId.keys, dummyIds, matches)
-        val members = QaMembers(
-            memberRepository.findAllById(
-                (receivedRequests + sentRequests).flatMap { listOf(it.memberId1, it.memberId2) } +
-                    requestableCandidates.flatMap { listOf(it.ownerMemberId, it.otherMemberId) },
-            ),
-        )
+        val memberIds = (receivedRequests + sentRequests).flatMap { listOf(it.memberId1, it.memberId2) } +
+            requestableCandidates.flatMap { listOf(it.ownerMemberId, it.otherMemberId) }
+        val rows = PersonalRows(QaMembers(memberRepository.findAllById(memberIds)), titlesByQuizSetId)
 
         return QaPersonalSection(
-            receivedRequests = receivedRequests.map { match ->
-                DummyReceivedPersonalRequest(
-                    matchId = match.id,
-                    dummy = members.of(match.receiverId()),
-                    requester = members.of(match.requesterId),
-                    quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
-                    requestedAt = match.createdAt,
-                )
-            },
-            sentRequests = sentRequests.map { match ->
-                DummySentPersonalRequest(
-                    matchId = match.id,
-                    dummy = members.of(match.requesterId),
-                    receiver = members.of(match.receiverId()),
-                    quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
-                    status = match.status,
-                    requestedAt = match.createdAt,
-                )
-            },
-            requestOptions = requestableCandidates.map { candidate ->
-                DummyPersonalRequestOption(
-                    dummy = members.of(candidate.ownerMemberId),
-                    receiver = members.of(candidate.otherMemberId),
-                    quizSetId = candidate.quizSetId,
-                    quizSetTitle = titlesByQuizSetId.getValue(candidate.quizSetId),
-                )
-            },
+            receivedRequests = receivedRequests.map(rows::received),
+            sentRequests = sentRequests.map(rows::sent),
+            requestOptions = requestableCandidates.map(rows::option),
         )
     }
 
@@ -149,8 +122,7 @@ class AdminQaService(
         val groups = titlesByQuizSetId.keys.flatMap { groupMatchRepository.findByQuizSetId(it) }
         if (groups.isEmpty()) return emptyList()
 
-        val invitationsByGroupId = groupMatchMemberRepository.findByRoomIdIn(groups.map { it.id })
-            .groupBy { it.roomId }
+        val invitationsByGroupId = groupMatchMemberRepository.findByRoomIdIn(groups.map { it.id }).groupBy { it.roomId }
         fun hasNoRealMember(group: GroupMatch) = invitationsByGroupId.getValue(group.id).all { it.memberId in dummyIds }
         val groupsWithDummy = groups
             .filter { group -> invitationsByGroupId[group.id].orEmpty().any { it.memberId in dummyIds } }
@@ -166,18 +138,49 @@ class AdminQaService(
                 groupMatchId = group.id,
                 quizSetTitle = titlesByQuizSetId.getValue(group.quizSetId),
                 acceptedCount = group.acceptedCount,
-                formed = group.isActive,
+                isFormed = group.isActive,
                 chatRoomId = chatRoomIdByGroupMatchId[group.id],
-                members = invitationsByGroupId.getValue(group.id)
-                    .sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId }))
-                    .map { invitation ->
-                        QaGroupMember(
-                            member = members.of(invitation.memberId),
-                            dummy = invitation.memberId in dummyIds,
-                            status = invitation.status,
-                        )
-                    },
+                members = toGroupMembers(invitationsByGroupId.getValue(group.id), members, dummyIds),
             )
         }
+    }
+
+    private fun toGroupMembers(
+        invitations: List<GroupMatchMember>,
+        members: QaMembers,
+        dummyIds: Set<Long>,
+    ): List<QaGroupMember> =
+        invitations
+            .sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId }))
+            .map { QaGroupMember(members.of(it.memberId), isDummy = it.memberId in dummyIds, status = it.status) }
+
+    /** 1:1 섹션의 표 한 줄씩. 세 표가 같은 이름표와 퀴즈셋 제목을 쓴다. */
+    private class PersonalRows(
+        private val members: QaMembers,
+        private val titlesByQuizSetId: Map<Long, String>,
+    ) {
+        fun received(match: PersonalMatch) = QaReceivedPersonalRequest(
+            matchId = match.id,
+            dummy = members.of(match.receiverId()),
+            requester = members.of(match.requesterId),
+            quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
+            requestedAt = match.createdAt,
+        )
+
+        fun sent(match: PersonalMatch) = QaSentPersonalRequest(
+            matchId = match.id,
+            dummy = members.of(match.requesterId),
+            receiver = members.of(match.receiverId()),
+            quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
+            status = match.status,
+            requestedAt = match.createdAt,
+        )
+
+        fun option(candidate: MatchCandidate) = QaPersonalRequestOption(
+            dummy = members.of(candidate.ownerMemberId),
+            receiver = members.of(candidate.otherMemberId),
+            quizSetId = candidate.quizSetId,
+            quizSetTitle = titlesByQuizSetId.getValue(candidate.quizSetId),
+        )
     }
 }

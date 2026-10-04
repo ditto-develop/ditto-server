@@ -301,11 +301,11 @@ class AdminQaWebTest(
         }
 
         "응답 마감이 지나면 콘솔이 알려준다" {
-            console().group.responseClosed shouldBe false
+            console().group.isResponseClosed shouldBe false
 
             overrideServerTime(thisMonday.plusDays(4).atStartOfDay())
 
-            console().group.responseClosed shouldBe true
+            console().group.isResponseClosed shouldBe true
         }
 
         "대기 중인 더미가 없으면 알려준다" {

@@ -99,16 +99,16 @@
                     <section class="card qa-members" id="qa-members" data-qa-live>
                         <h2>참여자</h2>
                         <div class="qa-member" th:each="roomMember : ${room.members}"
-                             th:classappend="${roomMember.left} ? 'left'">
+                             th:classappend="${roomMember.hasLeft} ? 'left'">
                             <div>
                                 <b th:text="${roomMember.member.nickname}">홍길동</b>
                                 <span class="badge cat" th:unless="${roomMember.dummy}">실회원</span>
-                                <span class="badge off" th:if="${roomMember.left}">나감</span>
+                                <span class="badge off" th:if="${roomMember.hasLeft}">나감</span>
                                 <div class="muted"
                                      th:text="${roomMember.lastReadMessageId != null} ? |읽음 #${roomMember.lastReadMessageId}| : '읽음 없음'">
                                     읽음 #1042</div>
                             </div>
-                            <div class="qa-member-actions" th:if="${roomMember.dummy and !roomMember.left}">
+                            <div class="qa-member-actions" th:if="${roomMember.dummy and !roomMember.hasLeft}">
                                 <form class="inline-form" method="post" data-qa-async
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/read(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
                                     <button class="btn secondary sm" type="submit">읽음</button>

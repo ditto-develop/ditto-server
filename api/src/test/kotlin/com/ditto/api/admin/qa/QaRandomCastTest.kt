@@ -11,7 +11,7 @@ class QaRandomCastTest : FreeSpec({
 
     fun vote(allowMultiple: Boolean) = QaVote(
         voteId = 1L,
-        open = true,
+        isOpen = true,
         allowMultiple = allowMultiple,
         votedCount = 0,
         totalMembers = 3,

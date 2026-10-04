@@ -208,7 +208,7 @@
                                 <span class="badge off" th:case="*">거절</span>
                             </td>
                             <td class="actions">
-                                <th:block th:if="${groupMember.dummy and groupMember.status.name() == 'PENDING'}">
+                                <th:block th:if="${groupMember.dummy and groupMember.pending}">
                                     <form class="inline-form" method="post"
                                           th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/accept(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
                                         <button class="btn secondary sm" type="submit">수락</button>

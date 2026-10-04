@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 
 class QaConsoleView(
     val now: LocalDateTime,
-    val timeOverridden: Boolean,
+    val isTimeOverridden: Boolean,
     val weekStartedOn: LocalDate,
     val dummyCount: Int,
     val personal: QaPersonalSection,
@@ -31,16 +31,16 @@ class QaMember(
 }
 
 class QaPersonalSection(
-    val receivedRequests: List<DummyReceivedPersonalRequest>,
-    val sentRequests: List<DummySentPersonalRequest>,
-    val requestOptions: List<DummyPersonalRequestOption>,
+    val receivedRequests: List<QaReceivedPersonalRequest>,
+    val sentRequests: List<QaSentPersonalRequest>,
+    val requestOptions: List<QaPersonalRequestOption>,
 ) {
     companion object {
         val EMPTY = QaPersonalSection(emptyList(), sentRequests = emptyList(), requestOptions = emptyList())
     }
 }
 
-class DummyReceivedPersonalRequest(
+class QaReceivedPersonalRequest(
     val matchId: Long,
     val dummy: QaMember,
     val requester: QaMember,
@@ -49,7 +49,7 @@ class DummyReceivedPersonalRequest(
 )
 
 /** 더미가 보낸 신청. 상대(테스터)가 수락·거절했는지 앱 밖에서 확인하는 용도라 상태와 관계없이 모두 보여준다. */
-class DummySentPersonalRequest(
+class QaSentPersonalRequest(
     val matchId: Long,
     val dummy: QaMember,
     val receiver: QaMember,
@@ -59,7 +59,7 @@ class DummySentPersonalRequest(
 )
 
 /** 더미가 신청을 보낼 수 있는 실회원. 더미의 이번 주 후보 중 아직 신청이 오가지 않은 사람이다. */
-class DummyPersonalRequestOption(
+class QaPersonalRequestOption(
     val dummy: QaMember,
     val receiver: QaMember,
     val quizSetId: Long,
@@ -68,11 +68,11 @@ class DummyPersonalRequestOption(
 
 class QaGroupSection(
     val groups: List<QaGroupMatch>,
-    val responseClosed: Boolean,
+    val isResponseClosed: Boolean,
 ) {
     /** 마감 안내는 아직 응답할 초대가 남았을 때만 의미가 있다. 금요일 이후 채팅 QA 중에는 정상 상태다. */
     val hasPendingInvitation: Boolean =
-        groups.any { group -> group.members.any { it.status == InvitationStatus.PENDING } }
+        groups.any { group -> group.members.any { it.isPending } }
 }
 
 /** 더미가 한 명 이상 들어 있는 이번 주 후보 그룹. */
@@ -80,17 +80,19 @@ class QaGroupMatch(
     val groupMatchId: Long,
     val quizSetTitle: String,
     val acceptedCount: Int,
-    val formed: Boolean,
+    val isFormed: Boolean,
     val chatRoomId: Long?,
     val members: List<QaGroupMember>,
 ) {
     val requiredCount: Int = GroupMatch.ACTIVATION_THRESHOLD
 
-    val hasPendingDummy: Boolean = members.any { it.dummy && it.status == InvitationStatus.PENDING }
+    val hasPendingDummy: Boolean = members.any { it.isDummy && it.isPending }
 }
 
 class QaGroupMember(
     val member: QaMember,
-    val dummy: Boolean,
+    val isDummy: Boolean,
     val status: InvitationStatus,
-)
+) {
+    val isPending: Boolean = status == InvitationStatus.PENDING
+}

@@ -105,7 +105,8 @@ class AdminDummyService(
     }
 
     private fun newDummyMember(gender: Gender, form: DummyGenerateForm): Member {
-        val nickname = "${DummyMarker.NICKNAME_PREFIX}${gender.name.lowercase()}-${UUID.randomUUID().toString().take(8)}"
+        val suffix = UUID.randomUUID().toString().take(8)
+        val nickname = "${DummyMarker.NICKNAME_PREFIX}${gender.name.lowercase()}-$suffix"
         // 실제 가입과 동일하게 register() 로 활성화한다(ACTIVE 전이·joinedAt·필수 프로필을 도메인이 소유).
         // gender·age 가 null 이면 매칭 후보 풀에서 제외되므로 더미는 반드시 채운다.
         return Member(nickname = nickname, email = "$nickname@$EMAIL_DOMAIN").apply {

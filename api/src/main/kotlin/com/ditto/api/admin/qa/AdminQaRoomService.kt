@@ -10,6 +10,7 @@ import com.ditto.api.admin.qa.dto.QaVoteOption
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.domain.chat.entity.ChatMessage
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -87,6 +88,7 @@ class AdminQaRoomService(
             .reversed()
         val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }
         val members = QaMembers(memberRepository.findAllById(memberIds))
+        val rows = RoomRows(members, dummyIds)
         val votes = findVotes(room, roomMembers)
 
         return QaRoomView(
@@ -97,27 +99,8 @@ class AdminQaRoomService(
             opensAt = room.opensAt,
             expiresAt = room.expiresAt,
             endReason = room.endReason,
-            members = roomMembers
-                .sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId }))
-                .map { roomMember ->
-                    QaRoomMember(
-                        member = members.of(roomMember.memberId),
-                        dummy = roomMember.memberId in dummyIds,
-                        left = roomMember.hasLeft,
-                        lastReadMessageId = roomMember.lastReadMessageId,
-                    )
-                },
-            messages = messages.map { message ->
-                QaRoomMessage(
-                    messageId = message.id,
-                    sender = members.of(message.senderId),
-                    fromDummy = message.senderId in dummyIds,
-                    messageType = message.messageType,
-                    content = message.content,
-                    sentAt = message.createdAt,
-                    unreadCount = message.unreadCountAmong(roomMembers),
-                )
-            },
+            members = roomMembers.sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId })).map(rows::member),
+            messages = messages.map { rows.message(it, roomMembers) },
             votes = votes.map { it.toQaVote(members) },
         )
     }
@@ -176,7 +159,7 @@ class AdminQaRoomService(
     private fun ChatVoteDetailResponse.toQaVote(members: QaMembers): QaVote =
         QaVote(
             voteId = voteId,
-            open = status == ChatVoteStatus.OPEN,
+            isOpen = status == ChatVoteStatus.OPEN,
             allowMultiple = allowMultiple,
             votedCount = votedCount,
             totalMembers = totalMembers,
@@ -186,6 +169,29 @@ class AdminQaRoomService(
                 QaVoteOption(it.optionId, MEET_AT_FORMAT.format(it.meetAt), it.voterIds.map(members::of))
             },
         )
+
+    /** 방 화면의 참여자·메시지 한 줄씩. 안읽음 수는 나가지 않은 멤버의 커서로 센다(앱 메시지 응답과 같은 규칙). */
+    private class RoomRows(
+        private val members: QaMembers,
+        private val dummyIds: Set<Long>,
+    ) {
+        fun member(roomMember: ChatRoomMember) = QaRoomMember(
+            member = members.of(roomMember.memberId),
+            isDummy = roomMember.memberId in dummyIds,
+            hasLeft = roomMember.hasLeft,
+            lastReadMessageId = roomMember.lastReadMessageId,
+        )
+
+        fun message(message: ChatMessage, roomMembers: List<ChatRoomMember>) = QaRoomMessage(
+            messageId = message.id,
+            sender = members.of(message.senderId),
+            isFromDummy = message.senderId in dummyIds,
+            messageType = message.messageType,
+            content = message.content,
+            sentAt = message.createdAt,
+            unreadCount = message.unreadCountAmong(roomMembers),
+        )
+    }
 
     companion object {
         const val TIMELINE_SIZE = 50

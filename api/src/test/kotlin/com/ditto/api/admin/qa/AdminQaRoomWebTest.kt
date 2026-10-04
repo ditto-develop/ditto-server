@@ -125,7 +125,7 @@ class AdminQaRoomWebTest(
 
             view.messages.single().let {
                 it.messageId shouldBe message.id
-                it.fromDummy shouldBe false
+                it.isFromDummy shouldBe false
                 it.unreadCount shouldBe 1
             }
             view.members.map { it.member.id } shouldBe listOf(tester.id, dummy.id)
