@@ -2,6 +2,8 @@ package com.ditto.api.user
 
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.service.MemberRatingService
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.review.MemberReviewFixture
@@ -19,17 +21,27 @@ class MemberRatingServiceTest(
     private val memberRepository: MemberRepository,
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
+    private val chatRoomRepository: ChatRoomRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
     var memberSequence = 0
+    var groupMatchSequence = 1L
 
     fun saveMemberId(): Long =
         memberRepository.save(Member(nickname = "회원${memberSequence++}").apply { activate() }).id
 
-    fun receiveRatings(reviewedMemberId: Long, vararg ratings: Int) {
+    fun saveRoomId(ended: Boolean = true): Long {
+        val sourceId = groupMatchSequence++
+        val room = if (ended) ChatRoomFixture.endedGroup(sourceId) else ChatRoomFixture.group(sourceId)
+        return chatRoomRepository.save(room).id
+    }
+
+    fun receiveRatings(reviewedMemberId: Long, vararg ratings: Int, chatRoomId: Long = saveRoomId()) {
         ratings.forEach { rating ->
-            val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = saveMemberId()))
+            val review = memberReviewRepository.save(
+                MemberReviewFixture.create(authorMemberId = saveMemberId(), chatRoomId = chatRoomId),
+            )
             val answer = reviewAnswerRepository.save(
                 ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
             )
@@ -66,5 +78,13 @@ class MemberRatingServiceTest(
 
             memberRatingService.findPublicAverageScore(memberId) shouldBe 3.7
         }
+    }
+
+    "아직 열린 방에서 나간 사람이 먼저 쓴 평가는 방이 끝날 때까지 세지 않는다" {
+        val memberId = saveMemberId()
+        receiveRatings(memberId, 4)
+        receiveRatings(memberId, 1, chatRoomId = saveRoomId(ended = false))
+
+        memberRatingService.getRatings(memberId).totalCount shouldBe 1
     }
 })

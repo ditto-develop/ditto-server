@@ -24,6 +24,10 @@ object ChatRoomFixture {
         period: ChatPeriod = ChatPeriod.weekendOf(now),
     ): ChatRoom = ChatRoom.group(sourceId, period, now).withId(id)
 
+    /** 받은 평가 집계는 끝난 방의 평가만 센다. 평가를 걸어 둘 방이 필요할 때 쓴다. */
+    fun endedGroup(sourceId: Long = 1L): ChatRoom =
+        group(sourceId).apply { expire(DEFAULT_NOW.plusDays(3)) }
+
     /** [sourceId]는 `rematch.id`다. */
     fun rematch(
         sourceId: Long = 1L,
