@@ -114,6 +114,29 @@
                 </table>
             </section>
 
+            <section class="card" th:unless="${console.personal.sentRequests.isEmpty()}">
+                <h2>1:1 · 더미가 보낸 신청
+                    <span class="count" th:text="${console.personal.sentRequests.size()}">0</span></h2>
+                <table class="tbl">
+                    <thead><tr><th>보낸 더미</th><th>받은 회원</th><th>퀴즈셋</th><th>상태</th><th>신청 시각</th></tr></thead>
+                    <tbody>
+                    <tr th:each="request : ${console.personal.sentRequests}">
+                        <td th:text="${request.dummy.nickname}">dummy-female-3fa1</td>
+                        <td th:text="${request.receiver.nickname}">홍길동</td>
+                        <td th:text="${request.quizSetTitle}">퀴즈셋</td>
+                        <td th:switch="${request.status.name()}">
+                            <span class="badge matching" th:case="'PENDING'">대기</span>
+                            <span class="badge on" th:case="'ACCEPTED'">수락됨</span>
+                            <span class="badge off" th:case="'REJECTED'">거절됨</span>
+                            <span class="badge off" th:case="'CANCELLED'">취소됨 (다른 신청 성사)</span>
+                            <span class="badge off" th:case="*" th:text="${request.status}">상태</span>
+                        </td>
+                        <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
             <section class="card">
                 <h2>1:1 · 더미가 신청 보내기
                     <span class="count" th:text="${console.personal.requestOptions.size()}">0</span></h2>

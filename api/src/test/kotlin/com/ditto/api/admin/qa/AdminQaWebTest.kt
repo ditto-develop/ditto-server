@@ -157,7 +157,7 @@ class AdminQaWebTest(
 
             acceptAs(dummy.id, match.id)
                 .andExpect(redirectedUrl("/admin/qa#personal"))
-                .andExpect(flash().attributeExists("message"))
+                .andExpect(flash().attribute("message", "dummy-female-aaaa(#${dummy.id}) · 1:1 신청 #${match.id} 수락 완료"))
 
             personalMatchRepository.findByIdOrNull(match.id)?.status shouldBe PersonalMatchStatus.ACCEPTED
             chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, match.id).shouldNotBeNull()
@@ -190,6 +190,11 @@ class AdminQaWebTest(
             val sent = personalMatchRepository.findByRequesterIdAndQuizSetId(dummy.id, quizSet.id).single()
             sent.receiverId() shouldBe tester.id
             sent.status shouldBe PersonalMatchStatus.PENDING
+            console().personal.sentRequests.single().let {
+                it.matchId shouldBe sent.id
+                it.receiver.id shouldBe tester.id
+                it.status shouldBe PersonalMatchStatus.PENDING
+            }
         }
 
         "실회원으로는 움직이지 않는다" {

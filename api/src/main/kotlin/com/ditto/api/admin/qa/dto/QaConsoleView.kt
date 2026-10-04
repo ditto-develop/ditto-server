@@ -2,6 +2,7 @@ package com.ditto.api.admin.qa.dto
 
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.match.entity.PersonalMatchStatus
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -23,14 +24,18 @@ class QaTimeShortcutOption(
 class QaMember(
     val id: Long,
     val nickname: String,
-)
+) {
+    /** 결과 메시지용. 화면의 닉네임과 로그의 id 를 함께 대조할 수 있게 한다. */
+    val label: String = "$nickname(#$id)"
+}
 
 class QaPersonalSection(
     val receivedRequests: List<DummyReceivedPersonalRequest>,
+    val sentRequests: List<DummySentPersonalRequest>,
     val requestOptions: List<DummyPersonalRequestOption>,
 ) {
     companion object {
-        val EMPTY = QaPersonalSection(receivedRequests = emptyList(), requestOptions = emptyList())
+        val EMPTY = QaPersonalSection(emptyList(), sentRequests = emptyList(), requestOptions = emptyList())
     }
 }
 
@@ -39,6 +44,16 @@ class DummyReceivedPersonalRequest(
     val dummy: QaMember,
     val requester: QaMember,
     val quizSetTitle: String,
+    val requestedAt: LocalDateTime,
+)
+
+/** 더미가 보낸 신청. 상대(테스터)가 수락·거절했는지 앱 밖에서 확인하는 용도라 상태와 관계없이 모두 보여준다. */
+class DummySentPersonalRequest(
+    val matchId: Long,
+    val dummy: QaMember,
+    val receiver: QaMember,
+    val quizSetTitle: String,
+    val status: PersonalMatchStatus,
     val requestedAt: LocalDateTime,
 )
 
@@ -55,7 +70,8 @@ class QaGroupSection(
     val responseClosed: Boolean,
 ) {
     /** 마감 안내는 아직 응답할 초대가 남았을 때만 의미가 있다. 금요일 이후 채팅 QA 중에는 정상 상태다. */
-    val hasPendingInvitation: Boolean = groups.any { group -> group.members.any { it.status == InvitationStatus.PENDING } }
+    val hasPendingInvitation: Boolean =
+        groups.any { group -> group.members.any { it.status == InvitationStatus.PENDING } }
 }
 
 /** 더미가 한 명 이상 들어 있는 이번 주 후보 그룹. */

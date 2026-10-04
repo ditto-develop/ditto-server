@@ -52,7 +52,7 @@ class AdminQaRoomController(
         redirectAttributes: RedirectAttributes,
     ): String {
         val contents = preset?.contents() ?: listOf(content.orEmpty())
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 메시지 ${contents.size}개 전송") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "메시지 ${contents.size}개 전송") {
             val sender = authenticationOf(dummyId)
             contents.forEach { chatStompController.sendMessage(roomId, ChatSendRequest(content = it), sender) }
         }
@@ -65,16 +65,18 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 최신 메시지까지 읽음") { readLatest(dummyId, roomId) }
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "최신 메시지까지 읽음") {
+            readLatest(dummyId, roomId)
+        }
         return roomRedirect(roomId)
     }
 
     @PostMapping("/admin/qa/rooms/{roomId}/read-all-dummies")
     fun readAsAllDummies(@PathVariable roomId: Long, redirectAttributes: RedirectAttributes): String {
-        redirectAttributes.reportEachDummyAction(
+        redirectAttributes.flashEachDummyAction(
             "방 #$roomId 더미 모두 읽음",
-            adminQaRoomService.findActiveDummyIdsIn(roomId),
-        ) { dummyId -> readLatest(dummyId, roomId) }
+            adminQaRoomService.findActiveDummiesIn(roomId),
+        ) { dummy -> readLatest(dummy.id, roomId) }
         return roomRedirect(roomId)
     }
 
@@ -84,7 +86,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 방 #$roomId 나가기") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 나가기") {
             chatController.leave(qaDummies.principalOf(dummyId), roomId)
         }
         return roomRedirect(roomId)
@@ -96,7 +98,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 방 #$roomId 종료") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "방 #$roomId 채팅 종료") {
             chatController.end(qaDummies.principalOf(dummyId), roomId)
         }
         return roomRedirect(roomId)

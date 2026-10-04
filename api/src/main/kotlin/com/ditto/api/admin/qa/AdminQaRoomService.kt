@@ -1,5 +1,6 @@
 package com.ditto.api.admin.qa
 
+import com.ditto.api.admin.qa.dto.QaMember
 import com.ditto.api.admin.qa.dto.QaRoomMember
 import com.ditto.api.admin.qa.dto.QaRoomMessage
 import com.ditto.api.admin.qa.dto.QaRoomSummary
@@ -127,11 +128,13 @@ class AdminQaRoomService(
 
     fun findLatestMessageId(roomId: Long): Long? = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(roomId)?.id
 
-    fun findActiveDummyIdsIn(roomId: Long): List<Long> {
+    fun findActiveDummiesIn(roomId: Long): List<QaMember> {
         val dummyIds = qaDummies.findIds()
-        return chatRoomMemberRepository.findByRoomId(roomId)
+        val activeDummyIds = chatRoomMemberRepository.findByRoomId(roomId)
             .filter { !it.hasLeft && it.memberId in dummyIds }
             .map { it.memberId }
+        val members = QaMembers(memberRepository.findAllById(activeDummyIds))
+        return activeDummyIds.map(members::of)
     }
 
     /** 그룹 방은 그룹 번호와 퀴즈셋, 1:1 방은 퀴즈셋, 재매칭 방은 쌍 번호. 화면에서 테스트한 방을 찾는 단서다. */

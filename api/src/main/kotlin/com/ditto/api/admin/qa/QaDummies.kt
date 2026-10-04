@@ -1,6 +1,7 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.dummy.AdminDummyService
+import com.ditto.api.admin.qa.dto.QaMember
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -19,6 +20,10 @@ class QaDummies(
         memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX)
             .map { it.id }
             .toSet()
+
+    /** 결과 메시지에 쓸 이름표. 더미가 아니거나 없는 회원이어도 준다. 막는 일은 [principalOf]가 한다. */
+    fun memberOf(memberId: Long): QaMember =
+        QaMembers(listOfNotNull(memberRepository.findByIdOrNull(memberId))).of(memberId)
 
     fun principalOf(memberId: Long): MemberPrincipal {
         val member = memberRepository.findByIdOrNull(memberId) ?: throw WarnException(ErrorCode.NOT_FOUND)

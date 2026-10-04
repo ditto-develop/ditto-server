@@ -32,4 +32,4 @@
 ## Links
 
 - 이슈: #246
-- 핵심 파일: `api/.../admin/qa/AdminQaController.kt`(1:1·그룹 응답), `AdminQaRoomController.kt`(전송·읽음·나가기·종료), `AdminQaVoteController.kt`(투표), `QaDummies.kt`(더미만 허용), `QaActionReporting.kt`(거부 표시), `api/.../admin/dummy/cleanup/DummyDataCleaner.kt`(정리 범위), `static/admin/js/qa-room.js`(비동기 전송·자동 갱신)
+- 핵심 파일: `api/.../admin/qa/AdminQaController.kt`(1:1·그룹 응답), `AdminQaRoomController.kt`(전송·읽음·나가기·종료), `AdminQaVoteController.kt`(투표), `QaDummies.kt`(더미만 허용), `QaActionFlash.kt`(결과·거부 표시), `api/.../admin/dummy/cleanup/DummyDataCleaner.kt`(정리 범위), `static/admin/js/qa-room.js`(비동기 전송·자동 갱신)

@@ -41,7 +41,8 @@ class AdminQaController(
         @RequestParam quizSetId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId → 회원 #$receiverId 1:1 신청") {
+        val receiver = qaDummies.memberOf(receiverId)
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "→ ${receiver.label} 1:1 신청") {
             personalMatchController.requestMatch(
                 qaDummies.principalOf(dummyId),
                 PersonalMatchRequest(receiverId = receiverId, quizSetId = quizSetId),
@@ -56,7 +57,7 @@ class AdminQaController(
         @PathVariable matchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 1:1 신청 #$matchId 수락") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "1:1 신청 #$matchId 수락") {
             personalMatchController.acceptMatch(qaDummies.principalOf(dummyId), matchId)
         }
         return PERSONAL_SECTION_REDIRECT
@@ -68,7 +69,7 @@ class AdminQaController(
         @PathVariable matchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 1:1 신청 #$matchId 거절") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "1:1 신청 #$matchId 거절") {
             personalMatchController.rejectMatch(qaDummies.principalOf(dummyId), matchId)
         }
         return PERSONAL_SECTION_REDIRECT
@@ -80,7 +81,7 @@ class AdminQaController(
         @PathVariable groupMatchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 그룹 #$groupMatchId 수락") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "그룹 #$groupMatchId 수락") {
             groupMatchController.accept(qaDummies.principalOf(dummyId), groupMatchId)
         }
         return GROUP_SECTION_REDIRECT
@@ -92,7 +93,7 @@ class AdminQaController(
         @PathVariable groupMatchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 그룹 #$groupMatchId 거절") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "그룹 #$groupMatchId 거절") {
             groupMatchController.decline(qaDummies.principalOf(dummyId), groupMatchId)
         }
         return GROUP_SECTION_REDIRECT
@@ -103,11 +104,11 @@ class AdminQaController(
         @PathVariable groupMatchId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportEachDummyAction(
+        redirectAttributes.flashEachDummyAction(
             "그룹 #$groupMatchId 대기 중인 더미 수락",
-            adminQaService.findPendingDummyIdsIn(groupMatchId),
-        ) { dummyId ->
-            groupMatchController.accept(qaDummies.principalOf(dummyId), groupMatchId)
+            adminQaService.findPendingDummiesIn(groupMatchId),
+        ) { dummy ->
+            groupMatchController.accept(qaDummies.principalOf(dummy.id), groupMatchId)
         }
         return GROUP_SECTION_REDIRECT
     }

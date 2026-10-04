@@ -2,10 +2,12 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.qa.dto.DummyPersonalRequestOption
 import com.ditto.api.admin.qa.dto.DummyReceivedPersonalRequest
+import com.ditto.api.admin.qa.dto.DummySentPersonalRequest
 import com.ditto.api.admin.qa.dto.QaConsoleView
 import com.ditto.api.admin.qa.dto.QaGroupMatch
 import com.ditto.api.admin.qa.dto.QaGroupMember
 import com.ditto.api.admin.qa.dto.QaGroupSection
+import com.ditto.api.admin.qa.dto.QaMember
 import com.ditto.api.admin.qa.dto.QaPersonalSection
 import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
@@ -62,11 +64,13 @@ class AdminQaService(
         )
     }
 
-    fun findPendingDummyIdsIn(groupMatchId: Long): List<Long> {
+    fun findPendingDummiesIn(groupMatchId: Long): List<QaMember> {
         val dummyIds = qaDummies.findIds()
-        return groupMatchMemberRepository.findByRoomId(groupMatchId)
+        val pendingDummyIds = groupMatchMemberRepository.findByRoomId(groupMatchId)
             .filter { it.isPending() && it.memberId in dummyIds }
             .map { it.memberId }
+        val members = QaMembers(memberRepository.findAllById(pendingDummyIds))
+        return pendingDummyIds.map(members::of)
     }
 
     private fun composePersonalSection(quizSets: List<QuizSet>, dummyIds: Set<Long>): QaPersonalSection {
@@ -77,10 +81,13 @@ class AdminQaService(
         val receivedRequests = matches
             .filter { it.isPending() && it.receiverId() in dummyIds }
             .sortedByDescending { it.id }
+        val sentRequests = matches
+            .filter { it.requesterId in dummyIds }
+            .sortedByDescending { it.id }
         val requestableCandidates = findRequestableCandidates(titlesByQuizSetId.keys, dummyIds, matches)
         val members = QaMembers(
             memberRepository.findAllById(
-                receivedRequests.flatMap { listOf(it.memberId1, it.memberId2) } +
+                (receivedRequests + sentRequests).flatMap { listOf(it.memberId1, it.memberId2) } +
                     requestableCandidates.flatMap { listOf(it.ownerMemberId, it.otherMemberId) },
             ),
         )
@@ -92,6 +99,16 @@ class AdminQaService(
                     dummy = members.of(match.receiverId()),
                     requester = members.of(match.requesterId),
                     quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
+                    requestedAt = match.createdAt,
+                )
+            },
+            sentRequests = sentRequests.map { match ->
+                DummySentPersonalRequest(
+                    matchId = match.id,
+                    dummy = members.of(match.requesterId),
+                    receiver = members.of(match.receiverId()),
+                    quizSetTitle = titlesByQuizSetId.getValue(match.quizSetId),
+                    status = match.status,
                     requestedAt = match.createdAt,
                 )
             },

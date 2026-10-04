@@ -25,7 +25,7 @@ class AdminQaVoteController(
         @RequestParam(defaultValue = "false") allowMultiple: Boolean,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 샘플 투표 만들기") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "샘플 투표 만들기") {
             val request = QaSampleVote.request(allowMultiple, serverTimeProvider.now())
             chatVoteController.createVote(qaDummies.principalOf(dummyId), roomId, request)
         }
@@ -48,7 +48,7 @@ class AdminQaVoteController(
         }
 
         val request = ChatVoteCastRequest(placeIds = placeIds, timeIds = timeIds)
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 투표 #$voteId 투표") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "투표 #$voteId 투표") {
             chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, request)
         }
         return roomRedirect(roomId)
@@ -67,11 +67,11 @@ class AdminQaVoteController(
             return roomRedirect(roomId)
         }
 
-        redirectAttributes.reportEachDummyAction(
+        redirectAttributes.flashEachDummyAction(
             "투표 #$voteId 더미 모두 무작위 투표",
-            adminQaRoomService.findActiveDummyIdsIn(roomId),
-        ) { dummyId ->
-            chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, randomCastOf(vote))
+            adminQaRoomService.findActiveDummiesIn(roomId),
+        ) { dummy ->
+            chatVoteController.cast(qaDummies.principalOf(dummy.id), roomId, voteId, randomCastOf(vote))
         }
         return roomRedirect(roomId)
     }
@@ -83,7 +83,7 @@ class AdminQaVoteController(
         @RequestParam dummyId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.reportDummyAction("더미 #$dummyId · 투표 #$voteId 마감") {
+        redirectAttributes.flashDummyAction(qaDummies.memberOf(dummyId), "투표 #$voteId 마감") {
             chatVoteController.close(qaDummies.principalOf(dummyId), roomId, voteId)
         }
         return roomRedirect(roomId)
