@@ -4,6 +4,9 @@ import com.ditto.api.notification.message.NotificationContent
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.IntegrationTest
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import io.kotest.matchers.shouldBe
@@ -17,6 +20,7 @@ private const val QUIZ_SET = 7L
 class NotificationAppenderTest(
     private val notificationAppender: NotificationAppender,
     private val notificationRepository: NotificationRepository,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -103,6 +107,28 @@ class NotificationAppenderTest(
             notificationAppender.append(1L, NotificationMessages.groupFormed(3), targetId = ROOM)
 
             notificationAppender.appendAll(listOf(1L, 2L), NotificationMessages.groupFormed(3), ROOM) shouldBe 1
+        }
+    }
+
+    "탈퇴 회원" - {
+        fun saveMember(nickname: String, status: MemberStatus) =
+            memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = status))
+
+        "탈퇴한 사람에게는 남기지 않는다" {
+            val left = saveMember("탈퇴자", MemberStatus.LEFT)
+
+            notificationAppender.append(left.id, NotificationMessages.matchResult(), targetId = QUIZ_SET) shouldBe false
+
+            notificationRepository.count() shouldBe 0
+        }
+
+        "여러 수신자 중 탈퇴한 사람만 빠진다" {
+            val active = saveMember("활동", MemberStatus.ACTIVE)
+            val left = saveMember("탈퇴자", MemberStatus.LEFT)
+
+            notificationAppender.appendAll(listOf(active.id, left.id), NotificationMessages.groupFormed(3), ROOM) shouldBe 1
+
+            notificationRepository.findAll().single().memberId shouldBe active.id
         }
     }
 

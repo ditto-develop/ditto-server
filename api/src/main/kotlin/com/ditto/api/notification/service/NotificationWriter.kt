@@ -1,6 +1,8 @@
 package com.ditto.api.notification.service
 
 import com.ditto.api.notification.message.NotificationContent
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.DuplicatePolicy
 import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.entity.NotificationType
@@ -21,19 +23,27 @@ import org.springframework.transaction.annotation.Transactional
  *
  * 반대급부로 **적재 뒤에 호출자가 롤백하면 알림만 남는다**(적재가 먼저 커밋되므로). 알림은 읽기 전용
  * 통지라 그 방향의 오류를 감수한다 — 반대 방향(알림 때문에 매칭이 취소됨)이 훨씬 나쁘다.
+ *
+ * 탈퇴(LEFT) 회원에게는 남기지 않는다. 푸시 토큰은 탈퇴 때 지워 푸시는 이미 안 나가지만, 행이 쌓이면
+ * 30일 안에 복구한 사람이 그 사이 알림을 보게 된다. 검사도 이 트랜잭션 안에서 해야 조회 실패가
+ * 호출자 트랜잭션을 롤백시키지 않는다.
  */
 @Component
 class NotificationWriter(
     private val notificationRepository: NotificationRepository,
+    private val memberRepository: MemberRepository,
 ) {
 
     /**
      * 중복 정책에 따라 적재한다.
      *
-     * @return 실제로 생긴 행. 이미 알린 사건이라 건너뛰었으면 `null` — 푸시도 함께 건너뛴다
+     * @return 실제로 생긴 행. 이미 알린 사건이거나 탈퇴 회원이라 건너뛰었으면 `null`. 푸시도 함께 건너뛴다
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun write(memberId: Long, content: NotificationContent, targetId: Long?): Notification? {
+        if (memberRepository.existsByIdAndStatus(memberId, MemberStatus.LEFT)) {
+            return null
+        }
         val type = content.type
         when (type.duplicatePolicy) {
             DuplicatePolicy.ALLOW -> Unit
