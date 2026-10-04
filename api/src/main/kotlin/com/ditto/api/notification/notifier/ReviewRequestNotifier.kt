@@ -42,6 +42,23 @@ class ReviewRequestNotifier(
             .onFailure { logger.warn(it) { "평가 요청 알림 실패 — 무시한다: roomIds=$endedRoomIds" } }
             .getOrDefault(0)
 
+    /**
+     * 열린 그룹 방에서 나간 사람에게만 평가 요청을 남긴다. 방이 끝날 때 다시 보내도 대상당 한 번이라
+     * 이 사람에게는 겹쳐 가지 않는다. 실패는 [notifyFor]처럼 삼킨다.
+     */
+    fun notifyLeaver(roomId: Long, memberId: Long): Boolean =
+        runCatchingExceptions { appendReviewRequestToLeaver(roomId, memberId) }
+            .onFailure { logger.warn(it) { "나간 사람 평가 요청 알림 실패, 무시한다: roomId=$roomId, memberId=$memberId" } }
+            .getOrDefault(false)
+
+    private fun appendReviewRequestToLeaver(roomId: Long, memberId: Long): Boolean {
+        val memberIds = chatRoomMemberRepository.findByRoomId(roomId).map { it.memberId }
+        if (memberIds.size < MemberReviewService.MIN_REVIEWER_COUNT) {
+            return false
+        }
+        return appendReviewRequest(roomId, memberId, memberIds, nicknamesOf(memberIds))
+    }
+
     private fun appendReviewRequests(endedRoomIds: Collection<Long>): Int {
         if (endedRoomIds.isEmpty()) {
             return 0
@@ -62,22 +79,29 @@ class ReviewRequestNotifier(
 
         val appended = reviewableRoomIds.sumOf { roomId ->
             val memberIds = membersByRoomId[roomId].orEmpty().map { it.memberId }
-            memberIds.count { memberId ->
-                val counterpartNicknames = memberIds
-                    .filter { it != memberId }
-                    .mapNotNull { nicknamesById[it] }
-                notificationAppender.append(
-                    memberId = memberId,
-                    content = NotificationMessages.reviewRequest(counterpartNicknames),
-                    targetId = roomId,
-                )
-            }
+            memberIds.count { memberId -> appendReviewRequest(roomId, memberId, memberIds, nicknamesById) }
         }
 
         if (appended > 0) {
             logger.info { "평가 요청 알림: ${appended}건 (방 ${reviewableRoomIds.size}개)" }
         }
         return appended
+    }
+
+    private fun appendReviewRequest(
+        roomId: Long,
+        memberId: Long,
+        roomMemberIds: List<Long>,
+        nicknamesById: Map<Long, String>,
+    ): Boolean {
+        val counterpartNicknames = roomMemberIds
+            .filter { it != memberId }
+            .mapNotNull { nicknamesById[it] }
+        return notificationAppender.append(
+            memberId = memberId,
+            content = NotificationMessages.reviewRequest(counterpartNicknames),
+            targetId = roomId,
+        )
     }
 
     private fun nicknamesOf(memberIds: Collection<Long>): Map<Long, String> =

@@ -21,7 +21,7 @@ class MemberRatingService(
     @Transactional(readOnly = true)
     fun getRatings(memberId: Long): MyRatingsResponse {
         val received = reviewAnswerRepository
-            .findAllByReviewedMemberIdAndAnsweredAtIsNotNullOrderByAnsweredAtDesc(memberId)
+            .findAllAnsweredInEndedRoomsByReviewedMemberId(memberId)
         val totalCount = received.size.toLong()
 
         // 공개 기준 미달이면 총 건수만 알린다 — 화면이 평균·코멘트·노쇼를 렌더하지 않는다.

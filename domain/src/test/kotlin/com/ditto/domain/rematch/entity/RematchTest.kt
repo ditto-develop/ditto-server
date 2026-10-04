@@ -230,6 +230,32 @@ class RematchTest(
         }
     }
 
+    "신청자" - {
+        "한쪽만 원한다고 낸 쌍은 그 사람이 신청자다" {
+            val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+            pair.submitWants(2L, wants = true, now = now)
+
+            pair.requesterId() shouldBe 2L
+        }
+
+        "아직 아무도 내지 않았거나 원하지 않는다고만 낸 쌍은 신청자가 없다" {
+            val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+            pair.requesterId() shouldBe null
+
+            pair.submitWants(1L, wants = false, now = now)
+
+            pair.requesterId() shouldBe null
+        }
+
+        "양쪽이 다 낸 쌍은 신청자가 없다" {
+            val pair = RematchFixture.create(memberIdA = 1L, memberIdB = 2L)
+            pair.submitWants(1L, wants = true, now = now)
+            pair.submitWants(2L, wants = false, now = now)
+
+            pair.requesterId() shouldBe null
+        }
+    }
+
     "탈퇴 취소" - {
         "given: 아직 아무도 제출하지 않은 쌍일 때" - {
             "when: 탈퇴로 취소하면" - {

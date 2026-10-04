@@ -9,6 +9,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.service.ChatService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
@@ -33,6 +34,7 @@ class ChatController(
     private val messagingTemplate: SimpMessagingTemplate,
     private val endedChatReviewOpener: EndedChatReviewOpener,
     private val reviewRequestNotifier: ReviewRequestNotifier,
+    private val rematchNotifier: RematchNotifier,
 ) {
 
     @GetMapping("/api/v1/chat/rooms")
@@ -100,13 +102,18 @@ class ChatController(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable roomId: Long,
     ): ApiResponse<Unit> {
-        val result = chatRoomEndService.leave(roomId, principal.memberId, LocalDateTime.now())
+        val now = LocalDateTime.now()
+        val result = chatRoomEndService.leave(roomId, principal.memberId, now)
         result.systemMessages.forEach {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
         }
         if (result.isRoomEnded) {
             endedChatReviewOpener.openFor(listOf(roomId))
             reviewRequestNotifier.notifyFor(listOf(roomId))
+            rematchNotifier.notifyWaitingRequestsFor(listOf(roomId))
+        }
+        if (result.hasLeftOpenRoom) {
+            openReviewForLeaver(roomId, principal.memberId, now)
         }
         return ApiResponse.ok(Unit)
     }
@@ -156,4 +163,11 @@ class ChatController(
         @Valid @RequestBody request: ChatImageUploadUrlsRequest,
     ): ApiResponse<ChatImageUploadUrlsResponse> =
         ApiResponse.ok(chatService.issueImageUploadUrls(principal.memberId, roomId, request))
+
+    private fun openReviewForLeaver(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
+        if (!endedChatReviewOpener.openForLeaver(roomId, memberId, leftAt)) {
+            return
+        }
+        reviewRequestNotifier.notifyLeaver(roomId, memberId)
+    }
 }

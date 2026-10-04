@@ -10,6 +10,8 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.PersonalMatchRepository
@@ -74,6 +76,9 @@ class UserControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var reviewAnswerRepository: ReviewAnswerRepository
+
+    @Autowired
+    private lateinit var chatRoomRepository: ChatRoomRepository
 
     @Autowired
     private lateinit var quizSetRepository: QuizSetRepository
@@ -784,7 +789,10 @@ class UserControllerTest : RestDocsTest() {
         comment: String?,
     ) {
         val author = memberRepository.save(Member(nickname = "평가자${reviewerSequence++}").apply { activate() })
-        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = author.id))
+        val room = chatRoomRepository.save(ChatRoomFixture.endedGroup(sourceId = author.id))
+        val review = memberReviewRepository.save(
+            MemberReviewFixture.create(authorMemberId = author.id, chatRoomId = room.id),
+        )
         val answer = reviewAnswerRepository.save(
             ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
         )

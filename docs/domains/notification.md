@@ -29,13 +29,13 @@
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `NO_MATCH` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` (매칭 풀에 들었지만 후보 0명) |
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
-| `REMATCH_REQUESTED` | MATCHING | `rematch.id` | 대상당 1회 | `MemberReviewController.submitAnswer` → `RematchNotifier` — 먼저 "원한다"를 낸 사람의 상대 |
+| `REMATCH_REQUESTED` | MATCHING | `rematch.id` | 대상당 1회 | `MemberReviewController.submitAnswer` → `RematchNotifier` — 먼저 "원한다"를 낸 사람의 상대. 상대에게 평가지가 없으면 미뤘다가 방이 끝날 때(누락 복구로 평가가 열린 방 포함) `ChatRoomLifecycleScheduler`·`ChatController.leave`(그룹 해체)가 `notifyWaitingRequestsFor`로 보낸다 |
 | `REMATCH_REJECTED` | MATCHING | `rematch.id` | 대상당 1회 | 같은 지점 — `CANCELLED(NOT_MUTUAL)` 시 원했던 쪽 |
 | `REMATCH_MATCHED` | MATCHING | `chat_room.id`(재매칭) | 대상당 1회 | `RematchChatRoomOpener.reserve` |
 | `MATCH_REQUESTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.requestMatch` → `PersonalMatchNotifier` |
 | `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
-| `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end`·`ChatController.leave`(1:1 종료·그룹 해체) → `ReviewRequestNotifier`. 나간 사람도 받는다 |
+| `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end`·`ChatController.leave`(1:1 종료·그룹 해체, 열린 그룹 방에서 나간 사람에게는 그 순간 `notifyLeaver`) → `ReviewRequestNotifier`. 나간 사람도 받는다 |
 | `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 활성 회원의 미완료 평가 |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |

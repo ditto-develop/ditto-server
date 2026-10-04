@@ -22,6 +22,9 @@
 
 - 진행 단위는 `(chat_room_id, author_member_id)` 유일 — 동일 종료 이벤트를 재처리해도 중복 생성되지 않는다. `MemberReviewService.createReviews`가 기존 건을 먼저 찾아 반환하고, DB 유일키가 최후 방어선이다.
 - 평가 대상은 종료 시점 참여자 명단(`EndedChatRoom.participantIds`)에서 **자기 자신을 뺀** 회원들이다. 명단은 최초 멤버 전원이라 중간에 나간 사람도 평가하고 평가받는다([ADR 0037](../adr/0037-group-review-roster-includes-leavers.md)). 그래서 인원 미달로 해체된 방도 평가가 열린다.
+- 평가는 방이 끝날 때 전원에게 열리지만, **열린 그룹 방에서 나간 사람은 나가는 순간 그 사람 몫이 먼저 열린다**(`EndedChatReviewOpener.openForLeaver`, 평가 가능 시각 = 나간 시각). 그 사람이 낀 재매칭 쌍도 그때 만든다. 방이 끝날 때는 이미 있는 평가와 쌍을 건너뛴다. 개방 전에 나간 사람은 방이 끝날 때 받는다.
+- 먼저 열린 나간 사람이 재매칭을 원해도, 상대에게 아직 평가지가 없으면 신청 알림(`REMATCH_REQUESTED`)을 보내지 않는다. 눌러도 수락할 화면이 없기 때문이다. 방이 끝나 평가가 열릴 때 `RematchNotifier.notifyWaitingRequestsFor`가 대기 중인 쌍의 신청을 보낸다. 종료 직후 평가 열기가 실패했으면 누락 복구가 평가를 연 주기에 보낸다. 이때도 받는 사람에게 평가지가 있어야 보낸다.
+- 누락 복구(`findEndedChatRoomIdsWithoutReview`)는 자기 평가지(작성자가 그 멤버인 `member_review`)가 아직 없는 멤버가 있는 끝난 방을 찾는다. 제출 여부는 보지 않는다. 나간 사람 평가가 먼저 있어도 나머지가 빠진 방을 놓치지 않기 위해서다.
 - 참여자가 2명 미만이면 평가를 열 수 없다 (`INVALID_REVIEW_TARGET`) — 자기 자신이 빠지므로 대상이 0명이 된다.
 - 응답 여부는 `answered_at` 하나로 표현한다(`NULL`이면 미응답). 대상별 제출이 최종 확정이라 상태가 둘뿐이고, 별도 상태 컬럼을 두면 같은 사실이 두 곳에 저장돼 어긋난다.
 - 대상별 제출은 **최종**이다 — 이미 확정한 대상에 다른 내용으로 답하면 `REVIEW_ANSWER_NOT_MODIFIABLE`로 거부한다(수정 시도와 "이미 답한 상태"를 코드로 구분한다). 수정·임시 저장 단계는 없다.
@@ -37,7 +40,7 @@
 - 추천 태그는 두지 않는다 — 자유 코멘트만 받는다.
 - `match_type`·`match_id`는 `chat_room`의 `(source_type, source_id)`와 같은 값이다. 조회마다 채팅방을 조인하지 않으려고 복사해 두며, 양쪽 다 생성 후 불변이라 어긋나지 않는다.
 - 화면 노출 순서는 생성 순서와 같아 별도 순서 컬럼 없이 `id` 정렬로 처리한다.
-- **받은 평가 집계의 공개 기준은 3건**이며(`MemberRatingService.PUBLIC_THRESHOLD`), 미달이면 총 건수만 내려간다. 내 프로필(`/users/me/ratings`)과 타인 프로필(`/users/{id}/ratings`)이 같은 집계를 쓰고, `PublicProfileResponse.rating`도 같은 기준으로 채운다. 평균 별점은 소수 1자리로 반올림(HALF_UP)해 내리고, 별 아이콘 개수는 FE가 이 값으로 정한다(#239). 타인 조회의 열람 권한은 공개 프로필과 같고(차단 아님), **관계에 따라 공개 범위가 둘로 갈린다** — 매칭 성사·같은 그룹 채팅 참여는 코멘트·노쇼까지 전체를, 이번 주 매칭 후보(성사 전)는 평균·건수까지만 본다(`noShowCount=null`, `ratings=[]`). 배경·감수한 프라이버시 비용: [ADR 0020](../adr/0020-peer-profile-answer-match-summary.md), [ADR 0029](../adr/0029-peer-profile-candidate-summary-tier.md).
+- **받은 평가 집계의 공개 기준은 3건**이며(`MemberRatingService.PUBLIC_THRESHOLD`), 미달이면 총 건수만 내려간다. 내 프로필(`/users/me/ratings`)과 타인 프로필(`/users/{id}/ratings`)이 같은 집계를 쓰고, `PublicProfileResponse.rating`도 같은 기준으로 채운다. 평균 별점은 소수 1자리로 반올림(HALF_UP)해 내리고, 별 아이콘 개수는 FE가 이 값으로 정한다(#239). 집계와 만남 횟수는 **끝난 방(`ENDED`)의 평가만** 센다. 열린 방에서 나간 사람이 먼저 쓴 평가가 대화 중에 상대 프로필에 드러나지 않게 하기 위해서다. 타인 조회의 열람 권한은 공개 프로필과 같고(차단 아님), **관계에 따라 공개 범위가 둘로 갈린다** — 매칭 성사·같은 그룹 채팅 참여는 코멘트·노쇼까지 전체를, 이번 주 매칭 후보(성사 전)는 평균·건수까지만 본다(`noShowCount=null`, `ratings=[]`). 배경·감수한 프라이버시 비용: [ADR 0020](../adr/0020-peer-profile-answer-match-summary.md), [ADR 0029](../adr/0029-peer-profile-candidate-summary-tier.md).
 - **조회는 작성자 본인 것만 돌려준다.** 응답의 답변 값(`meetingStatus`·`rating`·`comment`·`answeredAt`)은 전부 요청자의 `member_review` 밑 행에서 오므로, 상대가 나를 어떻게 평가했는지는 어떤 경로로도 나가지 않는다.
 - 미완료 목록 정렬은 `availableAt` 오래된 순이며, 같은 주의 채팅들이 같은 시각에 닫혀 값이 겹칠 수 있어 `id`로 순서를 고정한다.
 - "미완료"는 `COMPLETED가 아님`이며, 이 판정은 조회 쿼리(`findPendingByAuthorOldestFirst`·리마인드용 `findPendingAvailableBetween`)에만 둔다 — 서비스나 호출부에서 상태를 나열하지 않는다.

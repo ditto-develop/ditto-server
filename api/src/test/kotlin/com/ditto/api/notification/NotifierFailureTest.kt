@@ -94,6 +94,7 @@ class NotifierFailureTest {
     private val reviewReminderNotifier = ReviewReminderNotifier(memberReviewRepository, notificationAppender)
     private val rematchNotifier = RematchNotifier(
         memberReviewRepository,
+        chatRoomRepository,
         rematchRepository,
         memberRepository,
         notificationAppender,
@@ -127,6 +128,14 @@ class NotifierFailureTest {
         every { memberRepository.findAllById(any()) } throws connectionFailure()
 
         reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("나간 사람 평가 요청 — 멤버 조회가 실패해도 예외 대신 false 를 돌려준다")
+    fun reviewRequestToLeaverAbsorbsMemberQueryFailure() {
+        every { chatRoomMemberRepository.findByRoomId(any()) } throws connectionFailure()
+
+        reviewRequestNotifier.notifyLeaver(ROOM_ID, memberId = 1L) shouldBe false
     }
 
     @Test
@@ -201,6 +210,14 @@ class NotifierFailureTest {
         every { memberReviewRepository.findById(any()) } throws connectionFailure()
 
         rematchNotifier.notifySubmitted(reviewId = 1L, submitterId = 1L, counterpartId = 2L) shouldBe false
+    }
+
+    @Test
+    @DisplayName("재매칭 대기 신청 — 방 조회가 실패해도 예외 대신 0 을 돌려준다")
+    fun rematchWaitingRequestAbsorbsRoomQueryFailure() {
+        every { chatRoomRepository.findAllById(any()) } throws connectionFailure()
+
+        rematchNotifier.notifyWaitingRequestsFor(listOf(ROOM_ID)) shouldBe 0
     }
 
     private fun connectionFailure() = DataAccessResourceFailureException("커넥션을 얻지 못했습니다")

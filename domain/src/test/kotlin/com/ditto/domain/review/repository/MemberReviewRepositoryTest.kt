@@ -2,6 +2,8 @@ package com.ditto.domain.review.repository
 
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
@@ -20,13 +22,15 @@ class MemberReviewRepositoryTest(
     private val memberReviewRepository: MemberReviewRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val memberRepository: MemberRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    fun saveEndedRoom(room: ChatRoom): ChatRoom =
+    fun saveEndedRoom(room: ChatRoom, memberIds: List<Long> = listOf(1L, 2L)): ChatRoom =
         chatRoomRepository.save(room).also {
             it.expire(AFTER_EXPIRY)
             chatRoomRepository.save(it)
+            chatRoomMemberRepository.saveAll(memberIds.map { memberId -> ChatRoomMember.of(it.id, memberId) })
         }
 
     "findPendingAvailableBetween — 평가 리마인드 후보" - {
@@ -88,13 +92,29 @@ class MemberReviewRepositoryTest(
             }
         }
 
-        "given: 그 방에 평가가 이미 있을 때" - {
+        "given: 멤버 전원의 평가가 이미 있을 때" - {
             "when: 조회하면" - {
                 "then: 대상에서 빠진다" {
                     val room = saveEndedRoom(ChatRoomFixture.personal(sourceId = 100L, now = FRIDAY))
-                    memberReviewRepository.save(MemberReviewFixture.create(chatRoomId = room.id, authorMemberId = 1L))
+                    listOf(1L, 2L).forEach {
+                        memberReviewRepository.save(
+                            MemberReviewFixture.create(chatRoomId = room.id, authorMemberId = it),
+                        )
+                    }
 
                     memberReviewRepository.findEndedChatRoomIdsWithoutReview(100).size shouldBe 0
+                }
+            }
+        }
+
+        "given: 열린 방에서 나간 한 사람의 평가만 먼저 있을 때" - {
+            "when: 조회하면" - {
+                // 방이 끝날 때 나머지 평가 생성이 실패한 경우다. 방 단위로 보면 놓친다.
+                "then: 나머지 멤버를 위해 대상이다" {
+                    val room = saveEndedRoom(ChatRoomFixture.group(sourceId = 200L, now = FRIDAY), listOf(1L, 2L, 3L))
+                    memberReviewRepository.save(MemberReviewFixture.create(chatRoomId = room.id, authorMemberId = 3L))
+
+                    memberReviewRepository.findEndedChatRoomIdsWithoutReview(100) shouldBe listOf(room.id)
                 }
             }
         }
@@ -116,6 +136,7 @@ class MemberReviewRepositoryTest(
                     val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = 600L, now = FRIDAY))
                     room.endByInsufficientMembers(AFTER_EXPIRY)
                     chatRoomRepository.save(room)
+                    chatRoomMemberRepository.saveAll(listOf(1L, 2L, 3L).map { ChatRoomMember.of(room.id, it) })
 
                     memberReviewRepository.findEndedChatRoomIdsWithoutReview(100) shouldBe listOf(room.id)
                 }

@@ -2,8 +2,10 @@ package com.ditto.api.user
 
 import com.ditto.api.support.RestDocsTest
 import com.ditto.api.user.dto.UpdateMyProfileRequest
+import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
@@ -54,6 +56,9 @@ class MyProfileControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var chatRoomMemberRepository: ChatRoomMemberRepository
+
+    @Autowired
+    private lateinit var chatRoomRepository: ChatRoomRepository
 
     @Autowired
     private lateinit var memberReviewRepository: MemberReviewRepository
@@ -446,7 +451,10 @@ class MyProfileControllerTest : RestDocsTest() {
                 status = MemberStatus.ACTIVE,
             ),
         )
-        val review = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = author.id))
+        val room = chatRoomRepository.save(ChatRoomFixture.endedGroup(sourceId = author.id))
+        val review = memberReviewRepository.save(
+            MemberReviewFixture.create(authorMemberId = author.id, chatRoomId = room.id),
+        )
         val answer = reviewAnswerRepository.save(
             ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = reviewedMemberId),
         )

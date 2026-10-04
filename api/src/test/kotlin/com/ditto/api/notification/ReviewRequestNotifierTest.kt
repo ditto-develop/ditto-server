@@ -95,6 +95,46 @@ class ReviewRequestNotifierTest(
             reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 3
         }
 
+        "열린 방에서 나간 사람에게만 평가 요청을 남긴다" {
+            val leaver = saveMember("나간사람")
+            val others = listOf(saveMember("남은1"), saveMember("남은2"))
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            (listOf(leaver) + others).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it.id))
+            }
+
+            reviewRequestNotifier.notifyLeaver(room.id, leaver.id) shouldBe true
+
+            val notification = notificationRepository.findAll().single()
+            notification.memberId shouldBe leaver.id
+            notification.targetId shouldBe room.id
+            notification.body shouldBe "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
+        }
+
+        "나간 사람은 나중에 방이 끝나 전원에게 다시 보내도 한 번만 받는다" {
+            val leaver = saveMember("나간사람")
+            val others = listOf(saveMember("남은1"), saveMember("남은2"))
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            (listOf(leaver) + others).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it.id))
+            }
+            reviewRequestNotifier.notifyLeaver(room.id, leaver.id)
+
+            reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 2
+
+            notificationRepository.findAll().count { it.memberId == leaver.id } shouldBe 1
+        }
+
+        "참여자가 평가 최소(2명) 미만이면 나간 사람에게도 알리지 않는다" {
+            val alone = saveMember("혼자")
+            val room = chatRoomRepository.save(ChatRoomFixture.group())
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = alone.id))
+
+            reviewRequestNotifier.notifyLeaver(room.id, alone.id) shouldBe false
+
+            notificationRepository.count() shouldBe 0
+        }
+
         "참여자가 평가 최소(2명) 미만인 방에는 알리지 않는다" {
             val alone = saveMember("혼자")
             val room = chatRoomRepository.save(ChatRoomFixture.group())

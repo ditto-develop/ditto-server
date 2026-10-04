@@ -133,6 +133,7 @@ class ChatRoomEndService(
         now: LocalDateTime,
     ): ChatLeaveResult {
         val remainingAfterLeave = roomMembers.count { !it.hasLeft } - 1
+        val wasOpen = room.status == ChatRoomStatus.ACTIVE
         me.leave(now)
 
         val messages = mutableListOf(
@@ -150,6 +151,7 @@ class ChatRoomEndService(
         return ChatLeaveResult(
             systemMessages = messages.map { ChatMessageResponse.system(it) },
             isRoomEnded = shouldDissolve,
+            hasLeftOpenRoom = wasOpen && !shouldDissolve,
         )
     }
 

@@ -1,11 +1,12 @@
 package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
+import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
-import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
-import com.ditto.api.match.service.UnformedGroupNotifier
+import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
@@ -52,6 +53,7 @@ class ChatRoomLifecycleScheduler(
     private val endedChatReviewOpener: EndedChatReviewOpener,
     private val rematchChatRoomOpener: RematchChatRoomOpener,
     private val reviewRequestNotifier: ReviewRequestNotifier,
+    private val rematchNotifier: RematchNotifier,
     private val chatEndingSoonNotifier: ChatEndingSoonNotifier,
     private val chatRoomOpenedNotifier: ChatRoomOpenedNotifier,
     private val chatNoMessageNotifier: ChatNoMessageNotifier,
@@ -72,8 +74,10 @@ class ChatRoomLifecycleScheduler(
         val ended = chatRoomEndService.endExpired(serverNow)
         val endedRoomIds = ended.map { it.id }
         endedChatReviewOpener.openFor(endedRoomIds)
-        endedChatReviewOpener.openMissing()
+        val recoveredRoomIds = endedChatReviewOpener.openMissing()
         reviewRequestNotifier.notifyFor(endedRoomIds)
+        // 복구한 방은 평가 요청을 다시 보내지 않지만, 평가지가 없어 미뤄 둔 재매칭 신청은 보낸다.
+        rematchNotifier.notifyWaitingRequestsFor((endedRoomIds + recoveredRoomIds).distinct())
 
         // 종료 임박 알림은 마감 뒤에 둔다 — 이번 주기에 끝난 방이 "곧 종료" 대상으로 잡히지 않는다.
         chatEndingSoonNotifier.notifyEndingSoon(serverNow)
