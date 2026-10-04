@@ -7,16 +7,30 @@ import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.MatchCandidateFixture
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.notification.NotificationFixture
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import org.springframework.data.repository.findByIdOrNull
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -27,6 +41,11 @@ class AdminQuizServiceTest(
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizProgressRepository: QuizProgressRepository,
+    private val quizSetRepository: QuizSetRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
+    private val personalMatchRepository: PersonalMatchRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -352,6 +371,74 @@ class AdminQuizServiceTest(
             )
 
             quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).size shouldBe 1
+        }
+    }
+
+    "퀴즈셋 삭제" - {
+        fun answeredQuizSet(): Pair<Long, List<Long>> {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(quizForm("첫 질문", "가", "나"), quizForm("둘째 질문", "다", "라")),
+            )
+            val quizIds = adminQuizService.getQuizzes(quizSet.id).map { it.id }
+            val choice = adminQuizService.getChoicesByQuizIds(quizIds).getValue(quizIds.first()).first()
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = 7L, quizId = quizIds.first(), choiceId = choice.id),
+            )
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 7L, quizSetId = quizSet.id, totalCount = 2),
+            )
+            return quizSet.id to quizIds
+        }
+
+        "매칭 전이면 문항·선택지·답변·진행과 셋을 가리키는 알림까지 지운다" {
+            val (quizSetId, quizIds) = answeredQuizSet()
+            val quizOpened = notificationRepository.save(
+                NotificationFixture.create(type = NotificationType.QUIZ_OPENED, targetId = quizSetId),
+            )
+            val sameIdOtherTarget = notificationRepository.save(
+                NotificationFixture.create(type = NotificationType.CHAT_MESSAGE, targetId = quizSetId),
+            )
+            val otherQuizSet = notificationRepository.save(
+                NotificationFixture.create(type = NotificationType.QUIZ_OPENED, targetId = quizSetId + 1),
+            )
+
+            adminQuizService.deleteQuizSet(quizSetId)
+
+            quizSetRepository.findByIdOrNull(quizSetId) shouldBe null
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId).shouldBeEmpty()
+            quizChoiceRepository.findByQuizIdInOrderByDisplayOrderAsc(quizIds).shouldBeEmpty()
+            quizAnswerRepository.findByMemberIdAndQuizIdIn(7L, quizIds).shouldBeEmpty()
+            quizProgressRepository.existsByQuizSetId(quizSetId) shouldBe false
+            notificationRepository.findByIdOrNull(quizOpened.id) shouldBe null
+            notificationRepository.findByIdOrNull(sameIdOtherTarget.id).shouldNotBeNull()
+            notificationRepository.findByIdOrNull(otherQuizSet.id).shouldNotBeNull()
+        }
+
+        "문항이 없는 셋도 지운다" {
+            val quizSet = adminQuizService.createQuizSet(quizSetForm(weekStartedOn = LocalDate.of(2026, 7, 27)))
+
+            adminQuizService.deleteQuizSet(quizSet.id)
+
+            quizSetRepository.findByIdOrNull(quizSet.id) shouldBe null
+        }
+
+        listOf<Pair<String, (Long) -> Unit>>(
+            "매칭 후보가" to { id -> matchCandidateRepository.save(MatchCandidateFixture.create(quizSetId = id)) },
+            "1:1 신청이" to { id -> personalMatchRepository.save(PersonalMatchFixture.create(quizSetId = id)) },
+            "그룹이" to { id -> groupMatchRepository.save(GroupMatchFixture.create(quizSetId = id)) },
+        ).forEach { (record, saveMatching) ->
+            "$record 생긴 셋은 삭제를 거부하고 아무것도 지우지 않는다" {
+                val (quizSetId, quizIds) = answeredQuizSet()
+                saveMatching(quizSetId)
+
+                val exception = shouldThrow<WarnException> { adminQuizService.deleteQuizSet(quizSetId) }
+
+                exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+                quizSetRepository.findByIdOrNull(quizSetId).shouldNotBeNull()
+                quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId) shouldHaveSize 2
+                quizAnswerRepository.findByMemberIdAndQuizIdIn(7L, quizIds) shouldHaveSize 1
+                quizProgressRepository.existsByQuizSetId(quizSetId) shouldBe true
+            }
         }
     }
 

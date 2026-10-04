@@ -28,6 +28,7 @@ class AdminQuizService(
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizProgressRepository: QuizProgressRepository,
+    private val quizSetDeleter: QuizSetDeleter,
 ) {
     @Transactional(readOnly = true)
     fun listQuizSets(): List<QuizSet> = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
@@ -215,12 +216,7 @@ class AdminQuizService(
         getQuizSet(id).deactivate()
     }
 
-    fun deleteQuizSet(id: Long) {
-        val quizIds = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(id).map { it.id }
-        if (quizIds.isNotEmpty()) quizChoiceRepository.deleteByQuizIdIn(quizIds)
-        quizRepository.deleteByQuizSetId(id)
-        quizSetRepository.deleteById(id)
-    }
+    fun deleteQuizSet(id: Long) = quizSetDeleter.delete(id)
 
     /**
      * 한 주차·타입의 활성 셋은 하나뿐이다. 둘이면 매칭이 어느 셋을 가리키는지 정해지지 않는다
