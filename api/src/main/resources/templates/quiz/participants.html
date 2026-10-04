@@ -11,8 +11,8 @@
             <h1 class="page-title" style="margin-top:8px" th:text="|${quizSet.title} 참여 현황|">참여 현황</h1>
             <p class="page-desc">
                 <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
-                <span class="badge cat" th:text="${quizSet.matchingType}">TYPE</span>
-                · 진행 기록이 있는 회원을 참여 순서대로 보여 줍니다. 더미와 실회원을 모두 담습니다.
+                <span th:text="${quizSet.matchingType}">TYPE</span>
+                · 진행 기록이 있는 회원을 실회원 먼저, 참여 순서대로 보여 줍니다.
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
@@ -22,51 +22,73 @@
                     <span class="value" th:text="${view.participants.size()}">0</span>
                 </div>
                 <div class="card stat">
-                    <span class="label">다 풂 · 푸는 중 · 시작 안 함</span>
+                    <span class="label">완료 · 진행 중 · 시작 전</span>
                     <span class="value" th:text="|${view.completedCount} · ${view.inProgressCount} · ${view.notStartedCount}|">0 · 0 · 0</span>
                 </div>
                 <div class="card stat">
-                    <span class="label">실회원 · 더미</span>
-                    <span class="value" th:text="|${view.realMemberCount} · ${view.dummyCount}|">0 · 0</span>
+                    <span class="label">실회원 · 더미 · 삭제된 회원</span>
+                    <span class="value" th:text="|${view.realMemberCount} · ${view.dummyCount} · ${view.deletedMemberCount}|">0 · 0 · 0</span>
                 </div>
             </div>
 
             <div class="card">
-                <h2>참여자</h2>
+                <h2>참여자 <span class="count" th:text="${view.participants.size()}">0</span></h2>
                 <p class="muted" th:if="${view.participants.isEmpty()}" style="margin:0">아직 참여한 회원이 없습니다.</p>
-                <div style="overflow-x:auto" th:unless="${view.participants.isEmpty()}">
-                    <table class="tbl" style="white-space:nowrap">
-                        <thead>
-                        <tr>
-                            <th>구분</th><th>회원</th><th>회원 상태</th>
-                            <th>진행</th><th>성별 선호</th>
-                            <th>성별</th><th>나이</th><th>지역</th><th>직업</th><th>관심사</th><th>캐리커쳐</th>
-                            <th th:each="quiz, stat : ${view.quizzes}" th:title="${quiz.question}" th:text="|Q${stat.count}|">Q1</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="p : ${view.participants}">
-                            <td>
-                                <span class="badge off" th:if="${p.kind.name() == 'DELETED'}">삭제됨</span>
-                                <span class="badge matching" th:if="${p.kind.name() == 'DUMMY'}">더미</span>
-                                <span class="badge on" th:if="${p.kind.name() == 'REAL'}">실회원</span>
-                            </td>
-                            <td th:text="|${p.nickname ?: '삭제된 회원'}(#${p.memberId})|">닉네임(#1)</td>
-                            <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>
-                            <td th:text="|${p.progressStatus} ${p.answeredCount}/${p.totalCount}|">COMPLETED 3/3</td>
-                            <td th:text="${p.preferredGender}">OPPOSITE</td>
-                            <td th:text="${p.gender} ?: '-'">-</td>
-                            <td class="num" th:text="${p.age} ?: '-'">-</td>
-                            <td th:text="${p.location} ?: '-'">-</td>
-                            <td th:text="${p.job} ?: '-'">-</td>
-                            <td th:text="${p.interests.isEmpty()} ? '-' : ${#strings.setJoin(p.interests, ', ')}">-</td>
-                            <td th:text="${p.caricatureFileName} ?: '-'">-</td>
-                            <td th:each="answer : ${p.answerContents}" th:text="${answer} ?: ''"></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p class="muted" style="margin:12px 0 0">문항 머리글(Q1…)에 마우스를 올리면 질문이 보입니다. 안 푼 문항은 빈칸입니다.</p>
+                <th:block th:unless="${view.participants.isEmpty()}">
+                    <ol class="muted" style="margin:0 0 16px; padding-left:28px" th:unless="${view.quizzes.isEmpty()}">
+                        <li th:each="quiz : ${view.quizzes}" th:text="${quiz.question}">질문</li>
+                    </ol>
+                    <p class="muted" style="margin:0 0 12px">Q 열은 위 문항 번호이고, 안 푼 문항은 <b>-</b> 입니다.</p>
+                    <div style="overflow-x:auto">
+                        <table class="tbl">
+                            <thead>
+                            <tr>
+                                <th>회원</th><th>회원 상태</th><th>진행</th><th>성별 선호</th>
+                                <th>성별</th><th>나이</th><th>지역</th><th>직업</th><th>관심사</th>
+                                <th th:each="quiz, stat : ${view.quizzes}" th:title="${quiz.question}" th:text="|Q${stat.count}|">Q1</th>
+                                <th>캐리커쳐</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="p : ${view.participants}">
+                                <td style="white-space:nowrap" th:switch="${p.kind.name()}">
+                                    <th:block th:case="'DELETED'">
+                                        <span th:text="|#${p.memberId}|">#1</span>
+                                        <span class="badge off">삭제된 회원</span>
+                                    </th:block>
+                                    <th:block th:case="*">
+                                        <span th:text="|${p.nickname} (#${p.memberId})|">닉네임 (#1)</span>
+                                        <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
+                                    </th:block>
+                                </td>
+                                <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>
+                                <td style="white-space:nowrap" th:switch="${p.progressStatus.name()}">
+                                    <span class="badge on" th:case="'COMPLETED'">완료</span>
+                                    <span class="badge matching" th:case="'IN_PROGRESS'">진행 중</span>
+                                    <span class="badge off" th:case="*">시작 전</span>
+                                    <span th:text="|${p.answeredCount}/${p.totalCount}|">3/3</span>
+                                </td>
+                                <td th:switch="${p.preferredGender.name()}">
+                                    <span th:case="'OPPOSITE'">이성</span>
+                                    <span th:case="'SAME'">동성</span>
+                                    <span th:case="*">무관</span>
+                                </td>
+                                <td th:switch="${p.gender?.name()}">
+                                    <span th:case="'MALE'">남</span>
+                                    <span th:case="'FEMALE'">여</span>
+                                    <span th:case="*">-</span>
+                                </td>
+                                <td class="num" th:text="${p.age} ?: '-'">-</td>
+                                <td th:text="${p.location} ?: '-'">-</td>
+                                <td th:text="${p.job} ?: '-'">-</td>
+                                <td style="min-width:140px" th:text="${p.interests.isEmpty()} ? '-' : ${#strings.setJoin(p.interests, ', ')}">-</td>
+                                <td style="min-width:140px" th:each="answer : ${p.answerContents}" th:text="${answer} ?: '-'">-</td>
+                                <td th:text="${p.caricatureFileName} ?: '-'">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </th:block>
             </div>
         </main>
     </div>

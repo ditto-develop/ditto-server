@@ -9,6 +9,7 @@ import com.ditto.api.support.JunitDatabaseCleanExtension
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -200,7 +201,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 참여 현황은 참여자의 프로필과 고른 선택지를 그린다")
+    @DisplayName("퀴즈셋 참여 현황은 실회원·더미·삭제된 회원의 진행·프로필·고른 선택지를 그린다")
     fun quizSetParticipantsPage() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
@@ -217,12 +218,23 @@ class AdminWebTest {
         progress.recordAnswer()
         quizProgressRepository.save(progress)
         quizAnswerRepository.save(QuizAnswerFixture.create(memberId = dummy.id, quizId = quiz.id, choiceId = picked.id))
+        val real = memberRepository.save(
+            MemberFixture.create(nickname = "실회원테스터", status = MemberStatus.ACTIVE, gender = Gender.FEMALE),
+        )
+        val inProgress = QuizProgressFixture.create(memberId = real.id, quizSetId = quizSet.id, totalCount = 2)
+        inProgress.recordAnswer()
+        quizProgressRepository.save(inProgress)
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = 99999L, quizSetId = quizSet.id, totalCount = 1))
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("dummy-female-1a2b")))
             .andExpect(content().string(containsString("중간부터")))
             .andExpect(content().string(containsString(">f3<")))
+            .andExpect(content().string(containsString("실회원테스터")))
+            .andExpect(content().string(containsString("진행 중")))
+            .andExpect(content().string(containsString(">여<")))
+            .andExpect(content().string(containsString("삭제된 회원")))
     }
 
     @Test
