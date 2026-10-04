@@ -121,9 +121,19 @@ class AdminDummyService(
                 interests = emptySet(),
                 location = Location.entries.random(),
                 job = Job.entries.random(),
-                caricature = DUMMY_CARICATURE,
+                caricature = randomCaricatureOf(gender),
             )
         }
+    }
+
+    // FE 가입 화면이 고르는 아바타 경로와 같은 형식이다. FE가 이 경로를 바꾸면 함께 고쳐야 한다.
+    private fun randomCaricatureOf(gender: Gender): String {
+        val genderInitial = when (gender) {
+            Gender.MALE -> "m"
+            Gender.FEMALE -> "f"
+        }
+        val avatarNumber = Random.nextInt(1, CARICATURE_COUNT_PER_GENDER + 1)
+        return "$CARICATURE_PATH_PREFIX$genderInitial$avatarNumber.svg"
     }
 
     private fun saveCompletedProgress(memberId: Long, context: SolveContext, preferredGender: GenderPreference) {
@@ -151,6 +161,7 @@ class AdminDummyService(
 
     companion object {
         private const val EMAIL_DOMAIN = "dummy.local"
-        private const val DUMMY_CARICATURE = "dummy"
+        private const val CARICATURE_PATH_PREFIX = "/onboarding/profileimg/avatar/"
+        private const val CARICATURE_COUNT_PER_GENDER = 8
     }
 }

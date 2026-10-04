@@ -24,6 +24,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldMatch
 import javax.sql.DataSource
 
 class AdminDummyServiceTest(
@@ -99,6 +100,19 @@ class AdminDummyServiceTest(
             val dummy = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).first()
             quizAnswerRepository.findByMemberIdAndQuizIdIn(dummy.id, quizzes.map { it.id }).forEach { answer ->
                 (answer.choiceId in choiceIdsByQuizId.getValue(answer.quizId)) shouldBe true
+            }
+        }
+
+        "캐리커쳐는 성별에 맞는 아바타 경로로 채워진다" {
+            val quizSetId = setupQuizSet(quizCount = 1)
+            adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 3, femaleCount = 3))
+
+            val maleAvatar = Regex("^/onboarding/profileimg/avatar/m[1-8]\\.svg$")
+            val femaleAvatar = Regex("^/onboarding/profileimg/avatar/f[1-8]\\.svg$")
+            memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).forEach {
+                val caricature = it.caricature.shouldNotBeNull()
+                val expectedAvatar = if (it.gender == Gender.MALE) maleAvatar else femaleAvatar
+                caricature shouldMatch expectedAvatar
             }
         }
 
