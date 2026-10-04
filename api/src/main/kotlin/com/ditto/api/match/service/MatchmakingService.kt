@@ -14,6 +14,7 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.entity.QuizProgressStatus
+import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
@@ -58,18 +59,15 @@ class MatchmakingService(
         val processor = matchingProcessors.firstOrNull { it.matchingType == matchingType }
             ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "매칭 전략이 없는 타입입니다: $matchingType")
 
-        // 완료자 진행 기록을 한 번만 조회해 성별 선호까지 함께 활용한다.
-        val completedProgresses =
-            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
-        val availableMemberIds = availableMemberIds(quizSetId, matchingType, completedProgresses)
+        val pool = findPool(quizSet)
         val matches =
-            if (availableMemberIds.size < 2) emptyList()
-            else processor.match(loadParticipants(quizSetId, availableMemberIds, completedProgresses))
+            if (pool.memberIds.size < 2) emptyList()
+            else processor.match(loadParticipants(pool))
 
         val summary = CandidateGenerationSummary(
             quizSetId = quizSetId,
             matchingType = matchingType,
-            participantCount = availableMemberIds.size,
+            participantCount = pool.memberIds.size,
             rowCounts = replaceCandidates(quizSetId, matchingType, matches),
             matches = matches,
         )
@@ -78,34 +76,25 @@ class MatchmakingService(
     }
 
     /**
-     * 매칭 풀에 든 활성 회원. 완료자에서 제외 정책에 걸린 사람을 뺀 집합([generateMatchingCandidates]와
-     * 같은 계산)에서 활성 회원만 남긴다. 그룹에는 제외 정책이 없어 정지·탈퇴 회원이 풀에 남기 때문이다.
+     * 매칭 풀에 든 활성 회원. 그룹에는 제외 정책이 없어 정지·탈퇴 회원이 풀에 남기 때문에 활성 회원만 남긴다.
      * NO_MATCH 알림의 모집단으로 쓴다. 퀴즈셋이 없으면 빈 집합.
      */
     @Transactional(readOnly = true)
     fun matchingPoolMemberIds(quizSetId: Long): Set<Long> {
         val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return emptySet()
-        val completedProgresses =
-            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
-        val poolMemberIds = availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
-        return memberRepository.findAllById(poolMemberIds)
+        return memberRepository.findAllById(findPool(quizSet).memberIds)
             .filter { it.isActive() }
             .map { it.id }
             .toSet()
     }
 
-    /**
-     * 매칭 풀 참여자(답변·성별·선호·차단 포함). [generateMatchingCandidates]와 같은 계산이라, 어드민이
-     * 후보가 없는 이유를 다시 계산할 때 배치와 같은 입력을 쓴다. 퀴즈셋이 없으면 빈 목록.
-     */
+    /** 매칭 풀 참여자(답변·성별·선호·차단 포함). 어드민이 후보가 없는 이유를 다시 계산할 때 쓴다. 퀴즈셋이 없으면 빈 목록. */
     @Transactional(readOnly = true)
     fun loadMatchingPoolParticipants(quizSetId: Long): List<MatchParticipant> {
         val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return emptyList()
-        val completedProgresses =
-            quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
-        val poolMemberIds = availableMemberIds(quizSetId, quizSet.matchingType, completedProgresses)
-        if (poolMemberIds.isEmpty()) return emptyList()
-        return loadParticipants(quizSetId, poolMemberIds, completedProgresses)
+        val pool = findPool(quizSet)
+        if (pool.memberIds.isEmpty()) return emptyList()
+        return loadParticipants(pool)
     }
 
     private fun logGeneration(summary: CandidateGenerationSummary) {
@@ -132,6 +121,14 @@ class MatchmakingService(
         MatchingType.GROUP -> groupCandidateWriter.replace(quizSetId, matches)
     }
 
+    // 배치·NO_MATCH 알림·어드민 재계산이 모두 이 계산으로 풀을 정한다. 한쪽만 바뀌면 화면 이유가 배치와 어긋난다.
+    private fun findPool(quizSet: QuizSet): MatchingPool {
+        val completedProgresses =
+            quizProgressRepository.findByQuizSetIdAndStatus(quizSet.id, QuizProgressStatus.COMPLETED)
+        val memberIds = availableMemberIds(quizSet.id, quizSet.matchingType, completedProgresses)
+        return MatchingPool(quizSet.id, completedProgresses, memberIds)
+    }
+
     /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
     private fun availableMemberIds(
         quizSetId: Long,
@@ -150,11 +147,8 @@ class MatchmakingService(
         return participantMemberIds - excludedMemberIds
     }
 
-    private fun loadParticipants(
-        quizSetId: Long,
-        memberIds: Set<Long>,
-        completedProgresses: List<QuizProgress>,
-    ): List<MatchParticipant> {
+    private fun loadParticipants(pool: MatchingPool): List<MatchParticipant> {
+        val (quizSetId, completedProgresses, memberIds) = pool
         val quizIds = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId)).map { it.id }
         val answersByMember = quizAnswerRepository
             .findByMemberIdInAndQuizIdIn(memberIds.toList(), quizIds)
@@ -231,6 +225,12 @@ class MatchmakingService(
             ),
         )
     }
+
+    private data class MatchingPool(
+        val quizSetId: Long,
+        val completedProgresses: List<QuizProgress>,
+        val memberIds: Set<Long>,
+    )
 
     companion object {
         private val logger = KotlinLogging.logger {}
