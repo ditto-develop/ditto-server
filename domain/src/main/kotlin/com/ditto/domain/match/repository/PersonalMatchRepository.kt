@@ -42,4 +42,6 @@ interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, Personal
 
     /** 특정 quizSetId + status 의 모든 매칭 (이미 매칭된 회원 추출용) */
     fun findByQuizSetIdAndStatus(quizSetId: Long, status: PersonalMatchStatus): List<PersonalMatch>
+
+    fun findByQuizSetIdIn(quizSetIds: Collection<Long>): List<PersonalMatch>
 }

@@ -13,6 +13,11 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
     /** 특정 회원이 해당 퀴즈셋에서 노출받을 후보 목록 */
     fun findByOwnerMemberIdAndQuizSetId(ownerMemberId: Long, quizSetId: Long): List<MatchCandidate>
 
+    fun findByQuizSetIdInAndOwnerMemberIdIn(
+        quizSetIds: Collection<Long>,
+        ownerMemberIds: Collection<Long>,
+    ): List<MatchCandidate>
+
     /** 해당 퀴즈셋의 후보를 단일 벌크 DELETE 로 모두 삭제 (재계산 전 초기화) */
     @Modifying
     @Transactional

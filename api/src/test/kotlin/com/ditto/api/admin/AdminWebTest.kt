@@ -5,6 +5,7 @@ import com.ditto.api.match.matching.MatchScore
 import com.ditto.api.match.matching.ScoredMatch
 import com.ditto.api.match.service.CandidateGenerationSummary
 import com.ditto.api.match.service.CandidateRowCounts
+import com.ditto.api.support.JunitDatabaseCleanExtension
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.MemberFixture
@@ -31,6 +32,7 @@ import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -51,9 +53,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirec
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
 
+// 같은 컨텍스트를 쓰는 IntegrationTest(AdminQaWebTest 등)가 커밋한 행이 남아 있을 수 있어 시작 전에 비운다.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("local", "test")
+@ExtendWith(JunitDatabaseCleanExtension::class)
 @Transactional
 class AdminWebTest {
 

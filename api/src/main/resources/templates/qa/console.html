@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('QA 콘솔')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('qa')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">QA 콘솔</h1>
+            <p class="page-desc">로그인할 수 없는 더미 회원을 대신 움직여 1:1·그룹 채팅을 혼자 확인합니다.
+                앱이 부르는 API를 그대로 타므로 알림·실시간 반영도 실제와 같습니다. 대상은 <code>dummy-</code> 회원뿐입니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="qa-bar">
+                <span>서버 시각 <b th:text="${#temporals.format(currentTime, 'MM/dd(E) HH:mm')}">-</b>
+                    <span class="badge matching" th:if="${timeOverridden}">조정 중</span></span>
+                <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
+                <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
+                <span class="qa-bar-links">
+                    <a th:href="@{/admin/time-override}">시각 조정 →</a>
+                    <a th:href="@{/admin/dummy}">더미 생성 →</a>
+                    <a th:href="@{/admin/matching}">매칭 재생성 →</a>
+                </span>
+            </div>
+
+            <details class="card qa-guide" th:open="${console.dummyCount == 0}">
+                <summary>혼자 QA하는 순서</summary>
+                <ol>
+                    <li>테스트 계정(앱)으로 이번 주 퀴즈셋을 풉니다.</li>
+                    <li><a th:href="@{/admin/dummy}">더미 생성</a>에서 같은 퀴즈셋으로 더미를 만들고,
+                        <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋을 재생성합니다.</li>
+                    <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
+                    <li>채팅은 금요일 00:00에 열립니다. <a th:href="@{/admin/time-override}">시각 조정</a>으로 금요일 이후로 옮기세요.
+                        그룹 초대는 금요일 00:00 전에 수락해야 합니다.</li>
+                </ol>
+            </details>
+
+            <section class="card" id="personal">
+                <h2>1:1 · 더미가 받은 신청
+                    <span class="count" th:text="${console.personal.receivedRequests.size()}">0</span></h2>
+                <p class="muted" th:if="${console.personal.receivedRequests.isEmpty()}">
+                    대기 중인 신청이 없습니다. 앱에서 더미에게 신청을 보내면 여기에 나타납니다.</p>
+                <table class="tbl" th:unless="${console.personal.receivedRequests.isEmpty()}">
+                    <thead><tr><th>신청한 회원</th><th>받은 더미</th><th>퀴즈셋</th><th>신청 시각</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="request : ${console.personal.receivedRequests}">
+                        <td th:text="${request.requester.nickname}">홍길동</td>
+                        <td th:text="${request.dummy.nickname}">dummy-female-3fa1</td>
+                        <td th:text="${request.quizSetTitle}">퀴즈셋</td>
+                        <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
+                        <td class="actions">
+                            <form class="inline-form" method="post"
+                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/accept(dummyId=${request.dummy.id},matchId=${request.matchId})}">
+                                <button class="btn sm" type="submit">수락</button>
+                            </form>
+                            <form class="inline-form" method="post"
+                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/reject(dummyId=${request.dummy.id},matchId=${request.matchId})}">
+                                <button class="btn secondary sm" type="submit">거절</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="card">
+                <h2>1:1 · 더미가 신청 보내기
+                    <span class="count" th:text="${console.personal.requestOptions.size()}">0</span></h2>
+                <p class="muted" th:if="${console.personal.requestOptions.isEmpty()}">
+                    보낼 수 있는 신청이 없습니다. 이번 주 1:1 퀴즈셋으로 더미를 만들고 매칭을 재생성하면,
+                    더미의 후보인 실회원이 여기에 나타납니다.</p>
+                <table class="tbl" th:unless="${console.personal.requestOptions.isEmpty()}">
+                    <thead><tr><th>보내는 더미</th><th>받을 회원</th><th>퀴즈셋</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="option : ${console.personal.requestOptions}">
+                        <td th:text="${option.dummy.nickname}">dummy-female-3fa1</td>
+                        <td th:text="${option.receiver.nickname}">홍길동</td>
+                        <td th:text="${option.quizSetTitle}">퀴즈셋</td>
+                        <td class="actions">
+                            <form class="inline-form" method="post"
+                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches(dummyId=${option.dummy.id})}">
+                                <input type="hidden" name="receiverId" th:value="${option.receiver.id}"/>
+                                <input type="hidden" name="quizSetId" th:value="${option.quizSetId}"/>
+                                <button class="btn sm" type="submit">신청 보내기</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+</div>
+</body>
+</html>
