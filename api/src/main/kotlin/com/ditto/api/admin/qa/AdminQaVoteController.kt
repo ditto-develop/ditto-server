@@ -53,7 +53,7 @@ class AdminQaVoteController(
         return QaRoutes.room(roomId)
     }
 
-        @PostMapping("/admin/qa/rooms/{roomId}/votes/{voteId}/cast-random-all-dummies")
+    @PostMapping("/admin/qa/rooms/{roomId}/votes/{voteId}/cast-random-all-dummies")
     fun castRandomlyForAllDummies(
         @PathVariable roomId: Long,
         @PathVariable voteId: Long,

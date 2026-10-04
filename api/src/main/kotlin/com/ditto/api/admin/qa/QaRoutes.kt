@@ -10,6 +10,11 @@ object QaRoutes {
     fun room(roomId: Long): String = "redirect:$CONSOLE_PATH/rooms/$roomId"
 
     /** 콘솔 밖이나 다른 호스트로는 보내지 않는다. */
-    fun backTo(returnTo: String): String =
-        "redirect:" + (returnTo.takeIf { it.startsWith(CONSOLE_PATH) && !it.contains("//") } ?: CONSOLE_PATH)
+    fun backTo(returnTo: String): String {
+        val insideConsole = returnTo == CONSOLE_PATH || CONSOLE_CHILD_PREFIXES.any { returnTo.startsWith(it) }
+        if (!insideConsole || returnTo.contains("//")) return "redirect:$CONSOLE_PATH"
+        return "redirect:$returnTo"
+    }
+
+    private val CONSOLE_CHILD_PREFIXES = listOf("$CONSOLE_PATH/", "$CONSOLE_PATH#")
 }

@@ -17,7 +17,7 @@ class AdminQaTimeController(
     private val serverTimeService: ServerTimeService,
 ) {
     @PostMapping("/admin/qa/server-time")
-    fun override(
+    fun overrideServerTime(
         @RequestParam dateTime: LocalDateTime,
         @RequestParam(defaultValue = QaRoutes.CONSOLE_PATH) returnTo: String,
         @AuthenticationPrincipal admin: AdminPrincipal,
@@ -32,7 +32,7 @@ class AdminQaTimeController(
     }
 
     @PostMapping("/admin/qa/server-time/disable")
-    fun disable(
+    fun disableServerTimeOverride(
         @RequestParam(defaultValue = QaRoutes.CONSOLE_PATH) returnTo: String,
         redirectAttributes: RedirectAttributes,
     ): String {

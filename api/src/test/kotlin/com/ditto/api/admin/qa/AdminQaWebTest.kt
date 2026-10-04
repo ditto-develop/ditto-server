@@ -341,12 +341,15 @@ class AdminQaWebTest(
         }
 
         "콘솔 밖 주소로는 돌려보내지 않는다" {
-            mockMvc.perform(
-                post("/admin/qa/server-time")
-                    .param("dateTime", thisMonday.atTime(9, 0).toString())
-                    .param("returnTo", "//evil.example.com")
-                    .asAdmin(),
-            ).andExpect(redirectedUrl("/admin/qa"))
+            val outsideConsole = listOf("//evil.example.com", "/admin/qa//evil.example.com", "/admin/qaXYZ", "/admin/members")
+            outsideConsole.forEach { returnTo ->
+                mockMvc.perform(
+                    post("/admin/qa/server-time")
+                        .param("dateTime", thisMonday.atTime(9, 0).toString())
+                        .param("returnTo", returnTo)
+                        .asAdmin(),
+                ).andExpect(redirectedUrl("/admin/qa"))
+            }
         }
 
         "실제 시각으로 되돌린다" {

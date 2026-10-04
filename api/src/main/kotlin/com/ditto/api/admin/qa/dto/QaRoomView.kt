@@ -3,6 +3,7 @@ package com.ditto.api.admin.qa.dto
 import com.ditto.api.admin.qa.QaSystemMessageMeaning
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatPeriod
+import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -35,11 +36,11 @@ class QaRoomView(
     val members: List<QaRoomMember>,
     val messages: List<QaRoomMessage>,
     val votes: List<QaVote>,
+    /** 두 사람 방은 [채팅 종료], 그룹은 [나가기]. 앱의 [ChatRoom.canEndByUser]를 그대로 받는다. */
+    val canEndByUser: Boolean,
+    val leaveDissolvesRoom: Boolean,
 ) {
     val activeDummies: List<QaMember> = members.filter { it.isDummy && !it.hasLeft }.map { it.member }
-
-    /** 그룹에 두 명만 남았으면 한 명이 더 나갈 때 방이 해체된다. */
-    val lastLeaveDissolvesRoom: Boolean = members.count { !it.hasLeft } == 2
 
     /** 그룹은 한 명이 나가도 방이 이어지고, 두 사람 방은 나가는 것이 곧 종료다. */
     val isGroup: Boolean = sourceType == ChatRoomType.GROUP

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping
  * 같아야 QA 결과를 믿을 수 있어서다(ADR 0038). 동작은 1:1·그룹·방·투표·시각별 컨트롤러가 나눠 맡는다.
  */
 @Controller
-class AdminQaController(
+class AdminQaConsoleController(
     private val adminQaService: AdminQaService,
     private val adminQaRoomService: AdminQaRoomService,
 ) {

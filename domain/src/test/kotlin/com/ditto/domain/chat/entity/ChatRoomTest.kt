@@ -123,6 +123,14 @@ class ChatRoomTest(
             }
         }
 
+        "when: 한 명이 더 나가면 해체되는지 물으면" - {
+            "then: 남은 사람이 1명이 될 때만 참이다" {
+                val room = ChatRoomFixture.group()
+                room.dissolvesWhenOneLeaves(activeMemberCount = 2) shouldBe true
+                room.dissolvesWhenOneLeaves(activeMemberCount = 3) shouldBe false
+            }
+        }
+
         "given: 이미 종료된 방일 때" - {
             "when: 다시 종료를 시도하면" - {
                 "then: 예외로 막고 최초 종료 기록을 지킨다" {

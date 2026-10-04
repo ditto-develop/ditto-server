@@ -102,6 +102,8 @@ class AdminQaRoomService(
             members = roomMembers.sortedWith(compareBy({ it.memberId in dummyIds }, { it.memberId })).map(rows::member),
             messages = messages.map { rows.message(it, roomMembers) },
             votes = votes.map { it.toQaVote(members) },
+            canEndByUser = room.canEndByUser(),
+            leaveDissolvesRoom = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft }),
         )
     }
 
