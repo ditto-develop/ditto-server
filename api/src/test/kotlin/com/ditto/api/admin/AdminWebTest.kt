@@ -30,6 +30,7 @@ import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -185,6 +186,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}", created.id).with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(containsString("/admin/quiz-sets/${created.id}/delete")))
         mockMvc.perform(get("/admin/quiz-sets/{id}/edit", created.id).with(authentication(admin())))
             .andExpect(status().isOk)
     }
@@ -201,6 +203,23 @@ class AdminWebTest {
             .andExpect(status().is3xxRedirection)
         mockMvc.perform(post("/admin/quiz-sets/{id}/delete", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    @DisplayName("매칭이 진행된 퀴즈셋은 삭제 버튼 대신 안내를 보이고, 삭제 요청은 상세로 돌려보내 사유를 알린다")
+    fun matchedQuizSetDeletionRejected() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(isActive = false))
+        groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("매칭이 진행된 퀴즈셋이라 삭제할 수 없습니다")))
+            .andExpect(content().string(not(containsString("/admin/quiz-sets/${quizSet.id}/delete"))))
+        mockMvc.perform(post("/admin/quiz-sets/{id}/delete", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
+            .andExpect(flash().attribute("error", containsString("매칭이 진행된 퀴즈셋은 삭제할 수 없습니다")))
+
+        quizSetRepository.existsById(quizSet.id) shouldBe true
     }
 
     @Test

@@ -48,4 +48,9 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
     @Transactional
     @Query("delete from QuizProgress qp where qp.memberId in :memberIds")
     fun deleteByMemberIdIn(@Param("memberIds") memberIds: List<Long>): Int
+
+    @Modifying
+    @Transactional
+    @Query("delete from QuizProgress qp where qp.quizSetId = :quizSetId")
+    fun deleteByQuizSetId(@Param("quizSetId") quizSetId: Long): Int
 }

@@ -12,6 +12,8 @@ interface PersonalMatchRepository : JpaRepository<PersonalMatch, Long>, Personal
         memberId2s: Collection<Long>,
     ): List<PersonalMatch>
 
+    fun existsByQuizSetId(quizSetId: Long): Boolean
+
     /** 내가 보낸 요청 목록 (requester 기준) */
     fun findByRequesterIdAndQuizSetId(requesterId: Long, quizSetId: Long): List<PersonalMatch>
 

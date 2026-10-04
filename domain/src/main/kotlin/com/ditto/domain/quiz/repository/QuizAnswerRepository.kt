@@ -20,4 +20,9 @@ interface QuizAnswerRepository : JpaRepository<QuizAnswer, Long>, QuizAnswerRepo
     @Transactional
     @Query("delete from QuizAnswer qa where qa.memberId in :memberIds")
     fun deleteByMemberIdIn(@Param("memberIds") memberIds: List<Long>): Int
+
+    @Modifying
+    @Transactional
+    @Query("delete from QuizAnswer qa where qa.quizId in :quizIds")
+    fun deleteByQuizIdIn(@Param("quizIds") quizIds: List<Long>): Int
 }

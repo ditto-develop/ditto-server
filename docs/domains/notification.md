@@ -10,7 +10,7 @@
 - `Notification` — 알림 한 행. **수신자 1명당 1행**이다(같은 사건이라도 받는 사람마다 문구가 다르고 읽음도 따로다).
 - `NotificationType` — 알림 유형. 카테고리·`target_id`의 대상·중복 정책을 이 enum이 정한다.
 - `NotificationCategory` — 화면 필터 칩(`MATCHING`/`CHAT`/`SYSTEM`). **컬럼이 아니라 유형에서 파생**된다. "전체" 칩은 값이 아니라 필터 없음이다.
-- `NotificationTarget` — `target_id`가 가리키는 대상 종류(`CHAT_ROOM`·`PERSONAL_MATCH` 등). 유형마다 `NotificationType.target`으로 하나씩 정한다. 아래 표의 `target_id` 열과 같은 정보를 코드가 판단에 쓸 수 있게 둔 것이다. 대상이 지워질 때 그 대상을 가리키는 알림을 고르는 기준이다(`NotificationType.pointingTo`, 어드민 더미 정리가 쓴다). 새 유형을 추가하면 생성자 인자라 빠뜨릴 수 없다.
+- `NotificationTarget` — `target_id`가 가리키는 대상 종류(`CHAT_ROOM`·`PERSONAL_MATCH` 등). 유형마다 `NotificationType.target`으로 하나씩 정한다. 아래 표의 `target_id` 열과 같은 정보를 코드가 판단에 쓸 수 있게 둔 것이다. 대상이 지워질 때 그 대상을 가리키는 알림을 고르는 기준이다(`NotificationType.pointingTo`, 어드민 더미 정리가 쓴다. 퀴즈셋 삭제는 이 중 deepLink 가 셋 행을 읽는 유형만 지운다). 새 유형을 추가하면 생성자 인자라 빠뜨릴 수 없다.
 - `DuplicatePolicy` — 같은 대상에 다시 발생했을 때의 처리(`ALLOW`/`ONCE_PER_TARGET`/`COLLAPSE_UNREAD`).
 - `NotificationAppender` — 알림을 남기는 유일한 입구. 실패를 삼킨다.
 - `NotificationWriter` — 실제 저장. `REQUIRES_NEW`로 자기 트랜잭션에서 커밋한다.

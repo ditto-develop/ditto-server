@@ -1,6 +1,7 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -65,6 +66,7 @@ class AdminQuizController(
         model.addAttribute("quizSet", adminQuizService.getQuizSet(id))
         model.addAttribute("quizzes", quizzes)
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
+        model.addAttribute("hasMatchRecords", adminQuizService.hasMatchRecords(id))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -124,11 +126,20 @@ class AdminQuizController(
     }
 
     @PostMapping("/admin/quiz-sets/{id}/delete")
-    fun delete(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
-        adminQuizService.deleteQuizSet(id)
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
-        return "redirect:/admin/quiz-sets"
-    }
+    fun delete(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String =
+        runCatching { adminQuizService.deleteQuizSet(id) }
+            .fold(
+                onSuccess = {
+                    redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
+                    "redirect:/admin/quiz-sets"
+                },
+                onFailure = { exception ->
+                    if (exception !is WarnException) throw exception
+                    redirectAttributes.addFlashAttribute("error", exception.message)
+                    val quizSetGone = exception.errorCode == ErrorCode.NOT_FOUND
+                    if (quizSetGone) "redirect:/admin/quiz-sets" else "redirect:/admin/quiz-sets/$id"
+                },
+            )
 
     companion object {
         private const val NEW_QUIZ_ROW_COUNT = 3

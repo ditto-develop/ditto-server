@@ -13,6 +13,8 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
     /** 특정 회원이 해당 퀴즈셋에서 노출받을 후보 목록 */
     fun findByOwnerMemberIdAndQuizSetId(ownerMemberId: Long, quizSetId: Long): List<MatchCandidate>
 
+    fun existsByQuizSetId(quizSetId: Long): Boolean
+
     fun findByQuizSetIdInAndOwnerMemberIdIn(
         quizSetIds: Collection<Long>,
         ownerMemberIds: Collection<Long>,

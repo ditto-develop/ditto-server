@@ -26,11 +26,14 @@
                     <form class="inline-form" th:if="${quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/deactivate(id=${quizSet.id})}" method="post">
                         <button class="btn secondary" type="submit">비활성화</button>
                     </form>
-                    <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/delete(id=${quizSet.id})}" method="post"
-                          onsubmit="return confirm('퀴즈셋과 하위 퀴즈·선택지를 모두 삭제합니다. 계속할까요?');">
+                    <form class="inline-form" th:unless="${hasMatchRecords}" th:action="@{/admin/quiz-sets/{id}/delete(id=${quizSet.id})}" method="post"
+                          onsubmit="return confirm('퀴즈셋과 문항·선택지, 회원 답변·진행, 매칭 결과 알림을 모두 삭제합니다. 계속할까요?');">
                         <button class="btn danger" type="submit">삭제</button>
                     </form>
                 </div>
+                <p class="muted" th:if="${hasMatchRecords}" style="margin:8px 0 0">
+                    매칭이 진행된 퀴즈셋이라 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.
+                </p>
             </div>
 
             <div class="card">

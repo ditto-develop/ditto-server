@@ -23,6 +23,7 @@ import org.hibernate.annotations.Comment
     ],
     indexes = [
         Index(name = "match_candidate_index_1", columnList = "owner_member_id, quiz_set_id, score"),
+        Index(name = "match_candidate_index_2", columnList = "quiz_set_id"),
     ],
 )
 class MatchCandidate private constructor(
