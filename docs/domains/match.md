@@ -38,6 +38,7 @@
 - **후보 재생성은 응답이 시작되면 거부한다**(`GroupCandidateWriter` → `MATCH_CANDIDATES_ALREADY_RESPONDED`, 기존 후보는 그대로). `group_match` 하나가 후보이자 성사 상태라, 지우면 열린 채팅방이 가리킬 곳을 잃는다. 조용히 건너뛰지 않고 예외로 알리는 이유: 어드민이 재생성을 눌렀는데 성공처럼 보이면 안 된다.
 - **후보 생성은 퀴즈셋마다 자기 트랜잭션**이다 — `generateMatchingCandidates`(`@Transactional`)를 배치(`MatchingBatchFacade.runScheduledMatching`)가 **트랜잭션 없이** 프록시로 부른다. facade 나 그 호출자에 `@Transactional`을 붙이면 격리가 깨진다. 배치는 셋을 돌며 실패는 경고 로그만 남기고 계속한다([ADR 0027](../adr/0027-matching-batch-per-quiz-set-transaction.md)). 후보가 없는 셋만 고르지만(anti-join) 대상 선정 직후 어드민 재생성·수락이 끼어들면 위 예외를 만날 수 있고, 그때 다른 셋의 후보까지 롤백되면 안 된다. 실패한 셋은 다음 배치가 다시 집고(마감 2주 안, `MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건으로 끝난 셋이 영원히 재계산되지 않게), 반환하는 ID(알림 대상)는 성공한 셋만이다.
 - **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
+- **어드민 참여 현황(`/admin/quiz-sets/{id}/participants`)의 "후보가 없는 이유"는 지금 DB 상태로 다시 계산한 값이다.** 매칭 이력을 따로 저장하지 않기 때문이다. 배치와 같은 풀(`MatchmakingService.loadMatchingPoolParticipants`)과 단계(`OneToOneMatchingProcessor.scoreEligibleDuos`·`selectTopRatio`)를 쓰고, 동점 무작위가 끼는 5명 제한은 다시 돌리지 않는다. 상위 비율 컷을 넘었는데 저장된 후보가 없으면 그 단계에서 빠진 것으로 본다. 완주 시각이 저장된 후보보다 늦으면 "매칭 이후 완주"로 따로 표시한다(매칭 뒤에 만든 더미가 흔한 경우).
 - `group_match_decline` 테이블은 남아 있으나 코드가 쓰지 않는다 — 거절은 `InvitationStatus.DECLINED`로 그룹별로 남는다.
 
 ## 상태 전이
