@@ -15,7 +15,8 @@
 - `NotificationWriter` — 실제 저장. `REQUIRES_NEW`로 자기 트랜잭션에서 커밋한다.
 - `NotificationMessages` — 문구 한곳 모음(정본은 기획의 "알림 문구" 표).
 - `MemberDevice` — 푸시 주소록 한 줄. 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원. 회원 1명이 여러 행(폰·태블릿).
-- `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·deepLink·뱃지가 여기 있다.
+- `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·뱃지가 여기 있다.
+- `NotificationDeepLinks` — 알림을 눌렀을 때 갈 FE 경로. 푸시와 알림 목록 응답이 같이 쓴다.
 - `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 무효 토큰(`UNREGISTERED`)을 콜백으로 돌려준다.
 - `SystemNotice` — 어드민이 보낸 시스템 공지 한 건의 이력(제목·본문·발송자·대상 수·수신 수). 수신자별 행은 `Notification`이다.
 
@@ -46,7 +47,7 @@
 | `REPORT_ACTIONED` | SYSTEM | `member_report.id` | 대상당 1회 | `AdminReportController.review` → `ReportSanctionNotifier` — 검토가 제재로 끝난 신고의 신고자 |
 | `SANCTION_IMPOSED` | SYSTEM | `sanction.id` | 대상당 1회 | 같은 지점 — 제재받은 피신고자 |
 
-`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 화면 이동용이 아니라 **"주마다 한 번"의 판정 기준**이다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 **문항이 있는 셋 중** id 가 가장 작은 셋을 대표로 삼는다(문항 수 문구도 그 셋 기준). 문항 있는 셋이 없으면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
+`QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 **"주마다 한 번"을 세기 위해서**다. `MATCH_RESULT`·`NO_MATCH`는 그 셋의 매칭 유형으로 이동할 결과 화면도 고른다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 **문항이 있는 셋 중** id 가 가장 작은 셋을 대표로 삼는다(문항 수 문구도 그 셋 기준). 문항 있는 셋이 없으면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
 **노매칭 알림의 수신자는 매칭 풀에 든 회원이다**(`MatchmakingService.matchingPoolMemberIds` — 퀴즈 완료자에서 배치의 제외 정책에 걸린 사람을 뺀 집합). 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않고, 정지·성사로 풀에서 빠진 사람에게는 틀린 안내다.
 
@@ -94,6 +95,10 @@
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
   `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`→`/matching/`(1:1 전용이라 분기 없음), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
   방이 지워졌으면 deepLink 없이 보낸다.
+  알림 목록 응답(`NotificationResponse.deepLink`)도 같은 값을 준다. 알림 센터가 `type`·`targetId`로 행선지를 따로 정하면
+  푸시와 어긋나고, 방 목록에 없는 방(나간 방)은 찾지 못하기 때문이다. 유형마다 갈 화면의 종류는
+  `NotificationType.deepLinkTarget`(domain `DeepLinkTarget`)이 정하고, 실제 경로 문자열은 api 의 `NotificationDeepLinks`가 만든다.
+  목록은 한 페이지의 대상을 종류별(방, 퀴즈셋, 재매칭 쌍)로 한 번씩만 조회한다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
 - **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON`·`QUIZ_CLOSING_SOON` 6시간 — 종료·마감 6시간 전
