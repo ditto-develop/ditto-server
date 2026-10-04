@@ -204,9 +204,13 @@ class AdminWebTest {
     @DisplayName("퀴즈셋 참여 현황은 실회원·더미·삭제된 회원의 진행·프로필·고른 선택지를 그린다")
     fun quizSetParticipantsPage() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
-        val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
-        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "아래부터", displayOrder = 1))
-        val picked = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "중간부터", displayOrder = 2))
+        val firstQuiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "치약 짤 때?", displayOrder = 1))
+        val secondQuiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "여행 계획은?", displayOrder = 2))
+        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = firstQuiz.id, content = "아래부터", displayOrder = 1))
+        val firstPicked = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = firstQuiz.id, content = "중간부터", displayOrder = 2))
+        val secondPicked = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = secondQuiz.id, content = "즉흥적으로", displayOrder = 1))
+        quizChoiceRepository.save(QuizChoiceFixture.create(quizId = secondQuiz.id, content = "분 단위로", displayOrder = 2))
+
         val dummy = memberRepository.save(
             MemberFixture.create(
                 nickname = "dummy-female-1a2b",
@@ -214,27 +218,36 @@ class AdminWebTest {
                 caricature = "/onboarding/profileimg/avatar/f3.svg",
             ),
         )
-        val progress = QuizProgressFixture.create(memberId = dummy.id, quizSetId = quizSet.id, totalCount = 1)
-        progress.recordAnswer()
-        quizProgressRepository.save(progress)
-        quizAnswerRepository.save(QuizAnswerFixture.create(memberId = dummy.id, quizId = quiz.id, choiceId = picked.id))
+        val completed = QuizProgressFixture.create(memberId = dummy.id, quizSetId = quizSet.id, totalCount = 2)
+        repeat(2) { completed.recordAnswer() }
+        quizProgressRepository.save(completed)
+        quizAnswerRepository.save(QuizAnswerFixture.create(memberId = dummy.id, quizId = firstQuiz.id, choiceId = firstPicked.id))
+        quizAnswerRepository.save(QuizAnswerFixture.create(memberId = dummy.id, quizId = secondQuiz.id, choiceId = secondPicked.id))
+
         val real = memberRepository.save(
             MemberFixture.create(nickname = "실회원테스터", status = MemberStatus.ACTIVE, gender = Gender.FEMALE),
         )
         val inProgress = QuizProgressFixture.create(memberId = real.id, quizSetId = quizSet.id, totalCount = 2)
         inProgress.recordAnswer()
         quizProgressRepository.save(inProgress)
-        quizProgressRepository.save(QuizProgressFixture.create(memberId = 99999L, quizSetId = quizSet.id, totalCount = 1))
+        quizAnswerRepository.save(QuizAnswerFixture.create(memberId = real.id, quizId = firstQuiz.id, choiceId = firstPicked.id))
 
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = 99999L, quizSetId = quizSet.id, totalCount = 2))
+
+        // 요약 카드 라벨에도 같은 글자가 있어 배지는 마크업까지 넣어 확인한다.
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("dummy-female-1a2b")))
-            .andExpect(content().string(containsString("중간부터")))
+            .andExpect(content().string(containsString(">즉흥적으로<")))
             .andExpect(content().string(containsString(">f3<")))
             .andExpect(content().string(containsString("실회원테스터")))
-            .andExpect(content().string(containsString("진행 중")))
+            .andExpect(content().string(containsString("<span class=\"badge cat\">실회원</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge on\">완료</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge matching\">진행 중</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge off\">시작 전</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
             .andExpect(content().string(containsString(">여<")))
-            .andExpect(content().string(containsString("삭제된 회원")))
+            .andExpect(content().string(containsString("<li>여행 계획은?</li>")))
     }
 
     @Test

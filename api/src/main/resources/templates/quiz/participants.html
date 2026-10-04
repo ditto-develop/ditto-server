@@ -19,7 +19,7 @@
             <div class="grid cols-3">
                 <div class="card stat">
                     <span class="label">참여자</span>
-                    <span class="value" th:text="${view.participants.size()}">0</span>
+                    <span class="value" th:text="${view.participantCount}">0</span>
                 </div>
                 <div class="card stat">
                     <span class="label">완료 · 진행 중 · 시작 전</span>
@@ -32,13 +32,15 @@
             </div>
 
             <div class="card">
-                <h2>참여자 <span class="count" th:text="${view.participants.size()}">0</span></h2>
+                <h2>참여자 <span class="count" th:text="${view.participantCount}">0</span></h2>
                 <p class="muted" th:if="${view.participants.isEmpty()}" style="margin:0">아직 참여한 회원이 없습니다.</p>
                 <th:block th:unless="${view.participants.isEmpty()}">
-                    <ol class="muted" style="margin:0 0 16px; padding-left:28px" th:unless="${view.quizzes.isEmpty()}">
-                        <li th:each="quiz : ${view.quizzes}" th:text="${quiz.question}">질문</li>
-                    </ol>
-                    <p class="muted" style="margin:0 0 12px">Q 열은 위 문항 번호이고, 안 푼 문항은 <b>-</b> 입니다.</p>
+                    <th:block th:unless="${view.quizzes.isEmpty()}">
+                        <ol class="muted" style="margin:0 0 16px; padding-left:28px">
+                            <li th:each="quiz : ${view.quizzes}" th:text="${quiz.question}">질문</li>
+                        </ol>
+                        <p class="muted" style="margin:0 0 12px">Q 열은 위 문항 번호이고, 안 푼 문항은 <b>-</b> 입니다.</p>
+                    </th:block>
                     <div style="overflow-x:auto">
                         <table class="tbl">
                             <thead>

@@ -189,6 +189,17 @@ class AdminQuizParticipantServiceTest(
             adminQuizParticipantService.getParticipants(quizSetId).participants.shouldBeEmpty()
         }
 
+        "문항이 없는 퀴즈셋이면 참여자의 답변 칸이 비어 있다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val member = memberRepository.save(MemberFixture.create(nickname = "문항없음"))
+            saveProgress(member.id, quizSet.id, totalCount = 0, answeredCount = 0)
+
+            val view = adminQuizParticipantService.getParticipants(quizSet.id)
+
+            view.participantCount shouldBe 1
+            view.participants.single().answerContents.shouldBeEmpty()
+        }
+
         "없는 퀴즈셋이면 NOT_FOUND 예외가 발생한다" {
             val exception = shouldThrow<WarnException> { adminQuizParticipantService.getParticipants(99999L) }
 

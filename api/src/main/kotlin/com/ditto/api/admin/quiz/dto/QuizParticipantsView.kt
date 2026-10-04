@@ -18,6 +18,7 @@ class QuizParticipantsView(
     val quizzes: List<Quiz>,
     val participants: List<QuizParticipant>,
 ) {
+    val participantCount: Int = participants.size
     val completedCount: Int = countByStatus(QuizProgressStatus.COMPLETED)
     val inProgressCount: Int = countByStatus(QuizProgressStatus.IN_PROGRESS)
     val notStartedCount: Int = countByStatus(QuizProgressStatus.NOT_STARTED)
