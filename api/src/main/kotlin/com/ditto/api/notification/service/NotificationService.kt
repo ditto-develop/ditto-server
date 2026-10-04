@@ -2,6 +2,7 @@ package com.ditto.api.notification.service
 
 import com.ditto.api.notification.dto.NotificationResponse
 import com.ditto.api.notification.dto.NotificationsResponse
+import com.ditto.api.notification.push.NotificationDeepLinks
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.notification.entity.Notification
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class NotificationService(
     private val notificationRepository: NotificationRepository,
+    private val notificationDeepLinks: NotificationDeepLinks,
 ) {
 
     /**
@@ -44,8 +46,9 @@ class NotificationService(
             from = Notification.retentionFrom(),
         )
 
+        val deepLinkById = notificationDeepLinks.deepLinksOf(notifications)
         return NotificationsResponse(
-            notifications = notifications.map { NotificationResponse.from(it) },
+            notifications = notifications.map { NotificationResponse.of(it, deepLinkById[it.id]) },
             // 마지막 페이지를 정확히 채운 경우에도 커서를 준다 — 다음 요청이 빈 목록을 받고 끝난다.
             nextCursor = if (notifications.size == pageSize) notifications.last().id else null,
         )
