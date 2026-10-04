@@ -7,6 +7,7 @@ import com.ditto.api.admin.qa.dto.QaGroupMatch
 import com.ditto.api.admin.qa.dto.QaGroupMember
 import com.ditto.api.admin.qa.dto.QaGroupSection
 import com.ditto.api.admin.qa.dto.QaPersonalSection
+import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.match.entity.MatchCandidate
@@ -51,6 +52,9 @@ class AdminQaService(
                 groups = composeGroups(quizSets.filter { it.matchingType == MatchingType.GROUP }, dummyIds),
                 responseClosed = GroupResponseDeadline.hasPassed(week, now),
             ),
+            timeShortcuts = QaTimeShortcut.entries.map {
+                QaTimeShortcutOption(label = it.label, dateTime = it.dateTimeIn(week), confirmMessage = it.confirmMessage)
+            },
         )
     }
 

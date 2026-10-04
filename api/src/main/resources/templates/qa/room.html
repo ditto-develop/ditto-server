@@ -26,9 +26,15 @@
                 <span id="qa-live-state" class="qa-live-dot" aria-live="polite">3초마다 자동 갱신</span>
             </div>
             <div id="qa-status" data-qa-live>
-                <div class="alert error" th:if="${room.status.name() == 'SCHEDULED'}">
-                    개방 전인 방이라 전송이 막힙니다(7005). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.
-                    <a th:href="@{/admin/time-override}">시각 조정</a></div>
+                <div class="alert error qa-alert-with-action" th:if="${room.status.name() == 'SCHEDULED'}">
+                    <span>개방 전인 방이라 전송이 막힙니다(7005). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.</span>
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}">
+                        <input type="hidden" name="dateTime" th:value="${room.justAfterOpen}"/>
+                        <input type="hidden" name="returnTo" th:value="|/admin/qa/rooms/${room.roomId}|"/>
+                        <button class="btn sm" type="submit"
+                                th:text="|${#temporals.format(room.justAfterOpen, 'MM/dd(E) HH:mm')}로 옮기기|">옮기기</button>
+                    </form>
+                </div>
                 <div class="alert error" th:if="${room.status.name() == 'ENDED'}"
                      th:text="|종료된 방입니다(${room.endReason}). 전송은 막히고 조회·읽음만 됩니다(7004).|">종료된 방입니다.</div>
             </div>
@@ -198,6 +204,7 @@
         </main>
     </div>
 </div>
+<script th:src="@{/admin/js/qa-forms.js}"></script>
 <script th:src="@{/admin/js/qa-room.js}"></script>
 </body>
 </html>

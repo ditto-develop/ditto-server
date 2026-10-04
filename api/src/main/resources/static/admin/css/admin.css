@@ -426,6 +426,9 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
+.qa-time-shortcuts { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qa-time-shortcuts a { color: var(--primary); font-weight: 600; margin-left: 4px; }
+.qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
 .qa-guide summary { cursor: pointer; font-weight: 700; }
 .qa-guide ol { margin: 12px 0 0; padding-left: 20px; color: var(--text-sub); line-height: 1.9; }

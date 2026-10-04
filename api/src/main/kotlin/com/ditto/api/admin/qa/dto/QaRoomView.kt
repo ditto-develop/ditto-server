@@ -37,6 +37,9 @@ class QaRoomView(
 
     val ended: Boolean = status == ChatRoomStatus.ENDED
 
+    /** 개방 전 방을 열어 보려고 서버 시각을 옮길 때 쓰는 시각. 스케줄러가 다음 분에 연다. */
+    val justAfterOpen: LocalDateTime = opensAt.plusMinutes(1)
+
     val openVote: QaVote? = votes.firstOrNull { it.open }
 
     val closedVotes: List<QaVote> = votes.filterNot { it.open }

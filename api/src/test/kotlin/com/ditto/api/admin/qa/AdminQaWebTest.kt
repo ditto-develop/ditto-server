@@ -287,4 +287,43 @@ class AdminQaWebTest(
                 .andExpect(flash().attribute("error", containsString("대상 더미가 없습니다")))
         }
     }
+
+    "시각 바로가기" - {
+        "이번 운영 주의 그룹 마감 직전·채팅 개방 직후·채팅 마감 직후를 보여준다" {
+            console().timeShortcuts.map { it.dateTime } shouldBe listOf(
+                thisMonday.plusDays(3).atTime(23, 50),
+                thisMonday.plusDays(4).atTime(0, 1),
+                thisMonday.plusDays(7).atTime(0, 1),
+            )
+        }
+
+        "서버 시각을 옮기고 보던 화면으로 돌아간다" {
+            val friday = thisMonday.plusDays(4).atTime(0, 1)
+
+            mockMvc.perform(
+                post("/admin/qa/server-time")
+                    .param("dateTime", friday.toString())
+                    .param("returnTo", "/admin/qa/rooms/7")
+                    .asAdmin(),
+            ).andExpect(redirectedUrl("/admin/qa/rooms/7"))
+
+            console().now shouldBe friday
+        }
+
+        "콘솔 밖 주소로는 돌려보내지 않는다" {
+            mockMvc.perform(
+                post("/admin/qa/server-time")
+                    .param("dateTime", thisMonday.atTime(9, 0).toString())
+                    .param("returnTo", "//evil.example.com")
+                    .asAdmin(),
+            ).andExpect(redirectedUrl("/admin/qa"))
+        }
+
+        "실제 시각으로 되돌린다" {
+            mockMvc.perform(post("/admin/qa/server-time/disable").asAdmin())
+                .andExpect(redirectedUrl("/admin/qa"))
+
+            serverTimeOverrideRepository.findAll().single().enabled shouldBe false
+        }
+    }
 })

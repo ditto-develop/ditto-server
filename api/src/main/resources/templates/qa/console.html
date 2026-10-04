@@ -18,10 +18,24 @@
                 <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
                 <span class="qa-bar-links">
-                    <a th:href="@{/admin/time-override}">시각 조정 →</a>
                     <a th:href="@{/admin/dummy}">더미 생성 →</a>
                     <a th:href="@{/admin/matching}">매칭 재생성 →</a>
                 </span>
+                <div class="qa-time-shortcuts">
+                    <span class="muted">시각 옮기기</span>
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
+                          th:each="shortcut : ${console.timeShortcuts}"
+                          th:attr="data-confirm=${shortcut.confirmMessage}">
+                        <input type="hidden" name="dateTime" th:value="${shortcut.dateTime}"/>
+                        <button class="btn secondary sm" type="submit"
+                                th:text="|${shortcut.label} · ${#temporals.format(shortcut.dateTime, 'MM/dd(E) HH:mm')}|">
+                            채팅 개방 직후 · 10/10(금) 00:01</button>
+                    </form>
+                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${timeOverridden}">
+                        <button class="btn secondary sm" type="submit">실제 시각으로</button>
+                    </form>
+                    <a th:href="@{/admin/time-override}">직접 설정 →</a>
+                </div>
             </div>
 
             <details class="card qa-guide" th:open="${console.dummyCount == 0}">
@@ -173,5 +187,6 @@
         </main>
     </div>
 </div>
+<script th:src="@{/admin/js/qa-forms.js}"></script>
 </body>
 </html>

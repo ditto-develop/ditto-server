@@ -11,6 +11,13 @@ class QaConsoleView(
     val dummyCount: Int,
     val personal: QaPersonalSection,
     val group: QaGroupSection,
+    val timeShortcuts: List<QaTimeShortcutOption>,
+)
+
+class QaTimeShortcutOption(
+    val label: String,
+    val dateTime: LocalDateTime,
+    val confirmMessage: String?,
 )
 
 class QaMember(
