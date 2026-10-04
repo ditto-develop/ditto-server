@@ -2,6 +2,7 @@ package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.GroupCandidate
 import com.ditto.api.admin.quiz.dto.GroupCandidateMember
+import com.ditto.api.admin.quiz.dto.GroupResponse
 import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OutsideRequest
@@ -135,9 +136,12 @@ class AdminParticipantMatchingReader(
             groupMatchId = room.groupMatch.id,
             score = room.groupMatch.score,
             isFormed = room.groupMatch.isActive,
-            myStatus = myInvitations.single().status,
+            acceptedCount = room.groupMatch.acceptedCount,
+            activationThreshold = GroupMatch.ACTIVATION_THRESHOLD,
+            myResponse = GroupResponse.of(myInvitations.single().status),
             otherMembers = otherInvitations.map { invitation ->
-                GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], invitation.status)
+                val response = GroupResponse.of(invitation.status)
+                GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], response)
             },
         )
     }

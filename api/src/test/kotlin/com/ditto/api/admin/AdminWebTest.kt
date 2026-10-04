@@ -16,6 +16,9 @@ import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -231,12 +234,13 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("매칭 후보 생성:")))
+            .andExpect(content().string(containsString("매칭 열: 후보 생성")))
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
-            .andExpect(content().string(containsString("<span>미완주</span>")))
+            .andExpect(content().string(containsString("<span class=\"muted\">미완주</span>")))
+            .andExpect(content().string(containsString("→ 퀴즈를 끝까지 풀기")))
     }
 
     @Test
@@ -250,8 +254,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("그룹 #${group.id} · 75.0")))
-            .andExpect(content().string(containsString("<span class=\"badge off\">미성사</span>")))
+            .andExpect(content().string(containsString("그룹 #${group.id} · 75.0 · 수락 1/3")))
             .andExpect(content().string(containsString("<span class=\"badge on\">수락</span>")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">대기</span>")))
     }
@@ -279,6 +282,9 @@ class AdminWebTest {
             MemberFixture.create(
                 nickname = "dummy-female-1a2b",
                 status = MemberStatus.ACTIVE,
+                interests = setOf(Interest.MUSIC, Interest.TRAVEL),
+                location = Location.SEOUL,
+                job = Job.DESIGN,
                 caricature = "/onboarding/profileimg/avatar/f3.svg",
             ),
         )
@@ -310,7 +316,10 @@ class AdminWebTest {
             .andExpect(content().string(containsString("<span class=\"badge matching\">진행 중</span>")))
             .andExpect(content().string(containsString("<span class=\"badge off\">시작 전</span>")))
             .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
-            .andExpect(content().string(containsString(">여<")))
+            .andExpect(content().string(containsString(">여성<")))
+            .andExpect(content().string(containsString(">서울<")))
+            .andExpect(content().string(containsString(">디자인<")))
+            .andExpect(content().string(containsString("음악")))
             .andExpect(content().string(containsString("<li>여행 계획은?</li>")))
     }
 

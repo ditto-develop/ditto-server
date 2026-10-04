@@ -72,8 +72,7 @@ class OneToOneMissFinder(
             val bestScore = bestEligibleScoreByMemberId[memberId]
                 ?: return MatchMiss(noEligiblePairReasonOf(participant))
             if (memberId !in selectedMemberIds) {
-                val detail = "최고 ${format(bestScore)} < 컷 ${format(cutoffScore)}"
-                return MatchMiss(MatchMissReason.CUT_BY_TOP_RATIO, detail)
+                return MatchMiss(MatchMissReason.CUT_BY_TOP_RATIO, bestScore = bestScore, cutoffScore = cutoffScore)
             }
             if (!isGenerated) return MatchMiss(MatchMissReason.NOT_GENERATED)
             if (memberId in certainMemberIds) return MatchMiss(MatchMissReason.STATE_CHANGED_AFTER_GENERATION)
@@ -95,8 +94,6 @@ class OneToOneMissFinder(
                     }
                 }
             }
-
-        private fun format(score: Double?): String = score?.let { "%.1f".format(it) } ?: "-"
     }
 }
 

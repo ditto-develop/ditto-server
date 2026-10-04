@@ -1,12 +1,12 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.GroupResponse
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.PersonalRequestState
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
-import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
@@ -163,7 +163,7 @@ class AdminQuizParticipantMatchingTest(
             val miss = adminQuizParticipantService.getParticipants(quizSetId).matching.of(lowFemale).miss.shouldNotBeNull()
 
             miss.reason shouldBe MatchMissReason.CUT_BY_TOP_RATIO
-            miss.detail shouldBe "최고 0.0 < 컷 100.0"
+            miss.scoreGap shouldBe "최고 0.0 < 컷 100.0"
         }
 
         "매칭 전이면 컷을 넘은 참여자는 탈락이 아니라 매칭 전으로 표시한다" {
@@ -273,9 +273,10 @@ class AdminQuizParticipantMatchingTest(
             groupCandidate.groupMatchId shouldBe group.id
             groupCandidate.score shouldBe 75.0
             groupCandidate.isFormed shouldBe false
-            groupCandidate.myStatus shouldBe InvitationStatus.PENDING
-            groupCandidate.otherMembers.map { it.nickname to it.status } shouldContainExactlyInAnyOrder
-                listOf("수락한사람" to InvitationStatus.ACCEPTED, "대기중" to InvitationStatus.PENDING)
+            groupCandidate.acceptedCount shouldBe 1
+            groupCandidate.myResponse shouldBe GroupResponse.PENDING
+            groupCandidate.otherMembers.map { it.nickname to it.response } shouldContainExactlyInAnyOrder
+                listOf("수락한사람" to GroupResponse.ACCEPTED, "대기중" to GroupResponse.PENDING)
         }
 
         "예전에 겹쳐 만든 그룹에 함께 있으면 모든 그룹을 보여 준다" {
@@ -288,6 +289,18 @@ class AdminQuizParticipantMatchingTest(
             val groupCandidates = adminQuizParticipantService.getParticipants(quizSetId).matching.of(me).groupCandidates
 
             groupCandidates.map { it.groupMatchId } shouldContainExactlyInAnyOrder groups.map { it.id }
+        }
+
+        "그룹에서도 미완주·삭제된 회원은 풀에 들기 전 이유를 받는다" {
+            val (quizSetId, _, _) = saveQuizSetWithTwoQuizzes(MatchingType.GROUP)
+            val notCompleted = saveMember("미완주")
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = notCompleted, quizSetId = quizSetId, totalCount = 2))
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = 99999L, quizSetId = quizSetId, totalCount = 2))
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
+
+            matching.of(notCompleted).miss?.reason shouldBe MatchMissReason.NOT_COMPLETED
+            matching.of(99999L).miss?.reason shouldBe MatchMissReason.MEMBER_DELETED
         }
 
         "그룹을 만들기 전이면 완주자는 미배정이 아니라 매칭 전이다" {

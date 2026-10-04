@@ -36,11 +36,10 @@
                 <h2>참여자 <span class="count" th:text="${view.participantCount}">0</span></h2>
                 <p class="muted" th:if="${view.participants.isEmpty()}" style="margin:0">아직 참여한 회원이 없습니다.</p>
                 <th:block th:unless="${view.participants.isEmpty()}">
-                    <p class="muted" style="margin:0 0 12px">
-                        <span th:if="${view.matching.isGenerated}"
-                              th:text="|매칭 후보 생성: ${#temporals.format(view.matching.generatedAt, 'yyyy-MM-dd HH:mm')}.|">매칭 후보 생성</span>
-                        <span th:unless="${view.matching.isGenerated}">저장된 매칭 후보가 없습니다(매칭 전이거나 결과 0건).</span>
-                        후보가 없는 이유는 지금 상태로 다시 계산한 결과라, 매칭 뒤에 상태가 바뀌었으면 그때와 다를 수 있습니다.
+                    <p class="muted" style="margin:0 0 12px" th:if="${view.matching.isGenerated}"
+                       th:text="|매칭 열: 후보 생성 ${#temporals.format(view.matching.generatedAt, 'yyyy-MM-dd HH:mm')}. 후보가 없는 이유는 지금 상태로 다시 계산한 값이라 매칭 때와 다를 수 있습니다.|">매칭 열</p>
+                    <p class="muted" style="margin:0 0 12px" th:unless="${view.matching.isGenerated}">
+                        매칭 열: 저장된 후보가 없습니다(매칭 전이거나 결과 0건).
                     </p>
                     <th:block th:unless="${view.quizzes.isEmpty()}">
                         <ol class="muted" style="margin:0 0 16px; padding-left:28px">
@@ -52,14 +51,14 @@
                         <table class="tbl">
                             <thead>
                             <tr>
-                                <th>회원</th><th>회원 상태</th><th>진행</th><th>성별 선호</th><th>매칭</th>
+                                <th>회원</th><th>회원 상태</th><th>진행</th><th>매칭</th><th>성별 선호</th>
                                 <th>성별</th><th>나이</th><th>지역</th><th>직업</th><th>관심사</th>
                                 <th th:each="quiz, stat : ${view.quizzes}" th:title="${quiz.question}" th:text="|Q${stat.count}|">Q1</th>
                                 <th>캐리커쳐</th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="p : ${view.participants}">
+                            <tr th:each="p : ${view.participants}" style="vertical-align:top">
                                 <td style="white-space:nowrap" th:switch="${p.kind.name()}">
                                     <th:block th:case="'DELETED'">
                                         <span th:text="|#${p.memberId}|">#1</span>
@@ -80,63 +79,45 @@
                                     <span class="badge off" th:case="*">시작 전</span>
                                     <span th:text="|${p.answeredCount}/${p.totalCount}|">3/3</span>
                                 </td>
+                                <td style="min-width:240px; font-size:12px" th:with="m=${view.matching.of(p.memberId)}">
+                                    <div th:each="c : ${m.personalCandidates}" style="white-space:nowrap">
+                                        <span th:text="|${c.otherNickname ?: '삭제된 회원'} (#${c.otherMemberId})|">닉네임 (#2)</span>
+                                        <span class="muted" th:text="|${#numbers.formatDecimal(c.score, 1, 1)} (${c.matchedQuestionCount}/${c.totalQuestionCount})|">66.7 (2/3)</span>
+                                        <span th:if="${c.requestState != null}" th:class="|badge ${c.requestState.tone.cssClass}|" th:text="${c.requestState.label}">신청함</span>
+                                    </div>
+                                    <div th:each="r : ${m.outsideRequests}" style="white-space:nowrap">
+                                        <span class="muted">후보 밖:</span>
+                                        <span th:text="|${r.otherNickname ?: '삭제된 회원'} (#${r.otherMemberId})|">닉네임 (#2)</span>
+                                        <span th:class="|badge ${r.requestState.tone.cssClass}|" th:text="${r.requestState.label}">성사</span>
+                                    </div>
+                                    <th:block th:each="g : ${m.groupCandidates}">
+                                        <div style="white-space:nowrap">
+                                            <span th:text="|그룹 #${g.groupMatchId} · ${#numbers.formatDecimal(g.score, 1, 1)} · 수락 ${g.acceptedCount}/${g.activationThreshold}|">그룹 #1 · 75.0 · 수락 1/3</span>
+                                            <span class="badge on" th:if="${g.isFormed}">성사</span>
+                                            <span class="muted">나</span>
+                                            <span th:class="|badge ${g.myResponse.tone.cssClass}|" th:text="${g.myResponse.label}">대기</span>
+                                        </div>
+                                        <div class="muted" th:each="o : ${g.otherMembers}" style="white-space:nowrap; padding-left:12px">
+                                            <span th:text="|${o.nickname ?: '삭제된 회원'} (#${o.memberId})|">닉네임 (#2)</span>
+                                            <span th:class="|badge ${o.response.tone.cssClass}|" th:text="${o.response.label}">대기</span>
+                                        </div>
+                                    </th:block>
+                                    <th:block th:if="${m.miss != null}" th:with="reason=${m.miss.reason}">
+                                        <span th:class="${reason.emphasis.cssClass}" th:text="${reason.label}">미완주</span>
+                                        <span class="muted" th:if="${m.miss.scoreGap != null}" th:text="|(${m.miss.scoreGap})|">(최고 0.0 &lt; 컷 100.0)</span>
+                                        <div class="muted" th:if="${reason.nextAction != null}" th:text="|→ ${reason.nextAction}|">→ 다음 조치</div>
+                                    </th:block>
+                                </td>
                                 <td th:switch="${p.preferredGender.name()}">
                                     <span th:case="'OPPOSITE'">이성</span>
                                     <span th:case="'SAME'">동성</span>
                                     <span th:case="*">무관</span>
                                 </td>
-                                <td style="min-width:240px" th:with="m=${view.matching.of(p.memberId)}">
-                                    <div th:each="c : ${m.personalCandidates}" style="white-space:nowrap">
-                                        <span th:text="|${c.otherNickname ?: '삭제된 회원'} (#${c.otherMemberId})|">닉네임 (#2)</span>
-                                        <span class="muted" th:text="|${#numbers.formatDecimal(c.score, 1, 1)} (${c.matchedQuestionCount}/${c.totalQuestionCount})|">66.7 (2/3)</span>
-                                        <th:block th:if="${c.requestState != null}">
-                                            <th:block th:switch="${c.requestState.name()}">
-                                                <span class="badge on" th:case="'ACCEPTED'" th:text="${c.requestState.label}">성사</span>
-                                                <span class="badge matching" th:case="'SENT'" th:text="${c.requestState.label}">신청함</span>
-                                                <span class="badge matching" th:case="'RECEIVED'" th:text="${c.requestState.label}">신청 받음</span>
-                                                <span class="badge off" th:case="*" th:text="${c.requestState.label}">거절</span>
-                                            </th:block>
-                                        </th:block>
-                                    </div>
-                                    <div th:each="r : ${m.outsideRequests}" style="white-space:nowrap">
-                                        <span class="muted">후보 밖:</span>
-                                        <span th:text="|${r.otherNickname ?: '삭제된 회원'} (#${r.otherMemberId})|">닉네임 (#2)</span>
-                                        <span class="badge off" th:text="${r.requestState.label}">성사</span>
-                                    </div>
-                                    <th:block th:each="g : ${m.groupCandidates}">
-                                        <div style="white-space:nowrap">
-                                            <span th:text="|그룹 #${g.groupMatchId} · ${#numbers.formatDecimal(g.score, 1, 1)}|">그룹 #1 · 75.0</span>
-                                            <span class="badge on" th:if="${g.isFormed}">성사</span>
-                                            <span class="badge off" th:unless="${g.isFormed}">미성사</span>
-                                            <th:block th:switch="${g.myStatus.name()}">
-                                                <span class="badge on" th:case="'ACCEPTED'">수락</span>
-                                                <span class="badge matching" th:case="'PENDING'">대기</span>
-                                                <span class="badge off" th:case="*">거절</span>
-                                            </th:block>
-                                        </div>
-                                        <div class="muted" th:each="o : ${g.otherMembers}" style="white-space:nowrap">
-                                            <span th:text="|${o.nickname ?: '삭제된 회원'} (#${o.memberId})|">닉네임 (#2)</span>
-                                            <th:block th:switch="${o.status.name()}">
-                                                <span class="badge on" th:case="'ACCEPTED'">수락</span>
-                                                <span class="badge matching" th:case="'PENDING'">대기</span>
-                                                <span class="badge off" th:case="*">거절</span>
-                                            </th:block>
-                                        </div>
-                                    </th:block>
-                                    <th:block th:if="${m.miss != null}">
-                                        <span th:text="${m.miss.reason.label}">미완주</span>
-                                        <span class="muted" th:if="${m.miss.detail != null}" th:text="|(${m.miss.detail})|">(detail)</span>
-                                    </th:block>
-                                </td>
-                                <td th:switch="${p.gender?.name()}">
-                                    <span th:case="'MALE'">남</span>
-                                    <span th:case="'FEMALE'">여</span>
-                                    <span th:case="*">-</span>
-                                </td>
+                                <td th:text="${p.gender?.description} ?: '-'">-</td>
                                 <td class="num" th:text="${p.age} ?: '-'">-</td>
-                                <td th:text="${p.location} ?: '-'">-</td>
-                                <td th:text="${p.job} ?: '-'">-</td>
-                                <td style="min-width:140px" th:text="${p.interests.isEmpty()} ? '-' : ${#strings.setJoin(p.interests, ', ')}">-</td>
+                                <td th:text="${p.location?.description} ?: '-'">-</td>
+                                <td th:text="${p.job?.description} ?: '-'">-</td>
+                                <td style="min-width:140px" th:text="${p.interests.isEmpty()} ? '-' : ${#strings.listJoin(p.interests.![description], ', ')}">-</td>
                                 <td style="min-width:140px" th:each="answer : ${p.answerContents}" th:text="${answer} ?: '-'">-</td>
                                 <td th:text="${p.caricatureFileName} ?: '-'">-</td>
                             </tr>
