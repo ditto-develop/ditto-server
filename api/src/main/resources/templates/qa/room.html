@@ -35,19 +35,22 @@
                                 th:text="|${#temporals.format(room.justAfterOpen, 'MM/dd(E) HH:mm')}로 옮기기|">옮기기</button>
                     </form>
                 </div>
-                <div class="alert error" th:if="${room.status.name() == 'ENDED'}"
-                     th:text="|종료된 방입니다(${room.endReason}). 전송은 막히고 조회·읽음만 됩니다(7004).|">종료된 방입니다.</div>
+                <div class="alert error" th:if="${room.status.name() == 'ENDED'}">
+                    종료된 방입니다(<th:block th:replace="~{qa/parts :: endReason(${room.endReason})}"></th:block>).
+                    전송은 막히고 조회·읽음만 됩니다(7004).</div>
             </div>
 
             <div class="qa-room">
                 <div class="qa-room-main">
                     <section class="card qa-timeline-card">
-                        <h2>대화 <span class="muted">최근 50개</span></h2>
+                        <h2>대화 <span class="muted">최근 50개 · 오른쪽이 더미, 왼쪽이 실회원</span></h2>
                         <div class="qa-timeline" id="qa-timeline" data-qa-live>
                             <p class="muted" th:if="${room.messages.isEmpty()}">아직 메시지가 없습니다.</p>
                             <th:block th:each="message : ${room.messages}">
                                 <div class="qa-msg system" th:if="${message.system}">
-                                    <span th:text="|${message.content} · ${message.sender.nickname} · #${message.messageId}|">MEMBER_LEFT</span>
+                                    <span th:text="${message.systemMeaning != null}
+                                            ? |${message.systemMeaning} (${message.content}) · ${message.sender.nickname} · #${message.messageId}|
+                                            : |${message.content} · ${message.sender.nickname} · #${message.messageId}|">MEMBER_LEFT</span>
                                 </div>
                                 <div class="qa-msg" th:unless="${message.system}"
                                      th:classappend="${message.fromDummy} ? 'mine'">
@@ -112,7 +115,9 @@
                                 </form>
                                 <form class="inline-form" method="post" data-qa-async
                                       th:if="${room.group and !room.ended}"
-                                      th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 방을 나갑니다. 되돌릴 수 없습니다.|"
+                                      th:attr="data-confirm=${room.lastLeaveDissolvesRoom}
+                                        ? |${roomMember.member.nickname} 이(가) 방을 나갑니다. 남은 사람이 1명이 되어 방이 해체됩니다. 되돌릴 수 없습니다.|
+                                        : |${roomMember.member.nickname} 이(가) 방을 나갑니다. 되돌릴 수 없습니다.|"
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
                                     <button class="btn danger sm" type="submit">나가기</button>
                                 </form>
@@ -120,7 +125,7 @@
                                       th:if="${!room.group and !room.ended}"
                                       th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 채팅을 종료합니다. 되돌릴 수 없습니다.|"
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/end(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
-                                    <button class="btn danger sm" type="submit">종료</button>
+                                    <button class="btn danger sm" type="submit">채팅 종료</button>
                                 </form>
                             </div>
                         </div>
@@ -132,6 +137,7 @@
 
                     <section class="card qa-votes" id="qa-votes" data-qa-live th:if="${room.group}">
                         <h2>투표</h2>
+                        <p class="muted qa-note">앱에는 투표 생성·마감만 실시간으로 뜹니다. 집계는 앱에서 투표 화면에 다시 들어가야 갱신됩니다.</p>
                         <th:block th:if="${room.openVote == null}">
                             <p class="muted">열린 투표가 없습니다. 더미로 샘플 투표(장소 3개, 다음 토요일 14·18시)를 만들 수 있습니다.</p>
                             <form method="post" data-qa-async th:unless="${room.activeDummies.isEmpty() or room.ended}"
@@ -195,8 +201,8 @@
                         <div class="qa-closed-votes" th:unless="${room.closedVotes.isEmpty()}">
                             <div class="qa-vote-title">마감된 투표</div>
                             <div class="muted" th:each="closed : ${room.closedVotes}"
-                                 th:text="|#${closed.voteId} · ${closed.votedCount}/${closed.totalMembers}명 투표 · ${closed.closedReason}|">
-                                #1 · 3/3명 투표 · MEMBER</div>
+                                 >
+                                <span th:text="|#${closed.voteId} · ${closed.votedCount}/${closed.totalMembers}명 투표 · |">#1 · 3/3명 투표 · </span><th:block th:replace="~{qa/parts :: voteCloseReason(${closed.closedReason})}"></th:block></div>
                         </div>
                     </section>
                 </div>

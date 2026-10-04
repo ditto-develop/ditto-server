@@ -285,6 +285,8 @@ class AdminQaRoomWebTest(
         "그룹 방에 한 명만 남으면 방이 해체된다" {
             val leaving = saveMember("dummy-male-aaaa")
             val room = saveRoom(ChatRoomFixture.group(), listOf(saveMember("테스터"), leaving))
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(content().string(containsString("방이 해체됩니다")))
 
             mockMvc.perform(post("$dummyRoomUrl/leave", leaving.id, room.id).asAdmin())
                 .andExpect(flash().attributeExists("message"))
@@ -302,6 +304,7 @@ class AdminQaRoomWebTest(
 
             chatRoomRepository.findByIdOrNull(room.id)?.endReason shouldBe ChatEndReason.USER_ENDED
             messagesIn(room).last().content shouldBe "USER_LEFT"
+            roomView(room).messages.last().systemMeaning shouldBe "채팅 종료, 방 끝남"
         }
     }
 

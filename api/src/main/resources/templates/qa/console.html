@@ -45,10 +45,12 @@
                     <li><a th:href="@{/admin/dummy}">더미 생성</a>에서 같은 퀴즈셋으로 더미를 만들고,
                         <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋을 재생성합니다.</li>
                     <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
-                    <li>채팅은 금요일 00:00에 열립니다. <a th:href="@{/admin/time-override}">시각 조정</a>으로 금요일 이후로 옮기세요.
-                        그룹 초대는 금요일 00:00 전에 수락해야 합니다.</li>
-                    <li>아래 <a href="#rooms">채팅방</a>에서 [열기]를 눌러 더미로 메시지를 보내고 읽음을 처리합니다.
-                        앱 화면과 실시간으로 맞춰 볼 수 있습니다.</li>
+                    <li>그룹은 위 [그룹 응답 마감 직전]으로 시각을 옮긴 뒤 앱과 아래에서 수락합니다. 응답은 금요일 00:00 전에만 됩니다.</li>
+                    <li>[채팅 개방 직후]로 옮기면 1분 안에 방이 열립니다. 아래 채팅방에서 [열기]를 눌러 더미로 대화합니다.</li>
+                    <li>[채팅 마감 직후]로 옮기면 방이 끝나고 평가가 열립니다.</li>
+                    <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. QA를 마치면 [실제 시각으로]를 누르세요.</li>
+                    <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 생성</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
+                        더미가 낀 방·매칭은 같은 방 실회원의 메시지·알림까지 함께 지워집니다.</li>
                 </ol>
             </details>
 
@@ -103,7 +105,8 @@
                             </form>
                             <form class="inline-form" method="post"
                                   th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/reject(dummyId=${request.dummy.id},matchId=${request.matchId})}">
-                                <button class="btn secondary sm" type="submit">거절</button>
+                                <button class="btn secondary sm" type="submit"
+                                        data-confirm="이 신청을 거절합니다. 되돌릴 수 없습니다.">거절</button>
                             </form>
                         </td>
                     </tr>
@@ -140,9 +143,9 @@
             <section class="card" id="group">
                 <h2>그룹 · 초대 응답
                     <span class="count" th:text="${console.group.groups.size()}">0</span></h2>
-                <div class="alert error" th:if="${console.group.responseClosed}">
-                    이번 주 그룹 응답 마감(금 00:00)이 지나 수락·거절이 막힙니다(5008).
-                    <a th:href="@{/admin/time-override}">시각 조정</a>으로 금요일 전으로 옮긴 뒤 응답하세요.</div>
+                <div class="alert info" th:if="${console.group.responseClosed and console.group.hasPendingInvitation}">
+                    이번 주 그룹 응답 마감(금 00:00)이 지나 남은 초대에 응답할 수 없습니다(5008).
+                    응답하려면 위 [그룹 응답 마감 직전]으로 시각을 옮기세요.</div>
                 <p class="muted" th:if="${console.group.groups.isEmpty()}">
                     더미가 들어 있는 그룹이 없습니다. 이번 주 그룹 퀴즈셋으로 더미를 만들고 매칭을 재생성하세요.</p>
 
@@ -158,7 +161,9 @@
                         </div>
                         <form class="inline-form" method="post" th:if="${group.hasPendingDummy}"
                               th:action="@{/admin/qa/group-matches/{id}/accept-pending-dummies(id=${group.groupMatchId})}">
-                            <button class="btn sm" type="submit">대기 중인 더미 모두 수락</button>
+                            <button class="btn sm" type="submit"
+                                    data-confirm="대기 중인 더미를 모두 수락합니다. 수락한 더미가 같은 퀴즈셋의 다른 그룹에서 받은 초대는 자동으로 거절됩니다.">
+                                대기 중인 더미 모두 수락</button>
                         </form>
                     </div>
                     <table class="tbl">
@@ -181,7 +186,8 @@
                                     </form>
                                     <form class="inline-form" method="post"
                                           th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/decline(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
-                                        <button class="btn secondary sm" type="submit">거절</button>
+                                        <button class="btn secondary sm" type="submit"
+                                                data-confirm="이 그룹 초대를 거절합니다. 되돌릴 수 없습니다.">거절</button>
                                     </form>
                                 </th:block>
                             </td>

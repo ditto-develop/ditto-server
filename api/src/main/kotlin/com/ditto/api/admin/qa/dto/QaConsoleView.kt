@@ -53,7 +53,10 @@ class DummyPersonalRequestOption(
 class QaGroupSection(
     val groups: List<QaGroupMatch>,
     val responseClosed: Boolean,
-)
+) {
+    /** 마감 안내는 아직 응답할 초대가 남았을 때만 의미가 있다. 금요일 이후 채팅 QA 중에는 정상 상태다. */
+    val hasPendingInvitation: Boolean = groups.any { group -> group.members.any { it.status == InvitationStatus.PENDING } }
+}
 
 /** 더미가 한 명 이상 들어 있는 이번 주 후보 그룹. */
 class QaGroupMatch(

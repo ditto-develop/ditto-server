@@ -5,7 +5,21 @@
 <th:block th:fragment="roomType(type)" th:switch="${type.name()}">
     <span class="badge cat" th:case="'PERSONAL'">1:1</span>
     <span class="badge cat" th:case="'GROUP'">그룹</span>
-    <span class="badge cat" th:case="*">재매칭</span>
+    <span class="badge cat" th:case="'REMATCH'">재매칭</span>
+    <span class="badge cat" th:case="*" th:text="${type}">유형</span>
+</th:block>
+
+<th:block th:fragment="endReason(reason)" th:switch="${reason?.name()}">
+    <th:block th:case="'EXPIRED'">기한 만료</th:block>
+    <th:block th:case="'USER_ENDED'">참여자가 종료</th:block>
+    <th:block th:case="'INSUFFICIENT_MEMBERS'">인원 부족으로 해체</th:block>
+    <th:block th:case="*" th:text="${reason}">사유</th:block>
+</th:block>
+
+<th:block th:fragment="voteCloseReason(reason)" th:switch="${reason?.name()}">
+    <th:block th:case="'MEMBER'">멤버가 마감</th:block>
+    <th:block th:case="'ROOM_ENDED'">방이 끝나 자동 마감</th:block>
+    <th:block th:case="*" th:text="${reason}">사유</th:block>
 </th:block>
 
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">

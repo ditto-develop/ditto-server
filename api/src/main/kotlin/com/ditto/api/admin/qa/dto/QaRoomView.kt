@@ -1,5 +1,6 @@
 package com.ditto.api.admin.qa.dto
 
+import com.ditto.api.admin.qa.QaSystemMessageMeaning
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
@@ -35,6 +36,9 @@ class QaRoomView(
 ) {
     val activeDummies: List<QaMember> = members.filter { it.dummy && !it.left }.map { it.member }
 
+    /** 그룹에 두 명만 남았으면 한 명이 더 나갈 때 방이 해체된다. */
+    val lastLeaveDissolvesRoom: Boolean = members.count { !it.left } == 2
+
     /** 그룹은 한 명이 나가도 방이 이어지고, 두 사람 방은 나가는 것이 곧 종료다. */
     val group: Boolean = sourceType == ChatRoomType.GROUP
 
@@ -65,6 +69,8 @@ class QaRoomMessage(
     val unreadCount: Int,
 ) {
     val system: Boolean = messageType == ChatMessageType.SYSTEM
+
+    val systemMeaning: String? = if (system) QaSystemMessageMeaning.of(content) else null
 }
 
 /** 그룹 만남 투표. 투표자는 나가지 않은 멤버만 센다(앱 집계와 같다). */
