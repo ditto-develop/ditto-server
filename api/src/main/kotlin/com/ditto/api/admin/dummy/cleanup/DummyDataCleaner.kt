@@ -30,19 +30,19 @@ class DummyDataCleaner(
         val reports = dummyMemberDataCleaner.deleteReportsAndSanctionsWith(dummyIds)
         dummyMemberDataCleaner.deleteOwnedDataOf(dummyIds)
 
-        val deletedTargetIds = mapOf(
-            NotificationTarget.CHAT_ROOM to roomIds,
-            NotificationTarget.PERSONAL_MATCH to personalMatchIds,
-            NotificationTarget.GROUP_MATCH to groupMatchIds,
-            NotificationTarget.REMATCH to rematchIds,
-            NotificationTarget.MEMBER_REPORT to reports.reportIds,
-            NotificationTarget.SANCTION to reports.sanctionIds,
+        val deletedTargets = DeletedTargetIds(
+            roomIds = roomIds,
+            personalMatchIds = personalMatchIds,
+            groupMatchIds = groupMatchIds,
+            rematchIds = rematchIds,
+            reportIds = reports.reportIds,
+            sanctionIds = reports.sanctionIds,
         )
         return DummyCleanupSummary(
             dummyCount = dummyIds.size,
             roomCount = roomIds.size,
             matchCount = personalMatchIds.size + groupMatchIds.size,
-            notificationCount = deleteNotifications(dummyIds, deletedTargetIds),
+            notificationCount = deleteNotifications(dummyIds, deletedTargets),
         )
     }
 
@@ -59,12 +59,10 @@ class DummyDataCleaner(
             dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
             dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
 
-    private fun deleteNotifications(
-        dummyIds: Collection<Long>,
-        deletedTargetIds: Map<NotificationTarget, Set<Long>>,
-    ): Int {
-        val pointingToDeleted = deletedTargetIds
-            .filterValues { it.isNotEmpty() }
+    private fun deleteNotifications(dummyIds: Collection<Long>, deletedTargets: DeletedTargetIds): Int {
+        val pointingToDeleted = NotificationTarget.entries
+            .map { target -> target to deletedTargets.idsOf(target) }
+            .filter { (_, ids) -> ids.isNotEmpty() }
             .flatMap { (target, ids) ->
                 notificationRepository.findByTypeInAndTargetIdIn(NotificationType.pointingTo(target), ids)
             }
@@ -73,6 +71,27 @@ class DummyDataCleaner(
         notificationRepository.deleteAllByIdInBatch(notificationIds)
         return notificationIds.size
     }
+}
+
+private class DeletedTargetIds(
+    val roomIds: Set<Long>,
+    val personalMatchIds: Set<Long>,
+    val groupMatchIds: Set<Long>,
+    val rematchIds: Set<Long>,
+    val reportIds: Set<Long>,
+    val sanctionIds: Set<Long>,
+) {
+    /** 대상 종류가 늘면 여기서 컴파일이 막혀, 정리가 그 대상을 가리키는 알림을 지울지 정하게 된다. */
+    fun idsOf(target: NotificationTarget): Set<Long> =
+        when (target) {
+            NotificationTarget.CHAT_ROOM -> roomIds
+            NotificationTarget.PERSONAL_MATCH -> personalMatchIds
+            NotificationTarget.GROUP_MATCH -> groupMatchIds
+            NotificationTarget.REMATCH -> rematchIds
+            NotificationTarget.MEMBER_REPORT -> reportIds
+            NotificationTarget.SANCTION -> sanctionIds
+            NotificationTarget.QUIZ_SET, NotificationTarget.SYSTEM_NOTICE -> emptySet()
+        }
 }
 
 class DummyCleanupSummary(
