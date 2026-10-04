@@ -100,7 +100,9 @@
   알림 목록 응답(`NotificationResponse.deepLink`)도 같은 값을 준다. 알림 센터가 `type`·`targetId`로 행선지를 따로 정하면
   푸시와 어긋나고, 방 목록에 없는 방(나간 방)은 찾지 못하기 때문이다. 유형마다 갈 화면의 종류는
   `NotificationType.deepLinkTarget`(domain `DeepLinkTarget`)이 정하고, 실제 경로 문자열은 api 의 `NotificationDeepLinks`가 만든다.
-  목록은 한 페이지의 대상을 종류별(방, 퀴즈셋, 재매칭 쌍)로 한 번씩만 조회한다.
+  목록은 한 페이지의 대상을 종류별(방, 퀴즈셋, 재매칭 쌍)로 한 번씩만 조회한다. 대상을 읽을지는
+  `DeepLinkTarget.readsTargetRow`가, 그 종류는 `NotificationType.target`이 정한다. 화면과 `target`이 엇갈리면(방 화면인데 대상이 1:1 매칭 등)
+  `NotificationDeepLinksTest`의 단건/일괄 일치 검사가 깨진다.
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
 - **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON`·`QUIZ_CLOSING_SOON` 6시간 — 종료·마감 6시간 전
