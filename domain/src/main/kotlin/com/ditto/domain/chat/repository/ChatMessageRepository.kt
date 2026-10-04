@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ChatMessageRepository : JpaRepository<ChatMessage, Long>, ChatMessageRepositoryCustom {
 
+    fun findByRoomIdIn(roomIds: Collection<Long>): List<ChatMessage>
+
     /** 방의 가장 최근 메시지 (목록 미리보기용) */
     fun findFirstByRoomIdOrderByIdDesc(roomId: Long): ChatMessage?
 

@@ -1,5 +1,7 @@
 package com.ditto.api.admin.dummy
 
+import com.ditto.api.admin.dummy.cleanup.DummyCleanupSummary
+import com.ditto.api.admin.dummy.cleanup.DummyDataCleaner
 import com.ditto.api.admin.dummy.dto.DummyGenerateForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -28,6 +30,7 @@ import kotlin.random.Random
  * 어드민 편의 기능 — 특정 퀴즈셋을 랜덤하게 푼(COMPLETED) 더미 회원을 남/여 인원수만큼 생성한다.
  * 회원(member)·진행(quiz_progress)·답변(quiz_answer)만 만들고 매칭 후보(match_candidate)는
  * 만들지 않는다(어드민 '매칭 재생성'으로 분리). 더미는 닉네임/이메일 마커로 식별·정리한다.
+ * QA 콘솔로 더미를 움직였다면 매칭·채팅방도 생기므로 정리할 때 함께 지운다.
  */
 @Service
 @Transactional
@@ -39,6 +42,7 @@ class AdminDummyService(
     private val quizProgressRepository: QuizProgressRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val dummyDataCleaner: DummyDataCleaner,
 ) {
     /** 더미를 생성하고 생성된 인원수를 반환한다. */
     fun generate(form: DummyGenerateForm): Int {
@@ -63,16 +67,20 @@ class AdminDummyService(
         }
     }
 
-    /** 마커로 식별된 모든 더미 회원과 그들의 진행·답변·매칭 후보를 삭제하고 삭제 인원수를 반환한다. */
-    fun deleteAllDummies(): Int {
+    /**
+     * 마커로 식별된 모든 더미 회원과 더미가 남긴 데이터를 지운다. 더미가 낀 채팅방·매칭은 QA로 만든 것이라
+     * 같은 방·그룹에 있던 실회원 쪽 행과 알림까지 함께 지운다([DummyDataCleaner]).
+     */
+    fun deleteAllDummies(): DummyCleanupSummary {
         val dummyIds = memberRepository.findByNicknameStartingWith(NICKNAME_PREFIX).map { it.id }
-        if (dummyIds.isEmpty()) return 0
-        // 회원에 딸린 데이터(답변·진행·매칭후보)를 먼저 지우고 회원을 마지막에 삭제한다.
+        if (dummyIds.isEmpty()) return DummyCleanupSummary.NONE
+
+        val summary = dummyDataCleaner.deleteDataOf(dummyIds)
         quizAnswerRepository.deleteByMemberIdIn(dummyIds)
         quizProgressRepository.deleteByMemberIdIn(dummyIds)
         matchCandidateRepository.deleteByOwnerOrOtherMemberIdIn(dummyIds)
         memberRepository.deleteAllByIdInBatch(dummyIds)
-        return dummyIds.size
+        return summary
     }
 
     /** 현재 더미 회원 수(현황 표시용). */

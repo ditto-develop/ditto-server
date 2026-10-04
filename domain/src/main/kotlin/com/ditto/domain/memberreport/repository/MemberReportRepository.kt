@@ -13,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional
 
 interface MemberReportRepository : JpaRepository<MemberReport, Long> {
 
+    fun findByReporterIdInOrReportedMemberIdIn(
+        reporterIds: Collection<Long>,
+        reportedMemberIds: Collection<Long>,
+    ): List<MemberReport>
+
     fun existsByReporterIdAndReportedMemberIdAndStatus(
         reporterId: Long,
         reportedMemberId: Long,

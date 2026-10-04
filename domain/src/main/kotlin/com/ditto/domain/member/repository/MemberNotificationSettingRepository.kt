@@ -5,5 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface MemberNotificationSettingRepository : JpaRepository<MemberNotificationSetting, Long> {
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<MemberNotificationSetting>
+
     fun findByMemberId(memberId: Long): MemberNotificationSetting?
 }

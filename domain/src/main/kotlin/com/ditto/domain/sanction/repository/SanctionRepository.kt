@@ -13,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional
 
 interface SanctionRepository : JpaRepository<Sanction, Long> {
 
+    fun findByMemberIdInOrMemberReportIdIn(
+        memberIds: Collection<Long>,
+        memberReportIds: Collection<Long>,
+    ): List<Sanction>
+
     fun findAllByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
 
     /** 회원별 제재 이력 — 최신순 */

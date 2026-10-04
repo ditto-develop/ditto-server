@@ -158,7 +158,7 @@ class AdminDummyServiceTest(
             val quizSetId = setupQuizSet()
             adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 2, femaleCount = 1))
 
-            val deleted = adminDummyService.deleteAllDummies()
+            val deleted = adminDummyService.deleteAllDummies().dummyCount
 
             deleted shouldBe 3
             memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX).size shouldBe 0
@@ -193,7 +193,7 @@ class AdminDummyServiceTest(
         }
 
         "더미가 없으면 0을 반환한다" {
-            adminDummyService.deleteAllDummies() shouldBe 0
+            adminDummyService.deleteAllDummies().dummyCount shouldBe 0
         }
     }
 

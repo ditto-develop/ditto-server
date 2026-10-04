@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query
 
 interface MemberDeviceRepository : JpaRepository<MemberDevice, Long> {
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<MemberDevice>
+
     /** token 은 단독 유일이라 결과가 최대 1건이다. */
     fun findByToken(token: String): MemberDevice?
 

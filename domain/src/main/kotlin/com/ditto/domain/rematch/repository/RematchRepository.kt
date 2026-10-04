@@ -13,6 +13,12 @@ import org.springframework.transaction.annotation.Transactional
 
 interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCustom {
 
+    fun findByMemberId1InOrMemberId2InOrSourceChatRoomIdIn(
+        memberId1s: Collection<Long>,
+        memberId2s: Collection<Long>,
+        sourceChatRoomIds: Collection<Long>,
+    ): List<Rematch>
+
     /**
      * 소스 그룹에 이미 만들어진 쌍. 그룹 채팅 종료 시 쌍을 멱등하게 만들려고 기존 것을 먼저 읽는다 —
      * `saveAll`은 쌍 여럿을 한 번에 넣으므로 그중 하나만 유일키를 위반해도 호출 전체가 실패해
