@@ -13,7 +13,7 @@
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="qa-bar">
-                <span>서버 시각 <b th:text="${#temporals.format(currentTime, 'MM/dd(E) HH:mm')}">-</b>
+                <span>서버 시각 <b th:text="${#temporals.format(console.now, 'MM/dd(E) HH:mm')}">-</b>
                     <span class="badge matching" th:if="${timeOverridden}">조정 중</span></span>
                 <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
@@ -88,6 +88,58 @@
                     </tr>
                     </tbody>
                 </table>
+            </section>
+
+            <section class="card" id="group">
+                <h2>그룹 · 초대 응답
+                    <span class="count" th:text="${console.group.groups.size()}">0</span></h2>
+                <div class="alert error" th:if="${console.group.responseClosed}">
+                    이번 주 그룹 응답 마감(금 00:00)이 지나 수락·거절이 막힙니다(5008).
+                    <a th:href="@{/admin/time-override}">시각 조정</a>으로 금요일 전으로 옮긴 뒤 응답하세요.</div>
+                <p class="muted" th:if="${console.group.groups.isEmpty()}">
+                    더미가 들어 있는 그룹이 없습니다. 이번 주 그룹 퀴즈셋으로 더미를 만들고 매칭을 재생성하세요.</p>
+
+                <div class="qa-group" th:each="group : ${console.group.groups}">
+                    <div class="qa-group-head">
+                        <div>
+                            <b th:text="|그룹 #${group.groupMatchId}|">그룹 #31</b>
+                            <span class="muted" th:text="${group.quizSetTitle}">퀴즈셋</span>
+                            <span class="muted" th:text="|수락 ${group.acceptedCount} / ${group.requiredCount}|">수락 1 / 3</span>
+                            <span class="badge on" th:if="${group.formed}">성사됨</span>
+                        </div>
+                        <form class="inline-form" method="post" th:if="${group.hasPendingDummy}"
+                              th:action="@{/admin/qa/group-matches/{id}/accept-pending-dummies(id=${group.groupMatchId})}">
+                            <button class="btn sm" type="submit">대기 중인 더미 모두 수락</button>
+                        </form>
+                    </div>
+                    <table class="tbl">
+                        <tbody>
+                        <tr th:each="groupMember : ${group.members}">
+                            <td>
+                                <span th:text="${groupMember.member.nickname}">홍길동</span>
+                                <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
+                            </td>
+                            <td th:switch="${groupMember.status.name()}">
+                                <span class="badge on" th:case="'ACCEPTED'">수락</span>
+                                <span class="badge matching" th:case="'PENDING'">대기</span>
+                                <span class="badge off" th:case="*">거절</span>
+                            </td>
+                            <td class="actions">
+                                <th:block th:if="${groupMember.dummy and groupMember.status.name() == 'PENDING'}">
+                                    <form class="inline-form" method="post"
+                                          th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/accept(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
+                                        <button class="btn secondary sm" type="submit">수락</button>
+                                    </form>
+                                    <form class="inline-form" method="post"
+                                          th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/decline(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
+                                        <button class="btn secondary sm" type="submit">거절</button>
+                                    </form>
+                                </th:block>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
         </main>
     </div>

@@ -1,12 +1,21 @@
 package com.ditto.api.admin.qa.dto
 
+import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.entity.InvitationStatus
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 class QaConsoleView(
+    val now: LocalDateTime,
     val weekStartedOn: LocalDate,
     val dummyCount: Int,
     val personal: QaPersonalSection,
+    val group: QaGroupSection,
+)
+
+class QaMember(
+    val id: Long,
+    val nickname: String,
 )
 
 class QaPersonalSection(
@@ -17,11 +26,6 @@ class QaPersonalSection(
         val EMPTY = QaPersonalSection(receivedRequests = emptyList(), requestOptions = emptyList())
     }
 }
-
-class QaMember(
-    val id: Long,
-    val nickname: String,
-)
 
 class DummyReceivedPersonalRequest(
     val matchId: Long,
@@ -37,4 +41,28 @@ class DummyPersonalRequestOption(
     val receiver: QaMember,
     val quizSetId: Long,
     val quizSetTitle: String,
+)
+
+class QaGroupSection(
+    val groups: List<QaGroupMatch>,
+    val responseClosed: Boolean,
+)
+
+/** 더미가 한 명 이상 들어 있는 이번 주 후보 그룹. */
+class QaGroupMatch(
+    val groupMatchId: Long,
+    val quizSetTitle: String,
+    val acceptedCount: Int,
+    val formed: Boolean,
+    val members: List<QaGroupMember>,
+) {
+    val requiredCount: Int = GroupMatch.ACTIVATION_THRESHOLD
+
+    val hasPendingDummy: Boolean = members.any { it.dummy && it.status == InvitationStatus.PENDING }
+}
+
+class QaGroupMember(
+    val member: QaMember,
+    val dummy: Boolean,
+    val status: InvitationStatus,
 )

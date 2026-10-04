@@ -439,3 +439,8 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 table.tbl td.actions { text-align: right; white-space: nowrap; }
 table.tbl td.actions form + form { margin-left: 6px; }
+.qa-group { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+.qa-group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qa-group-head > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qa-group table.tbl td { padding: 8px 6px; }
+.alert a { text-decoration: underline; }
