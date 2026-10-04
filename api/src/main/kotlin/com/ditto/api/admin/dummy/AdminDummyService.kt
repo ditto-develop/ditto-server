@@ -6,7 +6,7 @@ import com.ditto.api.admin.dummy.dto.DummyGenerateForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
-import com.ditto.domain.member.entity.GenderPreference
+import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
@@ -100,7 +100,7 @@ class AdminDummyService(
 
     private fun createDummy(gender: Gender, form: DummyGenerateForm, context: SolveContext) {
         val member = memberRepository.save(newDummyMember(gender, form))
-        saveCompletedProgress(member.id, context, form.preferredGender)
+        saveCompletedProgress(member.id, context)
         saveRandomAnswers(member.id, context)
     }
 
@@ -118,17 +118,29 @@ class AdminDummyService(
                 age = Random.nextInt(form.minAge, form.maxAge + 1),
                 birthDate = null,
                 email = null,
-                interests = emptySet(),
+                interests = randomInterests(),
                 location = Location.entries.random(),
                 job = Job.entries.random(),
-                caricature = DUMMY_CARICATURE,
+                caricature = randomCaricatureOf(gender),
             )
         }
     }
 
-    private fun saveCompletedProgress(memberId: Long, context: SolveContext, preferredGender: GenderPreference) {
+    private fun randomInterests(): Set<Interest> =
+        Interest.entries.shuffled().take(INTEREST_COUNT_RANGE.random()).toSet()
+
+    // FE 가입 화면이 고르는 아바타 경로와 같은 형식이다. FE가 이 경로를 바꾸면 함께 고쳐야 한다.
+    private fun randomCaricatureOf(gender: Gender): String {
+        val genderInitial = when (gender) {
+            Gender.MALE -> "m"
+            Gender.FEMALE -> "f"
+        }
+        val avatarNumber = Random.nextInt(1, CARICATURE_COUNT_PER_GENDER + 1)
+        return "$CARICATURE_PATH_PREFIX$genderInitial$avatarNumber.svg"
+    }
+
+    private fun saveCompletedProgress(memberId: Long, context: SolveContext) {
         val progress = QuizProgress.create(memberId, context.quizSetId, context.quizzes.size)
-        progress.selectPreferredGender(preferredGender)
         // status·answeredCount 는 protected set 이라 recordAnswer 를 문항 수만큼 호출해야 COMPLETED 가 된다.
         repeat(context.quizzes.size) { progress.recordAnswer() }
         quizProgressRepository.save(progress)
@@ -151,6 +163,8 @@ class AdminDummyService(
 
     companion object {
         private const val EMAIL_DOMAIN = "dummy.local"
-        private const val DUMMY_CARICATURE = "dummy"
+        private const val CARICATURE_PATH_PREFIX = "/onboarding/profileimg/avatar/"
+        private const val CARICATURE_COUNT_PER_GENDER = 8
+        private val INTEREST_COUNT_RANGE = 1..5
     }
 }

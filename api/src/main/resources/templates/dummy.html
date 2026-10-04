@@ -32,22 +32,14 @@
                     <div class="field"><label>최소 나이</label><input type="number" th:field="*{minAge}" min="1"/></div>
                     <div class="field"><label>최대 나이</label><input type="number" th:field="*{maxAge}" min="1"/></div>
                 </div>
-                <div class="field">
-                    <label>매칭 성별 선호</label>
-                    <select th:field="*{preferredGender}">
-                        <option th:value="OPPOSITE">이성끼리 (OPPOSITE)</option>
-                        <option th:value="SAME">동성끼리 (SAME)</option>
-                        <option th:value="ANY">제한 없음 (ANY)</option>
-                    </select>
-                    <p class="muted">기본 OPPOSITE에선 남↔여만 매칭되므로 남·여를 함께 생성해야 페어가 만들어집니다.</p>
-                </div>
+                <p class="muted">더미도 실회원처럼 이성끼리만 1:1 매칭되므로 남·여를 함께 생성해야 페어가 만들어집니다.</p>
                 <hr class="sep"/>
                 <div class="btn-row">
                     <button type="submit" class="btn">더미 생성</button>
                 </div>
             </form>
 
-            <p class="muted">매칭은 ONE_TO_ONE 퀴즈셋에서만 동작합니다(GROUP은 후보가 생성되지 않습니다).</p>
+            <p class="muted">GROUP 퀴즈셋은 성별과 상관없이 3명 이상이면 그룹 후보가 만들어집니다.</p>
 
             <div class="card">
                 <h2>더미 정리</h2>
