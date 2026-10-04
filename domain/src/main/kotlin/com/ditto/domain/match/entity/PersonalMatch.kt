@@ -30,6 +30,7 @@ import java.time.LocalDateTime
     indexes = [
         Index(name = "personal_match_index_1", columnList = "member_id_1, quiz_set_id, status"),
         Index(name = "personal_match_index_2", columnList = "member_id_2, quiz_set_id, status"),
+        Index(name = "personal_match_index_3", columnList = "quiz_set_id"),
     ],
 )
 class PersonalMatch private constructor(
