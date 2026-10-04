@@ -9,7 +9,7 @@ import java.time.LocalDateTime
  *
  * @property participantIds 종료 시점의 참여자 명단. 중간에 나간 사람도 포함한다
  * @property quizSetId `chat_room`에는 없고 원본 매칭까지 타고 들어가야 나오므로 종료 시점에 아는 쪽이 넘긴다
- * @property endedAt 평가 가능 시각이 된다
+ * @property endedAt 평가 가능 시각이 된다. 나간 사람 한 명분이면 나간 시각이다
  */
 data class EndedChatRoom(
     val chatRoomId: Long,

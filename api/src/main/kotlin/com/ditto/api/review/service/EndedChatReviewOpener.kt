@@ -6,6 +6,7 @@ import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 
 /**
@@ -44,6 +45,15 @@ class EndedChatReviewOpener(
         // 방마다 격리되므로 여기서 전체를 감쌀 필요가 없다. 조회 자체가 실패하는 경우만 남는다.
         runCatchingExceptions { openRooms(chatRoomRepository.findAllById(endedRoomIds)) }
             .onFailure { logger.warn(it) { "종료 직후 평가 열기 실패 — 누락 복구에 맡긴다: roomIds=$endedRoomIds" } }
+    }
+
+    /**
+     * 열린 그룹 방에서 나간 사람 한 명의 평가를 바로 연다. 실패해도 예외를 올리지 않는다.
+     * 놓쳐도 방이 끝날 때 방 전원의 평가를 열면서 이 사람 것도 만든다.
+     */
+    fun openForLeaver(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
+        runCatchingExceptions { openLeaverReview(roomId, memberId, leftAt) }
+            .onFailure { logger.warn(it) { "나간 사람 평가 열기 실패, 방이 끝날 때 열린다: roomId=$roomId, memberId=$memberId" } }
     }
 
     /**
@@ -87,6 +97,14 @@ class EndedChatReviewOpener(
                     .onFailure { logger.warn(it) { "평가 열기 실패 — 다음 복구 주기로 넘긴다: roomId=${endedChatRoom.chatRoomId}" } }
                     .isSuccess
             }
+
+    /** 그 사람이 낀 재매칭 쌍을 먼저 만든다. 쌍이 없으면 그룹 평가를 제출할 수 없다. */
+    private fun openLeaverReview(roomId: Long, memberId: Long, leftAt: LocalDateTime) {
+        val room = chatRoomRepository.findById(roomId).orElse(null) ?: return
+        val leaverChatRoom = endedChatRoomLoader.loadForLeaver(room, leftAt) ?: return
+        rematchPairCreator.createPairsOf(memberId, leaverChatRoom)
+        memberReviewService.createReviewOf(memberId, leaverChatRoom)
+    }
 
     /** 그룹이면 재매칭 쌍을 먼저 만든 뒤 평가를 연다. 1:1 은 쌍 생성이 no-op 이다. */
     private fun openRoom(endedChatRoom: EndedChatRoom) {

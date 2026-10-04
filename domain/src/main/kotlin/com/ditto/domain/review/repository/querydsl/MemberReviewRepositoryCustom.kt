@@ -21,7 +21,8 @@ interface MemberReviewRepositoryCustom {
     fun findPendingAvailableBetween(from: LocalDateTime, to: LocalDateTime): List<MemberReview>
 
     /**
-     * 끝났는데 평가가 아직 열리지 않은 채팅방 ID — 누락 복구(anti-join) 대상.
+     * 끝났는데 멤버 중 아직 평가지(자기가 작성자인 member_review)가 만들어지지 않은 사람이 있는 채팅방 ID.
+     * 제출 여부는 보지 않는다. 누락 복구(anti-join) 대상이다.
      *
      * 채팅 종료와 평가 생성을 한 트랜잭션으로 묶지 않기로 했으므로(계획서 ⑤-1), 종료는 커밋됐는데
      * 평가 생성이 실패한 방이 남을 수 있다. 아무도 재시도하지 않으면 그 참여자들은 영영 평가를 못 한다.

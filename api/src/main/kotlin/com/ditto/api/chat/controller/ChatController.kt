@@ -14,7 +14,6 @@ import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.common.logging.Loggable
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
-import java.time.LocalDateTime
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @RestController
 class ChatController(
@@ -100,13 +100,18 @@ class ChatController(
         @AuthenticationPrincipal principal: MemberPrincipal,
         @PathVariable roomId: Long,
     ): ApiResponse<Unit> {
-        val result = chatRoomEndService.leave(roomId, principal.memberId, LocalDateTime.now())
+        val now = LocalDateTime.now()
+        val result = chatRoomEndService.leave(roomId, principal.memberId, now)
         result.systemMessages.forEach {
             messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it)
         }
         if (result.isRoomEnded) {
             endedChatReviewOpener.openFor(listOf(roomId))
             reviewRequestNotifier.notifyFor(listOf(roomId))
+        }
+        if (result.hasLeftOpenRoom) {
+            endedChatReviewOpener.openForLeaver(roomId, principal.memberId, now)
+            reviewRequestNotifier.notifyLeaver(roomId, principal.memberId)
         }
         return ApiResponse.ok(Unit)
     }

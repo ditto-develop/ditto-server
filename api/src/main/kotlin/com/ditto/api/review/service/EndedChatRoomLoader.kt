@@ -10,6 +10,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.review.entity.MemberReview
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
+import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 
 /**
@@ -33,7 +34,20 @@ class EndedChatRoomLoader(
      * 정책이므로 로그를 남기지 않는다. 값이 빠진 방은 [toEndedChatRoom]이 건너뛰며 그때는 WARN 을 남긴다.
      * 그래서 돌려주는 목록이 입력보다 짧을 수 있다.
      */
-    fun load(rooms: List<ChatRoom>): List<EndedChatRoom> {
+    fun load(rooms: List<ChatRoom>): List<EndedChatRoom> = loadOpenedAt(rooms) { room -> room.endedAt }
+
+    /**
+     * 아직 열려 있는 방에서 나간 사람 한 명의 평가 입력값. 평가 가능 시각은 나간 시각이고,
+     * 명단은 방 종료 때와 같은 최초 멤버 전원이다.
+     */
+    fun loadForLeaver(room: ChatRoom, leftAt: LocalDateTime): EndedChatRoom? =
+        loadOpenedAt(listOf(room)) { _ -> leftAt }.singleOrNull()
+
+    /** 평가가 열리는 시각만 부르는 쪽이 정한다. 방이 끝난 시각이거나, 그 사람이 나간 시각이다. */
+    private fun loadOpenedAt(
+        rooms: List<ChatRoom>,
+        reviewOpenedAtOf: (ChatRoom) -> LocalDateTime?,
+    ): List<EndedChatRoom> {
         val reviewableRooms = rooms.filter { it.sourceType in MemberReview.REVIEWABLE_MATCH_TYPES }
         if (reviewableRooms.isEmpty()) {
             return emptyList()
@@ -49,6 +63,7 @@ class EndedChatRoomLoader(
                 quizSetId = quizSetIdByRoomId[room.id],
                 weekStartedOnByQuizSetId = weekStartedOnByQuizSetId,
                 participantIds = participantIdsByRoomId[room.id].orEmpty(),
+                availableAt = reviewOpenedAtOf(room),
             )
         }
     }
@@ -99,15 +114,15 @@ class EndedChatRoomLoader(
         quizSetId: Long?,
         weekStartedOnByQuizSetId: Map<Long, LocalDate>,
         participantIds: List<Long>,
+        availableAt: LocalDateTime?,
     ): EndedChatRoom? {
         val weekStartedOn = quizSetId?.let { weekStartedOnByQuizSetId[it] }
-        val endedAt = room.endedAt
 
-        if (quizSetId == null || weekStartedOn == null || endedAt == null) {
+        if (quizSetId == null || weekStartedOn == null || availableAt == null) {
             logger.warn {
                 "평가를 열 수 없어 건너뜀: roomId=${room.id}, sourceType=${room.sourceType}, " +
                     "sourceId=${room.sourceId}, quizSetId=$quizSetId, " +
-                    "weekStartedOn=${weekStartedOn != null}, endedAt=$endedAt"
+                    "weekStartedOn=${weekStartedOn != null}, availableAt=$availableAt"
             }
             return null
         }
@@ -119,7 +134,7 @@ class EndedChatRoomLoader(
             quizSetId = quizSetId,
             weekStartedOn = weekStartedOn,
             participantIds = participantIds,
-            endedAt = endedAt,
+            endedAt = availableAt,
         )
     }
 

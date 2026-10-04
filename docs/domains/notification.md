@@ -34,7 +34,7 @@
 | `MATCH_REQUESTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.requestMatch` → `PersonalMatchNotifier` |
 | `MATCH_ACCEPTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.acceptMatch` → `PersonalMatchNotifier` |
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
-| `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end`·`ChatController.leave`(1:1 종료·그룹 해체) → `ReviewRequestNotifier`. 나간 사람도 받는다 |
+| `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end`·`ChatController.leave`(1:1 종료·그룹 해체, 열린 그룹 방에서 나간 사람에게는 그 순간 `notifyLeaver`) → `ReviewRequestNotifier`. 나간 사람도 받는다 |
 | `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 활성 회원의 미완료 평가 |
 | `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |

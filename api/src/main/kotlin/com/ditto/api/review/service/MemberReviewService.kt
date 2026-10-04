@@ -157,6 +157,17 @@ class MemberReviewService(
         return reviewerIds.map { createReviewFor(it, endedChatRoom) }
     }
 
+    /**
+     * 열린 방에서 나간 사람 한 명의 평가를 연다. 방이 끝날 때 [createReviews]가 이 평가를 다시 만들지 않는다.
+     * 평가할 상대가 없으면 null 이다.
+     */
+    fun createReviewOf(memberId: Long, endedChatRoom: EndedChatRoom): MemberReview? {
+        if (endedChatRoom.reviewerIds.size < MIN_REVIEWER_COUNT) {
+            return null
+        }
+        return createReviewFor(memberId, endedChatRoom)
+    }
+
     private fun createReviewFor(
         authorMemberId: Long,
         endedChatRoom: EndedChatRoom,

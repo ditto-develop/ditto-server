@@ -42,6 +42,29 @@ class ReviewRequestNotifier(
             .onFailure { logger.warn(it) { "평가 요청 알림 실패 — 무시한다: roomIds=$endedRoomIds" } }
             .getOrDefault(0)
 
+    /**
+     * 열린 그룹 방에서 나간 사람에게만 평가 요청을 남긴다. 방이 끝날 때 다시 보내도 대상당 한 번이라
+     * 이 사람에게는 겹쳐 가지 않는다. 실패는 [notifyFor]처럼 삼킨다.
+     */
+    fun notifyLeaver(roomId: Long, memberId: Long): Boolean =
+        runCatchingExceptions { appendReviewRequestToLeaver(roomId, memberId) }
+            .onFailure { logger.warn(it) { "나간 사람 평가 요청 알림 실패, 무시한다: roomId=$roomId, memberId=$memberId" } }
+            .getOrDefault(false)
+
+    private fun appendReviewRequestToLeaver(roomId: Long, memberId: Long): Boolean {
+        val memberIds = chatRoomMemberRepository.findByRoomId(roomId).map { it.memberId }
+        if (memberIds.size < MemberReviewService.MIN_REVIEWER_COUNT) {
+            return false
+        }
+        val counterpartIds = memberIds.filter { it != memberId }
+        val nicknamesById = nicknamesOf(counterpartIds)
+        return notificationAppender.append(
+            memberId = memberId,
+            content = NotificationMessages.reviewRequest(counterpartIds.mapNotNull { nicknamesById[it] }),
+            targetId = roomId,
+        )
+    }
+
     private fun appendReviewRequests(endedRoomIds: Collection<Long>): Int {
         if (endedRoomIds.isEmpty()) {
             return 0
