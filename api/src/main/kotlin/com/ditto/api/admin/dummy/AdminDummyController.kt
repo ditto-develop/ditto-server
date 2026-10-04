@@ -49,6 +49,7 @@ class AdminDummyController(
             .onSuccess { created ->
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 ${created}명 생성" }
                 redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미 ${created}명을 생성했습니다.")
+                redirectAttributes.addFlashAttribute("createdQuizSetId", form.quizSetId)
             }
             .onFailure { e ->
                 // 입력값 오류(WarnException)는 화면에 안내하고, 예기치 못한 예외는 전역 핸들러로 전파한다.

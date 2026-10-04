@@ -11,6 +11,10 @@
             <p class="page-desc">선택한 퀴즈셋을 랜덤하게 푼(완료) 더미 회원을 남/여 인원수만큼 생성합니다.
                 매칭 후보는 만들지 않으니, 생성 후 '매칭 실행'에서 재생성하세요.</p>
             <div th:replace="~{fragments :: alerts}"></div>
+            <p th:if="${createdQuizSetId}" style="margin:-8px 0 18px">
+                <a class="dummy-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${createdQuizSetId})}"
+                   th:text="|퀴즈셋 #${createdQuizSetId} 참여 현황 보기 →|">참여 현황 보기 →</a>
+            </p>
 
             <form class="card"
                   th:object="${form}"

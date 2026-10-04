@@ -8,6 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <a class="muted" th:href="@{/admin/dummy}">← 더미 생성</a>
+            <a class="dummy-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
             <h1 class="page-title" style="margin-top:8px">더미 한 명 만들기</h1>
             <p class="page-desc">
                 <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>

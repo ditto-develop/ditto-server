@@ -103,6 +103,7 @@ class AdminSingleDummyWebTest(
                 .andExpect(content().string(containsString("choiceIdByQuizId[${setup.choicesByOrder[1][1].quizId}]")))
                 .andExpect(content().string(containsString("영화/드라마")))
                 .andExpect(content().string(containsString("경기")))
+                .andExpect(content().string(containsString("/admin/quiz-sets/${setup.quizSetId}/participants")))
         }
 
         "없는 퀴즈셋이면 더미 페이지로 돌려보낸다" {
