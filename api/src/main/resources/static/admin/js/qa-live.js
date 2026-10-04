@@ -107,10 +107,9 @@
         form.querySelectorAll('button').forEach((button) => { button.disabled = disabled; });
     }
 
-    // 결과 화면에 오류 알림이 없을 때만 성공으로 본다. 실패하면 친 메시지를 지우지 않는다.
-    function clearComposerIfSent(form, submitter, doc) {
-        if (form.id !== 'qa-composer' || submitter?.name === 'preset') return;
-        if (doc.querySelector('#qa-alerts .alert.error')) return;
+    // 실패하면 친 메시지를 지우지 않는다. 빠른 입력은 입력창을 쓰지 않았으니 건드리지 않는다.
+    function clearComposerIfSent(form, submitter, failed) {
+        if (form.id !== 'qa-composer' || submitter?.name === 'preset' || failed) return;
         form.elements.content.value = '';
         form.elements.content.focus();
     }
@@ -142,9 +141,11 @@
                 return;
             }
             const doc = parse(await response.text());
+            // 갈아 끼우면 노드가 응답 문서에서 빠져나오므로 오류 여부는 그 전에 본다.
+            const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);
             swapLiveRegions(doc, submittedRegion);
-            clearComposerIfSent(form, submitter, doc);
+            clearComposerIfSent(form, submitter, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
             showError('네트워크 오류로 요청 결과를 확인하지 못했습니다. 새로고침해서 확인하세요.');
