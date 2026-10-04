@@ -54,11 +54,8 @@ class ReviewRequestNotifier(
             return 0
         }
 
-        // 이탈자는 평가 대상이 아니므로(EndedChatRoomLoader 와 같은 기준) 알림도 보내지 않는다.
-        // 잔여 인원이 평가 성립 최소(2명) 미만인 방도 뺀다 — 인원 미달 해체 방이 그렇다.
-        // 알리면 평가할 것이 없는 화면으로 보낸다(MemberReviewService 가 그 방의 평가를 열지 않는다).
+        // 평가 명단과 같은 기준이라 나간 사람도 받는다. 2명 미만 방은 평가가 안 열리니 보내지 않는다.
         val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(reviewableRoomIds)
-            .filter { !it.hasLeft }
             .groupBy { it.roomId }
             .filterValues { it.size >= MemberReviewService.MIN_REVIEWER_COUNT }
         val nicknamesById = nicknamesOf(membersByRoomId.values.flatten().map { it.memberId })

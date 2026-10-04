@@ -32,6 +32,7 @@
 - [0034 — refresh 토큰 회전에 30초 유예를 둔다](0034-refresh-token-rotation-grace.md)
 - [0035 — 1:1 신청·수락을 회원 행 잠금으로 줄 세운다](0035-personal-match-member-row-lock.md)
 - [0036 — 그룹 초대 응답 마감을 금요일 00:00으로 맞추고 미응답을 자동 거절한다](0036-group-response-deadline-friday.md)
+- [0037 — 그룹 평가·재매칭 명단에 나간 사람을 포함한다](0037-group-review-roster-includes-leavers.md)
 
 ## 언제 ADR을 쓰는가
 

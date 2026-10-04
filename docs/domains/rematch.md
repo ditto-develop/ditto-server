@@ -45,7 +45,7 @@ WAITING (생성 시)
   - 두 방어선을 지나도 남는 좁은 창(가드 통과 후 상대가 제출)이 있어, `RematchChatRoomOpener`가 예약 직전 탈퇴자 여부를 한 번 더 본다.
 - **탈퇴로 취소된 쌍에 대한 평가 제출은 거부하지 않는다.** 재매칭 의사만 버리고 평가는 정상 확정시킨다(`RematchSubmitter`) — 거부하면 남은 회원이 그 대상 평가를 영구히 확정할 수 없어 그룹 평가가 미완료로 남는다.
 - **복구(30일 내 재가입)는 취소를 되돌리지 않는다.** 두 회원이 모두 `ACTIVE`로 돌아와도 그 그룹 출처의 재매칭은 성사되지 않는다.
-- 생성 호출자는 그룹 채팅 종료 어댑터다 — `RematchPairCreator`가 종료 시점 참여자 전원의 쌍(`N(N-1)/2`)을 멱등 생성한다. 제출 호출자는 리뷰 제출 API(A2)의 `RematchSubmitter`다([review 도메인](review.md)).
+- 생성 호출자는 그룹 채팅 종료 어댑터다 — `RematchPairCreator`가 종료 시점 참여자 전원의 쌍(`N(N-1)/2`)을 멱등 생성한다. 평가 명단과 같아서 중간에 나간 사람도 들어간다([ADR 0037](../adr/0037-group-review-roster-includes-leavers.md)). 나간 뒤 탈퇴한 사람이 낀 쌍은 만들 때 바로 `MEMBER_LEFT`로 취소한다. 제출 호출자는 리뷰 제출 API(A2)의 `RematchSubmitter`다([review 도메인](review.md)).
 - **쌍은 평가보다 먼저 만들어져야 한다.** 그룹 평가는 재매칭 의사를 필수로 받고 `RematchSubmitter`가 쌍을 찾지 못하면 `INVALID_REVIEW_TARGET`으로 거부하므로, 순서가 뒤집히면 사용자가 평가를 다 채우고 제출에서 막힌다.
 
 ## 핵심 파일

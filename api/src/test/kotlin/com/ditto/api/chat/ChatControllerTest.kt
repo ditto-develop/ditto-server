@@ -386,7 +386,8 @@ class ChatControllerTest : ControllerUnitTest() {
                                     "이탈로 잔여 인원이 1명이 되면 방이 해체되고(endedReason=INSUFFICIENT_MEMBERS) " +
                                     "SYSTEM 메시지(content=INSUFFICIENT_MEMBERS)가 한 건 더 발행됩니다. " +
                                     "두 사람 방(1:1·재매칭)은 종료(end)와 동일하게 처리됩니다(USER_LEFT). " +
-                                    "이미 나갔거나 끝난 방에 다시 요청해도 성공으로 답합니다(멱등).",
+                                    "이미 나갔거나 끝난 방에 다시 요청해도 성공으로 답합니다(멱등). " +
+                                    "방이 끝나면(해체·두 사람 방) 나간 사람을 포함한 참여자 전원에게 평가가 열립니다.",
                             )
                             .pathParameters(
                                 parameterWithName("roomId").description("채팅방 ID"),
@@ -400,6 +401,25 @@ class ChatControllerTest : ControllerUnitTest() {
                     ),
                 ),
             )
+
+        verify(exactly = 0) { endedChatReviewOpener.openFor(any()) }
+        verify(exactly = 0) { reviewRequestNotifier.notifyFor(any()) }
+    }
+
+    @Test
+    @DisplayName("나가서 방이 끝나면 평가를 열고 평가 요청 알림을 남긴다")
+    fun leaveEndingRoom() {
+        every { chatRoomEndService.leave(any(), any(), any()) } returns ChatLeaveResult(
+            systemMessages = listOf(sampleMessage()),
+            isRoomEnded = true,
+        )
+
+        mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/leave", 1L))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+
+        verify(exactly = 1) { endedChatReviewOpener.openFor(listOf(1L)) }
+        verify(exactly = 1) { reviewRequestNotifier.notifyFor(listOf(1L)) }
     }
 
     @Test

@@ -21,7 +21,7 @@
 ## 불변식
 
 - 진행 단위는 `(chat_room_id, author_member_id)` 유일 — 동일 종료 이벤트를 재처리해도 중복 생성되지 않는다. `MemberReviewService.createReviews`가 기존 건을 먼저 찾아 반환하고, DB 유일키가 최후 방어선이다.
-- 평가 대상은 종료 시점 참여자 명단(`EndedChatRoom.participantIds`)에서 **자기 자신을 뺀** 회원들이다. 이후 멤버십이 바뀌어도 대상은 바뀌지 않는다.
+- 평가 대상은 종료 시점 참여자 명단(`EndedChatRoom.participantIds`)에서 **자기 자신을 뺀** 회원들이다. 명단은 최초 멤버 전원이라 중간에 나간 사람도 평가하고 평가받는다([ADR 0037](../adr/0037-group-review-roster-includes-leavers.md)). 그래서 인원 미달로 해체된 방도 평가가 열린다.
 - 참여자가 2명 미만이면 평가를 열 수 없다 (`INVALID_REVIEW_TARGET`) — 자기 자신이 빠지므로 대상이 0명이 된다.
 - 응답 여부는 `answered_at` 하나로 표현한다(`NULL`이면 미응답). 대상별 제출이 최종 확정이라 상태가 둘뿐이고, 별도 상태 컬럼을 두면 같은 사실이 두 곳에 저장돼 어긋난다.
 - 대상별 제출은 **최종**이다 — 이미 확정한 대상에 다른 내용으로 답하면 `REVIEW_ANSWER_NOT_MODIFIABLE`로 거부한다(수정 시도와 "이미 답한 상태"를 코드로 구분한다). 수정·임시 저장 단계는 없다.
