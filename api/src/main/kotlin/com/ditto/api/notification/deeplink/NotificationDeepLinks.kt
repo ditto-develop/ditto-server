@@ -2,9 +2,9 @@ package com.ditto.api.notification.deeplink
 
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.notification.entity.DeepLinkLookup
 import com.ditto.domain.notification.entity.DeepLinkTarget
 import com.ditto.domain.notification.entity.Notification
+import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -74,20 +74,18 @@ class NotificationDeepLinks(
     )
 
     private fun batchLookup(notifications: List<Notification>): TargetLookup {
-        val targetIdsByLookup = notifications
-            .filter { it.type.deepLinkTarget.lookup != DeepLinkLookup.NONE }
-            .mapNotNull { notification ->
-                notification.targetId?.let { notification.type.deepLinkTarget.lookup to it }
-            }
-            .groupBy({ (lookup, _) -> lookup }, { (_, targetId) -> targetId })
+        val targetIdsByTarget = notifications
+            .filter { it.type.deepLinkTarget.readsTarget }
+            .mapNotNull { notification -> notification.targetId?.let { notification.type.target to it } }
+            .groupBy({ (target, _) -> target }, { (_, targetId) -> targetId })
 
-        val chatRoomTypeById = targetIdsByLookup[DeepLinkLookup.CHAT_ROOM]
+        val chatRoomTypeById = targetIdsByTarget[NotificationTarget.CHAT_ROOM]
             ?.let { ids -> chatRoomRepository.findAllById(ids.distinct()).associate { it.id to it.sourceType } }
             .orEmpty()
-        val matchingTypeByQuizSetId = targetIdsByLookup[DeepLinkLookup.QUIZ_SET]
+        val matchingTypeByQuizSetId = targetIdsByTarget[NotificationTarget.QUIZ_SET]
             ?.let { ids -> quizSetRepository.findAllById(ids.distinct()).associate { it.id to it.matchingType } }
             .orEmpty()
-        val sourceChatRoomIdByRematchId = targetIdsByLookup[DeepLinkLookup.REMATCH]
+        val sourceChatRoomIdByRematchId = targetIdsByTarget[NotificationTarget.REMATCH]
             ?.let { ids -> rematchRepository.findAllById(ids.distinct()).associate { it.id to it.sourceChatRoomId } }
             .orEmpty()
 
