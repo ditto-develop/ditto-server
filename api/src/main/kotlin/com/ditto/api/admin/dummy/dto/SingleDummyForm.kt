@@ -5,6 +5,7 @@ import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
+import java.io.Serializable
 
 /** 더미 한 명 생성 폼(스프링 폼 바인딩). 비운 값은 무작위나 자동으로 채운다. */
 class SingleDummyForm(
@@ -23,7 +24,19 @@ class SingleDummyForm(
     var choiceIdByQuizId: MutableMap<Long, Long?> = mutableMapOf(),
     /** 문항 순서대로 앞에서 몇 개를 풀지. 비우면 전부 푼다. */
     var answeredCount: Int? = null,
-) {
+) : Serializable {
+
+    /**
+     * 연달아 만들 때 다음 폼 값. 성별·나이·문항별 답·푼 문항 수는 이어 쓰고,
+     * 닉네임은 비우고 사는 곳·직업·관심사·캐리커쳐는 다시 무작위로 채운다.
+     */
+    fun forNextDummy() = withRandomProfile(quizSetId).also {
+        it.gender = gender
+        it.age = age
+        it.choiceIdByQuizId = choiceIdByQuizId.toMutableMap()
+        it.answeredCount = answeredCount
+    }
+
     companion object {
         private const val DEFAULT_AGE = 27
 

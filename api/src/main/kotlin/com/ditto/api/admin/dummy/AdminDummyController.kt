@@ -67,7 +67,9 @@ class AdminDummyController(
             redirectAttributes.addFlashAttribute("error", "더미를 생성할 퀴즈셋을 골라 주세요.")
             return "redirect:/admin/dummy"
         }
-        return showSingleForm(SingleDummyForm.withRandomProfile(quizSetId), model, redirectAttributes)
+        val formCarriedOver = (model.getAttribute(FORM) as? SingleDummyForm)?.takeIf { it.quizSetId == quizSetId }
+        val form = formCarriedOver ?: SingleDummyForm.withRandomProfile(quizSetId)
+        return showSingleForm(form, model, redirectAttributes)
     }
 
     @PostMapping("/admin/dummy/single")
@@ -82,6 +84,7 @@ class AdminDummyController(
                 val summary = created.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 생성: $summary" }
                 redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 생성했습니다: $summary")
+                redirectAttributes.addFlashAttribute(FORM, form.forNextDummy())
                 "redirect:/admin/dummy/single?quizSetId=${form.quizSetId}"
             },
             onFailure = { e ->
@@ -113,7 +116,7 @@ class AdminDummyController(
             )
 
     private fun renderSingleForm(model: Model, form: SingleDummyForm, questions: QuizQuestions): String {
-        model.addAttribute("form", form)
+        model.addAttribute(FORM, form)
         model.addAttribute("questions", questions)
         model.addAttribute("genders", Gender.entries)
         model.addAttribute("locations", Location.entries)
@@ -134,6 +137,7 @@ class AdminDummyController(
     private fun warnOrRethrow(exception: Throwable): WarnException = exception as? WarnException ?: throw exception
 
     companion object {
+        private const val FORM = "form"
         private val log = KotlinLogging.logger {}
     }
 }

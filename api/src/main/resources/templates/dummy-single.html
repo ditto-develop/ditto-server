@@ -14,7 +14,11 @@
                 <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>
                 에 프로필과 답을 지정해 더미를 생성합니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,
                 닉네임·캐리커쳐·문항별 답은 비우면 무작위로 정합니다.
-                매칭 후보는 만들지 않으니, 생성한 뒤 '매칭 실행'에서 재생성하세요.
+                매칭 후보는 만들지 않으니, 생성한 뒤 매칭을 재생성하세요.
+            </p>
+            <p class="muted" style="margin:-12px 0 20px">
+                생성한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 재생성 →</a>
+                · <a class="text-link" th:href="@{/admin/qa}">QA 콘솔 →</a>
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
 

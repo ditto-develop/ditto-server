@@ -1,6 +1,7 @@
 package com.ditto.api.admin.dummy
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.admin.dummy.dto.SingleDummyForm
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
@@ -72,7 +73,11 @@ class AdminSingleDummyWebTest(
         return QuizSetSetup(quizSet.id, choicesByOrder)
     }
 
-    fun createRequest(setup: QuizSetSetup, age: String = "30"): MockHttpServletRequestBuilder =
+    fun createRequest(
+        setup: QuizSetSetup,
+        age: String = "30",
+        answeredCount: String = "",
+    ): MockHttpServletRequestBuilder =
         post("/admin/dummy/single").asAdmin()
             .param("quizSetId", setup.quizSetId.toString())
             .param("gender", "FEMALE")
@@ -81,7 +86,7 @@ class AdminSingleDummyWebTest(
             .param("job", "DESIGN")
             .param("interests", "TRAVEL", "MUSIC")
             .param("avatarNumber", "")
-            .param("answeredCount", "")
+            .param("answeredCount", answeredCount)
 
     "한 명 만들기 화면" - {
         "더미 페이지에서 퀴즈셋을 골라 들어가는 폼이 있다" {
@@ -106,6 +111,14 @@ class AdminSingleDummyWebTest(
                 .andExpect(content().string(containsString("경기")))
                 .andExpect(content().string(containsString("/admin/quiz-sets/${setup.quizSetId}/participants")))
                 .andExpect(content().string(containsString("나이 차가 10살 이내")))
+        }
+
+        "참여 현황 화면에서 같은 퀴즈셋의 한 명 생성 폼으로 들어갈 수 있다" {
+            val setup = setupQuizSet()
+
+            mockMvc.perform(get("/admin/quiz-sets/{id}/participants", setup.quizSetId).with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString("/admin/dummy/single?quizSetId=${setup.quizSetId}")))
         }
 
         "퀴즈셋이 하나도 없으면 고르는 폼 대신 안내를 보여 준다" {
@@ -154,6 +167,30 @@ class AdminSingleDummyWebTest(
             choiceIdByQuizId[chosen.quizId] shouldBe chosen.id
             quizProgressRepository.findByMemberIdAndQuizSetId(dummy.id, setup.quizSetId)
                 .shouldNotBeNull().status shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "연달아 만들 수 있게 성별·나이·답·푼 문항 수는 이어 쓰고 닉네임은 비운다" {
+            val setup = setupQuizSet()
+            val chosen = setup.choicesByOrder[1][1]
+
+            val result = mockMvc.perform(
+                createRequest(setup, answeredCount = "2")
+                    .param("nicknameSuffix", "첫번째")
+                    .param("choiceIdByQuizId[${chosen.quizId}]", chosen.id.toString()),
+            ).andReturn()
+
+            val nextForm = result.flashMap["form"] as SingleDummyForm
+            nextForm.nicknameSuffix shouldBe ""
+            nextForm.gender shouldBe Gender.FEMALE
+            nextForm.age shouldBe 30
+            nextForm.choiceIdByQuizId[chosen.quizId] shouldBe chosen.id
+            nextForm.answeredCount shouldBe 2
+            mockMvc.perform(
+                get("/admin/dummy/single").param("quizSetId", setup.quizSetId.toString())
+                    .flashAttr("form", nextForm).with(authentication(admin)),
+            )
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString("value=\"30\"")))
         }
 
         "나이를 비우고 내도 JSON 오류가 아니라 같은 폼에 안내를 보여 준다" {
