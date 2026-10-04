@@ -76,7 +76,7 @@ class ReviewRequestNotifierTest(
             reviewRequestNotifier.notifyFor(listOf(room.id)) shouldBe 3
 
             notificationRepository.findAll().map { it.memberId }.toSet() shouldBe setOf(me.id, other.id, leaver.id)
-            notificationRepository.findAll().single { it.memberId == me.id }.body shouldBe
+            notificationRepository.findAll().single { it.memberId == leaver.id }.body shouldBe
                 "멤버들과의 만남을 기록해주세요. 다음 매칭에 도움이 돼요."
         }
 

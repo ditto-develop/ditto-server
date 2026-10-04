@@ -14,11 +14,16 @@ import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.rematch.entity.RematchCancelReason
+import com.ditto.domain.rematch.entity.RematchStatus
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.repository.MemberReviewRepository
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -40,6 +45,7 @@ class EndedChatReviewOpenerTest(
     private val groupMatchRepository: GroupMatchRepository,
     private val rematchRepository: RematchRepository,
     private val memberReviewService: MemberReviewService,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -178,13 +184,12 @@ class EndedChatReviewOpenerTest(
                 GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3),
             )
             val room = chatRoomRepository.save(ChatRoomFixture.group(sourceId = match.id, now = FRIDAY))
-            chatRoomMemberRepository.save(ChatRoomMember.of(roomId = room.id, memberId = MEMBER_A))
-            listOf(MEMBER_B, MEMBER_C).forEach {
-                chatRoomMemberRepository.save(
-                    ChatRoomMember.of(roomId = room.id, memberId = it).apply { leave(FRIDAY.plusHours(1)) },
-                )
-            }
-            chatRoomEndService.endExpired(AFTER_EXPIRY)
+            chatRoomMemberRepository.saveAll(
+                listOf(MEMBER_A, MEMBER_B, MEMBER_C).map { ChatRoomMember.of(roomId = room.id, memberId = it) },
+            )
+            chatRoomEndService.openDue(FRIDAY)
+            chatRoomEndService.leave(room.id, MEMBER_B, FRIDAY.plusHours(1))
+            chatRoomEndService.leave(room.id, MEMBER_C, FRIDAY.plusHours(2)).isRoomEnded shouldBe true
 
             endedChatReviewOpener.openFor(listOf(room.id))
 
@@ -213,6 +218,26 @@ class EndedChatReviewOpenerTest(
                 setOf(MEMBER_A, MEMBER_B, MEMBER_C)
             rematchRepository.findAll().map { it.memberId1 to it.memberId2 }.toSet() shouldBe
                 setOf(MEMBER_A to MEMBER_B, MEMBER_A to MEMBER_C, MEMBER_B to MEMBER_C)
+        }
+
+        "나간 뒤 탈퇴한 사람이 낀 쌍은 만들 때 취소된다" {
+            val stayed = memberRepository.save(Member(nickname = "남은사람").apply { activate() })
+            val withdrawn = memberRepository.save(
+                Member(nickname = "탈퇴한사람").apply {
+                    activate()
+                    leave(reason = "etc", now = FRIDAY.plusHours(2))
+                },
+            )
+            val other = memberRepository.save(Member(nickname = "다른사람").apply { activate() })
+            saveEndedGroupChat(stayed.id, withdrawn.id, other.id)
+
+            endedChatReviewOpener.openMissing()
+
+            val pairs = rematchRepository.findAll()
+            pairs.filter { withdrawn.id in setOf(it.memberId1, it.memberId2) }
+                .map { it.cancelReason() }
+                .shouldContainExactly(RematchCancelReason.MEMBER_LEFT, RematchCancelReason.MEMBER_LEFT)
+            pairs.single { withdrawn.id !in setOf(it.memberId1, it.memberId2) }.status shouldBe RematchStatus.WAITING
         }
 
         "다시 열어도 쌍이 늘지 않는다(멱등)" {

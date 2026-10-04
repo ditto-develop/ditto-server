@@ -2,6 +2,8 @@ package com.ditto.api.review.service
 
 import com.ditto.api.review.dto.EndedChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.system.OperationWeek
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Component
 @Component
 class RematchPairCreator(
     private val rematchRepository: RematchRepository,
+    private val memberRepository: MemberRepository,
 ) {
     /**
      * 참여자 전원의 비순서 쌍을 만든다. `N`명이면 `N(N-1)/2`쌍이다.
@@ -42,6 +45,7 @@ class RematchPairCreator(
             .map { it.memberId1 to it.memberId2 }
             .toSet()
 
+        val leftMemberIds = findLeftMemberIds(endedChatRoom.reviewerIds)
         val newPairs = unorderedPairsOf(endedChatRoom.reviewerIds)
             .filterNot { (memberA, memberB) -> normalize(memberA, memberB) in existingPairs }
             .map { (memberA, memberB) ->
@@ -54,6 +58,12 @@ class RematchPairCreator(
                     memberIdB = memberB,
                 )
             }
+            // 거르지 않고 만든 뒤 취소한다. 쌍이 없으면 남은 사람이 탈퇴자 평가를 제출하지 못한다.
+            .onEach { pair ->
+                if (pair.memberId1 in leftMemberIds || pair.memberId2 in leftMemberIds) {
+                    pair.cancelForMemberLeave()
+                }
+            }
 
         rematchRepository.saveAll(newPairs)
         if (newPairs.isNotEmpty()) {
@@ -61,6 +71,15 @@ class RematchPairCreator(
         }
         return newPairs.size
     }
+
+    /**
+     * 방을 나간 뒤 탈퇴한 사람은 탈퇴 시점에 쌍이 아직 없어 취소를 못 받았다. 만들 때 바로 취소한다.
+     */
+    private fun findLeftMemberIds(memberIds: List<Long>): Set<Long> =
+        memberRepository.findAllById(memberIds)
+            .filter { it.status == MemberStatus.LEFT }
+            .map { it.id }
+            .toSet()
 
     /** 서로 다른 두 참여자의 모든 조합. 순서는 구분하지 않으므로 (A,B)와 (B,A)를 한 번만 만든다. */
     private fun unorderedPairsOf(memberIds: List<Long>): List<Pair<Long, Long>> =
