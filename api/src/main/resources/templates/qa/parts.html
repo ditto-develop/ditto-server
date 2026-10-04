@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="roomType(type)" th:switch="${type.name()}">
+    <span class="badge cat" th:case="'PERSONAL'">1:1</span>
+    <span class="badge cat" th:case="'GROUP'">그룹</span>
+    <span class="badge cat" th:case="*">재매칭</span>
+</th:block>
+
+<th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
+    <span class="badge matching" th:case="'SCHEDULED'">개방 전</span>
+    <span class="badge on" th:case="'ACTIVE'">진행 중</span>
+    <span class="badge off" th:case="*">종료</span>
+</th:block>
+
+</body>
+</html>

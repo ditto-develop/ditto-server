@@ -33,8 +33,36 @@
                     <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
                     <li>채팅은 금요일 00:00에 열립니다. <a th:href="@{/admin/time-override}">시각 조정</a>으로 금요일 이후로 옮기세요.
                         그룹 초대는 금요일 00:00 전에 수락해야 합니다.</li>
+                    <li>아래 <a href="#rooms">채팅방</a>에서 [열기]를 눌러 더미로 메시지를 보내고 읽음을 처리합니다.
+                        앱 화면과 실시간으로 맞춰 볼 수 있습니다.</li>
                 </ol>
             </details>
+
+            <section class="card" id="rooms">
+                <h2>채팅방 <span class="count" th:text="${rooms.size()}">0</span></h2>
+                <p class="muted" th:if="${rooms.isEmpty()}">
+                    더미가 들어 있는 방이 없습니다. 1:1이나 그룹이 성사되면 여기에 나타납니다.</p>
+                <table class="tbl" th:unless="${rooms.isEmpty()}">
+                    <thead><tr><th>방</th><th>상태</th><th>인원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
+                    <tbody>
+                    <tr th:each="summary : ${rooms}" th:classappend="${summary.status.name() == 'ENDED'} ? 'qa-row-ended'">
+                        <td>
+                            <b th:text="|#${summary.roomId}|">#88</b>
+                            <th:block th:replace="~{qa/parts :: roomType(${summary.sourceType})}"></th:block>
+                        </td>
+                        <td><th:block th:replace="~{qa/parts :: roomStatus(${summary.status})}"></th:block></td>
+                        <td class="num" th:text="|${summary.memberCount}명 (더미 ${summary.dummyCount})|">4명 (더미 3)</td>
+                        <td class="num"
+                            th:text="|${#temporals.format(summary.opensAt, 'MM/dd(E) HH:mm')} ~ ${#temporals.format(summary.expiresAt, 'MM/dd(E) HH:mm')}|">-</td>
+                        <td class="num"
+                            th:text="${summary.lastMessageAt != null} ? ${#temporals.format(summary.lastMessageAt, 'MM/dd HH:mm')} : '-'">-</td>
+                        <td class="actions">
+                            <a class="btn sm" th:href="@{/admin/qa/rooms/{id}(id=${summary.roomId})}">열기</a>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
 
             <section class="card" id="personal">
                 <h2>1:1 · 더미가 받은 신청
@@ -141,6 +169,7 @@
                     </table>
                 </div>
             </section>
+
         </main>
     </div>
 </div>

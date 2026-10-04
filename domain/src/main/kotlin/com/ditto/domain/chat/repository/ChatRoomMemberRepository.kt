@@ -12,6 +12,8 @@ interface ChatRoomMemberRepository : JpaRepository<ChatRoomMember, Long> {
     /** 내가 참여한 채팅방 멤버 레코드 목록 */
     fun findByMemberId(memberId: Long): List<ChatRoomMember>
 
+    fun findByMemberIdIn(memberIds: Collection<Long>): List<ChatRoomMember>
+
     /** 내가 참여한 채팅방 수 — 프로필 통계의 "매칭 성사"(= 채팅방 개설 횟수)용 */
     fun countByMemberId(memberId: Long): Long
 

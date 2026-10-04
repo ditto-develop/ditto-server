@@ -284,7 +284,7 @@ class AdminQaWebTest(
             val group = saveGroup(quizSet, listOf(saveMember("테스터"), saveMember("실회원2"), saveMember("실회원3")))
 
             mockMvc.perform(post("/admin/qa/group-matches/{id}/accept-pending-dummies", group.id).asAdmin())
-                .andExpect(flash().attribute("error", containsString("대기 중인 더미가 없습니다")))
+                .andExpect(flash().attribute("error", containsString("대상 더미가 없습니다")))
         }
     }
 })

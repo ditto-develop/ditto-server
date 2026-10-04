@@ -1,39 +1,33 @@
 package com.ditto.api.admin.qa
 
-import com.ditto.api.admin.dummy.AdminDummyService
 import com.ditto.api.admin.qa.dto.DummyPersonalRequestOption
 import com.ditto.api.admin.qa.dto.DummyReceivedPersonalRequest
 import com.ditto.api.admin.qa.dto.QaConsoleView
 import com.ditto.api.admin.qa.dto.QaGroupMatch
 import com.ditto.api.admin.qa.dto.QaGroupMember
 import com.ditto.api.admin.qa.dto.QaGroupSection
-import com.ditto.api.admin.qa.dto.QaMember
 import com.ditto.api.admin.qa.dto.QaPersonalSection
-import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.system.ServerTimeProvider
-import com.ditto.common.exception.ErrorCode
-import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.system.OperationWeek
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-/** QA 콘솔 화면 조회와 더미 확인. 더미가 실제로 움직이는 쓰기는 [AdminQaController]가 맡는다. */
+/** QA 콘솔의 1:1·그룹 응답 화면 조회. 더미가 실제로 움직이는 쓰기는 [AdminQaController]가 맡는다. */
 @Service
 @Transactional(readOnly = true)
 class AdminQaService(
+    private val qaDummies: QaDummies,
     private val memberRepository: MemberRepository,
     private val quizSetRepository: QuizSetRepository,
     private val personalMatchRepository: PersonalMatchRepository,
@@ -46,7 +40,7 @@ class AdminQaService(
     fun getConsole(): QaConsoleView {
         val now = serverTimeProvider.now()
         val week = OperationWeek.containing(now.toLocalDate())
-        val dummyIds = findDummyIds()
+        val dummyIds = qaDummies.findIds()
         val quizSets = quizSetRepository.findByWeekStartedOn(week.startedOn)
         return QaConsoleView(
             now = now,
@@ -60,26 +54,12 @@ class AdminQaService(
         )
     }
 
-    /** 실회원으로는 움직이지 않는다. 닉네임 규칙이 '-'를 막아 실회원은 더미 접두어를 가질 수 없다. */
-    fun dummyPrincipalOf(memberId: Long): MemberPrincipal {
-        val member = memberRepository.findByIdOrNull(memberId) ?: throw WarnException(ErrorCode.NOT_FOUND)
-        if (!member.nickname.startsWith(AdminDummyService.NICKNAME_PREFIX)) {
-            throw WarnException(ErrorCode.FORBIDDEN, "더미 회원만 대신 움직일 수 있습니다.")
-        }
-        return MemberPrincipal(member.id)
-    }
-
     fun findPendingDummyIdsIn(groupMatchId: Long): List<Long> {
-        val dummyIds = findDummyIds()
+        val dummyIds = qaDummies.findIds()
         return groupMatchMemberRepository.findByRoomId(groupMatchId)
             .filter { it.isPending() && it.memberId in dummyIds }
             .map { it.memberId }
     }
-
-    private fun findDummyIds(): Set<Long> =
-        memberRepository.findByNicknameStartingWith(AdminDummyService.NICKNAME_PREFIX)
-            .map { it.id }
-            .toSet()
 
     private fun composePersonalSection(quizSets: List<QuizSet>, dummyIds: Set<Long>): QaPersonalSection {
         if (quizSets.isEmpty() || dummyIds.isEmpty()) return QaPersonalSection.EMPTY
@@ -162,11 +142,5 @@ class AdminQaService(
                     },
             )
         }
-    }
-
-    private class QaMembers(members: List<Member>) {
-        private val membersById = members.associate { it.id to QaMember(it.id, it.nickname) }
-
-        fun of(memberId: Long): QaMember = membersById[memberId] ?: QaMember(memberId, "없는 회원 #$memberId")
     }
 }
