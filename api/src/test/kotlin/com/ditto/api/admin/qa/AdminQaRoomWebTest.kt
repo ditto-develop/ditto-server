@@ -336,6 +336,31 @@ class AdminQaRoomWebTest(
             updated.timeOptions[0].voters.map { it.id } shouldBe listOf(voter.id)
         }
 
+        "장소나 시간을 고르지 않으면 투표하지 않고 기존 표를 지우지 않는다" {
+            val voter = saveMember("dummy-male-aaaa")
+            val room = saveGroupRoomWith(voter)
+            val vote = createSampleVote(room, voter)
+            val castUrl = "/admin/qa/rooms/{roomId}/votes/{voteId}/cast"
+            mockMvc.perform(
+                post(castUrl, room.id, vote.voteId)
+                    .param("dummyId", voter.id.toString())
+                    .param("placeIds", vote.placeOptions[0].optionId.toString())
+                    .param("timeIds", vote.timeOptions[0].optionId.toString())
+                    .asAdmin(),
+            )
+
+            mockMvc.perform(
+                post(castUrl, room.id, vote.voteId)
+                    .param("dummyId", voter.id.toString())
+                    .param("placeIds", vote.placeOptions[1].optionId.toString())
+                    .asAdmin(),
+            ).andExpect(flash().attribute("error", containsString("장소와 시간을")))
+
+            val unchanged = roomView(room).openVote.shouldNotBeNull()
+            unchanged.placeOptions[0].voters.map { it.id } shouldBe listOf(voter.id)
+            unchanged.timeOptions[0].voters.map { it.id } shouldBe listOf(voter.id)
+        }
+
         "더미 모두 무작위 투표하면 나가지 않은 더미가 모두 투표한다" {
             val dummies = listOf("dummy-male-aaaa", "dummy-female-bbbb").map { saveMember(it) }
             val room = saveRoom(ChatRoomFixture.group(), dummies + saveMember("테스터"))

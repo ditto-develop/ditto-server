@@ -453,6 +453,8 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .qa-live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
 .qa-live-dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+.qa-live-dot.stopped { color: var(--danger); font-weight: 600; }
+.qa-live-dot.stopped::before { background: var(--danger); }
 .qa-room { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 .qa-room-side { min-width: 0; }
 .qa-room-main { min-width: 0; }
@@ -492,7 +494,8 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     font-size: 12px;
 }
 .qa-composer-row { display: flex; gap: 8px; }
-.qa-composer-row select { flex: none; width: 210px; }
+.qa-composer-dummies { flex: none; }
+.qa-composer-row select { width: 210px; }
 .qa-composer-row input { flex: 1; min-width: 0; }
 .qa-composer select, .qa-composer input {
     padding: 9px 12px;

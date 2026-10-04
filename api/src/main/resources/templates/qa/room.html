@@ -17,13 +17,15 @@
                 · 더미의 전송·읽음은 앱과 같은 경로로 처리돼 테스트 폰에 실시간으로 반영됩니다.
             </p>
 
-            <div id="qa-alerts"><div th:replace="~{fragments :: alerts}"></div></div>
+            <div id="qa-alerts" aria-live="polite"><div th:replace="~{fragments :: alerts}"></div></div>
 
-            <div id="qa-status" data-qa-live>
-                <div class="qa-status-row">
+            <div class="qa-status-row">
+                <span id="qa-room-status" data-qa-live>
                     <th:block th:replace="~{qa/parts :: roomStatus(${room.status})}"></th:block>
-                    <span class="qa-live-dot">3초마다 자동 갱신</span>
-                </div>
+                </span>
+                <span id="qa-live-state" class="qa-live-dot" aria-live="polite">3초마다 자동 갱신</span>
+            </div>
+            <div id="qa-status" data-qa-live>
                 <div class="alert error" th:if="${room.status.name() == 'SCHEDULED'}">
                     개방 전인 방이라 전송이 막힙니다(7005). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.
                     <a th:href="@{/admin/time-override}">시각 조정</a></div>
@@ -63,12 +65,14 @@
                         <form id="qa-composer" class="qa-composer" data-qa-async method="post"
                               th:action="@{/admin/qa/rooms/{id}/messages(id=${room.roomId})}">
                             <div class="qa-composer-row">
-                                <select name="dummyId" aria-label="보낼 더미">
-                                    <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
-                                            th:text="${dummy.nickname}">dummy</option>
-                                </select>
+                                <span id="qa-composer-dummies" class="qa-composer-dummies" data-qa-live>
+                                    <select name="dummyId" aria-label="보낼 더미">
+                                        <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
+                                                th:text="${dummy.nickname}">dummy</option>
+                                    </select>
+                                </span>
                                 <input type="text" name="content" placeholder="더미로 보낼 메시지 (Enter로 전송)"
-                                       autocomplete="off" autofocus/>
+                                       aria-label="더미로 보낼 메시지" autocomplete="off" autofocus/>
                                 <button class="btn" type="submit">보내기</button>
                             </div>
                             <div class="qa-presets">

@@ -41,7 +41,13 @@ class AdminQaVoteController(
         @RequestParam(required = false) timeIds: List<Long>?,
         redirectAttributes: RedirectAttributes,
     ): String {
-        val request = ChatVoteCastRequest(placeIds = placeIds.orEmpty(), timeIds = timeIds.orEmpty())
+        // 빈 목록은 그 유형의 표를 취소한다는 뜻이라, 고르지 않고 누르면 기존 표가 조용히 지워진다.
+        if (placeIds.isNullOrEmpty() || timeIds.isNullOrEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "장소와 시간을 하나 이상씩 골라야 투표할 수 있습니다.")
+            return roomRedirect(roomId)
+        }
+
+        val request = ChatVoteCastRequest(placeIds = placeIds, timeIds = timeIds)
         redirectAttributes.reportDummyAction("더미 #$dummyId · 투표 #$voteId 투표") {
             chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, request)
         }
