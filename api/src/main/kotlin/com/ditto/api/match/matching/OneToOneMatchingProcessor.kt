@@ -24,12 +24,12 @@ class OneToOneMatchingProcessor : MatchingProcessor {
     override fun match(participants: List<MatchParticipant>): List<ScoredMatch> {
         if (participants.size < 2) return emptyList()
 
-        val scoredDuos = scoreAllDuos(participants)
-        val selected = TopRatioSelector.select(scoredDuos, TOP_RATIO)
+        val selected = selectTopRatio(scoreEligibleDuos(participants))
         return HardLimitApplier.apply(selected, HARD_LIMIT)
     }
 
-    private fun scoreAllDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
+    // 아래 두 단계는 결정적이라, 어드민이 후보가 없는 이유를 다시 계산할 때도 그대로 쓴다.
+    fun scoreEligibleDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
         participants.flatMapIndexed { index, participant ->
             participants.drop(index + 1).mapNotNull { otherParticipant ->
                 if (!isValidPair(participant, otherParticipant)) return@mapNotNull null
@@ -40,6 +40,9 @@ class OneToOneMatchingProcessor : MatchingProcessor {
                 )
             }
         }
+
+    fun selectTopRatio(scoredDuos: List<ScoredMatch>): List<ScoredMatch> =
+        TopRatioSelector.select(scoredDuos, TOP_RATIO)
 
     /**
      * 매칭 자격: 성별 상호호환 + 나이차 [MAX_AGE_GAP] 이내 + 차단 없음.

@@ -53,6 +53,28 @@ class OneToOneMatchingProcessorTest : FreeSpec(
             }
         }
 
+        "단계별 공개 메서드" - {
+            "scoreEligibleDuos 는 자격 있는 페어만 점수를 매기고 선발은 하지 않는다" {
+                val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
+                val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
+                val farFemale = participant(3L, Gender.FEMALE, GenderPreference.OPPOSITE, age = 40)
+
+                val scoredDuos = processor.scoreEligibleDuos(listOf(male, female, farFemale))
+
+                scoredDuos.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+            }
+
+            "selectTopRatio 는 match() 와 같은 상위20%+동점 컷을 쓴다" {
+                val p1 = scored(1L, mapOf(101L to 1L, 102L to 1L, 103L to 1L))
+                val p2 = scored(2L, mapOf(101L to 1L, 102L to 1L, 103L to 2L))
+                val p3 = scored(3L, mapOf(101L to 1L, 102L to 2L, 103L to 2L))
+
+                val selected = processor.selectTopRatio(processor.scoreEligibleDuos(listOf(p1, p2, p3)))
+
+                selected.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L, 2L to 3L)
+            }
+        }
+
         "성별 상호호환 하드 필터" - {
             "서로의 성별 선호를 모두 충족하면 페어가 된다 (남↔여, 둘 다 이성 선호)" {
                 val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
