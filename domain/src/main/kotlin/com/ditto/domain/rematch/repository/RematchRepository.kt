@@ -13,10 +13,10 @@ import org.springframework.transaction.annotation.Transactional
 
 interface RematchRepository : JpaRepository<Rematch, Long>, RematchRepositoryCustom {
 
-    fun findByMemberId1InOrMemberId2InOrSourceChatRoomIdIn(
+    fun findByMemberId1InOrMemberId2InOrSourceGroupMatchIdIn(
         memberId1s: Collection<Long>,
         memberId2s: Collection<Long>,
-        sourceChatRoomIds: Collection<Long>,
+        sourceGroupMatchIds: Collection<Long>,
     ): List<Rematch>
 
     /**

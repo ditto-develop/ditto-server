@@ -118,13 +118,20 @@ class AdminDummyCleanupTest(
         "그 방에서 열린 평가와 재매칭, 그것을 가리키는 알림을 지운다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
-            val qaRoom = saveRoom(ChatRoomFixture.group(sourceId = 1L), listOf(tester, dummy, saveMember("실회원")))
+            val members = listOf(tester, dummy, saveMember("실회원"))
+            val group = saveGroup(members)
+            val qaRoom = saveRoom(ChatRoomFixture.group(sourceId = group.id), members)
             val review = memberReviewRepository.save(
                 MemberReviewFixture.create(tester.id, matchType = ChatRoomType.GROUP, chatRoomId = qaRoom.id),
             )
             reviewAnswerRepository.save(ReviewAnswerFixture.pending(review.id, reviewedMemberId = dummy.id))
             val rematch = rematchRepository.save(
-                RematchFixture.create(sourceChatRoomId = qaRoom.id, memberIdA = tester.id, memberIdB = 999L),
+                RematchFixture.create(
+                    sourceGroupMatchId = group.id,
+                    sourceChatRoomId = qaRoom.id,
+                    memberIdA = tester.id,
+                    memberIdB = members[2].id,
+                ),
             )
             notify(tester, NotificationType.REVIEW_REQUEST, qaRoom.id)
             notify(tester, NotificationType.REMATCH_REQUESTED, rematch.id)
@@ -157,6 +164,30 @@ class AdminDummyCleanupTest(
             groupMatchRepository.findAll().map { it.id } shouldBe listOf(realGroup.id)
             groupMatchMemberRepository.findByRoomId(qaGroup.id).size shouldBe 0
             groupMatchMemberRepository.findByRoomId(realGroup.id).size shouldBe 3
+            notificationRepository.count() shouldBe 0
+        }
+    }
+
+    "더미가 거절해 방에 없는 그룹" - {
+        "실회원끼리 연 그룹 방과 거기서 나온 재매칭 방도 원본과 함께 지운다" {
+            val tester = saveMember("테스터")
+            val others = listOf(saveMember("실회원1"), saveMember("실회원2"))
+            val group = saveGroup(others + tester + saveMember("dummy-female-aaaa"))
+            val groupRoom = saveRoom(ChatRoomFixture.group(sourceId = group.id), others + tester)
+            val rematch = rematchRepository.save(
+                RematchFixture.create(sourceGroupMatchId = group.id, memberIdA = tester.id, memberIdB = others[0].id),
+            )
+            val rematchRoom = saveRoom(ChatRoomFixture.rematch(sourceId = rematch.id), listOf(tester, others[0]))
+            notify(tester, NotificationType.GROUP_FORMED, groupRoom.id)
+            notify(tester, NotificationType.REMATCH_MATCHED, rematchRoom.id)
+
+            val summary = adminDummyService.deleteAllDummies()
+
+            summary.roomCount shouldBe 2
+            chatRoomRepository.count() shouldBe 0
+            chatMessageRepository.count() shouldBe 0
+            groupMatchRepository.count() shouldBe 0
+            rematchRepository.count() shouldBe 0
             notificationRepository.count() shouldBe 0
         }
     }

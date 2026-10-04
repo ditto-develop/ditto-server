@@ -26,25 +26,26 @@ class DummyMemberDataCleaner(
 ) {
     /** 더미가 신고했거나 신고당한 건과 그에 딸린 제재. 지운 id 는 그것을 가리키는 알림을 지우는 데 쓴다. */
     fun deleteReportsAndSanctionsWith(dummyIds: Collection<Long>): DeletedReportIds {
-        val reports = memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds)
-        val reportIds = reports.map { it.id }
-        val sanctions = sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds)
+        val reportIds = memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds).map { it.id }
+        val sanctionIds = sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds).map { it.id }
+        val imageIds = memberReportImageRepository.findByMemberReportIdIn(reportIds).map { it.id }
 
-        memberReportImageRepository.deleteAllInBatch(memberReportImageRepository.findByMemberReportIdIn(reportIds))
-        memberReportRepository.deleteAllInBatch(reports)
-        sanctionRepository.deleteAllInBatch(sanctions)
-        return DeletedReportIds(reportIds = reportIds.toSet(), sanctionIds = sanctions.map { it.id }.toSet())
+        memberReportImageRepository.deleteAllByIdInBatch(imageIds)
+        memberReportRepository.deleteAllByIdInBatch(reportIds)
+        sanctionRepository.deleteAllByIdInBatch(sanctionIds)
+        return DeletedReportIds(reportIds = reportIds.toSet(), sanctionIds = sanctionIds.toSet())
     }
 
     fun deleteOwnedDataOf(dummyIds: Collection<Long>) {
-        val blocks = memberBlockRepository.findByBlockerIdInOrBlockedMemberIdIn(dummyIds, dummyIds)
-        memberBlockRepository.deleteAllInBatch(blocks)
-        val notificationSettings = memberNotificationSettingRepository.findByMemberIdIn(dummyIds)
-        memberNotificationSettingRepository.deleteAllInBatch(notificationSettings)
-        nicknameReservationRepository.deleteAllInBatch(nicknameReservationRepository.findByMemberIdIn(dummyIds))
-        memberDeviceRepository.deleteAllInBatch(memberDeviceRepository.findByMemberIdIn(dummyIds))
-        refreshTokenRepository.deleteAllInBatch(refreshTokenRepository.findByMemberIdIn(dummyIds))
-        introNoteRepository.deleteAllInBatch(introNoteRepository.findByMemberIdIn(dummyIds))
+        val blockIds = memberBlockRepository.findByBlockerIdInOrBlockedMemberIdIn(dummyIds, dummyIds).map { it.id }
+        memberBlockRepository.deleteAllByIdInBatch(blockIds)
+        val settingIds = memberNotificationSettingRepository.findByMemberIdIn(dummyIds).map { it.id }
+        memberNotificationSettingRepository.deleteAllByIdInBatch(settingIds)
+        val reservationIds = nicknameReservationRepository.findByMemberIdIn(dummyIds).map { it.id }
+        nicknameReservationRepository.deleteAllByIdInBatch(reservationIds)
+        memberDeviceRepository.deleteAllByIdInBatch(memberDeviceRepository.findByMemberIdIn(dummyIds).map { it.id })
+        refreshTokenRepository.deleteAllByIdInBatch(refreshTokenRepository.findByMemberIdIn(dummyIds).map { it.id })
+        introNoteRepository.deleteAllByIdInBatch(introNoteRepository.findByMemberIdIn(dummyIds).map { it.id })
     }
 
     class DeletedReportIds(

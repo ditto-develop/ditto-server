@@ -367,6 +367,22 @@ class AdminQaRoomWebTest(
             messagesIn(room).last().content shouldBe "VOTE_CLOSED:${vote.voteId}"
         }
 
+        "첫 멤버가 나간 그룹 방도 화면과 투표가 보인다" {
+            val leaver = saveMember("dummy-male-aaaa")
+            val dummy = saveMember("dummy-female-bbbb")
+            val room = saveRoom(ChatRoomFixture.group(), listOf(leaver, saveMember("테스터"), dummy))
+            createSampleVote(room, dummy)
+            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, leaver.id).shouldNotBeNull()
+                .let { chatRoomMemberRepository.save(it.apply { leave(LocalDateTime.now()) }) }
+
+            val vote = roomView(room).openVote.shouldNotBeNull()
+
+            mockMvc.perform(
+                post("/admin/qa/rooms/{roomId}/votes/{voteId}/cast-random-all-dummies", room.id, vote.voteId).asAdmin(),
+            ).andExpect(flash().attributeExists("message"))
+            roomView(room).openVote.shouldNotBeNull().votedCount shouldBe 1
+        }
+
         "1:1 방에서는 앱과 같은 거부를 보여준다" {
             val dummy = saveMember("dummy-male-aaaa")
             val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))

@@ -9,6 +9,7 @@ import com.ditto.api.admin.qa.dto.QaVoteOption
 import com.ditto.api.chat.dto.ChatVoteDetailResponse
 import com.ditto.api.chat.service.ChatVoteService
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
@@ -70,7 +71,7 @@ class AdminQaRoomService(
             .reversed()
         val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }
         val members = QaMembers(memberRepository.findAllById(memberIds))
-        val votes = findVotes(room, roomMembers.map { it.memberId })
+        val votes = findVotes(room, roomMembers)
 
         return QaRoomView(
             roomId = room.id,
@@ -106,9 +107,9 @@ class AdminQaRoomService(
 
     fun findVote(roomId: Long, voteId: Long): QaVote? {
         val room = chatRoomRepository.findByIdOrNull(roomId) ?: return null
-        val roomMemberIds = chatRoomMemberRepository.findByRoomId(roomId).map { it.memberId }
-        val vote = findVotes(room, roomMemberIds).firstOrNull { it.voteId == voteId } ?: return null
-        return vote.toQaVote(QaMembers(memberRepository.findAllById(roomMemberIds)))
+        val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
+        val vote = findVotes(room, roomMembers).firstOrNull { it.voteId == voteId } ?: return null
+        return vote.toQaVote(QaMembers(memberRepository.findAllById(roomMembers.map { it.memberId })))
     }
 
     fun findLatestMessageId(roomId: Long): Long? = chatMessageRepository.findFirstByRoomIdOrderByIdDesc(roomId)?.id
@@ -120,10 +121,13 @@ class AdminQaRoomService(
             .map { it.memberId }
     }
 
-    /** 앱 조회는 방 멤버만 되므로 아무 멤버의 눈으로 읽는다. 집계(voterIds)는 보는 사람과 무관하다. */
-    private fun findVotes(room: ChatRoom, roomMemberIds: List<Long>): List<ChatVoteDetailResponse> {
+    /**
+     * 앱 조회는 나가지 않은 방 멤버만 되므로 그중 한 명의 눈으로 읽는다. 집계(voterIds)는 보는 사람과 무관하다.
+     * 모두 나간 방은 앱에서도 투표를 볼 사람이 없어 비워 둔다.
+     */
+    private fun findVotes(room: ChatRoom, roomMembers: List<ChatRoomMember>): List<ChatVoteDetailResponse> {
         if (room.sourceType != ChatRoomType.GROUP) return emptyList()
-        val viewerId = roomMemberIds.firstOrNull() ?: return emptyList()
+        val viewerId = roomMembers.firstOrNull { !it.hasLeft }?.memberId ?: return emptyList()
         return chatVoteService.getVotes(room.id, viewerId)
     }
 

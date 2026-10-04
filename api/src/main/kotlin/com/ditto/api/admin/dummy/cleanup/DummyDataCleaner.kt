@@ -1,5 +1,6 @@
 package com.ditto.api.admin.dummy.cleanup
 
+import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
@@ -17,10 +18,14 @@ class DummyDataCleaner(
     private val notificationRepository: NotificationRepository,
 ) {
     fun deleteDataOf(dummyIds: Collection<Long>): DummyCleanupSummary {
-        val roomIds = dummyChatDataCleaner.deleteRoomsWith(dummyIds)
+        val groupMatchIds = dummyMatchDataCleaner.findGroupMatchIdsWith(dummyIds)
+        val rematchIds = dummyMatchDataCleaner.findRematchIdsWith(dummyIds, groupMatchIds)
+        val roomIds = findRoomIdsToDelete(dummyIds, groupMatchIds, rematchIds)
+
+        dummyChatDataCleaner.deleteRooms(roomIds)
         val personalMatchIds = dummyMatchDataCleaner.deletePersonalMatchesWith(dummyIds)
-        val groupMatchIds = dummyMatchDataCleaner.deleteGroupMatchesWith(dummyIds)
-        val rematchIds = dummyMatchDataCleaner.deleteRematchesWith(dummyIds, roomIds)
+        dummyMatchDataCleaner.deleteGroupMatches(groupMatchIds)
+        dummyMatchDataCleaner.deleteRematches(rematchIds)
         dummyMatchDataCleaner.deleteReviewsWith(dummyIds, roomIds)
         val reports = dummyMemberDataCleaner.deleteReportsAndSanctionsWith(dummyIds)
         dummyMemberDataCleaner.deleteOwnedDataOf(dummyIds)
@@ -41,6 +46,19 @@ class DummyDataCleaner(
         )
     }
 
+    /**
+     * 더미가 멤버였던 방에 더해, 지울 그룹·재매칭에서 나온 방까지 지운다. 더미가 초대를 거절해 방에 없어도
+     * 그룹이 지워지면 실회원끼리 연 방이 사라진 원본을 가리키게 된다.
+     */
+    private fun findRoomIdsToDelete(
+        dummyIds: Collection<Long>,
+        groupMatchIds: Set<Long>,
+        rematchIds: Set<Long>,
+    ): Set<Long> =
+        dummyChatDataCleaner.findRoomIdsWithMembers(dummyIds) +
+            dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
+            dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
+
     private fun deleteNotifications(
         dummyIds: Collection<Long>,
         deletedTargetIds: Map<NotificationTarget, Set<Long>>,
@@ -50,9 +68,10 @@ class DummyDataCleaner(
             .flatMap { (target, ids) ->
                 notificationRepository.findByTypeInAndTargetIdIn(NotificationType.pointingTo(target), ids)
             }
-        val notifications = (notificationRepository.findByMemberIdIn(dummyIds) + pointingToDeleted).distinctBy { it.id }
-        notificationRepository.deleteAllInBatch(notifications)
-        return notifications.size
+        val receivedByDummies = notificationRepository.findByMemberIdIn(dummyIds)
+        val notificationIds = (receivedByDummies + pointingToDeleted).map { it.id }.toSet()
+        notificationRepository.deleteAllByIdInBatch(notificationIds)
+        return notificationIds.size
     }
 }
 
