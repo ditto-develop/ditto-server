@@ -92,7 +92,9 @@ class AdminMemberQuizServiceTest(
         }
 
         "없는 회원이면 NOT_FOUND 경고" {
-            shouldThrow<WarnException> { adminMemberQuizService.getMemberQuizzes(99999L) }
+            val exception = shouldThrow<WarnException> { adminMemberQuizService.getMemberQuizzes(99999L) }
+
+            exception.message shouldBe "없는 회원입니다: #99999"
         }
     }
 

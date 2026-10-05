@@ -23,7 +23,8 @@ class AdminMemberQuizService(
     private val memberMatchingReader: MemberMatchingReader,
 ) {
     fun getMemberQuizzes(memberId: Long): MemberQuizzesView {
-        val member = memberRepository.findById(memberId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        val member = memberRepository.findById(memberId)
+            .orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId") }
         val quizSets = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
         val progressByQuizSetId = quizProgressRepository.findByMemberId(memberId).associateBy { it.quizSetId }
 

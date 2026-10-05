@@ -672,7 +672,7 @@ class AdminWebTest {
     fun memberSearchNoMatch() {
         mockMvc.perform(get("/admin/members").param("q", "없는닉네임").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("회원 ID는 #을 붙여 찾습니다")))
+            .andExpect(content().string(containsString("회원 ID로 찾으려면 #123처럼 #을 붙이세요.")))
     }
 
     @Test

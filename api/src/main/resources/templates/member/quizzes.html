@@ -16,10 +16,10 @@
                 <th:block th:replace="~{member/parts :: statusBadge(${member.status})}"></th:block>
             </h1>
             <p class="page-desc">
-                <span th:text="${member.gender?.description} ?: '성별 미상'">남성</span> ·
-                <span th:text="${member.age != null} ? |${member.age}세| : '나이 미상'">27세</span>
-                · 퀴즈셋 전체를 최신 주부터 보여 줍니다. 매칭 칸의 상대 회원을 누르면 그 퀴즈셋 참여 현황에서 걸러 봅니다.
+                <span th:text="${member.gender?.description} ?: '성별 없음'">남성</span> ·
+                <span th:text="${member.age != null} ? |${member.age}세| : '나이 없음'">27세</span>
             </p>
+            <p class="muted">매칭 칸의 상대 회원을 누르면 그 퀴즈셋 참여 현황에서 그 회원을 걸러 봅니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">

@@ -30,7 +30,7 @@ class ParticipantMatching(
     companion object {
         val EMPTY = ParticipantMatching()
 
-        /** 후보 상대와의 신청은 후보 줄에 붙이고, 나머지 신청은 후보 밖으로 나눈다. */
+        /** 후보 상대와의 신청은 후보 줄에 붙이고, 나머지는 후보 외 신청으로 나눈다. */
         fun ofOneToOne(
             records: OneToOneRecords,
             nicknames: Map<Long, String>,
