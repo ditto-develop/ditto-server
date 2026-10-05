@@ -32,7 +32,7 @@ class AdminReportReviewService(
         now: LocalDateTime,
     ): Sanction? {
         val report = memberReportRepository.findById(reportId).getOrNull()
-            ?: throw WarnException(ErrorCode.NOT_FOUND)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 신고입니다: #$reportId")
 
         // 조건부 UPDATE가 이중 검토를 방어한다 — 0이면 다른 관리자가 먼저 종결한 것.
         val updated = memberReportRepository.completeReview(

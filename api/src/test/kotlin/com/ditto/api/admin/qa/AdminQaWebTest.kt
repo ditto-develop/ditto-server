@@ -217,7 +217,7 @@ class AdminQaWebTest(
             val match = saveRequest(requester = tester, receiver = dummy, quizSet = pastQuizSet)
 
             acceptAs(dummy.id, match.id)
-                .andExpect(flash().attribute("error", containsString("(5008)")))
+                .andExpect(flash().attribute("error", containsString("(코드 5008)")))
         }
     }
 
@@ -311,7 +311,7 @@ class AdminQaWebTest(
             console().group.isResponseClosed shouldBe true
             mockMvc.perform(get("/admin/qa").with(authentication(admin)))
                 .andExpect(content().string(containsString("이번 주 그룹 응답 마감(")))
-                .andExpect(content().string(containsString("(5008)")))
+                .andExpect(content().string(containsString("(코드 5008)")))
         }
 
         "대기 중인 더미가 없으면 알려준다" {
@@ -324,7 +324,7 @@ class AdminQaWebTest(
     }
 
     "시각 바로가기" - {
-        "이번 운영 주의 퀴즈 마감 직전·그룹 마감 직전·채팅 개방 직후·채팅 마감 직후를 보여준다" {
+        "이번 주의 퀴즈 마감 직전·그룹 응답 마감 직전·채팅방 열린 직후·채팅 마감 직후를 보여준다" {
             console().timeShortcuts.map { it.dateTime } shouldBe listOf(
                 thisMonday.plusDays(2).atTime(23, 49, 59),
                 thisMonday.plusDays(3).atTime(23, 50),

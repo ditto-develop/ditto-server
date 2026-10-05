@@ -36,8 +36,8 @@ class QuizSetForm(
     /** 제출된 문항은 모두 채워져 있어야 한다. 번호는 화면에 보이는 순서 그대로다. */
     fun validatedQuizzes(): List<QuizForm> {
         quizzes.forEachIndexed { index, quizForm ->
-            val blankField = quizForm.blankFieldName() ?: return@forEachIndexed
-            throw WarnException(ErrorCode.BAD_REQUEST, "${index + 1}번 문항의 $blankField 항목이 비어 있습니다.")
+            val invalidReason = quizForm.invalidReason() ?: return@forEachIndexed
+            throw WarnException(ErrorCode.BAD_REQUEST, "${index + 1}번 문항의 $invalidReason")
         }
 
         val duplicatedQuizIds = quizzes.mapNotNull { it.id }.groupBy { it }.filterValues { it.size > 1 }.keys

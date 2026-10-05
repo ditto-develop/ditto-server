@@ -8,7 +8,7 @@ object QaSystemMessageMeaning {
     fun of(content: String): String? =
         when (content.substringBefore(':')) {
             ChatRoomEndService.USER_LEFT -> "채팅 종료, 방 끝남"
-            ChatRoomEndService.MEMBER_LEFT -> "멤버 나감, 방 유지"
+            ChatRoomEndService.MEMBER_LEFT -> "참여자 나감, 방 유지"
             ChatRoomEndService.INSUFFICIENT_MEMBERS -> "인원 부족으로 해체"
             ChatVoteService.VOTE_CREATED -> "투표 생성"
             ChatVoteService.VOTE_CLOSED -> "투표 마감"

@@ -209,7 +209,7 @@ class AdminQaRoomWebTest(
             messagesIn(room).single().content.length shouldBe 1000
         }
 
-        "개방 전 방에서는 앱과 같은 거부를 보여준다" {
+        "열리기 전 방에서는 앱과 같은 거부를 보여준다" {
             val dummy = saveMember("dummy-female-aaaa")
             val wednesday = LocalDateTime.of(2026, 3, 11, 12, 0)
             val room = saveRoom(ChatRoomFixture.personal(now = wednesday), listOf(saveMember("테스터"), dummy))
@@ -222,7 +222,7 @@ class AdminQaRoomWebTest(
                     .param("dummyId", dummy.id.toString())
                     .param("content", "안녕하세요")
                     .asAdmin(),
-            ).andExpect(flash().attribute("error", containsString("(7005)")))
+            ).andExpect(flash().attribute("error", containsString("(코드 7005)")))
 
             messagesIn(room) shouldHaveSize 0
         }
@@ -242,7 +242,7 @@ class AdminQaRoomWebTest(
         }
     }
 
-    "더미 읽음" - {
+    "더미 끝까지 읽기" - {
         "더미가 최신 메시지까지 읽는다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
@@ -256,7 +256,7 @@ class AdminQaRoomWebTest(
             lastReadMessageIdOf(room, dummy) shouldBe latest.id
         }
 
-        "더미 모두 읽음은 나가지 않은 더미 전원의 커서를 옮긴다" {
+        "더미 모두 끝까지 읽기는 나가지 않은 더미 전원의 커서를 옮긴다" {
             val tester = saveMember("테스터")
             val dummies = listOf("dummy-male-aaaa", "dummy-female-bbbb").map { saveMember(it) }
             val room = saveRoom(ChatRoomFixture.group(), dummies + tester)
@@ -439,7 +439,7 @@ class AdminQaRoomWebTest(
             val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))
 
             mockMvc.perform(post("/admin/qa/rooms/{id}/votes", room.id).param("dummyId", dummy.id.toString()).asAdmin())
-                .andExpect(flash().attribute("error", containsString("(8208)")))
+                .andExpect(flash().attribute("error", containsString("(코드 8208)")))
         }
     }
 })

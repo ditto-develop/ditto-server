@@ -235,13 +235,13 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("매칭 열: 후보 생성")))
+            .andExpect(content().string(containsString("매칭 후보를 만든 시각:")))
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
             .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants?q=%23$receiver")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
-            .andExpect(content().string(containsString("<span class=\"muted\">미완주</span>")))
+            .andExpect(content().string(containsString("<span class=\"muted\">퀴즈 미완료</span>")))
             .andExpect(content().string(containsString("→ 퀴즈를 끝까지 풀기")))
     }
 
@@ -279,7 +279,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("퀴즈셋 참여 현황은 ACTIVE가 아닌 회원 상태만 한글 배지로 보여 준다")
+    @DisplayName("퀴즈셋 참여 현황은 정상 회원이 아닌 회원 상태만 한글 배지로 보여 준다")
     fun quizSetParticipantsInactiveMemberStatusBadge() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         saveCompletedMember(quizSet.id, "활동회원")
@@ -366,7 +366,7 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("href=\"#qa-tools\"")))
-            .andExpect(content().string(containsString("세 도구가 모두 지우는 매칭 기록: 1:1 신청 1건")))
+            .andExpect(content().string(containsString("아래 도구가 모두 지우는 매칭 기록: 1:1 신청 1건")))
             .andExpect(content().string(containsString("참여 회원 1명의 답·진행을 지웁니다.")))
             .andExpect(content().string(containsString(">매칭 기록 초기화</button>")))
             .andExpect(content().string(containsString(">전체 답·진행 초기화</button>")))
@@ -402,7 +402,7 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
             .andExpect(content().string(not(containsString("서버 시각을 그 주 목요일"))))
-            .andExpect(content().string(not(containsString("아래 안내대로 시간 오버라이드를 쓰면"))))
+            .andExpect(content().string(not(containsString("아래 안내대로 시간 조정을 쓰면"))))
             .andExpect(content().string(containsString("이번 주 퀴즈셋만 초기화할 수 있습니다.")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }
@@ -555,7 +555,7 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/quiz-sets/{id}/qa/force-delete", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(redirectedUrl("/admin/quiz-sets"))
-            .andExpect(flash().attribute("message", containsString("퀴즈셋 #${quizSet.id}(${quizSet.title})을 강제 삭제했습니다.")))
+            .andExpect(flash().attribute("message", containsString("퀴즈셋을 강제 삭제했습니다: #${quizSet.id}(${quizSet.title}).")))
 
         quizSetRepository.existsById(quizSet.id) shouldBe false
     }
@@ -600,18 +600,20 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("시간 오버라이드 설정/해제")
+    @DisplayName("시간 조정 설정/끄기")
     fun timeOverride() {
         mockMvc.perform(
             post("/admin/time-override").with(authentication(admin())).with(csrf())
                 .param("dateTime", "2026-06-18T09:00"),
         ).andExpect(status().is3xxRedirection)
+            .andExpect(flash().attribute("message", "서버 시각을 맞췄습니다: 2026-06-18 09:00"))
         mockMvc.perform(post("/admin/time-override/disable").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
+            .andExpect(flash().attribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다."))
     }
 
     @Test
-    @DisplayName("매칭 배치 수동 실행")
+    @DisplayName("자동 매칭 지금 실행")
     fun runScheduledMatching() {
         mockMvc.perform(post("/admin/matching/run-scheduled").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
@@ -665,7 +667,40 @@ class AdminWebTest {
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
                 .param("role", "ADMIN").param("email", "role@ditto.pics"),
-        ).andExpect(status().is3xxRedirection)
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
+    }
+
+    @Test
+    @DisplayName("회원 검색 결과는 권한을 일반 회원·관리자로 보여 준다")
+    fun memberSearchShowsRoleLabels() {
+        memberRepository.save(MemberFixture.create(nickname = "rolelabel", email = "label@ditto.pics", role = MemberRole.USER))
+
+        mockMvc.perform(get("/admin/members").param("email", "label@ditto.pics").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString(">일반 회원</span>")))
+            .andExpect(content().string(containsString(">관리자</option>")))
+    }
+
+    @Test
+    @DisplayName("제재 관리 화면은 회원 상태마다 한글 배지를 보여 준다")
+    fun memberStatusBadgeLabels() {
+        val expectedBadges = mapOf(
+            MemberStatus.ACTIVE to "<span class=\"badge on\">정상</span>",
+            MemberStatus.PENDING to "<span class=\"badge matching\">가입 미완료</span>",
+            MemberStatus.SUSPENDED to "<span class=\"badge matching\">정지</span>",
+            MemberStatus.BANNED to "<span class=\"badge matching\">차단</span>",
+            MemberStatus.LEFT to "<span class=\"badge matching\">탈퇴</span>",
+        )
+
+        expectedBadges.forEach { (memberStatus, badge) ->
+            val member = memberRepository.save(MemberFixture.create(nickname = "상태-${memberStatus.name}", status = memberStatus))
+
+            mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString(badge)))
+        }
     }
 
     @Test
@@ -772,7 +807,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("매칭 화면은 재생성 결과 flash 가 있으면 후보 풀·행 수·매칭 표를 그린다")
+    @DisplayName("매칭 화면은 재생성 결과 flash 가 있으면 매칭 대상·행 수·매칭 표를 그린다")
     fun matchingPageRendersRegenerationSummary() {
         val summary = CandidateGenerationSummary(
             quizSetId = 7L,
@@ -785,6 +820,8 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/matching").with(authentication(admin())).flashAttr("regeneration", summary))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("재생성 결과")))
+            .andExpect(content().string(containsString("<span class=\"badge cat\">1:1</span>")))
+            .andExpect(content().string(containsString("매칭 대상 <b>3</b>명")))
             .andExpect(content().string(containsString("5, 12")))
             .andExpect(content().string(containsString("2 / 2")))
             .andExpect(content().string(containsString("/admin/quiz-sets/7/participants")))
@@ -799,7 +836,8 @@ class AdminWebTest {
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
-            .andExpect(flash().attribute("error", containsString("이미 응답이 시작된 퀴즈셋")))
+            .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어")))
+            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요.")))
             .andExpect(flash().attribute("message", null))
     }
 
@@ -813,7 +851,24 @@ class AdminWebTest {
         )
 
         mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
-        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))
+            .andExpect(content().string(containsString("이번이 1차 제재")))
+            .andExpect(content().string(not(containsString(">ACTIVE<"))))
+    }
+
+    @Test
+    @DisplayName("피신고자 회원 행이 지워졌으면 신고 상세에 탈퇴 배지를 보여 준다")
+    fun reportDetailDeletedReportedMember() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자3", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = 99999L),
+        )
+
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
     }
 
     @Test
@@ -832,6 +887,29 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/reports/" + report.id))
+            .andExpect(flash().attribute("message", "신고 #${report.id} 처리를 마쳤습니다: 기각"))
+    }
+
+    @Test
+    @DisplayName("허위 신고로 기각하면 신고자를 따로 제재하라는 안내가 flash 와 신고 상세에 남는다")
+    fun reviewReportAsFalseReport() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "허위신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자4", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(
+            post("/admin/reports/{id}/action", report.id)
+                .with(authentication(admin())).with(csrf())
+                .param("decision", "REJECT_ABUSIVE"),
+        )
+            .andExpect(flash().attribute("message", "신고 #${report.id} 처리를 마쳤습니다: 허위 신고로 기각. 신고자는 '제재 관리'에서 따로 제재하세요."))
+
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("허위 신고로 기각한 신고입니다.")))
+            .andExpect(content().string(not(containsString("차 제재</span>"))))
     }
 
     @Test
@@ -849,6 +927,12 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/members/" + member.id + "/sanctions"))
+            .andExpect(flash().attribute("message", "제재를 적용했습니다: 2주 이용 정지"))
+
+        mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">정지</span>")))
+            .andExpect(content().string(containsString("누적 제재 <strong>1</strong>건")))
     }
 
     @Test

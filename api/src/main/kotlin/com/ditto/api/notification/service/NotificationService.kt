@@ -66,7 +66,7 @@ class NotificationService(
     @Transactional
     fun markRead(memberId: Long, notificationId: Long) {
         val notification = notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notificationId, memberId)
-            ?: throw WarnException(ErrorCode.NOT_FOUND, "존재하지 않는 알림입니다.")
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 알림입니다.")
         notification.markRead(LocalDateTime.now())
     }
 
@@ -91,7 +91,7 @@ class NotificationService(
     @Transactional
     fun delete(memberId: Long, notificationId: Long) {
         val notification = notificationRepository.findByIdAndMemberIdAndDeletedAtIsNull(notificationId, memberId)
-            ?: throw WarnException(ErrorCode.NOT_FOUND, "존재하지 않는 알림입니다.")
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 알림입니다.")
         notification.markDeleted(LocalDateTime.now())
     }
 

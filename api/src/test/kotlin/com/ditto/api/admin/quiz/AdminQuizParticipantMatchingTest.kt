@@ -163,7 +163,7 @@ class AdminQuizParticipantMatchingTest(
             val miss = adminQuizParticipantService.getParticipants(quizSetId).matching.of(lowFemale).miss.shouldNotBeNull()
 
             miss.reason shouldBe MatchMissReason.CUT_BY_TOP_RATIO
-            miss.scoreGap shouldBe "최고 0.0 < 컷 100.0"
+            miss.scoreGap shouldBe "최고 0.0점, 기준 100.0점"
         }
 
         "매칭 전이면 컷을 넘은 참여자는 탈락이 아니라 매칭 전으로 표시한다" {

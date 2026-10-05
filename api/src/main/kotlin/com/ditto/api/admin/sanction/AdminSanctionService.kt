@@ -34,12 +34,12 @@ class AdminSanctionService(
     @Transactional(readOnly = true)
     fun memberSanctions(memberId: Long): MemberSanctionsView {
         val member = memberRepository.findById(memberId).getOrNull()
-            ?: throw WarnException(ErrorCode.NOT_FOUND)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId")
 
         return MemberSanctionsView(
             memberId = member.id,
             nickname = member.nickname,
-            statusName = member.status.name,
+            memberStatus = member.status,
             strikeCount = sanctionRepository.countStrikes(memberId),
             sanctions = sanctionRepository.findAllByMemberIdOrderByIdDesc(memberId).map { it.toRow() },
         )
@@ -57,7 +57,7 @@ class AdminSanctionService(
         note: String? = null,
     ): Sanction {
         val member = memberRepository.findById(memberId).getOrNull()
-            ?: throw WarnException(ErrorCode.NOT_FOUND, "회원이 존재하지 않아 제재를 적용할 수 없습니다.")
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원이라 제재를 적용할 수 없습니다: #$memberId")
 
         val (startsAt, endsAt) = sanctionPeriod(level, now)
         val sanction = sanctionRepository.save(
@@ -89,11 +89,11 @@ class AdminSanctionService(
     @Transactional
     fun lift(sanctionId: Long, now: LocalDateTime): Sanction {
         val sanction = sanctionRepository.findById(sanctionId).getOrNull()
-            ?: throw WarnException(ErrorCode.NOT_FOUND)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 제재입니다: #$sanctionId")
 
         // 조건부 UPDATE가 이중 해제를 방어한다 — 0이면 이미 종결(만료·해제)된 제재.
         if (sanctionRepository.liftIfActive(sanctionId, now) == 0) {
-            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 만료됐거나 해제된 제재입니다.")
         }
         recalculateMemberStatus(sanction.memberId, now)
         return sanction
@@ -149,7 +149,7 @@ class AdminSanctionService(
     )
 
     companion object {
-        // 기획: 2차 제재 = 2주간 서비스 이용 정지
+        // 기획: 2차 제재 = 2주간 서비스 이용 정지. SanctionLevel.SUSPENSION 문구("2주 이용 정지")와 함께 바꾼다.
         private const val SUSPENSION_DAYS = 14L
     }
 }

@@ -24,7 +24,7 @@ class AdminQaTimeController(
         serverTimeService.override(dateTime, admin.name, admin.email)
         redirectAttributes.addFlashAttribute(
             "message",
-            "서버 시각을 ${QaTimeFormat.format(dateTime)}로 옮겼습니다. 방 개방·마감은 1분 안에 스케줄러가 반영합니다.",
+            "서버 시각을 ${QaTimeFormat.format(dateTime)}로 옮겼습니다. 방이 열리고 닫히는 건 1분 안에 반영됩니다.",
         )
         return QaRoutes.backTo(returnTo)
     }
@@ -35,7 +35,7 @@ class AdminQaTimeController(
         redirectAttributes: RedirectAttributes,
     ): String {
         serverTimeService.disable()
-        redirectAttributes.addFlashAttribute("message", "서버 시각 조정을 끄고 실제 시각으로 돌아왔습니다.")
+        redirectAttributes.addFlashAttribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다.")
         return QaRoutes.backTo(returnTo)
     }
 }

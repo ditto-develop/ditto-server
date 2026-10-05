@@ -113,7 +113,7 @@ class AdminDummyServiceTest(
             }
         }
 
-        "캐리커쳐는 성별에 맞는 아바타 경로로 채워진다" {
+        "캐리커처는 성별에 맞는 아바타 경로로 채워진다" {
             val quizSetId = setupQuizSet(quizCount = 1)
             adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 3, femaleCount = 3))
 

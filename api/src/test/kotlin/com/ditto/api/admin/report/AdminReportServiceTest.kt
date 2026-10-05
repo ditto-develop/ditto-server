@@ -134,7 +134,7 @@ class AdminReportServiceTest(
             val detail = adminReportService.getReportDetail(report.id, report.createdAt)
 
             detail.reported.nickname shouldContain "탈퇴한 회원"
-            detail.reported.statusName shouldBe "탈퇴"
+            detail.reported.memberStatus shouldBe null
         }
 
         "종결된 신고는 검토 결과를 담는다" {

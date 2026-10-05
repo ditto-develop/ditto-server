@@ -41,12 +41,12 @@ class SingleDummyCreator(
     @Transactional(readOnly = true)
     fun formMatching(memberId: Long, questions: QuizQuestions): SingleDummyForm {
         val member = memberRepository.findByIdOrNull(memberId)
-            ?: throw WarnException(ErrorCode.NOT_FOUND, "회원 #$memberId 를 찾을 수 없습니다.")
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId")
         val choiceIdByQuizId = quizAnswerRepository
             .findByMemberIdAndQuizIdIn(memberId, questions.quizzes.map { it.id })
             .associateTo(mutableMapOf<Long, Long?>()) { it.quizId to it.choiceId }
         if (choiceIdByQuizId.isEmpty()) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "회원 #$memberId 는 이 퀴즈셋에 답한 문항이 없습니다.")
+            throw WarnException(ErrorCode.BAD_REQUEST, "이 퀴즈셋에 답한 문항이 없는 회원입니다: #$memberId")
         }
         return SingleDummyForm.withRandomProfile(questions.quizSetId).also { form ->
             form.gender = member.gender?.opposite() ?: form.gender
@@ -111,7 +111,7 @@ class SingleDummyCreator(
         val avatarNumber = form.avatarNumber ?: return DummyMemberFactory.randomCaricatureOf(form.gender)
         val avatarCount = DummyMemberFactory.CARICATURE_COUNT_PER_GENDER
         if (avatarNumber !in 1..avatarCount) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "캐리커쳐 번호는 1~$avatarCount 사이여야 합니다.")
+            throw WarnException(ErrorCode.BAD_REQUEST, "캐리커처 번호는 1~$avatarCount 사이여야 합니다.")
         }
         return DummyMemberFactory.caricatureOf(form.gender, avatarNumber)
     }
@@ -128,7 +128,7 @@ class SingleDummyCreator(
     private fun chosenOrRandom(form: SingleDummyForm, quiz: Quiz, choices: List<QuizChoice>): QuizChoice {
         val chosenId = form.choiceIdByQuizId[quiz.id] ?: return choices.random()
         return choices.firstOrNull { it.id == chosenId }
-            ?: throw WarnException(ErrorCode.BAD_REQUEST, "문항에 없는 선택지입니다: quizId=${quiz.id}, choiceId=$chosenId")
+            ?: throw WarnException(ErrorCode.BAD_REQUEST, "문항 ID #${quiz.id}에 없는 선택지입니다: #$chosenId")
     }
 }
 

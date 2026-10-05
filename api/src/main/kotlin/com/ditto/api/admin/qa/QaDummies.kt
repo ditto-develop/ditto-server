@@ -21,7 +21,7 @@ class QaDummies(
             .toSet()
 
     fun principalOf(memberId: Long): MemberPrincipal {
-        val member = memberRepository.findByIdOrNull(memberId) ?: throw WarnException(ErrorCode.NOT_FOUND)
+        val member = memberRepository.findByIdOrNull(memberId) ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId")
         if (!DummyMarker.isDummy(member.nickname)) {
             throw WarnException(ErrorCode.FORBIDDEN, "더미 회원만 대신 움직일 수 있습니다.")
         }

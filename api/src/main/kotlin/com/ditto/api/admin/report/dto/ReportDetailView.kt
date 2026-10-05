@@ -1,5 +1,6 @@
 package com.ditto.api.admin.report.dto
 
+import com.ditto.domain.member.entity.MemberStatus
 import java.time.LocalDateTime
 
 /** 신고 검토 상세 — 한 화면에서 판단에 필요한 모든 정보를 담는다. */
@@ -35,7 +36,8 @@ data class ReporterSummary(
 data class ReportedSummary(
     val memberId: Long,
     val nickname: String,
-    val statusName: String,
+    /** 회원 행이 이미 지워졌으면 null. 화면은 탈퇴로 보여 준다. */
+    val memberStatus: MemberStatus?,
     val recommendedStrike: Long,
     val sanctions: List<SanctionHistoryItem>,
 )
@@ -54,6 +56,8 @@ data class SanctionHistoryItem(
 /** 검토 완료 정보 (RECEIVED면 null). */
 data class ReviewSummary(
     val statusDescription: String,
+    /** 허위 신고로 기각했으면 신고자를 따로 제재해야 해서 화면이 안내를 남긴다. */
+    val rejectedAsFalseReport: Boolean,
     val reviewerName: String?,
     val reviewedAt: LocalDateTime?,
     val note: String?,

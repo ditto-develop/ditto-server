@@ -12,11 +12,11 @@ enum class QaTimeShortcut(
     val confirmMessage: String?,
     private val pickIn: (OperationWeek) -> LocalDateTime,
 ) {
-    QUIZ_ANSWERING("퀴즈 응답 마감 직전", null, { QuizResponsePeriod(it).endsAt.minusMinutes(10) }),
+    QUIZ_ANSWERING("퀴즈 마감 직전", null, { QuizResponsePeriod(it).endsAt.minusMinutes(10) }),
 
     BEFORE_GROUP_DEADLINE("그룹 응답 마감 직전", null, { GroupResponseDeadline.deadlineOf(it).minusMinutes(10) }),
 
-    CHAT_OPEN("채팅 개방 직후", null, { weekendOf(it).opensAt.plusMinutes(1) }),
+    CHAT_OPEN("채팅방 열린 직후", null, { weekendOf(it).opensAt.plusMinutes(1) }),
 
     CHAT_ENDED(
         "채팅 마감 직후",

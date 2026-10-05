@@ -12,7 +12,7 @@
                 <th:block th:replace="~{qa/parts :: roomType(${room.sourceType})}"></th:block>
             </h1>
             <p class="page-desc">
-                <span th:text="|개방 ${@qaTime.of(room.opensAt)} ~ 종료 ${@qaTime.of(room.expiresAt)}|">-</span>
+                <span th:text="|기간 ${@qaTime.of(room.opensAt)} ~ ${@qaTime.of(room.expiresAt)}|">-</span>
                 · 서버 시각 <span th:text="${@qaTime.of(room.now)}">-</span>
                 · 더미의 전송·읽음은 앱과 같은 경로로 처리돼 테스트 폰에 실시간으로 반영됩니다.
             </p>
@@ -27,8 +27,8 @@
             </div>
             <div id="qa-status" data-qa-live>
                 <div class="alert error qa-alert-with-action" th:if="${room.scheduled}">
-                    <span th:text="|개방 전인 방이라 전송이 막힙니다(${room.notOpenedErrorCode}). 서버 시각을 개방 시각 이후로 옮기면 1분 안에 스케줄러가 엽니다.|">
-                        개방 전인 방이라 전송이 막힙니다.</span>
+                    <span th:text="|아직 열리지 않은 방이라 메시지를 보낼 수 없습니다(코드 ${room.notOpenedErrorCode}). 서버 시각을 방이 열리는 시각 뒤로 옮기면 1분 안에 열립니다.|">
+                        아직 열리지 않은 방이라 메시지를 보낼 수 없습니다.</span>
                     <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
                           th:attr="data-confirm=${room.opensAfterCurrentWeekend}
                                 ? '이 방은 다음 주 이후에 열립니다. 시각을 옮기면 이번 주에 열린 방이 모두 마감되고 평가가 열립니다. 되돌릴 수 없습니다.'
@@ -41,7 +41,7 @@
                 </div>
                 <div class="alert error" th:if="${room.ended}">
                     종료된 방입니다(<th:block th:replace="~{qa/parts :: endReason(${room.endReason})}"></th:block>).
-                    <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block></div>
+                    <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(코드 ${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block></div>
             </div>
 
             <div class="qa-room">
@@ -108,25 +108,25 @@
                                 <span class="badge cat" th:unless="${roomMember.dummy}">실회원</span>
                                 <span class="badge off" th:if="${roomMember.hasLeft}">나감</span>
                                 <div class="muted"
-                                     th:text="${roomMember.lastReadMessageId != null} ? |읽음 #${roomMember.lastReadMessageId}| : '읽음 없음'">
-                                    읽음 #1042</div>
+                                     th:text="${roomMember.lastReadMessageId != null} ? |#${roomMember.lastReadMessageId}까지 읽음| : '읽은 메시지 없음'">
+                                    #1042까지 읽음</div>
                             </div>
                             <div class="qa-member-actions" th:if="${roomMember.dummy and !roomMember.hasLeft}">
                                 <form class="inline-form" method="post" data-qa-async
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/read(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
-                                    <button class="btn secondary sm" type="submit">읽음</button>
+                                    <button class="btn secondary sm" type="submit">끝까지 읽기</button>
                                 </form>
                                 <form class="inline-form" method="post" data-qa-async
                                       th:if="${!room.canEndByUser and !room.ended}"
                                       th:attr="data-confirm=${room.leaveDissolvesRoom}
-                                        ? |${roomMember.member.nickname} 이(가) 방을 나갑니다. 남은 사람이 1명이 되어 방이 해체됩니다. 되돌릴 수 없습니다.|
-                                        : |${roomMember.member.nickname} 이(가) 방을 나갑니다. 되돌릴 수 없습니다.|"
+                                        ? |${roomMember.member.nickname} 계정이 방을 나갑니다. 남은 사람이 1명이 되어 방이 해체됩니다. 되돌릴 수 없습니다.|
+                                        : |${roomMember.member.nickname} 계정이 방을 나갑니다. 되돌릴 수 없습니다.|"
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/leave(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
                                     <button class="btn danger sm" type="submit">나가기</button>
                                 </form>
                                 <form class="inline-form" method="post" data-qa-async
                                       th:if="${room.canEndByUser and !room.ended}"
-                                      th:attr="data-confirm=|${roomMember.member.nickname} 이(가) 채팅을 종료합니다. 되돌릴 수 없습니다.|"
+                                      th:attr="data-confirm=|${roomMember.member.nickname} 계정이 채팅을 종료합니다. 되돌릴 수 없습니다.|"
                                       th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/end(dummyId=${roomMember.member.id},roomId=${room.roomId})}">
                                     <button class="btn danger sm" type="submit">채팅 종료</button>
                                 </form>
@@ -134,7 +134,7 @@
                         </div>
                         <form method="post" data-qa-async th:unless="${room.activeDummies.isEmpty()}"
                               th:action="@{/admin/qa/rooms/{id}/read-all-dummies(id=${room.roomId})}">
-                            <button class="btn secondary sm qa-wide" type="submit">더미 모두 읽음</button>
+                            <button class="btn secondary sm qa-wide" type="submit">더미 모두 끝까지 읽기</button>
                         </form>
                     </section>
 

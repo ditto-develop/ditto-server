@@ -10,5 +10,5 @@ package com.ditto.domain.sanction.entity
 enum class SanctionStatus(val description: String) {
     ACTIVE("적용 중"),
     EXPIRED("기간 만료"),
-    LIFTED("어드민 직권 해제"),
+    LIFTED("어드민이 해제"),
 }

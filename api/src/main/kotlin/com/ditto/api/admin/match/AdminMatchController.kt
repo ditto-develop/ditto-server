@@ -4,6 +4,7 @@ import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Controller
@@ -37,7 +38,7 @@ class AdminMatchController(
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
         val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
         matchResultNotifier.notifyFor(quizSetIds)
-        redirectAttributes.addFlashAttribute("message", "마감된 퀴즈셋의 매칭 배치를 실행했습니다.")
+        redirectAttributes.addFlashAttribute("message", "자동 매칭을 실행했습니다.")
         return "redirect:/admin/matching"
     }
 
@@ -55,17 +56,21 @@ class AdminMatchController(
                     matchResultNotifier.notifyFor(listOf(id))
                     redirectAttributes.addFlashAttribute(
                         "message",
-                        "퀴즈셋 #$id 의 매칭 후보를 재생성했습니다. " +
-                            "참여자 ${summary.participantCount}명, 매칭 ${summary.matches.size}건, " +
-                            "삭제 ${summary.rowCounts.deletedCount}행 · 저장 ${summary.rowCounts.savedCount}행",
+                        "퀴즈셋 #$id 매칭 후보를 재생성했습니다.",
                     )
                     redirectAttributes.addFlashAttribute("regeneration", summary)
                 },
                 onFailure = { exception ->
                     if (exception !is WarnException) throw exception
-                    redirectAttributes.addFlashAttribute("error", "퀴즈셋 #$id 매칭 재생성 실패: ${exception.message}")
+                    redirectAttributes.addFlashAttribute("error", regenerationFailedMessage(id, exception))
                 },
             )
         return "redirect:/admin/matching"
+    }
+
+    private fun regenerationFailedMessage(quizSetId: Long, exception: WarnException): String {
+        val failed = "퀴즈셋 #$quizSetId 매칭 재생성 실패: ${exception.message}"
+        if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
+        return "$failed. 퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요."
     }
 }

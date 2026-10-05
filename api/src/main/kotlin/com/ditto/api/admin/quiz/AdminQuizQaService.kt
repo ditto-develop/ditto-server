@@ -76,5 +76,5 @@ class AdminQuizQaService(
         )
 
     private fun findQuizSet(quizSetId: Long): QuizSet =
-        quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 퀴즈셋입니다: #$quizSetId") }
 }

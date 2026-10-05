@@ -45,7 +45,7 @@ class AdminQuizQaController(
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 강제 삭제: $erased" }
                 redirectAttributes.addFlashAttribute(
                     "message",
-                    "퀴즈셋 #$id(${summary.quizSetTitle})을 강제 삭제했습니다. $erased",
+                    "퀴즈셋을 강제 삭제했습니다: #$id(${summary.quizSetTitle}). $erased",
                 )
                 QUIZ_SET_LIST_REDIRECT
             },
@@ -116,7 +116,7 @@ class AdminQuizQaController(
     companion object {
         private const val QUIZ_SET_LIST_REDIRECT = "redirect:/admin/quiz-sets"
         private const val NEXT_STEPS_AFTER_ANSWER_RESET =
-            "다시 하려면 퀴즈 기간(월~수)에 다시 풀고, 서버 시각을 목요일로 맞춘 뒤 매칭 화면에서 매칭하세요."
+            "다시 하려면 퀴즈 기간(월~수)에 다시 풀고, 서버 시각을 목요일로 맞춘 뒤 '매칭 실행'에서 재생성하세요."
         private val log = KotlinLogging.logger {}
     }
 }

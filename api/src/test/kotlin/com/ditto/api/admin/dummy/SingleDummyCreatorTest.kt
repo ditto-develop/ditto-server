@@ -92,7 +92,7 @@ class SingleDummyCreatorTest(
             dummy.caricature shouldBe "/onboarding/profileimg/avatar/f3.svg"
         }
 
-        "닉네임 뒷부분과 캐리커쳐를 비우면 자동으로 채운다" {
+        "닉네임 뒷부분과 캐리커처를 비우면 자동으로 채운다" {
             val setup = setupQuizSet()
 
             val dummy = singleDummyCreator.create(form(setup.quizSetId).apply { gender = Gender.MALE }).member
@@ -173,7 +173,7 @@ class SingleDummyCreatorTest(
             "나이가 20 미만이면" to { age = 19 },
             "관심사가 없으면" to { interests = mutableSetOf() },
             "관심사가 5개를 넘으면" to { interests = Interest.entries.take(6).toMutableSet() },
-            "캐리커쳐 번호가 범위를 벗어나면" to { avatarNumber = 9 },
+            "캐리커처 번호가 범위를 벗어나면" to { avatarNumber = 9 },
             "푼 문항 수가 문항 수를 넘으면" to { answeredCount = 4 },
             "푼 문항 수가 음수면" to { answeredCount = -1 },
         ).forEach { (case, edit) ->

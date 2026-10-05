@@ -10,7 +10,7 @@
             <h1 class="page-title">신고 #<span th:text="${report.id}">0</span></h1>
             <p class="page-desc">
                 <span th:text="${report.elapsedText}">경과</span>
-                <span class="badge warn" th:if="${report.overdue}">SLA 초과</span>
+                <span class="badge warn" th:if="${report.overdue}">24시간 지남</span>
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
@@ -19,7 +19,7 @@
                 <h2>
                     신고 내용
                     <span class="badge cat" th:each="d : ${report.reasonDescriptions}" th:text="${d}">사유</span>
-                    <span class="badge warn" th:if="${report.isSevere}">즉시 조치 권고</span>
+                    <span class="badge warn" th:if="${report.isSevere}">심각 사유</span>
                 </h2>
                 <p class="muted">
                     접수 위치: <span th:text="${report.sourceDescription}">위치</span> ·
@@ -44,25 +44,25 @@
             <div class="card">
                 <h2>
                     피신고자: <span th:text="${report.reported.nickname}">닉네임</span>
-                    <span class="badge cat" th:text="${report.reported.statusName}">상태</span>
-                    <span class="badge warn" th:text="'추천 ' + ${report.reported.recommendedStrike} + '차'">추천 차수</span>
+                    <span th:replace="~{member/parts :: memberStatusBadge(${report.reported.memberStatus})}"></span>
+                    <span class="badge warn" th:if="${report.received}" th:text="'이번이 ' + ${report.reported.recommendedStrike} + '차 제재'">이번이 1차 제재</span>
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
                 <table class="tbl" th:unless="${report.reported.sanctions.isEmpty()}">
                     <thead>
-                    <tr><th>수위</th><th>경위</th><th>상태</th><th>기간</th><th>조치자</th><th>메모</th></tr>
+                    <tr><th>제재 종류</th><th>제재 근거</th><th>상태</th><th>기간</th><th>처리자</th><th>메모</th></tr>
                     </thead>
                     <tbody>
                     <tr th:each="s : ${report.reported.sanctions}">
-                        <td th:text="${s.levelDescription}">수위</td>
-                        <td th:text="${s.originDescription}">경위</td>
+                        <td th:text="${s.levelDescription}">제재 종류</td>
+                        <td th:text="${s.originDescription}">제재 근거</td>
                         <td th:text="${s.statusDescription}">상태</td>
                         <td>
                             <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd')}">시작</span> ~
                             <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd')} : '영구'">끝</span>
                         </td>
-                        <td th:text="${s.creatorName}">조치자</td>
+                        <td th:text="${s.creatorName}">처리자</td>
                         <td th:text="${s.note ?: '-'}">메모</td>
                     </tr>
                     </tbody>
@@ -77,8 +77,10 @@
                 </h2>
                 <p class="muted">
                     총 신고 <strong th:text="${report.reporter.totalReportCount}">0</strong>건 ·
-                    악의적 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건
-                    — 허위 신고자 조치는 '제재 관리'에서 경위를 허위 신고자 제재로 선택해 진행
+                    허위 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건
+                </p>
+                <p class="muted" th:if="${report.review != null and report.review.rejectedAsFalseReport}">
+                    허위 신고로 기각한 신고입니다. 신고자는 자동으로 제재되지 않으니 '제재 관리'에서 제재 근거를 '허위 신고자 제재'로 골라 따로 제재하세요.
                 </p>
             </div>
 
@@ -96,9 +98,9 @@
                         <label>메모 (선택, 최대 500자)</label>
                         <textarea name="reviewNote" maxlength="500" rows="3" style="width:100%"></textarea>
                     </div>
-                    <button class="btn" type="submit">처리</button>
+                    <button class="btn" type="submit">검토 완료</button>
                 </form>
-                <p class="muted">제재 결정(경고·정지·차단)은 즉시 발효됩니다. 악의적 신고로 기각한 경우 신고자 제재는 회원 제재 화면에서 직권으로 진행하세요.</p>
+                <p class="muted">정지와 차단은 바로 적용되고, 경고는 다음 주 월요일부터 적용됩니다. 허위 신고로 기각해도 신고자는 자동으로 제재되지 않으니, 신고자 칸의 '제재 관리'에서 따로 제재하세요.</p>
             </div>
 
             <!-- 검토 결과 (종결 건) -->
