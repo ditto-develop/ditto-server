@@ -1,14 +1,11 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.GroupCandidate
-import com.ditto.api.admin.quiz.dto.GroupCandidateMember
-import com.ditto.api.admin.quiz.dto.GroupResponse
 import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OutsideRequest
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
 import com.ditto.api.admin.quiz.dto.PersonalCandidate
-import com.ditto.api.admin.quiz.dto.PersonalRequestState
 import com.ditto.api.admin.quiz.dto.QuizSetMatching
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -67,8 +64,8 @@ class AdminParticipantMatchingReader(
                 .filter { memberId in setOf(it.memberId1, it.memberId2) }
                 .partition { match -> candidates.any { it.otherMemberId == match.counterpartOf(memberId) } }
             ParticipantMatching(
-                personalCandidates = candidates.map { toPersonalCandidate(it, requestsWithCandidates, nicknames) },
-                outsideRequests = outsideRequests.map { toOutsideRequest(it, memberId, nicknames) },
+                personalCandidates = candidates.map { PersonalCandidate.of(it, requestsWithCandidates, nicknames) },
+                outsideRequests = outsideRequests.map { OutsideRequest.of(it, memberId, nicknames) },
                 miss = missByMemberId[memberId],
             )
         }
@@ -97,7 +94,9 @@ class AdminParticipantMatchingReader(
         context: GroupReadContext,
     ): ParticipantMatching {
         if (myRooms.isNotEmpty()) {
-            val groupCandidates = myRooms.map { toGroupCandidate(it, progress.memberId, context.nicknames) }
+            val groupCandidates = myRooms.map { room ->
+                GroupCandidate.of(room.groupMatch, room.invitations, progress.memberId, context.nicknames)
+            }
             return ParticipantMatching(groupCandidates = groupCandidates)
         }
         val member = context.source.membersById[progress.memberId]
@@ -106,44 +105,6 @@ class AdminParticipantMatchingReader(
 
         if (context.generatedAt == null) return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_GENERATED))
         return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_ASSIGNED_TO_GROUP))
-    }
-
-    private fun toPersonalCandidate(
-        candidate: MatchCandidate,
-        requests: List<PersonalMatch>,
-        nicknames: Map<Long, String>,
-    ): PersonalCandidate {
-        val request = requests.firstOrNull { it.counterpartOf(candidate.ownerMemberId) == candidate.otherMemberId }
-        return PersonalCandidate(
-            otherMemberId = candidate.otherMemberId,
-            otherNickname = nicknames[candidate.otherMemberId],
-            score = candidate.score,
-            matchedQuestionCount = candidate.matchedQuestionCount,
-            totalQuestionCount = candidate.totalQuestionCount,
-            requestState = request?.let { PersonalRequestState.of(it, viewerId = candidate.ownerMemberId) },
-        )
-    }
-
-    private fun toOutsideRequest(request: PersonalMatch, memberId: Long, nicknames: Map<Long, String>): OutsideRequest {
-        val otherMemberId = request.counterpartOf(memberId)
-        val requestState = PersonalRequestState.of(request, viewerId = memberId)
-        return OutsideRequest(otherMemberId, nicknames[otherMemberId], requestState)
-    }
-
-    private fun toGroupCandidate(room: GroupRoom, memberId: Long, nicknames: Map<Long, String>): GroupCandidate {
-        val (myInvitations, otherInvitations) = room.invitations.partition { it.memberId == memberId }
-        return GroupCandidate(
-            groupMatchId = room.groupMatch.id,
-            score = room.groupMatch.score,
-            isFormed = room.groupMatch.isActive,
-            acceptedCount = room.groupMatch.acceptedCount,
-            activationThreshold = GroupMatch.ACTIVATION_THRESHOLD,
-            myResponse = GroupResponse.of(myInvitations.single().status),
-            otherMembers = otherInvitations.map { invitation ->
-                val response = GroupResponse.of(invitation.status)
-                GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], response)
-            },
-        )
     }
 
     private fun acceptedMemberIdsOf(personalMatches: List<PersonalMatch>): Set<Long> =

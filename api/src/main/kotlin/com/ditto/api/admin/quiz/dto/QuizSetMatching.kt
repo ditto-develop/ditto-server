@@ -1,7 +1,10 @@
 package com.ditto.api.admin.quiz.dto
 
 import com.ditto.api.match.matching.OneToOneMatchingProcessor
+import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import java.time.LocalDateTime
@@ -36,13 +39,36 @@ class PersonalCandidate(
     val matchedQuestionCount: Int,
     val totalQuestionCount: Int,
     val requestState: PersonalRequestState?,
-)
+) {
+    companion object {
+        /** [requests]는 후보 주인이 낀 1:1 신청이고, 그중 이 후보 상대와의 신청 상태를 붙인다. */
+        fun of(candidate: MatchCandidate, requests: List<PersonalMatch>, nicknames: Map<Long, String>): PersonalCandidate {
+            val request = requests.firstOrNull { it.counterpartOf(candidate.ownerMemberId) == candidate.otherMemberId }
+            return PersonalCandidate(
+                otherMemberId = candidate.otherMemberId,
+                otherNickname = nicknames[candidate.otherMemberId],
+                score = candidate.score,
+                matchedQuestionCount = candidate.matchedQuestionCount,
+                totalQuestionCount = candidate.totalQuestionCount,
+                requestState = request?.let { PersonalRequestState.of(it, viewerId = candidate.ownerMemberId) },
+            )
+        }
+    }
+}
 
 class OutsideRequest(
     val otherMemberId: Long,
     val otherNickname: String?,
     val requestState: PersonalRequestState,
-)
+) {
+    companion object {
+        fun of(request: PersonalMatch, memberId: Long, nicknames: Map<Long, String>): OutsideRequest {
+            val otherMemberId = request.counterpartOf(memberId)
+            val requestState = PersonalRequestState.of(request, viewerId = memberId)
+            return OutsideRequest(otherMemberId, nicknames[otherMemberId], requestState)
+        }
+    }
+}
 
 /** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 on, 대기는 matching, 끝난 것은 off. */
 enum class BadgeTone(val cssClass: String) {
@@ -79,7 +105,31 @@ class GroupCandidate(
     val activationThreshold: Int,
     val myResponse: GroupResponse,
     val otherMembers: List<GroupCandidateMember>,
-)
+) {
+    companion object {
+        /** [invitations]는 [groupMatch] 방의 초대 전부다. */
+        fun of(
+            groupMatch: GroupMatch,
+            invitations: List<GroupMatchMember>,
+            memberId: Long,
+            nicknames: Map<Long, String>,
+        ): GroupCandidate {
+            val (myInvitations, otherInvitations) = invitations.partition { it.memberId == memberId }
+            return GroupCandidate(
+                groupMatchId = groupMatch.id,
+                score = groupMatch.score,
+                isFormed = groupMatch.isActive,
+                acceptedCount = groupMatch.acceptedCount,
+                activationThreshold = GroupMatch.ACTIVATION_THRESHOLD,
+                myResponse = GroupResponse.of(myInvitations.single().status),
+                otherMembers = otherInvitations.map { invitation ->
+                    val response = GroupResponse.of(invitation.status)
+                    GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], response)
+                },
+            )
+        }
+    }
+}
 
 class GroupCandidateMember(
     val memberId: Long,
