@@ -41,7 +41,7 @@ class QuizSetDeleter(
                 "매칭이 진행된 퀴즈셋은 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.",
             )
         }
-        deleteNotificationsReadingQuizSet(quizSetId)
+        deleteMatchResultNotifications(quizSetId)
         deleteQuizzesWithAnswers(quizSetId)
         quizProgressRepository.deleteByQuizSetId(quizSetId)
         quizSetRepository.deleteById(quizSetId)
@@ -52,15 +52,16 @@ class QuizSetDeleter(
             personalMatchRepository.existsByQuizSetId(quizSetId) ||
             groupMatchRepository.existsByQuizSetId(quizSetId)
 
-    /** 퀴즈 열림·마감 알림은 그 주의 대표 셋을 가리킬 뿐이라 남기고, 셋 행을 읽는 매칭 결과 알림만 지운다. */
-    private fun deleteNotificationsReadingQuizSet(quizSetId: Long) {
+    /** 매칭 결과 알림만 지우고 지운 수를 돌려준다. 퀴즈 열림·마감 알림은 그 주 대표 셋을 가리킬 뿐이라 남긴다. */
+    fun deleteMatchResultNotifications(quizSetId: Long): Int {
         val typesReadingQuizSet = NotificationType.pointingTo(NotificationTarget.QUIZ_SET)
             .filter { it.deepLinkTarget.readsTargetRow }
         val notificationIds = notificationRepository
             .findByTypeInAndTargetIdIn(typesReadingQuizSet, listOf(quizSetId))
             .map { it.id }
-        if (notificationIds.isEmpty()) return
+        if (notificationIds.isEmpty()) return 0
         notificationRepository.deleteAllByIdInBatch(notificationIds)
+        return notificationIds.size
     }
 
     private fun deleteQuizzesWithAnswers(quizSetId: Long) {

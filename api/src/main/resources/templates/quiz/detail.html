@@ -34,6 +34,7 @@
                 </div>
                 <p class="muted" th:if="${hasMatchRecords}" style="margin:8px 0 0">
                     매칭이 진행된 퀴즈셋이라 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.
+                    <span th:if="${qaPreview != null}">QA 중이면 아래 <a class="text-link" href="#qa-tools">QA 도구</a>로 지울 수 있습니다.</span>
                 </p>
             </div>
 
@@ -51,6 +52,42 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card" id="qa-tools" th:if="${qaPreview != null}">
+                <h2>QA 도구</h2>
+                <div class="alert error">
+                    운영 데이터가 되돌릴 수 없게 지워집니다.
+                    <span th:if="${qaPreview.realMemberRoomCount > 0}"
+                          th:text="|실회원이 있는 채팅방 ${qaPreview.realMemberRoomCount}개의 메시지·평가도 함께 사라집니다.|">실회원 방</span>
+                </div>
+                <p style="margin:0 0 12px"
+                   th:text="|누르면 지워지는 것: ${qaPreview.counts.toDisplayText()} · 이를 가리키는 알림|">누르면 지워지는 것</p>
+                <ul class="muted" style="margin:0 0 16px; padding-left:20px">
+                    <li>
+                        다시 돌리기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
+                        <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
+                    </li>
+                    <li>
+                        초기화한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 화면</a>에서 다시 돌리면
+                        이 셋 참여자 전원(실회원 포함)에게 매칭 결과 알림이 다시 갑니다.
+                    </li>
+                    <li>신고·제재·차단은 회원 기록이라 지우지 않습니다. 정지된 더미는 계속 매칭에서 빠지고, 차단한 사이는 짝이 되지 않습니다.</li>
+                </ul>
+                <div class="btn-row">
+                    <form class="inline-form" th:if="${qaPreview.isResettable}"
+                          th:action="@{/admin/quiz-sets/{id}/qa/reset-matching(id=${quizSet.id})}" method="post"
+                          onsubmit="return confirm('매칭 후보·1:1 신청·그룹·재매칭과, 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림을 지웁니다.\n퀴즈셋·답·진행은 남습니다.\n되돌릴 수 없습니다. 계속할까요?');">
+                        <button class="btn secondary" type="submit">매칭 기록 초기화</button>
+                    </form>
+                    <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/qa/force-delete(id=${quizSet.id})}" method="post"
+                          onsubmit="return confirm('매칭 기록과 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림을 지운 뒤\n퀴즈셋·문항·답·진행까지 모두 지웁니다.\n되돌릴 수 없습니다. 계속할까요?');">
+                        <button class="btn danger" type="submit">퀴즈셋 강제 삭제</button>
+                    </form>
+                </div>
+                <p class="muted" style="margin:8px 0 0" th:unless="${qaPreview.isResettable}">
+                    이번 주 퀴즈셋만 초기화할 수 있습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.
+                </p>
             </div>
         </main>
     </div>

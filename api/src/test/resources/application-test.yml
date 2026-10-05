@@ -1,4 +1,7 @@
 ditto:
+  admin:
+    qa-tools:
+      enabled: true
   quiz:
     available-days:
       - MONDAY

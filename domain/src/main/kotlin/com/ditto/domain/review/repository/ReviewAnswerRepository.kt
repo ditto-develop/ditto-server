@@ -6,10 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ReviewAnswerRepository : JpaRepository<ReviewAnswer, Long>, ReviewAnswerRepositoryCustom {
 
-    fun findByMemberReviewIdInOrReviewedMemberIdIn(
-        memberReviewIds: Collection<Long>,
-        reviewedMemberIds: Collection<Long>,
-    ): List<ReviewAnswer>
+    fun findByReviewedMemberIdIn(reviewedMemberIds: Collection<Long>): List<ReviewAnswer>
 
     /** 생성 순서(= 화면 노출 순서)로 반환한다. */
     fun findAllByMemberReviewIdOrderByIdAsc(memberReviewId: Long): List<ReviewAnswer>

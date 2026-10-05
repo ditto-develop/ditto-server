@@ -324,6 +324,78 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("이번 주 매칭이 끝난 퀴즈셋 상세는 QA 도구 카드에 미리보기와 두 버튼을 보여 준다")
+    fun quizSetDetailShowsQaTools() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("href=\"#qa-tools\"")))
+            .andExpect(content().string(containsString("누르면 지워지는 것: 1:1 신청 1건")))
+            .andExpect(content().string(containsString(">매칭 기록 초기화</button>")))
+            .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
+    }
+
+    @Test
+    @DisplayName("지난 주 퀴즈셋 상세는 초기화 버튼 대신 강제 삭제 안내를 보여 준다")
+    fun pastWeekQuizSetDetailHidesReset() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
+            .andExpect(content().string(containsString("이번 주 퀴즈셋만 초기화할 수 있습니다.")))
+            .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
+    }
+
+    @Test
+    @DisplayName("매칭 기록이 없는 퀴즈셋 상세에는 QA 도구 카드가 없다")
+    fun quizSetWithoutMatchingHasNoQaTools() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(not(containsString("id=\"qa-tools\""))))
+    }
+
+    @Test
+    @DisplayName("매칭 기록 초기화는 매칭 기록만 지우고 상세로 돌아간다")
+    fun resetQuizSetMatching() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-matching", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
+            .andExpect(flash().attributeExists("message"))
+
+        personalMatchRepository.existsByQuizSetId(quizSet.id) shouldBe false
+        quizSetRepository.existsById(quizSet.id) shouldBe true
+    }
+
+    @Test
+    @DisplayName("강제 삭제는 매칭이 끝난 퀴즈셋도 지우고 목록으로 돌아간다")
+    fun forceDeleteQuizSet() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/force-delete", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets"))
+            .andExpect(flash().attribute("message", containsString("퀴즈셋 #${quizSet.id}(${quizSet.title})을 강제 삭제했습니다.")))
+
+        quizSetRepository.existsById(quizSet.id) shouldBe false
+    }
+
+    @Test
+    @DisplayName("없는 퀴즈셋에 QA 도구를 쓰면 목록으로 돌아가 오류를 보여 준다")
+    fun qaToolsOnMissingQuizSet() {
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-matching", 99999L).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets"))
+            .andExpect(flash().attributeExists("error"))
+    }
+
+    @Test
     @DisplayName("퀴즈셋 활성/비활성/삭제")
     fun quizSetMutations() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create(isActive = false))
