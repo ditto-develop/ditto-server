@@ -667,7 +667,15 @@ class AdminWebTest {
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
                 .param("role", "ADMIN").param("email", "role@ditto.pics"),
-        ).andExpect(status().is3xxRedirection)
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
+
+        mockMvc.perform(get("/admin/members").param("email", "role@ditto.pics").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">가입 미완료</span>")))
+            .andExpect(content().string(containsString(">일반 회원</option>")))
+            .andExpect(content().string(not(containsString("USER(일반 회원)"))))
     }
 
     @Test
@@ -817,7 +825,24 @@ class AdminWebTest {
         )
 
         mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
-        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))
+            .andExpect(content().string(containsString("이번이 1차 제재")))
+            .andExpect(content().string(not(containsString(">ACTIVE<"))))
+    }
+
+    @Test
+    @DisplayName("피신고자 회원 행이 지워졌으면 신고 상세에 탈퇴 배지를 보여 준다")
+    fun reportDetailDeletedReportedMember() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자3", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = 99999L),
+        )
+
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
     }
 
     @Test
@@ -836,6 +861,7 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/reports/" + report.id))
+            .andExpect(flash().attribute("message", "신고 #${report.id} 처리를 마쳤습니다: 기각"))
     }
 
     @Test
@@ -853,6 +879,12 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/members/" + member.id + "/sanctions"))
+            .andExpect(flash().attribute("message", "제재를 적용했습니다: 2주 이용 정지"))
+
+        mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">정지</span>")))
+            .andExpect(content().string(containsString("누적 제재 <strong>1</strong>건")))
     }
 
     @Test

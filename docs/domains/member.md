@@ -14,7 +14,7 @@
 
 - 가입 완료(`register`)는 PENDING에서만 가능 — 제재(SUSPENDED/BANNED) 회원이 이 경로로 ACTIVE가 될 수 없다 (`INVALID_STATUS_TRANSITION`).
 - `suspended_until`은 SUSPENDED일 때만 값이 존재한다 (`suspendUntil`이 설정, `ban`/`reinstate`가 비움).
-- BANNED는 정지(`suspendUntil`)로 낮출 수 없다. 해제는 `reinstate`(어드민 직권)로만.
+- BANNED는 정지(`suspendUntil`)로 낮출 수 없다. 해제는 `reinstate`(어드민이 해제)로만.
 - `reinstate`는 SUSPENDED/BANNED에서만 호출 가능.
 - 온보딩 필수 정보: 관심사·사는곳·직업·캐리커쳐는 가입 완료 시 항상 채운다 (`register`).
 - 프로필 수정(`PATCH /api/v1/users/me/profile`)은 닉네임·성별·사는곳·직업·캐리커쳐·관심사·한 줄 소개를 받는다. **성별은 제한 없이 바꿀 수 있다** — 저장된 스냅샷이 없어 매칭·후보 목록·프로필 조회가 모두 `member` 행을 그때그때 읽으므로, 이미 매칭된 상대에게도 바뀐 성별이 보인다. 이미 성사된 매칭은 그대로 두고 다음 회차 후보 풀만 새 성별로 계산한다.
@@ -33,9 +33,9 @@
 
 ```
 PENDING → ACTIVE                    (register — 가입 완료)
-ACTIVE → SUSPENDED                  (suspendUntil — 기간 이용 정지, 2차 제재)
+ACTIVE → SUSPENDED                  (suspendUntil — 2주 이용 정지, 2차 제재)
 ACTIVE|SUSPENDED → BANNED           (ban — 영구 차단, 3차·중대 위반)
-SUSPENDED|BANNED → ACTIVE           (reinstate — 정지 만료·어드민 직권 해제)
+SUSPENDED|BANNED → ACTIVE           (reinstate — 정지 만료·어드민이 해제)
 ACTIVE|SUSPENDED|BANNED → LEFT      (leave — 탈퇴, 소프트 삭제)
 LEFT → ACTIVE                       (restore — 30일 내 재가입 시 복구)
 ```

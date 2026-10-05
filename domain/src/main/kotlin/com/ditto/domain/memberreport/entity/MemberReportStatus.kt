@@ -10,8 +10,8 @@ package com.ditto.domain.memberreport.entity
  * ```
  */
 enum class MemberReportStatus(val description: String) {
-    RECEIVED("접수됨 (검토 대기)"),
-    ACTIONED("검토 후 제재 적용"),
-    REJECTED("검토 후 기각"),
-    REJECTED_ABUSIVE("악의적 신고로 기각 (신고자 제재 근거)"),
+    RECEIVED("검토 대기"),
+    ACTIONED("제재함"),
+    REJECTED("기각"),
+    REJECTED_ABUSIVE("허위 신고로 기각"),
 }

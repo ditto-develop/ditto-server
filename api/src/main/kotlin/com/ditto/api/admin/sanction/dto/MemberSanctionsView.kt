@@ -1,12 +1,13 @@
 package com.ditto.api.admin.sanction.dto
 
+import com.ditto.domain.member.entity.MemberStatus
 import java.time.LocalDateTime
 
 /** 회원별 제재 관리 화면 — 요약 + 이력. */
 data class MemberSanctionsView(
     val memberId: Long,
     val nickname: String,
-    val statusName: String,
+    val memberStatus: MemberStatus,
     val strikeCount: Long,
     val sanctions: List<SanctionRow>,
 )

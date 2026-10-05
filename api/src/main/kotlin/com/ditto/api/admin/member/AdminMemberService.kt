@@ -30,7 +30,7 @@ class AdminMemberService(
 
     /** 회원 권한을 변경한다. */
     fun changeRole(memberId: Long, role: MemberRole) {
-        val member = memberRepository.findById(memberId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        val member = memberRepository.findById(memberId).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId") }
         member.changeRole(role)
     }
 }

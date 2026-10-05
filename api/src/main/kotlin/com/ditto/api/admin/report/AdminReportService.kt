@@ -55,7 +55,7 @@ class AdminReportService(
     @Transactional(readOnly = true)
     fun getReportDetail(id: Long, now: LocalDateTime): ReportDetailView {
         val report = memberReportRepository.findById(id).getOrNull()
-            ?: throw WarnException(ErrorCode.NOT_FOUND)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 신고입니다: #$id")
         val nicknames = nicknamesOf(listOf(report.reporterId, report.reportedMemberId))
         val elapsed = Duration.between(report.createdAt, now)
 
@@ -92,7 +92,7 @@ class AdminReportService(
         return ReportedSummary(
             memberId = report.reportedMemberId,
             nickname = nickname,
-            statusName = memberRepository.findById(report.reportedMemberId).getOrNull()?.status?.name ?: "탈퇴",
+            memberStatus = memberRepository.findById(report.reportedMemberId).getOrNull()?.status,
             recommendedStrike = sanctionRepository.countStrikes(report.reportedMemberId) + 1,
             sanctions = sanctions.map { sanction ->
                 SanctionHistoryItem(

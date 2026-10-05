@@ -69,7 +69,7 @@ class AdminReportController(
                 log.info { "어드민[${admin.displayName}] 이 신고 #$id 를 ${decision.name} 로 처리" }
                 // 검토 트랜잭션이 커밋된 뒤라 알림 실패가 검토를 되돌리지 않는다(notifier 가 실패를 삼킨다).
                 sanction?.let(reportSanctionNotifier::notifyImposed)
-                redirectAttributes.addFlashAttribute("message", "신고 #$id 를 '${decision.description}' 로 처리했습니다.")
+                redirectAttributes.addFlashAttribute("message", "신고 #${id} 처리를 마쳤습니다: ${decision.description}")
             }
             .onFailure { e ->
                 // 입력값·상태 오류(WarnException)는 화면에 안내하고, 예기치 못한 예외는 전역 핸들러로 전파한다.

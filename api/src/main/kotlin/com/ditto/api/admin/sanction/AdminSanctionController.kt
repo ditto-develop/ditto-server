@@ -54,7 +54,7 @@ class AdminSanctionController(
         }
             .onSuccess {
                 log.info { "어드민[${admin.displayName}] 이 회원 #$id 에 직권 제재 ${level.name}(${origin.name}) 적용" }
-                redirectAttributes.addFlashAttribute("message", "'${level.description}' 제재를 적용했습니다.")
+                redirectAttributes.addFlashAttribute("message", "제재를 적용했습니다: ${level.description}")
             }
             .onFailure { e ->
                 if (e !is WarnException) throw e
@@ -73,7 +73,7 @@ class AdminSanctionController(
         val lifted = runCatching { adminSanctionService.lift(id, serverTimeProvider.now()) }
             .onSuccess {
                 log.info { "어드민[${admin.displayName}] 이 제재 #$id 를 직권 해제" }
-                redirectAttributes.addFlashAttribute("message", "제재 #$id 를 해제했습니다.")
+                redirectAttributes.addFlashAttribute("message", "제재를 해제했습니다: #$id")
             }
             .onFailure { e ->
                 if (e !is WarnException) throw e

@@ -28,7 +28,7 @@ class AdminNoticeService(
         )
 
     fun recordRecipientCount(noticeId: Long, count: Int): SystemNotice {
-        val notice = systemNoticeRepository.findById(noticeId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        val notice = systemNoticeRepository.findById(noticeId).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 공지입니다: #$noticeId") }
         notice.recordRecipientCount(count)
         return notice
     }
