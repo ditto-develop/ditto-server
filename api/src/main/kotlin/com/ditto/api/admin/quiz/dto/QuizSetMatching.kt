@@ -1,7 +1,10 @@
 package com.ditto.api.admin.quiz.dto
 
 import com.ditto.api.match.matching.OneToOneMatchingProcessor
+import com.ditto.domain.match.entity.GroupMatch
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import java.time.LocalDateTime
@@ -26,8 +29,33 @@ class ParticipantMatching(
 ) {
     companion object {
         val EMPTY = ParticipantMatching()
+
+        /** 후보 상대와의 신청은 후보 줄에 붙이고, 나머지는 후보 외 신청으로 나눈다. */
+        fun ofOneToOne(
+            records: OneToOneRecords,
+            nicknames: Map<Long, String>,
+            miss: MatchMiss?,
+        ): ParticipantMatching {
+            val memberId = records.memberId
+            val candidates = records.candidates.sortedByDescending { it.score }
+            val (requestsWithCandidates, outsideRequests) = records.requests.partition { request ->
+                candidates.any { it.otherMemberId == request.counterpartOf(memberId) }
+            }
+            return ParticipantMatching(
+                personalCandidates = candidates.map { PersonalCandidate.of(it, requestsWithCandidates, nicknames) },
+                outsideRequests = outsideRequests.map { OutsideRequest.of(it, memberId, nicknames) },
+                miss = miss,
+            )
+        }
     }
 }
+
+/** 한 퀴즈셋에서 이 회원이 주인인 1:1 후보와 이 회원이 낀 1:1 신청. */
+class OneToOneRecords(
+    val memberId: Long,
+    val candidates: List<MatchCandidate>,
+    val requests: List<PersonalMatch>,
+)
 
 class PersonalCandidate(
     val otherMemberId: Long,
@@ -36,13 +64,40 @@ class PersonalCandidate(
     val matchedQuestionCount: Int,
     val totalQuestionCount: Int,
     val requestState: PersonalRequestState?,
-)
+) {
+    companion object {
+        // 후보 주인이 낀 신청 중 이 후보 상대와의 신청 상태를 붙인다.
+        fun of(
+            candidate: MatchCandidate,
+            requests: List<PersonalMatch>,
+            nicknames: Map<Long, String>,
+        ): PersonalCandidate {
+            val request = requests.firstOrNull { it.counterpartOf(candidate.ownerMemberId) == candidate.otherMemberId }
+            return PersonalCandidate(
+                otherMemberId = candidate.otherMemberId,
+                otherNickname = nicknames[candidate.otherMemberId],
+                score = candidate.score,
+                matchedQuestionCount = candidate.matchedQuestionCount,
+                totalQuestionCount = candidate.totalQuestionCount,
+                requestState = request?.let { PersonalRequestState.of(it, viewerId = candidate.ownerMemberId) },
+            )
+        }
+    }
+}
 
 class OutsideRequest(
     val otherMemberId: Long,
     val otherNickname: String?,
     val requestState: PersonalRequestState,
-)
+) {
+    companion object {
+        fun of(request: PersonalMatch, viewerId: Long, nicknames: Map<Long, String>): OutsideRequest {
+            val otherMemberId = request.counterpartOf(viewerId)
+            val requestState = PersonalRequestState.of(request, viewerId)
+            return OutsideRequest(otherMemberId, nicknames[otherMemberId], requestState)
+        }
+    }
+}
 
 /** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 on, 대기는 matching, 끝난 것은 off. */
 enum class BadgeTone(val cssClass: String) {
@@ -79,7 +134,31 @@ class GroupCandidate(
     val activationThreshold: Int,
     val myResponse: GroupResponse,
     val otherMembers: List<GroupCandidateMember>,
-)
+) {
+    companion object {
+        // 초대에는 보는 회원의 초대가 정확히 하나 들어 있어야 한다.
+        fun of(
+            groupMatch: GroupMatch,
+            invitations: List<GroupMatchMember>,
+            viewerId: Long,
+            nicknames: Map<Long, String>,
+        ): GroupCandidate {
+            val (myInvitations, otherInvitations) = invitations.partition { it.memberId == viewerId }
+            return GroupCandidate(
+                groupMatchId = groupMatch.id,
+                score = groupMatch.score,
+                isFormed = groupMatch.isActive,
+                acceptedCount = groupMatch.acceptedCount,
+                activationThreshold = GroupMatch.ACTIVATION_THRESHOLD,
+                myResponse = GroupResponse.of(myInvitations.single().status),
+                otherMembers = otherInvitations.map { invitation ->
+                    val response = GroupResponse.of(invitation.status)
+                    GroupCandidateMember(invitation.memberId, nicknames[invitation.memberId], response)
+                },
+            )
+        }
+    }
+}
 
 class GroupCandidateMember(
     val memberId: Long,
@@ -123,8 +202,16 @@ enum class MissEmphasis(val cssClass: String) {
     ACTION_NEEDED("badge matching"),
 }
 
-/** 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지와, 테스터가 다음에 할 일. */
-enum class MatchMissReason(val label: String, val nextAction: String?, val emphasis: MissEmphasis) {
+/**
+ * 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지와, 테스터가 다음에 할 일.
+ * 다음 조치를 참여 현황 링크로 그리는 이유는 linksToParticipants 를 켠다.
+ */
+enum class MatchMissReason(
+    val label: String,
+    val nextAction: String?,
+    val emphasis: MissEmphasis,
+    val linksToParticipants: Boolean = false,
+) {
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
     NOT_GENERATED("매칭 전", "'매칭 실행'에서 재생성하거나 [자동 매칭 실행] 누르기", MissEmphasis.EXPECTED),
     NOT_COMPLETED("퀴즈 미완료", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
@@ -146,4 +233,7 @@ enum class MatchMissReason(val label: String, val nextAction: String?, val empha
     CUT_BY_HARD_LIMIT("1명당 후보 수 한도에 밀림(정상)", null, MissEmphasis.NORMAL),
     STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "'매칭 실행'에서 재생성", MissEmphasis.ACTION_NEEDED),
     NOT_ASSIGNED_TO_GROUP("그룹 배정 안 됨(인원이 남거나 차단, 정상)", null, MissEmphasis.NORMAL),
+
+    /** 회원 화면은 1:1 풀 전체를 다시 계산하지 않아 풀 단계 이유를 모른다. */
+    POOL_REASON_NOT_COMPUTED("후보 없음", "참여 현황에서 이유 보기", MissEmphasis.NORMAL, linksToParticipants = true),
 }

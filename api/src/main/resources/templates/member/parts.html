@@ -4,7 +4,7 @@
 <!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${email} 을 사용한다. -->
 <table th:fragment="memberTable(rows)" class="tbl">
     <thead>
-    <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 변경</th></tr>
+    <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 변경</th><th></th></tr>
     </thead>
     <tbody>
     <tr th:each="m : ${rows}">
@@ -25,6 +25,7 @@
                 <button class="btn sm" type="submit">변경</button>
             </form>
         </td>
+        <td class="actions"><a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.id})}">퀴즈 현황</a></td>
     </tr>
     </tbody>
 </table>

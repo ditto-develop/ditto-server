@@ -97,8 +97,9 @@
                                             </th:block>
                                         </div>
                                     </th:block>
-                                    <div class="member-actions" th:if="${p.kind.name() != 'DELETED' and p.answeredCount > 0}">
-                                        <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미 만들기</a>
+                                    <div class="member-actions" th:if="${p.kind.name() != 'DELETED'}">
+                                        <a class="text-link" th:href="@{/admin/members/{id}/quizzes(id=${p.memberId})}">회원별 퀴즈 현황</a>
+                                        <a class="text-link" th:if="${p.answeredCount > 0}" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미 만들기</a>
                                     </div>
                                     <form class="member-reset" th:if="${memberAnswerReset != null and memberAnswerReset.isResettable}"
                                           th:action="@{/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers(id=${quizSet.id},memberId=${p.memberId})}" method="post"
@@ -135,38 +136,7 @@
                                     <div class="muted interests" th:unless="${p.interests.isEmpty()}"
                                          th:text="${#strings.listJoin(p.interests.![description], ', ')}">관심사</div>
                                 </td>
-                                <td class="match-cell" th:with="m=${view.matching.of(p.memberId)}">
-                                    <div class="nowrap" th:each="c : ${m.personalCandidates}">
-                                        <a class="member-search-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${c.otherMemberId}|)}"
-                                           th:text="|${c.otherNickname ?: '삭제된 회원'} (#${c.otherMemberId})|">닉네임 (#2)</a>
-                                        <span class="muted" th:text="|${#numbers.formatDecimal(c.score, 1, 1)} (${c.matchedQuestionCount}/${c.totalQuestionCount})|">66.7 (2/3)</span>
-                                        <span th:if="${c.requestState != null}" th:class="${c.requestState.tone.cssClass}" th:text="${c.requestState.label}">신청함</span>
-                                    </div>
-                                    <div class="nowrap" th:each="r : ${m.outsideRequests}">
-                                        <span class="muted">후보 외 신청:</span>
-                                        <a class="member-search-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${r.otherMemberId}|)}"
-                                           th:text="|${r.otherNickname ?: '삭제된 회원'} (#${r.otherMemberId})|">닉네임 (#2)</a>
-                                        <span th:class="${r.requestState.tone.cssClass}" th:text="${r.requestState.label}">성사</span>
-                                    </div>
-                                    <div class="match-group" th:each="g : ${m.groupCandidates}">
-                                        <div class="match-group-head">
-                                            <span th:text="|그룹 #${g.groupMatchId} · ${#numbers.formatDecimal(g.score, 1, 1)} · 수락 ${g.acceptedCount}/${g.activationThreshold}|">그룹 #1 · 75.0 · 수락 1/3</span>
-                                            <span class="badge on" th:if="${g.isFormed}">성사</span>
-                                            <span class="muted">본인</span>
-                                            <span th:class="${g.myResponse.tone.cssClass}" th:text="${g.myResponse.label}">대기</span>
-                                        </div>
-                                        <div class="muted match-group-member" th:each="o : ${g.otherMembers}">
-                                            <a class="member-search-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${o.memberId}|)}"
-                                               th:text="|${o.nickname ?: '삭제된 회원'} (#${o.memberId})|">닉네임 (#2)</a>
-                                            <span th:class="${o.response.tone.cssClass}" th:text="${o.response.label}">대기</span>
-                                        </div>
-                                    </div>
-                                    <th:block th:if="${m.miss != null}" th:with="reason=${m.miss.reason}">
-                                        <span th:class="${reason.emphasis.cssClass}" th:text="${reason.label}">퀴즈 미완료</span>
-                                        <span class="muted" th:if="${m.miss.scoreGap != null}" th:text="|(${m.miss.scoreGap})|">(최고 72.5점, 기준 80.0점)</span>
-                                        <div class="muted" th:if="${reason.nextAction != null}" th:text="|→ ${reason.nextAction}|">→ 다음 조치</div>
-                                    </th:block>
-                                </td>
+                                <td class="match-cell" th:insert="~{quiz/parts :: matchCell(${view.matching.of(p.memberId)}, ${quizSet.id}, ${p.memberId})}"></td>
                                 <td class="answer-cell" th:each="answer, stat : ${p.answerContents}"
                                     th:title="${view.quizzes[stat.index].question}" th:text="${answer} ?: '-'">-</td>
                             </tr>

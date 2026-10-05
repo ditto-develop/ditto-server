@@ -68,6 +68,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 // 같은 컨텍스트를 쓰는 IntegrationTest(AdminQaWebTest 등)가 커밋한 행이 남아 있을 수 있어 시작 전에 비운다.
 @SpringBootTest
@@ -655,6 +656,88 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
+    }
+
+    @Test
+    @DisplayName("회원 관리에서 닉네임 부분 일치로 회원을 찾는다")
+    fun memberSearchByNickname() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "찾을회원", email = "find@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("q", "을회").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("#${member.id}")))
+            .andExpect(content().string(not(containsString("find@ditto.pics"))))
+    }
+
+    @Test
+    @DisplayName("회원 관리에서 맞는 회원이 없으면 #ID로 찾으라고 안내한다")
+    fun memberSearchNoMatch() {
+        mockMvc.perform(get("/admin/members").param("q", "없는닉네임").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("회원 ID로 찾으려면 #123처럼 #을 붙이세요.")))
+    }
+
+    @Test
+    @DisplayName("관리자가 없으면 빈 관리자 표를 그리지 않는다")
+    fun memberPageWithoutAdmins() {
+        mockMvc.perform(get("/admin/members").with(authentication(admin())))
+            .andExpect(content().string(containsString("관리자가 없습니다.")))
+            .andExpect(content().string(not(containsString("<th>권한 변경</th>"))))
+    }
+
+    @Test
+    @DisplayName("회원 검색 결과와 참여 현황에서 회원별 퀴즈 현황으로 넘어간다")
+    fun memberQuizzesLinks() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val memberId = saveCompletedMember(quizSet.id, "링크회원")
+
+        mockMvc.perform(get("/admin/members").param("q", "링크").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/$memberId/quizzes?q=%EB%A7%81%ED%81%AC")))
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/$memberId/quizzes")))
+    }
+
+    @Test
+    @DisplayName("회원별 퀴즈 현황은 참여한 셋의 진행·매칭과 참여하지 않은 셋을 함께 그린다")
+    fun memberQuizzesPage() {
+        val joined = quizSetRepository.save(QuizSetFixture.create(title = "참여한 셋"))
+        val skipped = quizSetRepository.save(
+            QuizSetFixture.create(
+                title = "건너뛴 셋",
+                startDate = LocalDateTime.of(2026, 3, 30, 0, 0),
+                endDate = LocalDateTime.of(2026, 4, 1, 0, 0),
+            ),
+        )
+        val memberId = memberRepository.save(MemberFixture.create(nickname = "현황회원", status = MemberStatus.ACTIVE)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = memberId, quizSetId = joined.id, totalCount = 3))
+
+        mockMvc.perform(get("/admin/members/{id}/quizzes", memberId).param("q", "현황").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("현황회원")))
+            .andExpect(content().string(containsString("참여 1 / 전체 2")))
+            .andExpect(content().string(containsString("/admin/members?q=%ED%98%84%ED%99%A9")))
+            .andExpect(content().string(containsString("건너뛴 셋")))
+            .andExpect(content().string(containsString("참여 안 함")))
+            .andExpect(content().string(containsString("0/3")))
+            .andExpect(content().string(containsString("<span class=\"muted\">퀴즈 미완료</span>")))
+            .andExpect(content().string(not(containsString("ONE_TO_ONE"))))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${joined.id}/participants?q=%23$memberId")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${skipped.id}\"")))
+    }
+
+    @Test
+    @DisplayName("회원별 퀴즈 현황에서 1:1 후보가 없으면 그 셋 참여 현황으로 이유를 보러 간다")
+    fun memberQuizzesPoolReasonLink() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val memberId = saveCompletedMember(quizSet.id, "후보없음회원")
+
+        mockMvc.perform(get("/admin/members/{id}/quizzes", memberId).with(authentication(admin())))
+            .andExpect(content().string(containsString("후보 없음")))
+            .andExpect(
+                content().string(
+                    containsString("href=\"/admin/quiz-sets/${quizSet.id}/participants?q=%23$memberId\">참여 현황에서 이유 보기</a>"),
+                ),
+            )
     }
 
     @Test

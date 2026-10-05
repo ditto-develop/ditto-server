@@ -8,22 +8,64 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">회원 관리</h1>
-            <p class="page-desc">이메일로 회원을 찾아 권한을 바꿉니다. 현재 관리자 목록에서도 바로 바꿀 수 있습니다.</p>
+            <p class="page-desc">닉네임·회원 ID나 이메일로 회원을 찾아 퀴즈 현황을 보거나 권한을 바꿉니다. 현재 관리자 목록에서도 바로 바꿀 수 있습니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <!-- 현재 관리자 -->
             <div class="card">
                 <h2>현재 관리자 <span class="badge cat" th:text="${admins.size()} + '명'">0명</span></h2>
                 <p class="muted" th:if="${admins.isEmpty()}">관리자가 없습니다.</p>
-                <div th:unless="${admins.isEmpty()}" th:replace="~{member/parts :: memberTable(${admins})}"></div>
+                <th:block th:unless="${admins.isEmpty()}">
+                    <div th:replace="~{member/parts :: memberTable(${admins})}"></div>
+                </th:block>
+            </div>
+
+            <!-- 닉네임·회원 ID 검색 -->
+            <div class="card">
+                <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
+                    <div class="field" style="flex:1">
+                        <label for="memberQuery">닉네임·회원 ID로 찾기</label>
+                        <input type="search" id="memberQuery" name="q" th:value="${q}" placeholder="예: dummy-female, #123" autocomplete="off"/>
+                    </div>
+                    <div class="field"><button class="btn" type="submit">검색</button></div>
+                </form>
+                <th:block th:if="${searchResult != null}">
+                    <p class="muted" style="margin:0" th:if="${searchResult.members.isEmpty()}">
+                        검색 결과가 없습니다. 회원 ID로 찾으려면 #123처럼 #을 붙이세요.
+                    </p>
+                    <th:block th:unless="${searchResult.members.isEmpty()}">
+                        <p class="muted" style="margin:0 0 12px" th:if="${searchResult.isTruncated}"
+                           th:text="|최근 가입 순으로 ${searchResult.limit}명까지만 보여 줍니다. 더 좁혀 찾으세요.|">최근 가입 순으로 50명까지만</p>
+                        <table class="tbl">
+                            <thead>
+                            <tr><th title="정상 회원이 아니면 회원 상태를 배지로 보여 줍니다">회원</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="member : ${searchResult.members}">
+                                <td class="member-cell">
+                                    <span class="member-name" th:text="${member.nickname}">닉네임</span>
+                                    <span class="member-id" th:text="|#${member.memberId}|">#1</span>
+                                    <span class="badge cat" th:unless="${member.isDummy}">실회원</span>
+                                    <th:block th:if="${member.status.name() != 'ACTIVE'}">
+                                        <span th:replace="~{member/parts :: memberStatusBadge(${member.status})}"></span>
+                                    </th:block>
+                                </td>
+                                <td class="actions">
+                                    <a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${member.memberId},q=${q})}">퀴즈 현황</a>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </th:block>
+                </th:block>
             </div>
 
             <!-- 이메일 검색 -->
             <div class="card">
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
-                        <label>이메일로 검색</label>
-                        <input type="text" name="email" th:value="${email}" placeholder="member@example.com"/>
+                        <label for="memberEmail">이메일로 검색</label>
+                        <input type="text" id="memberEmail" name="email" th:value="${email}" placeholder="member@example.com"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">검색</button></div>
                 </form>
@@ -33,7 +75,9 @@
             <div class="card" th:if="${searched}">
                 <h2>검색 결과</h2>
                 <p class="muted" th:if="${members == null or members.isEmpty()}">검색 결과가 없습니다.</p>
-                <div th:unless="${members == null or members.isEmpty()}" th:replace="~{member/parts :: memberTable(${members})}"></div>
+                <th:block th:unless="${members == null or members.isEmpty()}">
+                    <div th:replace="~{member/parts :: memberTable(${members})}"></div>
+                </th:block>
             </div>
         </main>
     </div>

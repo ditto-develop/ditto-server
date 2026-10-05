@@ -6,6 +6,7 @@ import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.querydsl.MemberRepositoryCustom
 import jakarta.persistence.LockModeType
 import java.time.LocalDateTime
+import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.transaction.annotation.Propagation
@@ -52,6 +53,9 @@ interface MemberRepository : JpaRepository<Member, Long>, MemberRepositoryCustom
 
     /** 특정 권한을 가진 회원 목록(어드민 보유자 조회 등). */
     fun findByRoleOrderByIdAsc(role: MemberRole): List<Member>
+
+    /** 닉네임 부분 일치 회원을 최근 가입 순으로 limit명까지. */
+    fun findByNicknameContainingOrderByIdDesc(keyword: String, limit: Limit): List<Member>
 
     /** 닉네임 접두사로 시작하는 회원 목록. */
     fun findByNicknameStartingWith(prefix: String): List<Member>

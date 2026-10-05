@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('회원별 퀴즈 현황')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('member')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content" th:with="member=${view.member}">
+            <a class="muted" th:href="@{/admin/members(q=${backQuery})}">← 회원 관리</a>
+            <h1 class="page-title member-heading" style="margin-top:8px">
+                <span th:text="${member.nickname}">닉네임</span>
+                <span class="member-id" th:text="|#${member.memberId}|">#1</span>
+                퀴즈 현황
+                <span class="badge cat" th:unless="${member.isDummy}">실회원</span>
+                <th:block th:if="${member.status.name() != 'ACTIVE'}">
+                    <span th:replace="~{member/parts :: memberStatusBadge(${member.status})}"></span>
+                </th:block>
+            </h1>
+            <p class="page-desc">
+                <span th:text="${member.gender?.description} ?: '성별 없음'">남성</span> ·
+                <span th:text="${member.age != null} ? |${member.age}세| : '나이 없음'">27세</span>
+            </p>
+            <p class="muted">매칭 칸의 상대 회원을 누르면 그 퀴즈셋 참여 현황에서 그 회원을 걸러 봅니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <h2>퀴즈셋 <span class="count" th:text="|참여 ${view.participatedCount} / 전체 ${view.rows.size()}|">참여 0 / 전체 0</span></h2>
+                <p class="muted" th:if="${view.rows.isEmpty()}" style="margin:0">퀴즈셋이 없습니다.</p>
+                <p class="muted" th:if="${!view.rows.isEmpty() and view.participatedCount == 0}" style="margin:0 0 12px">
+                    이 회원은 참여한 퀴즈셋이 없습니다.
+                </p>
+                <div class="member-quiz-table" th:unless="${view.rows.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr><th>주차</th><th>퀴즈셋</th><th>진행</th><th>매칭</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="row : ${view.rows}" th:with="quizSet=${row.quizSet},progress=${row.progress}"
+                            th:classappend="${progress == null} ? 'not-participated'">
+                            <td class="nowrap" th:text="${@weekLabel.of(quizSet.weekStartedOn)}">2026.10.05 ~ 2026.10.11</td>
+                            <td>
+                                <a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}" th:text="${quizSet.title}">제목</a>
+                                <span class="muted" th:text="${@matchingTypeLabel.of(quizSet.matchingType)}">1:1</span>
+                                <span class="badge off" th:unless="${quizSet.isActive}">비활성</span>
+                                <div th:if="${progress != null}">
+                                    <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${member.memberId}|)}"
+                                       th:aria-label="|${quizSet.title} 참여 현황에서 보기|">참여 현황에서 보기</a>
+                                </div>
+                            </td>
+                            <td class="nowrap">
+                                <span th:if="${progress == null}">참여 안 함</span>
+                                <th:block th:unless="${progress == null}">
+                                    <th:block th:switch="${progress.status.name()}">
+                                        <span class="badge on" th:case="'COMPLETED'">완료</span>
+                                        <span class="badge matching" th:case="'IN_PROGRESS'">진행 중</span>
+                                        <span class="badge off" th:case="*">시작 전</span>
+                                    </th:block>
+                                    <span class="num" th:text="|${progress.answeredCount}/${progress.totalCount}|">3/3</span>
+                                    <div class="muted" th:switch="${progress.preferredGender.name()}">
+                                        <span th:case="'OPPOSITE'">이성 선호</span>
+                                        <span th:case="'SAME'">동성 선호</span>
+                                        <span th:case="*">성별 무관</span>
+                                    </div>
+                                </th:block>
+                            </td>
+                            <td class="match-cell">
+                                <span th:if="${row.matching == null}">-</span>
+                                <th:block th:unless="${row.matching == null}">
+                                    <th:block th:replace="~{quiz/parts :: matchCell(${row.matching}, ${quizSet.id}, ${member.memberId})}"></th:block>
+                                </th:block>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>
