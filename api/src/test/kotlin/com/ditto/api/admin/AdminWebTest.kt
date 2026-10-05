@@ -237,6 +237,7 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("매칭 열: 후보 생성")))
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants?q=%23$receiver")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
@@ -274,7 +275,21 @@ class AdminWebTest {
             .andExpect(content().string(containsString("/admin/js/participant-search.js")))
             .andExpect(content().string(containsString("data-member-id=\"$memberId\"")))
             .andExpect(content().string(containsString("data-nickname=\"찾을회원\"")))
-            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\">")))
+            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\" class=\"participant-deleted\">")))
+    }
+
+    @Test
+    @DisplayName("퀴즈셋 참여 현황은 ACTIVE가 아닌 회원 상태만 한글 배지로 보여 준다")
+    fun quizSetParticipantsInactiveMemberStatusBadge() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        saveCompletedMember(quizSet.id, "활동회원")
+        val leftMemberId = memberRepository.save(MemberFixture.create(nickname = "탈퇴회원", status = MemberStatus.LEFT)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = leftMemberId, quizSetId = quizSet.id, totalCount = 1))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(not(containsString(">ACTIVE<"))))
     }
 
     private fun saveCompletedMember(quizSetId: Long, nickname: String): Long {
@@ -477,15 +492,58 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("검색한 채 회원별 초기화를 하면 같은 검색어로 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersKeepsSearchQuery() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", " 홍 길동 ")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants?q=%ED%99%8D%20%EA%B8%B8%EB%8F%99"))
+    }
+
+    @Test
+    @DisplayName("초기화한 회원만 #ID로 찾던 중이면 검색어 없이 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersDropsSearchForResetMember() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", "#$target")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+    }
+
+    @Test
+    @DisplayName("검색어가 공백뿐이면 회원별 초기화 뒤 검색어 없이 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersIgnoresBlankSearch() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", "   ")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+    }
+
+    @Test
     @DisplayName("회원별 초기화가 거부되면 참여 현황으로 돌아가 이유를 보여 준다")
     fun resetMemberQuizAnswersRejected() {
         val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
 
         mockMvc.perform(
             post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, 99999L)
+                .param("q", "#99999")
                 .with(authentication(admin())).with(csrf()),
         )
-            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants?q=%2399999"))
             .andExpect(flash().attribute("error", containsString("이 퀴즈셋에 참여하지 않은 회원입니다.")))
     }
 

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments :: head('더미 한 명 생성')}"></head>
+<head th:replace="~{fragments :: head('더미 직접 만들기')}"></head>
 <body>
 <div class="layout">
     <aside th:replace="~{fragments :: sidebar('dummy')}"></aside>
@@ -9,7 +9,7 @@
         <main class="content">
             <a class="muted" th:href="@{/admin/dummy}">← 더미 생성</a>
             <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
-            <h1 class="page-title" style="margin-top:8px">더미 한 명 생성</h1>
+            <h1 class="page-title" style="margin-top:8px">더미 직접 만들기</h1>
             <p class="page-desc">
                 <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>
                 에 프로필과 답을 지정해 더미를 생성합니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,

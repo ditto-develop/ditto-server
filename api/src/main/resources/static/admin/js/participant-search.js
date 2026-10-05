@@ -41,6 +41,12 @@
         window.history.replaceState(null, '', url);
     };
 
+    // 회원별 초기화 폼이 검색어를 함께 보내, 초기화한 뒤에도 같은 검색 결과로 돌아온다.
+    table.addEventListener('submit', (event) => {
+        const queryField = event.target.querySelector('input[name="q"]');
+        if (queryField) queryField.value = input.value.trim();
+    });
+
     input.addEventListener('input', () => {
         const query = input.value.trim();
         showMatchingRows(query);

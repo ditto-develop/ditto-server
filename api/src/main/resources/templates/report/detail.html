@@ -49,7 +49,7 @@
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
-                <table th:unless="${report.reported.sanctions.isEmpty()}">
+                <table class="tbl" th:unless="${report.reported.sanctions.isEmpty()}">
                     <thead>
                     <tr><th>수위</th><th>경위</th><th>상태</th><th>기간</th><th>조치자</th><th>메모</th></tr>
                     </thead>

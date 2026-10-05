@@ -46,8 +46,8 @@
             <p class="muted">GROUP 퀴즈셋은 성별과 상관없이 3명 이상이면 그룹 후보가 만들어집니다.</p>
 
             <form class="card" th:action="@{/admin/dummy/single}" method="get">
-                <h2>더미 한 명 생성</h2>
-                <p class="muted">닉네임·프로필·문항별 답·푼 문항 수를 지정해 한 명을 생성합니다. 특정 회원과 점수를 맞춘 더미나 퀴즈를 덜 푼 더미가 필요할 때 씁니다.</p>
+                <h2>더미 직접 만들기</h2>
+                <p class="muted">닉네임, 프로필, 문항별 답을 골라서 더미를 만듭니다. 특정 회원과 점수를 맞추거나 퀴즈를 덜 푼 더미가 필요할 때 쓰세요.</p>
                 <p class="muted" th:if="${quizSets.isEmpty()}">퀴즈셋이 없습니다. 퀴즈셋을 먼저 만드세요.</p>
                 <div class="field" th:unless="${quizSets.isEmpty()}">
                     <label>대상 퀴즈셋</label>
@@ -57,7 +57,7 @@
                     </select>
                 </div>
                 <div class="btn-row" th:unless="${quizSets.isEmpty()}">
-                    <button type="submit" class="btn secondary">값 지정 화면 열기</button>
+                    <button type="submit" class="btn secondary">직접 만들러 가기</button>
                 </div>
             </form>
 
