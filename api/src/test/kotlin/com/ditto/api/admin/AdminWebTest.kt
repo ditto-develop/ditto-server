@@ -259,6 +259,23 @@ class AdminWebTest {
             .andExpect(content().string(containsString("<span class=\"badge matching\">대기</span>")))
     }
 
+    @Test
+    @DisplayName("퀴즈셋 참여 현황은 참여자 찾기 칸을 두고 행마다 회원 ID·닉네임을 싣는다")
+    fun quizSetParticipantsSearchAttributes() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val memberId = saveCompletedMember(quizSet.id, "찾을회원")
+        val deletedMemberId = 99999L
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = deletedMemberId, quizSetId = quizSet.id, totalCount = 1))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("id=\"participantSearch\"")))
+            .andExpect(content().string(containsString("/admin/js/participant-search.js")))
+            .andExpect(content().string(containsString("data-member-id=\"$memberId\"")))
+            .andExpect(content().string(containsString("data-nickname=\"찾을회원\"")))
+            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\">")))
+    }
+
     private fun saveCompletedMember(quizSetId: Long, nickname: String): Long {
         val memberId = memberRepository.save(MemberFixture.create(nickname = nickname, status = MemberStatus.ACTIVE)).id
         val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 1)
