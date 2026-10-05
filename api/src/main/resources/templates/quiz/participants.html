@@ -92,12 +92,7 @@
                                             <span class="member-name" th:text="${p.nickname}">닉네임</span>
                                             <span class="member-id" th:text="|#${p.memberId}|">#1</span>
                                             <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
-                                            <th:block th:if="${p.memberStatus != null}" th:switch="${p.memberStatus.name()}">
-                                                <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
-                                                <span class="badge matching" th:case="'SUSPENDED'">정지</span>
-                                                <span class="badge matching" th:case="'BANNED'">차단</span>
-                                                <span class="badge matching" th:case="'LEFT'">탈퇴</span>
-                                            </th:block>
+                                            <th:block th:replace="~{member/parts :: statusBadge(${p.memberStatus})}"></th:block>
                                         </div>
                                     </th:block>
                                     <div class="member-actions" th:if="${p.kind.name() != 'DELETED'}">
@@ -139,7 +134,7 @@
                                     <div class="muted interests" th:unless="${p.interests.isEmpty()}"
                                          th:text="${#strings.listJoin(p.interests.![description], ', ')}">관심사</div>
                                 </td>
-                                <td class="match-cell" th:insert="~{quiz/parts :: matchCell(${view.matching.of(p.memberId)}, ${quizSet.id})}"></td>
+                                <td class="match-cell" th:insert="~{quiz/parts :: matchCell(${view.matching.of(p.memberId)}, ${quizSet.id}, ${p.memberId})}"></td>
                                 <td class="answer-cell" th:each="answer, stat : ${p.answerContents}"
                                     th:title="${view.quizzes[stat.index].question}" th:text="${answer} ?: '-'">-</td>
                             </tr>

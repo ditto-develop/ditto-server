@@ -40,37 +40,51 @@ class AdminMemberServiceTest : FreeSpec({
 
         val result = AdminMemberService(repository).searchByNicknameOrId(" #7 ")
 
-        result.map { it.memberId } shouldBe listOf(7L)
-        result.single().isDummy shouldBe true
-        verify(exactly = 0) { repository.findByNicknameContainingOrderByIdAsc(any(), any()) }
+        result.members.map { it.memberId } shouldBe listOf(7L)
+        result.members.single().isDummy shouldBe true
+        verify(exactly = 0) { repository.findByNicknameContainingOrderByIdDesc(any(), any()) }
     }
 
-    "searchByNicknameOrId 는 # 뒤가 숫자가 아니거나 없는 ID면 빈 목록" {
+    "searchByNicknameOrId 는 # 뒤가 숫자가 아니거나 없는 ID면 빈 결과" {
         val repository = mockk<MemberRepository>()
         every { repository.findById(99L) } returns Optional.empty()
         val service = AdminMemberService(repository)
 
-        service.searchByNicknameOrId("#abc") shouldBe emptyList()
-        service.searchByNicknameOrId("#99") shouldBe emptyList()
+        service.searchByNicknameOrId("#abc").members shouldBe emptyList()
+        service.searchByNicknameOrId("#99").members shouldBe emptyList()
     }
 
-    "searchByNicknameOrId 는 #이 없으면 닉네임 부분 일치를 정해진 수까지만 찾는다" {
+    "searchByNicknameOrId 는 #이 없으면 닉네임 부분 일치를 최근 가입 순으로 찾는다" {
         val repository = mockk<MemberRepository>()
-        every { repository.findByNicknameContainingOrderByIdAsc("홍", Limit.of(AdminMemberService.SEARCH_LIMIT)) } returns
+        val limit = Limit.of(AdminMemberService.NICKNAME_SEARCH_LIMIT + 1)
+        every { repository.findByNicknameContainingOrderByIdDesc("홍", limit) } returns
             listOf(MemberFixture.create(nickname = "홍길동", id = 1L))
 
         val result = AdminMemberService(repository).searchByNicknameOrId("홍")
 
-        result.map { it.nickname } shouldBe listOf("홍길동")
-        result.single().isDummy shouldBe false
+        result.members.map { it.nickname } shouldBe listOf("홍길동")
+        result.members.single().isDummy shouldBe false
+        result.isTruncated shouldBe false
     }
 
-    "searchByNicknameOrId 는 공백뿐이면 조회 없이 빈 목록" {
+    "searchByNicknameOrId 는 제한보다 많이 맞으면 제한만큼 자르고 잘렸다고 알린다" {
+        val repository = mockk<MemberRepository>()
+        val overLimit = AdminMemberService.NICKNAME_SEARCH_LIMIT + 1
+        every { repository.findByNicknameContainingOrderByIdDesc("dummy", Limit.of(overLimit)) } returns
+            (1..overLimit).map { MemberFixture.create(nickname = "dummy-$it", id = it.toLong()) }
+
+        val result = AdminMemberService(repository).searchByNicknameOrId("dummy")
+
+        result.members shouldHaveSize AdminMemberService.NICKNAME_SEARCH_LIMIT
+        result.isTruncated shouldBe true
+    }
+
+    "searchByNicknameOrId 는 공백뿐이면 조회 없이 빈 결과" {
         val repository = mockk<MemberRepository>()
 
-        AdminMemberService(repository).searchByNicknameOrId("  ") shouldBe emptyList()
+        AdminMemberService(repository).searchByNicknameOrId("  ").members shouldBe emptyList()
 
-        verify(exactly = 0) { repository.findByNicknameContainingOrderByIdAsc(any(), any()) }
+        verify(exactly = 0) { repository.findByNicknameContainingOrderByIdDesc(any(), any()) }
     }
 
     "changeRole 은 회원 권한을 변경한다" {

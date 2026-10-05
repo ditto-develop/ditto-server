@@ -1,5 +1,6 @@
 package com.ditto.api.admin.member
 
+import com.ditto.api.admin.member.dto.MemberSearchResult
 import com.ditto.api.admin.member.dto.MemberSummary
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -10,9 +11,7 @@ import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-/**
- * 어드민 회원 운영 — 이메일 검색 및 권한(Role) 변경.
- */
+/** 어드민 회원 운영. 닉네임·회원 ID·이메일 검색과 권한(Role) 변경. */
 @Service
 @Transactional
 class AdminMemberService(
@@ -26,17 +25,23 @@ class AdminMemberService(
         return memberRepository.findByEmailOrderByIdAsc(normalized)
     }
 
-    /** `#123`은 회원 ID 정확 일치, 그 외는 닉네임 부분 일치다. */
+    /** `#123`은 회원 ID 정확 일치, 그 외는 닉네임 부분 일치(최근 가입 순)다. */
     @Transactional(readOnly = true)
-    fun searchByNicknameOrId(query: String): List<MemberSummary> {
+    fun searchByNicknameOrId(query: String): MemberSearchResult {
         val keyword = query.trim()
-        if (keyword.isEmpty()) return emptyList()
+        if (keyword.isEmpty()) return MemberSearchResult.EMPTY
         if (keyword.startsWith(MEMBER_ID_PREFIX)) {
-            val member = findMemberById(keyword.removePrefix(MEMBER_ID_PREFIX))
-            return listOfNotNull(member).map { MemberSummary.of(it) }
+            val member = findMemberByIdText(keyword.removePrefix(MEMBER_ID_PREFIX))
+            return MemberSearchResult(listOfNotNull(member).map { MemberSummary.of(it) }, isTruncated = false)
         }
-        return memberRepository.findByNicknameContainingOrderByIdAsc(keyword, Limit.of(SEARCH_LIMIT))
-            .map { MemberSummary.of(it) }
+
+        // 한 명 더 읽어 제한을 넘었는지 안다.
+        val limit = Limit.of(NICKNAME_SEARCH_LIMIT + 1)
+        val members = memberRepository.findByNicknameContainingOrderByIdDesc(keyword, limit)
+        return MemberSearchResult(
+            members.take(NICKNAME_SEARCH_LIMIT).map { MemberSummary.of(it) },
+            isTruncated = members.size > NICKNAME_SEARCH_LIMIT,
+        )
     }
 
     /** 현재 ADMIN 권한 보유 회원 목록. */
@@ -49,13 +54,13 @@ class AdminMemberService(
         member.changeRole(role)
     }
 
-    private fun findMemberById(text: String): Member? {
-        val memberId = text.toLongOrNull() ?: return null
+    private fun findMemberByIdText(idText: String): Member? {
+        val memberId = idText.toLongOrNull() ?: return null
         return memberRepository.findById(memberId).orElse(null)
     }
 
     companion object {
-        const val SEARCH_LIMIT = 50
+        const val NICKNAME_SEARCH_LIMIT = 50
         private const val MEMBER_ID_PREFIX = "#"
     }
 }

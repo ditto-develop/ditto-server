@@ -620,3 +620,11 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .member-search-link { color: inherit; }
 .member-search-link:hover { color: var(--primary); text-decoration: underline; }
 .answer-cell { min-width: 3em; }
+
+/* 회원별 퀴즈 현황 */
+.member-heading .member-id { color: var(--text-muted); font-weight: 700; }
+.member-quiz-table table.tbl { font-size: 13px; word-break: keep-all; }
+.member-quiz-table table.tbl td { vertical-align: top; }
+.member-quiz-table .nowrap { white-space: nowrap; }
+.member-quiz-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.member-quiz-table tr.not-participated td { color: var(--text-muted); }

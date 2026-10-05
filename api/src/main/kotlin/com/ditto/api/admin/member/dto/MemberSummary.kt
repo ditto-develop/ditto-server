@@ -1,6 +1,7 @@
 package com.ditto.api.admin.member.dto
 
 import com.ditto.api.admin.dummy.DummyMarker
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 
@@ -10,9 +11,18 @@ class MemberSummary(
     val nickname: String,
     val status: MemberStatus,
     val isDummy: Boolean,
+    val gender: Gender?,
+    val age: Int?,
 ) {
     companion object {
         fun of(member: Member): MemberSummary =
-            MemberSummary(member.id, member.nickname, member.status, DummyMarker.isDummy(member.nickname))
+            MemberSummary(
+                memberId = member.id,
+                nickname = member.nickname,
+                status = member.status,
+                isDummy = DummyMarker.isDummy(member.nickname),
+                gender = member.gender,
+                age = member.age,
+            )
     }
 }

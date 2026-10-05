@@ -50,7 +50,7 @@ class ParticipantMatching(
     }
 }
 
-/** 한 퀴즈셋에서 [memberId]가 주인인 1:1 후보와 [memberId]가 낀 1:1 신청. */
+/** 한 퀴즈셋에서 이 회원이 주인인 1:1 후보와 이 회원이 낀 1:1 신청. */
 class OneToOneRecords(
     val memberId: Long,
     val candidates: List<MatchCandidate>,
@@ -66,7 +66,7 @@ class PersonalCandidate(
     val requestState: PersonalRequestState?,
 ) {
     companion object {
-        /** [requests]는 후보 주인이 낀 1:1 신청이고, 그중 이 후보 상대와의 신청 상태를 붙인다. */
+        // 후보 주인이 낀 신청 중 이 후보 상대와의 신청 상태를 붙인다.
         fun of(
             candidate: MatchCandidate,
             requests: List<PersonalMatch>,
@@ -91,9 +91,9 @@ class OutsideRequest(
     val requestState: PersonalRequestState,
 ) {
     companion object {
-        fun of(request: PersonalMatch, memberId: Long, nicknames: Map<Long, String>): OutsideRequest {
-            val otherMemberId = request.counterpartOf(memberId)
-            val requestState = PersonalRequestState.of(request, viewerId = memberId)
+        fun of(request: PersonalMatch, viewerId: Long, nicknames: Map<Long, String>): OutsideRequest {
+            val otherMemberId = request.counterpartOf(viewerId)
+            val requestState = PersonalRequestState.of(request, viewerId)
             return OutsideRequest(otherMemberId, nicknames[otherMemberId], requestState)
         }
     }
@@ -136,14 +136,14 @@ class GroupCandidate(
     val otherMembers: List<GroupCandidateMember>,
 ) {
     companion object {
-        /** [invitations]는 [groupMatch] 방의 초대 전부다. */
+        // 초대에는 보는 회원의 초대가 정확히 하나 들어 있어야 한다.
         fun of(
             groupMatch: GroupMatch,
             invitations: List<GroupMatchMember>,
-            memberId: Long,
+            viewerId: Long,
             nicknames: Map<Long, String>,
         ): GroupCandidate {
-            val (myInvitations, otherInvitations) = invitations.partition { it.memberId == memberId }
+            val (myInvitations, otherInvitations) = invitations.partition { it.memberId == viewerId }
             return GroupCandidate(
                 groupMatchId = groupMatch.id,
                 score = groupMatch.score,

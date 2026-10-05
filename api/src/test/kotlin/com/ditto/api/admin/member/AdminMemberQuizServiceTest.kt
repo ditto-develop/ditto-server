@@ -91,7 +91,7 @@ class AdminMemberQuizServiceTest(
             view.rows.last().matching?.miss?.reason shouldBe MatchMissReason.NOT_COMPLETED
         }
 
-        "없는 회원이면 예외" {
+        "없는 회원이면 NOT_FOUND 경고" {
             shouldThrow<WarnException> { adminMemberQuizService.getMemberQuizzes(99999L) }
         }
     }
@@ -114,14 +114,14 @@ class AdminMemberQuizServiceTest(
             matching?.miss.shouldBeNull()
         }
 
-        "후보를 만들기 전이면 매칭 전이다" {
+        "셋에 후보가 하나도 없어도 매칭 전으로 단정하지 않고 풀 단계 이유를 계산하지 않는다" {
             val quizSetId = saveQuizSet()
             val me = saveMember("나")
             saveCompleted(me, quizSetId)
 
             val miss = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.miss
 
-            miss?.reason shouldBe MatchMissReason.NOT_GENERATED
+            miss?.reason shouldBe MatchMissReason.POOL_REASON_NOT_COMPUTED
         }
 
         "후보가 만들어졌는데 내 후보가 없으면 풀 단계 이유는 계산하지 않는다" {
@@ -138,6 +138,7 @@ class AdminMemberQuizServiceTest(
         "후보 생성 뒤에 완주했으면 매칭 이후 완주다" {
             val quizSetId = saveQuizSet()
             saveCandidatePair(quizSetId, saveMember("다른남"), saveMember("다른여", gender = Gender.FEMALE), score = 100.0)
+            // 완주 시각이 후보 생성 시각보다 뒤여야 한다.
             Thread.sleep(5)
             val me = saveMember("나")
             saveCompleted(me, quizSetId)
@@ -147,22 +148,30 @@ class AdminMemberQuizServiceTest(
             miss?.reason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
         }
 
-        "이미 성사됐거나 비활성 회원이면 제외 이유를 받고 성사는 후보 밖 신청으로 보인다" {
+        "이미 성사됐으면 제외 이유를 받고 성사는 후보 밖 신청으로 보인다" {
             val quizSetId = saveQuizSet()
             val matched = saveMember("성사됨")
             val partner = saveMember("성사상대", gender = Gender.FEMALE)
-            val suspended = saveMember("정지", status = MemberStatus.SUSPENDED)
-            listOf(matched, partner, suspended).forEach { saveCompleted(it, quizSetId) }
-            val accepted = PersonalMatchFixture.create(matched, partner, quizSetId, status = PersonalMatchStatus.ACCEPTED)
-            personalMatchRepository.save(accepted)
+            listOf(matched, partner).forEach { saveCompleted(it, quizSetId) }
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(matched, partner, quizSetId, status = PersonalMatchStatus.ACCEPTED),
+            )
 
-            val matchedRow = adminMemberQuizService.getMemberQuizzes(matched).rows.single().matching
-            val suspendedRow = adminMemberQuizService.getMemberQuizzes(suspended).rows.single().matching
+            val matching = adminMemberQuizService.getMemberQuizzes(matched).rows.single().matching
 
-            matchedRow?.miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
-            matchedRow?.outsideRequests?.map { it.otherNickname to it.requestState } shouldBe
+            matching?.miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
+            matching?.outsideRequests?.map { it.otherNickname to it.requestState } shouldBe
                 listOf("성사상대" to PersonalRequestState.ACCEPTED)
-            suspendedRow?.miss?.reason shouldBe MatchMissReason.EXCLUDED_INACTIVE
+        }
+
+        "비활성 회원이면 제외 이유를 받는다" {
+            val quizSetId = saveQuizSet()
+            val suspended = saveMember("정지", status = MemberStatus.SUSPENDED)
+            saveCompleted(suspended, quizSetId)
+
+            val miss = adminMemberQuizService.getMemberQuizzes(suspended).rows.single().matching?.miss
+
+            miss?.reason shouldBe MatchMissReason.EXCLUDED_INACTIVE
         }
     }
 

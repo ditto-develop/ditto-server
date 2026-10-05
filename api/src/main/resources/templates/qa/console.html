@@ -203,7 +203,8 @@
                         <tbody>
                         <tr th:each="groupMember : ${group.members}">
                             <td>
-                                <span th:text="${groupMember.member.nickname}">홍길동</span>
+                                <a class="member-search-link" th:href="@{/admin/members/{id}/quizzes(id=${groupMember.member.id})}"
+                                   th:text="${groupMember.member.nickname}" title="회원별 퀴즈 현황">홍길동</a>
                                 <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
                             </td>
                             <td th:switch="${groupMember.status.name()}">

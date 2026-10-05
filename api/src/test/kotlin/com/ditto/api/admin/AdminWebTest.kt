@@ -672,19 +672,27 @@ class AdminWebTest {
     fun memberSearchNoMatch() {
         mockMvc.perform(get("/admin/members").param("q", "없는닉네임").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("맞는 회원이 없습니다")))
+            .andExpect(content().string(containsString("회원 ID는 #을 붙여 찾습니다")))
+    }
+
+    @Test
+    @DisplayName("관리자가 없으면 빈 관리자 표를 그리지 않는다")
+    fun memberPageWithoutAdmins() {
+        mockMvc.perform(get("/admin/members").with(authentication(admin())))
+            .andExpect(content().string(containsString("관리자가 없습니다.")))
+            .andExpect(content().string(not(containsString("<th>권한 변경</th>"))))
     }
 
     @Test
     @DisplayName("회원 검색 결과와 참여 현황에서 회원별 퀴즈 현황으로 넘어간다")
     fun memberQuizzesLinks() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
-        val member = saveCompletedMember(quizSet.id, "링크회원")
+        val memberId = saveCompletedMember(quizSet.id, "링크회원")
 
-        mockMvc.perform(get("/admin/members").param("q", "#$member").with(authentication(admin())))
-            .andExpect(content().string(containsString("/admin/members/$member/quizzes")))
+        mockMvc.perform(get("/admin/members").param("q", "링크").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/$memberId/quizzes?q=%EB%A7%81%ED%81%AC")))
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
-            .andExpect(content().string(containsString("/admin/members/$member/quizzes")))
+            .andExpect(content().string(containsString("/admin/members/$memberId/quizzes")))
     }
 
     @Test
@@ -698,18 +706,19 @@ class AdminWebTest {
                 endDate = LocalDateTime.of(2026, 4, 1, 0, 0),
             ),
         )
-        val member = memberRepository.save(MemberFixture.create(nickname = "현황회원", status = MemberStatus.ACTIVE)).id
-        quizProgressRepository.save(QuizProgressFixture.create(memberId = member, quizSetId = joined.id, totalCount = 3))
+        val memberId = memberRepository.save(MemberFixture.create(nickname = "현황회원", status = MemberStatus.ACTIVE)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = memberId, quizSetId = joined.id, totalCount = 3))
 
-        mockMvc.perform(get("/admin/members/{id}/quizzes", member).with(authentication(admin())))
+        mockMvc.perform(get("/admin/members/{id}/quizzes", memberId).param("q", "현황").with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("현황회원")))
-            .andExpect(content().string(containsString("1 / 2")))
+            .andExpect(content().string(containsString("참여 1 / 전체 2")))
+            .andExpect(content().string(containsString("/admin/members?q=%ED%98%84%ED%99%A9")))
             .andExpect(content().string(containsString("건너뛴 셋")))
             .andExpect(content().string(containsString("참여 안 함")))
             .andExpect(content().string(containsString("0/3")))
             .andExpect(content().string(containsString("<span class=\"muted\">미완주</span>")))
-            .andExpect(content().string(containsString("/admin/quiz-sets/${joined.id}/participants?q=%23$member")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${joined.id}/participants?q=%23$memberId")))
             .andExpect(content().string(containsString("/admin/quiz-sets/${skipped.id}\"")))
     }
 

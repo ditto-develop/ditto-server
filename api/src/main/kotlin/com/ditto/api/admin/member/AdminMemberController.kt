@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 회원 검색(닉네임·회원 ID, 이메일), 회원별 퀴즈 현황, 권한 변경. 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
+ * 회원 검색(닉네임·회원 ID, 이메일), 회원별 퀴즈 현황, 권한 변경.
+ * 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
  */
 @Controller
 class AdminMemberController(
@@ -27,9 +28,9 @@ class AdminMemberController(
         model: Model,
     ): String {
         model.addAttribute("q", q ?: "")
-        model.addAttribute("searchLimit", AdminMemberService.SEARCH_LIMIT)
         if (!q.isNullOrBlank()) {
-            model.addAttribute("searchResults", adminMemberService.searchByNicknameOrId(q))
+            model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(q))
+            model.addAttribute("searchLimit", AdminMemberService.NICKNAME_SEARCH_LIMIT)
         }
         model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
@@ -42,9 +43,11 @@ class AdminMemberController(
         return "member/list"
     }
 
+    // q는 회원 관리에서 들어올 때의 검색어로, 돌아가기 링크가 이어 쓴다.
     @GetMapping("/admin/members/{id}/quizzes")
-    fun quizzes(@PathVariable id: Long, model: Model): String {
+    fun quizzes(@PathVariable id: Long, @RequestParam(required = false) q: String?, model: Model): String {
         model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
+        model.addAttribute("backQuery", q?.takeIf { it.isNotBlank() } ?: "#$id")
         model.addAttribute("active", "member")
         return "member/quizzes"
     }

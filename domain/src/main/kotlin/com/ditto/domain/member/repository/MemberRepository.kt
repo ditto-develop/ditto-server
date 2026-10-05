@@ -54,7 +54,8 @@ interface MemberRepository : JpaRepository<Member, Long>, MemberRepositoryCustom
     /** 특정 권한을 가진 회원 목록(어드민 보유자 조회 등). */
     fun findByRoleOrderByIdAsc(role: MemberRole): List<Member>
 
-    fun findByNicknameContainingOrderByIdAsc(keyword: String, limit: Limit): List<Member>
+    /** 닉네임 부분 일치 회원을 최근 가입 순으로 limit명까지. */
+    fun findByNicknameContainingOrderByIdDesc(keyword: String, limit: Limit): List<Member>
 
     /** 닉네임 접두사로 시작하는 회원 목록. */
     fun findByNicknameStartingWith(prefix: String): List<Member>

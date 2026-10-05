@@ -239,6 +239,15 @@ class AdminQaWebTest(
             group.hasPendingDummy shouldBe true
         }
 
+        "그룹 구성원 닉네임은 회원별 퀴즈 현황으로 이어진다" {
+            val quizSet = saveCurrentWeekQuizSet(MatchingType.GROUP)
+            val tester = saveMember("테스터")
+            saveGroup(quizSet, listOf(tester, saveMember("dummy-male-aaaa"), saveMember("dummy-female-bbbb")))
+
+            mockMvc.perform(get("/admin/qa").with(authentication(admin)))
+                .andExpect(content().string(containsString("/admin/members/${tester.id}/quizzes")))
+        }
+
         "더미가 그룹 초대를 수락한다" {
             val quizSet = saveCurrentWeekQuizSet(MatchingType.GROUP)
             val dummy = saveMember("dummy-male-aaaa")
