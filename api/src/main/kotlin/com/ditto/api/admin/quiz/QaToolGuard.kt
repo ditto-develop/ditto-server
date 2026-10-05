@@ -19,7 +19,7 @@ class QaToolGuard(
 
     fun validateEnabled() {
         if (!isEnabled) {
-            throw WarnException(ErrorCode.FORBIDDEN, "QA 도구가 꺼져 있습니다. QA 도구 스위치를 켠 환경에서만 쓸 수 있습니다.")
+            throw WarnException(ErrorCode.FORBIDDEN, "이 환경에서는 QA 도구가 꺼져 있습니다.")
         }
     }
 

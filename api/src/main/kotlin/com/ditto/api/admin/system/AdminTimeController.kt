@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * 서버 시각 조정. 설정 시 DB에 저장하고 그 시각을 사용하며, 해제하면 실제 시각을 사용한다.
@@ -40,14 +41,18 @@ class AdminTimeController(
         redirectAttributes: RedirectAttributes,
     ): String {
         serverTimeService.override(dateTime, admin.name, admin.email)
-        redirectAttributes.addFlashAttribute("message", "서버 시각이 설정되었습니다.")
+        redirectAttributes.addFlashAttribute("message", "서버 시각을 맞췄습니다: ${dateTime.format(FLASH_TIME_FORMAT)}")
         return "redirect:/admin/time-override"
     }
 
     @PostMapping("/admin/time-override/disable")
     fun disable(redirectAttributes: RedirectAttributes): String {
         serverTimeService.disable()
-        redirectAttributes.addFlashAttribute("message", "서버 시각 오버라이드가 해제되었습니다. 실제 시각을 사용합니다.")
+        redirectAttributes.addFlashAttribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다.")
         return "redirect:/admin/time-override"
+    }
+
+    companion object {
+        private val FLASH_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
 }

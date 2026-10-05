@@ -29,7 +29,7 @@
                         <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
                         <td><span class="badge cat" th:text="${qs.category}">cat</span></td>
                         <td th:text="${qs.title}">title</td>
-                        <td class="num" th:text="${qs.matchingType}">type</td>
+                        <td class="num" th:text="${qs.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</td>
                         <td class="num"
                             th:text="${#temporals.format(qs.startDate, 'MM.dd')} + ' ~ ' + ${#temporals.format(qs.endDate, 'MM.dd')}">-</td>
                         <td>

@@ -102,7 +102,7 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
     }
 }
 
-/** [bestScore]·[cutoffScore]는 상위 비율 컷에서 빠졌을 때만 채운다. */
+/** [bestScore]·[cutoffScore]는 점수 상위 비율에 못 들었을 때만 채운다. */
 class MatchMiss(
     val reason: MatchMissReason,
     val bestScore: Double? = null,
@@ -112,7 +112,7 @@ class MatchMiss(
 
     private fun scoreGapOf(bestScore: Double?, cutoffScore: Double?): String? {
         if (bestScore == null || cutoffScore == null) return null
-        return "최고 %.1f < 컷 %.1f".format(Locale.ROOT, bestScore, cutoffScore)
+        return "최고 %.1f점, 기준 %.1f점".format(Locale.ROOT, bestScore, cutoffScore)
     }
 }
 
@@ -126,24 +126,24 @@ enum class MissEmphasis(val cssClass: String) {
 /** 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지와, 테스터가 다음에 할 일. */
 enum class MatchMissReason(val label: String, val nextAction: String?, val emphasis: MissEmphasis) {
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
-    NOT_GENERATED("매칭 전", "매칭 화면에서 재생성하거나 배치 시각까지 기다리기", MissEmphasis.EXPECTED),
-    NOT_COMPLETED("미완주", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
+    NOT_GENERATED("매칭 전", "매칭 화면에서 재생성하거나 목요일 05:00 자동 매칭 기다리기", MissEmphasis.EXPECTED),
+    NOT_COMPLETED("퀴즈 미완료", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
     COMPLETED_AFTER_GENERATION(
-        "매칭 이후 완주",
+        "매칭 뒤 퀴즈 완료",
         "매칭 화면에서 재생성(그룹은 응답이 시작되면 재생성할 수 없음)",
         MissEmphasis.ACTION_NEEDED,
     ),
     EXCLUDED_INACTIVE("매칭 제외: 비활성 회원", "회원 상태 확인", MissEmphasis.EXPECTED),
     EXCLUDED_ALREADY_MATCHED("매칭 제외: 이미 1:1 성사", null, MissEmphasis.EXPECTED),
     EXCLUDED_OTHER("매칭 제외", null, MissEmphasis.EXPECTED),
-    UNKNOWN_GENDER_OR_AGE("성별·나이 미상", "프로필에 성별·나이 입력", MissEmphasis.NORMAL),
+    UNKNOWN_GENDER_OR_AGE("성별·나이 없음", "프로필에 성별·나이 입력", MissEmphasis.NORMAL),
     NO_ELIGIBLE_PAIR(
-        "자격 있는 짝 없음",
-        "성별 선호·나이차(${OneToOneMatchingProcessor.MAX_AGE_GAP}살 이내)·차단이 맞는 상대 추가",
+        "조건 맞는 상대 없음",
+        "성별 선호가 맞고 나이 차 ${OneToOneMatchingProcessor.MAX_AGE_GAP}살 이내이며 서로 차단하지 않은 상대 추가",
         MissEmphasis.NORMAL,
     ),
-    CUT_BY_TOP_RATIO("상위 비율 컷 탈락", "답을 다른 참여자와 더 맞추기", MissEmphasis.NORMAL),
-    CUT_BY_HARD_LIMIT("1인 후보 수 제한에서 밀림(정상)", null, MissEmphasis.NORMAL),
-    STATE_CHANGED_AFTER_GENERATION("매칭 뒤 상태 변경", "매칭 화면에서 재생성", MissEmphasis.ACTION_NEEDED),
-    NOT_ASSIGNED_TO_GROUP("그룹 미배정(인원 나머지·차단, 정상)", null, MissEmphasis.NORMAL),
+    CUT_BY_TOP_RATIO("점수 상위 비율에 못 듦", "답을 다른 참여자와 더 맞추기", MissEmphasis.NORMAL),
+    CUT_BY_HARD_LIMIT("1명당 후보 수 한도에 밀림(정상)", null, MissEmphasis.NORMAL),
+    STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "매칭 화면에서 재생성", MissEmphasis.ACTION_NEEDED),
+    NOT_ASSIGNED_TO_GROUP("그룹 배정 안 됨(인원이 남거나 차단, 정상)", null, MissEmphasis.NORMAL),
 }

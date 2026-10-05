@@ -8,23 +8,23 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">매칭 실행</h1>
-            <p class="page-desc">실시간 스케줄러(매주 목 05:00)와 별개로, 매칭 배치를 수동 실행합니다.</p>
+            <p class="page-desc">매주 목요일 05:00 자동 매칭을 기다리지 않고 지금 돌리거나, 퀴즈셋별로 매칭을 재생성합니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card" th:if="${regeneration}">
-                <h2>재생성 결과 — 퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span>
-                    <span class="badge cat" th:text="${regeneration.matchingType}">type</span>
+                <h2>퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span> 재생성 결과
+                    <span class="badge cat" th:text="${regeneration.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</span>
                     <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${regeneration.quizSetId})}">참여 현황 보기 →</a></h2>
                 <p class="muted">
-                    후보 풀 <b th:text="${regeneration.participantCount}">0</b>명 ·
+                    매칭 대상 <b th:text="${regeneration.participantCount}">0</b>명 ·
                     매칭 <b th:text="${regeneration.matches.size()}">0</b>건 ·
-                    삭제 <b th:text="${regeneration.rowCounts.deletedCount}">0</b>행 ·
-                    저장 <b th:text="${regeneration.rowCounts.savedCount}">0</b>행
-                    (저장하지 않는 값이라 새로 고치면 사라집니다)
+                    지운 후보 <b th:text="${regeneration.rowCounts.deletedCount}">0</b>행 ·
+                    새 후보 <b th:text="${regeneration.rowCounts.savedCount}">0</b>행
+                    (이 요약은 새로 고치면 사라집니다)
                 </p>
-                <p class="muted" th:if="${regeneration.matches.isEmpty()}">매칭된 후보가 없습니다 — 후보 풀이 2명 미만이거나 조건에 맞는 조합이 없습니다.</p>
+                <p class="muted" th:if="${regeneration.matches.isEmpty()}">매칭된 짝이 없습니다. 매칭 대상이 2명 미만이거나 조건이 맞는 짝이 없습니다.</p>
                 <table class="tbl" th:unless="${regeneration.matches.isEmpty()}">
-                    <thead><tr><th>#</th><th>구성원 ID</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
+                    <thead><tr><th>#</th><th>회원 ID</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
                     <tbody>
                     <tr th:each="match, stat : ${regeneration.matches}">
                         <td class="num" th:text="${stat.count}">1</td>
@@ -38,11 +38,11 @@
             </div>
 
             <div class="card">
-                <h2>스케줄러 배치 수동 실행</h2>
+                <h2>자동 매칭 지금 실행</h2>
                 <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로
                     마감됐고 후보가 없는 퀴즈셋의 매칭 후보를 생성합니다.</p>
                 <form th:action="@{/admin/matching/run-scheduled}" method="post" class="inline-form">
-                    <button class="btn" type="submit">스케줄러 배치 실행</button>
+                    <button class="btn" type="submit">자동 매칭 실행</button>
                 </form>
             </div>
 
@@ -55,7 +55,7 @@
                     <tr th:each="qs : ${quizSets}">
                         <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
                         <td><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
-                        <td class="num" th:text="${qs.matchingType}">type</td>
+                        <td class="num" th:text="${qs.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</td>
                         <td>
                             <span class="badge on" th:if="${qs.isActive}">활성</span>
                             <span class="badge off" th:unless="${qs.isActive}">비활성</span>

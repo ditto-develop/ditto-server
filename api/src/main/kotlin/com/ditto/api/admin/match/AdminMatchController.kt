@@ -37,7 +37,7 @@ class AdminMatchController(
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
         val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
         matchResultNotifier.notifyFor(quizSetIds)
-        redirectAttributes.addFlashAttribute("message", "마감된 퀴즈셋의 매칭 배치를 실행했습니다.")
+        redirectAttributes.addFlashAttribute("message", "자동 매칭을 실행했습니다.")
         return "redirect:/admin/matching"
     }
 
@@ -55,9 +55,7 @@ class AdminMatchController(
                     matchResultNotifier.notifyFor(listOf(id))
                     redirectAttributes.addFlashAttribute(
                         "message",
-                        "퀴즈셋 #$id 의 매칭 후보를 재생성했습니다. " +
-                            "참여자 ${summary.participantCount}명, 매칭 ${summary.matches.size}건, " +
-                            "삭제 ${summary.rowCounts.deletedCount}행 · 저장 ${summary.rowCounts.savedCount}행",
+                        "퀴즈셋 #$id 매칭 후보를 재생성했습니다.",
                     )
                     redirectAttributes.addFlashAttribute("regeneration", summary)
                 },

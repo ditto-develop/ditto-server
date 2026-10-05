@@ -9,13 +9,13 @@ class QuizForm(
     var question: String = "",
     var choices: MutableList<QuizChoiceForm> = mutableListOf(),
 ) {
-    /** 채워지지 않은 첫 항목의 이름. 다 채워졌으면 null. */
-    fun blankFieldName(): String? = when {
-        question.isBlank() -> "질문"
-        choices.size < NEW_QUIZ_CHOICE_COUNT -> "선택지"
-        choices.any { it.content.isBlank() } -> "선택지"
-        question.length > QUESTION_MAX_LENGTH -> "질문(${QUESTION_MAX_LENGTH}자 초과)"
-        choices.any { it.content.length > CHOICE_MAX_LENGTH } -> "선택지(${CHOICE_MAX_LENGTH}자 초과)"
+    /** 저장할 수 없는 첫 이유. 앞에 "N번 문항의 "를 붙여 읽는 문장이다. 문제가 없으면 null. */
+    fun invalidReason(): String? = when {
+        question.isBlank() -> "질문 항목이 비어 있습니다."
+        choices.size < NEW_QUIZ_CHOICE_COUNT -> "선택지 항목이 비어 있습니다."
+        choices.any { it.content.isBlank() } -> "선택지 항목이 비어 있습니다."
+        question.length > QUESTION_MAX_LENGTH -> "질문이 ${QUESTION_MAX_LENGTH}자를 넘습니다."
+        choices.any { it.content.length > CHOICE_MAX_LENGTH } -> "선택지가 ${CHOICE_MAX_LENGTH}자를 넘습니다."
         else -> null
     }
 

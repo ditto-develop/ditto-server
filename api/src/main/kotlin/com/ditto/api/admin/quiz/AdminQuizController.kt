@@ -54,7 +54,7 @@ class AdminQuizController(
     ): String = runCatching { adminQuizService.createQuizSet(form) }
         .fold(
             onSuccess = { created ->
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋이 생성되었습니다.")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋을 만들었습니다.")
                 "redirect:/admin/quiz-sets/${created.id}"
             },
             onFailure = { exception ->
@@ -115,7 +115,7 @@ class AdminQuizController(
     ): String = runCatching { adminQuizService.updateQuizSet(id, form) }
         .fold(
             onSuccess = {
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋이 수정되었습니다.")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋을 수정했습니다.")
                 "redirect:/admin/quiz-sets/$id"
             },
             onFailure = { exception ->
@@ -132,14 +132,14 @@ class AdminQuizController(
     @PostMapping("/admin/quiz-sets/{id}/activate")
     fun activate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.activate(id)
-        redirectAttributes.addFlashAttribute("message", "활성화되었습니다.")
+        redirectAttributes.addFlashAttribute("message", "퀴즈셋을 활성화했습니다.")
         return "redirect:/admin/quiz-sets/$id"
     }
 
     @PostMapping("/admin/quiz-sets/{id}/deactivate")
     fun deactivate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.deactivate(id)
-        redirectAttributes.addFlashAttribute("message", "비활성화되었습니다.")
+        redirectAttributes.addFlashAttribute("message", "퀴즈셋을 비활성화했습니다.")
         return "redirect:/admin/quiz-sets/$id"
     }
 
@@ -148,7 +148,7 @@ class AdminQuizController(
         runCatching { adminQuizService.deleteQuizSet(id) }
             .fold(
                 onSuccess = {
-                    redirectAttributes.addFlashAttribute("message", "퀴즈셋이 삭제되었습니다.")
+                    redirectAttributes.addFlashAttribute("message", "퀴즈셋을 삭제했습니다.")
                     "redirect:/admin/quiz-sets"
                 },
                 onFailure = { exception ->

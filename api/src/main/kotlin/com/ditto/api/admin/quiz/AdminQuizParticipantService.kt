@@ -27,7 +27,7 @@ class AdminQuizParticipantService(
     private val adminParticipantMatchingReader: AdminParticipantMatchingReader,
 ) {
     fun getParticipants(quizSetId: Long): QuizParticipantsView {
-        val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 퀴즈셋입니다: #$quizSetId") }
         val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId)
         val progresses = quizProgressRepository.findByQuizSetIdOrderByIdAsc(quizSetId)
         val memberIds = progresses.map { it.memberId }

@@ -9,7 +9,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title" th:text="${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정'">퀴즈셋</h1>
-            <p class="page-desc">주차를 고르면 응답 기간은 그 주 월요일 00:00 ~ 수요일 23:59:59로 고정됩니다. 일시는 직접 입력하지 않습니다.</p>
+            <p class="page-desc">주차를 고르면 퀴즈 기간은 그 주 월요일 00:00 ~ 수요일 23:59:59로 정해집니다.</p>
 
             <div th:replace="~{fragments :: alerts}"></div>
             <div class="alert error" id="formError" hidden></div>
@@ -23,10 +23,10 @@
                     <div class="field-row">
                         <div class="field"><label>카테고리</label><input type="text" th:field="*{category}" placeholder="예: 성격"/></div>
                         <div class="field">
-                            <label>매칭 타입</label>
+                            <label>매칭 방식</label>
                             <select th:field="*{matchingType}">
-                                <option th:value="ONE_TO_ONE">ONE_TO_ONE</option>
-                                <option th:value="GROUP">GROUP</option>
+                                <option th:value="ONE_TO_ONE">1:1</option>
+                                <option th:value="GROUP">그룹</option>
                             </select>
                         </div>
                     </div>
@@ -39,7 +39,7 @@
                                    placeholder="달력에서 월요일을 고르세요" autocomplete="off" required/>
                         </div>
                         <div class="field">
-                            <label>응답 기간</label>
+                            <label>퀴즈 기간</label>
                             <input type="text" id="weekPeriodLabel" value="주차를 고르면 표시됩니다" disabled/>
                         </div>
                     </div>
@@ -51,8 +51,8 @@
 
                 <h2 class="page-title" style="font-size:17px; margin:24px 0 6px;">문항</h2>
                 <p class="page-desc" style="margin-bottom:16px">
-                    번호는 위에서 아래 순서로 자동 부여됩니다. 번호 칸을 끌어 옮기거나 ▲▼ 를 누르세요.
-                    선택지는 문항마다 2개이고 ⇄ 로 좌우를 맞바꿉니다. 질문과 선택지가 모두 빈 행은 저장하지 않습니다.
+                    번호는 위에서 아래 순서대로 자동으로 매겨집니다. 순서를 바꾸려면 번호 칸을 끌어 옮기거나 ▲▼를 누르세요.
+                    선택지는 문항마다 2개이고 ⇄로 좌우를 맞바꿉니다. 새로 추가한 문항 중 질문과 선택지를 모두 비워 둔 문항은 저장하지 않습니다.
                 </p>
 
                 <div class="qlist" id="quizList">
@@ -88,7 +88,7 @@
                                 </div>
                             </div>
                             <div class="qfoot">
-                                <span class="lockmsg" th:if="${answerCounts.containsKey(quiz.id)}">답변이 있어 삭제 불가 (문구 수정은 가능)</span>
+                                <span class="lockmsg" th:if="${answerCounts.containsKey(quiz.id)}">답변이 있어 지울 수 없습니다. 문구는 고칠 수 있습니다.</span>
                                 <button type="button" class="btn danger sm remove-quiz"
                                         th:disabled="${answerCounts.containsKey(quiz.id)}">문항 삭제</button>
                             </div>
