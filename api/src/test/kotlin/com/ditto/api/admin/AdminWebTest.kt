@@ -656,6 +656,25 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("회원 관리에서 닉네임 부분 일치로 회원을 찾는다")
+    fun memberSearchByNickname() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "찾을회원", email = "find@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("q", "을회").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("#${member.id}")))
+            .andExpect(content().string(not(containsString("find@ditto.pics"))))
+    }
+
+    @Test
+    @DisplayName("회원 관리에서 맞는 회원이 없으면 #ID로 찾으라고 안내한다")
+    fun memberSearchNoMatch() {
+        mockMvc.perform(get("/admin/members").param("q", "없는닉네임").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("맞는 회원이 없습니다")))
+    }
+
+    @Test
     @DisplayName("회원 권한 변경 후 검색어 유지 리다이렉트")
     fun memberRoleChange() {
         val member = memberRepository.save(

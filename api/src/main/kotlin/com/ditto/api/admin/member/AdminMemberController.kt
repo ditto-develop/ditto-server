@@ -13,14 +13,23 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 회원 검색(이메일) 및 권한 변경. 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
+ * 회원 검색(닉네임·회원 ID, 이메일) 및 권한 변경. 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
  */
 @Controller
 class AdminMemberController(
     private val adminMemberService: AdminMemberService,
 ) {
     @GetMapping("/admin/members")
-    fun page(@RequestParam(required = false) email: String?, model: Model): String {
+    fun page(
+        @RequestParam(required = false) email: String?,
+        @RequestParam(required = false) q: String?,
+        model: Model,
+    ): String {
+        model.addAttribute("q", q ?: "")
+        model.addAttribute("searchLimit", AdminMemberService.SEARCH_LIMIT)
+        if (!q.isNullOrBlank()) {
+            model.addAttribute("searchResults", adminMemberService.searchByNicknameOrId(q))
+        }
         model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
         model.addAttribute("admins", adminMemberService.listAdmins())
