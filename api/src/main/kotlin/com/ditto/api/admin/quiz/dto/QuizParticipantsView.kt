@@ -17,6 +17,7 @@ class QuizParticipantsView(
     val quizSet: QuizSet,
     val quizzes: List<Quiz>,
     val participants: List<QuizParticipant>,
+    val matching: QuizSetMatching,
 ) {
     val participantCount: Int = participants.size
     val completedCount: Int = countByStatus(QuizProgressStatus.COMPLETED)

@@ -14,7 +14,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-/** 퀴즈셋 하나의 참여자(진행 기록이 있는 회원)를 진행·프로필·답변과 함께 보여 준다. 더미와 실회원을 모두 담는다. */
+/** 퀴즈셋 하나의 참여자(진행 기록이 있는 회원)를 진행·프로필·답변·매칭 후보와 함께 보여 준다. 더미와 실회원을 모두 담는다. */
 @Service
 @Transactional(readOnly = true)
 class AdminQuizParticipantService(
@@ -24,6 +24,7 @@ class AdminQuizParticipantService(
     private val quizProgressRepository: QuizProgressRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
     private val memberRepository: MemberRepository,
+    private val adminParticipantMatchingReader: AdminParticipantMatchingReader,
 ) {
     fun getParticipants(quizSetId: Long): QuizParticipantsView {
         val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
@@ -42,7 +43,8 @@ class AdminQuizParticipantService(
                 )
             }
             .sortedBy { it.kind }
-        return QuizParticipantsView(quizSet, quizzes, participants)
+        val matching = adminParticipantMatchingReader.read(MatchingReadSource(quizSet, progresses, membersById))
+        return QuizParticipantsView(quizSet, quizzes, participants, matching)
     }
 
     private fun findAnswerContentsByMemberId(memberIds: List<Long>, quizzes: List<Quiz>): Map<Long, List<String?>> {

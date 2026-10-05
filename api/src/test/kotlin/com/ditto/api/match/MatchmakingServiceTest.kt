@@ -283,6 +283,32 @@ class MatchmakingServiceTest(
             }
         }
 
+        "loadMatchingPoolParticipants" - {
+            "완료자에서 제외 정책에 걸린 회원을 빼고 답변·성별·선호를 함께 담는다" {
+                val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
+                val active = saveMember("활성", gender = Gender.FEMALE, age = 27)
+                val suspended = saveMember("정지", status = MemberStatus.SUSPENDED)
+                val notCompleted = saveMember("미완주")
+                saveAnswers(active, quizId1 to 1L, quizId2 to 2L)
+                saveCompletedProgress(active, quizSetId, total = 2, preferredGender = GenderPreference.OPPOSITE)
+                saveCompletedProgress(suspended, quizSetId, total = 2)
+                quizProgressRepository.save(QuizProgressFixture.create(memberId = notCompleted, quizSetId = quizSetId, totalCount = 2))
+
+                val participants = matchmakingService.loadMatchingPoolParticipants(quizSetId)
+
+                participants.map { it.memberId } shouldBe listOf(active)
+                val participant = participants.single()
+                participant.answers shouldBe mapOf(quizId1 to 1L, quizId2 to 2L)
+                participant.gender shouldBe Gender.FEMALE
+                participant.age shouldBe 27
+                participant.preferredGender shouldBe GenderPreference.OPPOSITE
+            }
+
+            "퀴즈셋이 없으면 빈 목록이다" {
+                matchmakingService.loadMatchingPoolParticipants(99999L) shouldBe emptyList()
+            }
+        }
+
         "generateCandidates — 그룹" - {
 
             fun saveGroupQuizSetWithTwoQuizzes(): Triple<Long, Long, Long> {
