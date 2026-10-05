@@ -34,7 +34,7 @@ RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토 /admin/r
 ```
 
 - ACTIONED(제재 적용)는 검토 결정(경고/2주 정지/영구 차단)에 따라 같은 트랜잭션에서 sanction 생성 + 회원 전이 + refresh 회수를 수행한다 — 규칙은 `docs/domains/sanction.md`.
-- REJECTED_ABUSIVE(허위 신고로 기각)는 신고자를 자동으로 제재하지 않는다. 신고자 제재는 회원 제재 화면에서 어드민이 직접, 제재 근거(origin)를 FALSE_REPORT(허위 신고자 제재)로 골라 건다.
+- REJECTED_ABUSIVE(허위 신고로 기각)는 신고자를 자동으로 제재하지 않는다. 신고자는 회원 제재 화면에서 어드민이 제재 근거(origin)를 FALSE_REPORT(허위 신고자 제재)로 골라 직접 제재한다.
 
 ## 이미지 업로드 (presigned)
 

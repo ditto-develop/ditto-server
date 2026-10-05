@@ -63,7 +63,7 @@ class AdminQaRoomController(
         @PathVariable roomId: Long,
         redirectAttributes: RedirectAttributes,
     ): String {
-        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "최신 메시지까지 읽음") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "끝까지 읽기") {
             readLatest(dummyId, roomId)
         }
         return QaRoutes.room(roomId)

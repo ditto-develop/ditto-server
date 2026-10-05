@@ -148,6 +148,14 @@ class AdminQuizServiceTest(
             exception.message shouldBe "2번 문항의 선택지 항목이 비어 있습니다."
         }
 
+        "선택지가 2개보다 적으면 빈 칸과 다른 문장으로 거부한다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(formWithQuizzes(quizForm("질문", "A")))
+            }
+
+            exception.message shouldBe "1번 문항의 선택지는 2개가 있어야 합니다."
+        }
+
         "질문이나 선택지가 너무 길면 빈 칸과 다른 문장으로 거부한다" {
             val longQuestion = shouldThrow<WarnException> {
                 adminQuizService.createQuizSet(formWithQuizzes(quizForm("가".repeat(501), "A", "B")))

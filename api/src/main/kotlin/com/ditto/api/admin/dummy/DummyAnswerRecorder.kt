@@ -34,7 +34,7 @@ class DummyAnswerRecorder(
         if (quizWithoutChoice != null) {
             throw WarnException(
                 ErrorCode.BAD_REQUEST,
-                "선택지가 없는 문항이 있어 더미를 생성할 수 없습니다: 문항 #${quizWithoutChoice.id}",
+                "선택지가 없는 문항이 있어 더미를 생성할 수 없습니다: 문항 ID #${quizWithoutChoice.id}",
             )
         }
         return QuizQuestions(quizSet, quizzes, choicesByQuizId)

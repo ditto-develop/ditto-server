@@ -32,7 +32,7 @@ enum class ErrorCode(
     ALREADY_DECLINED_GROUP(409, "5006", "이미 그룹 매칭을 거절했습니다."),
     QUIZ_NOT_COMPLETED(403, "5007", "퀴즈를 완료하지 않았습니다."),
     NOT_MATCHING_PERIOD(403, "5008", "매칭 기간이 아닙니다."),
-    MATCH_CANDIDATES_ALREADY_RESPONDED(409, "5009", "이미 그룹 매칭에 응답한 회원이 있어 매칭 후보를 다시 만들 수 없습니다."),
+    MATCH_CANDIDATES_ALREADY_RESPONDED(409, "5009", "그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어 매칭 후보를 다시 만들 수 없습니다."),
     COUNTERPART_ALREADY_MATCHED(409, "5010", "상대가 이미 다른 사람과 매칭되었습니다."),
     CANNOT_REPORT_SELF(400, "6001", "자기 자신을 신고할 수 없습니다."),
     DUPLICATE_REPORT(409, "6002", "이미 신고한 사용자입니다."),

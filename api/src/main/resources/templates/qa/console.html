@@ -36,7 +36,7 @@
                             채팅방 열린 직후 · 10/10(금) 00:01</button>
                     </form>
                     <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
-                        <button class="btn secondary sm" type="submit">실제 시각으로</button>
+                        <button class="btn secondary sm" type="submit">시간 조정 끄기</button>
                     </form>
                     <a th:href="@{/admin/time-override}">직접 설정 →</a>
                 </div>
@@ -52,10 +52,10 @@
                     <li>위 [그룹 응답 마감 직전]으로 옮긴 뒤 <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋의 매칭을 재생성합니다.
                         금요일 00:00 이후에 재생성하면 스케줄러가 1분 안에 새 그룹 초대를 자동 거절합니다.</li>
                     <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
-                    <li>그룹 초대는 실회원은 앱에서, 더미는 아래에서 수락합니다. 3명이 수락하면 성사됩니다.</li>
+                    <li>그룹 초대는 실회원이 앱에서, 더미가 아래에서 수락합니다. 3명이 수락하면 성사됩니다.</li>
                     <li>[채팅방 열린 직후]로 옮기면 1분 안에 방이 열립니다. 아래 채팅방에서 [열기]를 눌러 더미로 대화합니다.</li>
                     <li>[채팅 마감 직후]로 옮기면 방이 끝나고 평가가 열립니다.</li>
-                    <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. QA를 마치면 [실제 시각으로]를 누르세요.</li>
+                    <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. QA를 마치면 [시간 조정 끄기]를 누르세요.</li>
                     <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 생성</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
                         더미가 낀 방·매칭을 지우면 같은 방 실회원의 메시지·알림도 함께 지워집니다.</li>
                 </ol>

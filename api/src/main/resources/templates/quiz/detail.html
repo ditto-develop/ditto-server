@@ -75,11 +75,11 @@
 
                 <th:block th:if="${matchingErasePreview != null}">
                     <hr class="sep">
-                    <p style="margin:0 0 8px"><b>매칭 기록 초기화</b> <span class="muted">퀴즈셋·답·진행은 남기고 매칭 기록만 지웁니다. 지운 뒤 매칭 화면에서 같은 퀴즈셋을 다시 매칭할 수 있습니다.</span></p>
+                    <p style="margin:0 0 8px"><b>매칭 기록 초기화</b> <span class="muted">퀴즈셋·답·진행은 남기고 매칭 기록만 지웁니다. 지운 뒤 '매칭 실행'에서 같은 퀴즈셋을 재생성할 수 있습니다.</span></p>
                     <th:block th:if="${answerResetPreview.isCurrentWeek}">
                         <ul class="muted" style="margin:0 0 12px; padding-left:20px">
                             <li>
-                                다시 매칭하기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
+                                재생성하기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
                                 <a class="text-link" th:href="@{/admin/time-override}">시간 조정</a>
                             </li>
                             <li>

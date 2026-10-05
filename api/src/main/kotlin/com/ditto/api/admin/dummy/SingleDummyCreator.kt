@@ -128,7 +128,7 @@ class SingleDummyCreator(
     private fun chosenOrRandom(form: SingleDummyForm, quiz: Quiz, choices: List<QuizChoice>): QuizChoice {
         val chosenId = form.choiceIdByQuizId[quiz.id] ?: return choices.random()
         return choices.firstOrNull { it.id == chosenId }
-            ?: throw WarnException(ErrorCode.BAD_REQUEST, "문항 #${quiz.id}에 없는 선택지입니다: #$chosenId")
+            ?: throw WarnException(ErrorCode.BAD_REQUEST, "문항 ID #${quiz.id}에 없는 선택지입니다: #$chosenId")
     }
 }
 

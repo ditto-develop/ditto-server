@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments :: head('퀴즈셋 ' + (${mode} == 'create' ? '생성' : '수정'))}"></head>
+<head th:replace="~{fragments :: head(${mode} == 'create' ? '새 퀴즈셋' : '퀴즈셋 수정')}"></head>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"/>
 <body>
 <div class="layout">

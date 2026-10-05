@@ -56,6 +56,8 @@ data class SanctionHistoryItem(
 /** 검토 완료 정보 (RECEIVED면 null). */
 data class ReviewSummary(
     val statusDescription: String,
+    /** 허위 신고로 기각했으면 신고자를 따로 제재해야 해서 화면이 안내를 남긴다. */
+    val rejectedAsFalseReport: Boolean,
     val reviewerName: String?,
     val reviewedAt: LocalDateTime?,
     val note: String?,

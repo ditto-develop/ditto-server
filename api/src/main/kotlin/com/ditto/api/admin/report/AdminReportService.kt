@@ -116,6 +116,7 @@ class AdminReportService(
         if (report.status == MemberReportStatus.RECEIVED) return null
         return ReviewSummary(
             statusDescription = report.status.description,
+            rejectedAsFalseReport = report.status == MemberReportStatus.REJECTED_ABUSIVE,
             reviewerName = report.reviewerName,
             reviewedAt = report.reviewedAt,
             note = report.reviewNote,

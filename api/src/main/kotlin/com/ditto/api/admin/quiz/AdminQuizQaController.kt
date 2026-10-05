@@ -116,7 +116,7 @@ class AdminQuizQaController(
     companion object {
         private const val QUIZ_SET_LIST_REDIRECT = "redirect:/admin/quiz-sets"
         private const val NEXT_STEPS_AFTER_ANSWER_RESET =
-            "다시 하려면 퀴즈 기간(월~수)에 다시 풀고, 서버 시각을 목요일로 맞춘 뒤 매칭 화면에서 재생성하세요."
+            "다시 하려면 퀴즈 기간(월~수)에 다시 풀고, 서버 시각을 목요일로 맞춘 뒤 '매칭 실행'에서 재생성하세요."
         private val log = KotlinLogging.logger {}
     }
 }

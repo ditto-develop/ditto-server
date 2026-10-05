@@ -670,12 +670,37 @@ class AdminWebTest {
         )
             .andExpect(status().is3xxRedirection)
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
+    }
 
-        mockMvc.perform(get("/admin/members").param("email", "role@ditto.pics").with(authentication(admin())))
+    @Test
+    @DisplayName("회원 검색 결과는 권한을 일반 회원·관리자로 보여 준다")
+    fun memberSearchShowsRoleLabels() {
+        memberRepository.save(MemberFixture.create(nickname = "rolelabel", email = "label@ditto.pics", role = MemberRole.USER))
+
+        mockMvc.perform(get("/admin/members").param("email", "label@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">가입 미완료</span>")))
-            .andExpect(content().string(containsString(">일반 회원</option>")))
-            .andExpect(content().string(not(containsString("USER(일반 회원)"))))
+            .andExpect(content().string(containsString(">일반 회원</span>")))
+            .andExpect(content().string(containsString(">관리자</option>")))
+    }
+
+    @Test
+    @DisplayName("제재 관리 화면은 회원 상태마다 한글 배지를 보여 준다")
+    fun memberStatusBadgeLabels() {
+        val expectedBadges = mapOf(
+            MemberStatus.ACTIVE to "<span class=\"badge on\">정상</span>",
+            MemberStatus.PENDING to "<span class=\"badge matching\">가입 미완료</span>",
+            MemberStatus.SUSPENDED to "<span class=\"badge matching\">정지</span>",
+            MemberStatus.BANNED to "<span class=\"badge matching\">차단</span>",
+            MemberStatus.LEFT to "<span class=\"badge matching\">탈퇴</span>",
+        )
+
+        expectedBadges.forEach { (memberStatus, badge) ->
+            val member = memberRepository.save(MemberFixture.create(nickname = "상태-${memberStatus.name}", status = memberStatus))
+
+            mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString(badge)))
+        }
     }
 
     @Test
@@ -811,7 +836,8 @@ class AdminWebTest {
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
-            .andExpect(flash().attribute("error", containsString("이미 그룹 매칭에 응답한 회원이 있어")))
+            .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어")))
+            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요.")))
             .andExpect(flash().attribute("message", null))
     }
 
@@ -862,6 +888,28 @@ class AdminWebTest {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/reports/" + report.id))
             .andExpect(flash().attribute("message", "신고 #${report.id} 처리를 마쳤습니다: 기각"))
+    }
+
+    @Test
+    @DisplayName("허위 신고로 기각하면 신고자를 따로 제재하라는 안내가 flash 와 신고 상세에 남는다")
+    fun reviewReportAsFalseReport() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "허위신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자4", status = MemberStatus.ACTIVE))
+        val report = memberReportRepository.save(
+            MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+        )
+
+        mockMvc.perform(
+            post("/admin/reports/{id}/action", report.id)
+                .with(authentication(admin())).with(csrf())
+                .param("decision", "REJECT_ABUSIVE"),
+        )
+            .andExpect(flash().attribute("message", "신고 #${report.id} 처리를 마쳤습니다: 허위 신고로 기각. 신고자는 '제재 관리'에서 따로 제재하세요."))
+
+        mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("허위 신고로 기각한 신고입니다.")))
+            .andExpect(content().string(not(containsString("차 제재</span>"))))
     }
 
     @Test

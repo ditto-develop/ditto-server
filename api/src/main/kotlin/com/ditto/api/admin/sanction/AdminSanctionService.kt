@@ -149,7 +149,7 @@ class AdminSanctionService(
     )
 
     companion object {
-        // 기획: 2차 제재 = 2주간 서비스 이용 정지
+        // 기획: 2차 제재 = 2주간 서비스 이용 정지. SanctionLevel.SUSPENSION 문구("2주 이용 정지")와 함께 바꾼다.
         private const val SUSPENSION_DAYS = 14L
     }
 }

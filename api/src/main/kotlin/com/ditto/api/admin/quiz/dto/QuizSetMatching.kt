@@ -102,7 +102,7 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
     }
 }
 
-/** [bestScore]·[cutoffScore]는 점수 상위 비율에 못 들었을 때만 채운다. */
+// bestScore·cutoffScore는 점수 상위 비율에 못 들었을 때만 채운다.
 class MatchMiss(
     val reason: MatchMissReason,
     val bestScore: Double? = null,
@@ -126,11 +126,11 @@ enum class MissEmphasis(val cssClass: String) {
 /** 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지와, 테스터가 다음에 할 일. */
 enum class MatchMissReason(val label: String, val nextAction: String?, val emphasis: MissEmphasis) {
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
-    NOT_GENERATED("매칭 전", "매칭 화면에서 재생성하거나 목요일 05:00 자동 매칭 기다리기", MissEmphasis.EXPECTED),
+    NOT_GENERATED("매칭 전", "'매칭 실행'에서 재생성하거나 [자동 매칭 실행] 누르기", MissEmphasis.EXPECTED),
     NOT_COMPLETED("퀴즈 미완료", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
     COMPLETED_AFTER_GENERATION(
         "매칭 뒤 퀴즈 완료",
-        "매칭 화면에서 재생성(그룹은 응답이 시작되면 재생성할 수 없음)",
+        "'매칭 실행'에서 재생성(그룹은 응답이 시작되면 재생성할 수 없음)",
         MissEmphasis.ACTION_NEEDED,
     ),
     EXCLUDED_INACTIVE("매칭 제외: 비활성 회원", "회원 상태 확인", MissEmphasis.EXPECTED),
@@ -144,6 +144,6 @@ enum class MatchMissReason(val label: String, val nextAction: String?, val empha
     ),
     CUT_BY_TOP_RATIO("점수 상위 비율에 못 듦", "답을 다른 참여자와 더 맞추기", MissEmphasis.NORMAL),
     CUT_BY_HARD_LIMIT("1명당 후보 수 한도에 밀림(정상)", null, MissEmphasis.NORMAL),
-    STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "매칭 화면에서 재생성", MissEmphasis.ACTION_NEEDED),
+    STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "'매칭 실행'에서 재생성", MissEmphasis.ACTION_NEEDED),
     NOT_ASSIGNED_TO_GROUP("그룹 배정 안 됨(인원이 남거나 차단, 정상)", null, MissEmphasis.NORMAL),
 }

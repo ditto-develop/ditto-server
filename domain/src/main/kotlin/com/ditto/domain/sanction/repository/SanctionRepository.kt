@@ -24,8 +24,8 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
     fun findAllByMemberIdOrderByIdDesc(memberId: Long): List<Sanction>
 
     /**
-     * 차수 산정용 유효 제재 수 — 허위 신고자 제재(FALSE_REPORT)와 직권 해제(LIFTED, 오처리 정정)는
-     * 피신고 차수에 산입하지 않는다. 어드민 화면의 추천 차수 = 이 값 + 1.
+     * 누적 제재 수. 허위 신고자 제재(FALSE_REPORT)와 어드민이 해제한 제재(LIFTED, 오처리 정정)는 세지 않는다.
+     * 신고 상세의 "이번이 N차 제재"는 이 값 + 1이다.
      */
     fun countStrikes(memberId: Long): Long =
         countByMemberIdAndOriginNotAndStatusNot(memberId, SanctionOrigin.FALSE_REPORT, SanctionStatus.LIFTED)

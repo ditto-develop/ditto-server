@@ -8,7 +8,7 @@ import com.ditto.common.exception.WarnException
  *
  * - [code]: FE/클라이언트와 주고받는 식별자 (kebab-case). API 계층에서 [from]으로 매핑한다.
  * - [requiresDetail]: 접수 시 상세 설명(detail) 입력이 필수인 사유
- * - [isSevere]: 심각 사유(기획의 "즉시 계정 정지" 대상) — 어드민 검토 화면에 심각 사유 배지로만 표시하고, 최종 제재 종류는 항상 어드민이 정한다
+ * - [isSevere]: 심각 사유(기획의 "즉시 계정 정지" 대상). 어드민 검토 화면에 배지로만 보이고 최종 제재 종류는 어드민이 정한다
  * - [guideline]: 어드민 검토 화면에 렌더하는 사유별 대응 안내
  *
  * 값 추가만 허용하며, 이미 배포된 값의 이름/코드 변경·삭제는 금지한다.

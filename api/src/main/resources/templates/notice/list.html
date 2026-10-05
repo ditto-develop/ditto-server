@@ -31,7 +31,7 @@
 
             <div class="card">
                 <h2>발송 이력</h2>
-                <p class="muted">보내기를 누르고 화면이 돌아오면 발송도 끝난 것입니다. 그 뒤에도 '발송 중'으로 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
+                <p class="muted">[전원에게 보내기]를 누르고 화면이 돌아오면 발송도 끝난 것입니다. 그 뒤에도 '발송 중'으로 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
                 <p class="muted" th:if="${notices.isEmpty()}">보낸 공지가 없습니다.</p>
                 <table class="tbl" th:unless="${notices.isEmpty()}">
                     <thead>

@@ -45,7 +45,7 @@
                 <h2>
                     피신고자: <span th:text="${report.reported.nickname}">닉네임</span>
                     <span th:replace="~{member/parts :: memberStatusBadge(${report.reported.memberStatus})}"></span>
-                    <span class="badge warn" th:text="'이번이 ' + ${report.reported.recommendedStrike} + '차 제재'">이번이 1차 제재</span>
+                    <span class="badge warn" th:if="${report.received}" th:text="'이번이 ' + ${report.reported.recommendedStrike} + '차 제재'">이번이 1차 제재</span>
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
@@ -78,6 +78,9 @@
                 <p class="muted">
                     총 신고 <strong th:text="${report.reporter.totalReportCount}">0</strong>건 ·
                     허위 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건
+                </p>
+                <p class="muted" th:if="${report.review != null and report.review.rejectedAsFalseReport}">
+                    허위 신고로 기각한 신고입니다. 신고자는 자동으로 제재되지 않으니 '제재 관리'에서 제재 근거를 '허위 신고자 제재'로 골라 따로 제재하세요.
                 </p>
             </div>
 

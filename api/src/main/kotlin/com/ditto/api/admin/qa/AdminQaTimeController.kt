@@ -35,7 +35,7 @@ class AdminQaTimeController(
         redirectAttributes: RedirectAttributes,
     ): String {
         serverTimeService.disable()
-        redirectAttributes.addFlashAttribute("message", "서버 시각 조정을 끄고 실제 시각으로 돌아왔습니다.")
+        redirectAttributes.addFlashAttribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다.")
         return QaRoutes.backTo(returnTo)
     }
 }

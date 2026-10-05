@@ -4,6 +4,7 @@ import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Controller
@@ -61,9 +62,15 @@ class AdminMatchController(
                 },
                 onFailure = { exception ->
                     if (exception !is WarnException) throw exception
-                    redirectAttributes.addFlashAttribute("error", "퀴즈셋 #$id 매칭 재생성 실패: ${exception.message}")
+                    redirectAttributes.addFlashAttribute("error", regenerationFailedMessage(id, exception))
                 },
             )
         return "redirect:/admin/matching"
+    }
+
+    private fun regenerationFailedMessage(quizSetId: Long, exception: WarnException): String {
+        val failed = "퀴즈셋 #$quizSetId 매칭 재생성 실패: ${exception.message}"
+        if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
+        return "$failed. 퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요."
     }
 }
