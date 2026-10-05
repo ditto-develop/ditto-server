@@ -60,7 +60,7 @@ class AdminQuizQaController(
             onSuccess = { summary ->
                 val erased = summary.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 답·진행 초기화: $erased" }
-                redirectAttributes.addFlashAttribute("message", "답·진행을 초기화했습니다. $erased")
+                redirectAttributes.addFlashAttribute("message", "답·진행을 초기화했습니다. $erased. $NEXT_STEPS_AFTER_ANSWER_RESET")
                 detailRedirect(id)
             },
             onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, detailRedirect(id)) },
@@ -76,9 +76,9 @@ class AdminQuizQaController(
         val participantsRedirect = "redirect:/admin/quiz-sets/$id/participants"
         return runCatching { adminQuizAnswerResetService.resetMemberAnswers(id, memberId) }
             .fold(
-                onSuccess = {
+                onSuccess = { summary ->
                     log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 회원 #$memberId 답·진행 초기화" }
-                    redirectAttributes.addFlashAttribute("message", "회원 #${memberId}의 답·진행을 초기화했습니다.")
+                    redirectAttributes.addFlashAttribute("message", "${summary.toDisplayText()}의 답·진행을 초기화했습니다.")
                     participantsRedirect
                 },
                 onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, participantsRedirect) },
@@ -103,6 +103,8 @@ class AdminQuizQaController(
 
     companion object {
         private const val QUIZ_SET_LIST_REDIRECT = "redirect:/admin/quiz-sets"
+        private const val NEXT_STEPS_AFTER_ANSWER_RESET =
+            "다시 하려면 퀴즈 기간(월~수)에 다시 풀고, 서버 시각을 목요일로 맞춘 뒤 매칭 화면에서 매칭하세요."
         private val log = KotlinLogging.logger {}
     }
 }

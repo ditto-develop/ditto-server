@@ -5,6 +5,7 @@ import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.AnswerResetSummary
 import com.ditto.api.admin.quiz.dto.MemberAnswerResetAvailability
 import com.ditto.api.admin.quiz.dto.MemberAnswerResetRefusal
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetSummary
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -14,6 +15,7 @@ import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -70,7 +72,7 @@ class AdminQuizAnswerResetService(
     }
 
     /** 결과 0건으로 매칭이 돈 셋도 매칭 기록이 없어 받으므로, 그 회원의 노매칭 알림까지 지운다. */
-    fun resetMemberAnswers(quizSetId: Long, memberId: Long) {
+    fun resetMemberAnswers(quizSetId: Long, memberId: Long): MemberAnswerResetSummary {
         qaToolGuard.validateEnabled()
         findMemberAnswerResetRefusal(findQuizSet(quizSetId))
             ?.let { throw WarnException(ErrorCode.BAD_REQUEST, it.message) }
@@ -79,6 +81,7 @@ class AdminQuizAnswerResetService(
         quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, findQuizIdsIn(quizSetId))
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, listOf(quizSetId))
         quizSetDeleter.deleteMemberMatchResultNotifications(quizSetId, memberId)
+        return MemberAnswerResetSummary(memberId, memberRepository.findByIdOrNull(memberId)?.nickname)
     }
 
     // 후보·그룹에서 한 명만 빼낼 수 없어 매칭 전 셋에서만 받는다.

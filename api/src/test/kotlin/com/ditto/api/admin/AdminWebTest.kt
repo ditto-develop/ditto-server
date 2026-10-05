@@ -335,7 +335,7 @@ class AdminWebTest {
             .andExpect(content().string(containsString("href=\"#qa-tools\"")))
             .andExpect(content().string(containsString("매칭 기록: 1:1 신청 1건")))
             .andExpect(content().string(containsString(">매칭 기록 초기화</button>")))
-            .andExpect(content().string(containsString(">답·진행까지 초기화</button>")))
+            .andExpect(content().string(containsString(">전체 답·진행 초기화</button>")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }
 
@@ -350,8 +350,10 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("id=\"qa-tools\"")))
             .andExpect(content().string(containsString("답·진행: 참여자 2명(실회원 1명)")))
-            .andExpect(content().string(containsString("답·진행 초기화는 실회원 1명의 답도 지웁니다.")))
-            .andExpect(content().string(containsString(">답·진행까지 초기화</button>")))
+            .andExpect(content().string(containsString("전체 답·진행 초기화는 실회원 1명의 답도 지웁니다.")))
+            .andExpect(content().string(containsString("data-confirm=\"참여자 2명(실회원 1명)의 답·진행을 지웁니다. 퀴즈셋·문항은 남습니다.")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants\">참여 현황</a>에서 회원별로 초기화하세요.")))
+            .andExpect(content().string(containsString(">전체 답·진행 초기화</button>")))
             .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
             .andExpect(content().string(not(containsString(">퀴즈셋 강제 삭제</button>"))))
     }
@@ -394,7 +396,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("답·진행 초기화는 매칭 기록과 답·진행을 지우고 퀴즈셋은 남긴 채 상세로 돌아간다")
+    @DisplayName("전체 답·진행 초기화는 매칭 기록과 답·진행을 지우고 퀴즈셋은 남긴 채 상세로 돌아간다")
     fun resetQuizSetAnswers() {
         val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
         val memberId = saveCompletedMember(quizSet.id, "dummy-male-0001")
@@ -403,6 +405,7 @@ class AdminWebTest {
         mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-answers", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
             .andExpect(flash().attribute("message", containsString("답·진행을 초기화했습니다. 참여자 1명")))
+            .andExpect(flash().attribute("message", containsString("다시 하려면 퀴즈 기간(월~수)에 다시 풀고")))
 
         quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSet.id) shouldBe null
         personalMatchRepository.existsByQuizSetId(quizSet.id) shouldBe false
@@ -435,7 +438,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("회원별 답·진행 초기화는 그 회원 진행만 지우고 참여 현황으로 돌아간다")
+    @DisplayName("회원별 답·진행 초기화는 그 회원의 답·진행만 지우고 참여 현황으로 돌아간다")
     fun resetMemberQuizAnswers() {
         val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
         val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
@@ -446,7 +449,7 @@ class AdminWebTest {
                 .with(authentication(admin())).with(csrf()),
         )
             .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
-            .andExpect(flash().attribute("message", containsString("회원 #${target}의 답·진행을 초기화했습니다.")))
+            .andExpect(flash().attribute("message", containsString("dummy-male-0001 (#$target)의 답·진행을 초기화했습니다.")))
 
         quizProgressRepository.findByMemberIdAndQuizSetId(target, quizSet.id) shouldBe null
         quizProgressRepository.findByMemberIdAndQuizSetId(other, quizSet.id) shouldNotBe null

@@ -13,6 +13,14 @@ class AnswerResetSummary(
     }
 }
 
+/** 초기화한 행은 참여 현황에서 사라지므로 누구였는지 남긴다. */
+class MemberAnswerResetSummary(
+    val memberId: Long,
+    val nickname: String?,
+) {
+    fun toDisplayText(): String = "${nickname ?: "삭제된 회원"} (#$memberId)"
+}
+
 /** 퀴즈셋 상세 QA 도구 카드의 답·진행 초기화 상태. 실회원 답도 지워지므로 실회원 수를 따로 센다. */
 class AnswerResetPreview(
     val participantCount: Int,
