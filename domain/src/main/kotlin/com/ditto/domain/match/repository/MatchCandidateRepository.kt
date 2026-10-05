@@ -15,6 +15,9 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
 
     fun existsByQuizSetId(quizSetId: Long): Boolean
 
+    /** 후보는 퀴즈셋마다 한 번에 만들어져, 첫 후보의 생성 시각이 그 셋의 매칭 시각이다. */
+    fun findFirstByQuizSetIdOrderByIdAsc(quizSetId: Long): MatchCandidate?
+
     fun countByQuizSetId(quizSetId: Long): Int
 
     fun findByQuizSetIdInAndOwnerMemberIdIn(

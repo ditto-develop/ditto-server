@@ -13,11 +13,12 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 회원 검색(닉네임·회원 ID, 이메일) 및 권한 변경. 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
+ * 회원 검색(닉네임·회원 ID, 이메일), 회원별 퀴즈 현황, 권한 변경. 같은 이메일에 여러 회원이 있을 수 있어 목록으로 보여주고 개별 변경한다.
  */
 @Controller
 class AdminMemberController(
     private val adminMemberService: AdminMemberService,
+    private val adminMemberQuizService: AdminMemberQuizService,
 ) {
     @GetMapping("/admin/members")
     fun page(
@@ -39,6 +40,13 @@ class AdminMemberController(
         }
         model.addAttribute("active", "member")
         return "member/list"
+    }
+
+    @GetMapping("/admin/members/{id}/quizzes")
+    fun quizzes(@PathVariable id: Long, model: Model): String {
+        model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
+        model.addAttribute("active", "member")
+        return "member/quizzes"
     }
 
     @PostMapping("/admin/members/{id}/role")

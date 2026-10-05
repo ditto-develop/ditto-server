@@ -15,6 +15,8 @@ interface QuizProgressRepository : JpaRepository<QuizProgress, Long>, QuizProgre
         quizSetId: Long,
     ): QuizProgress?
 
+    fun findByMemberId(memberId: Long): List<QuizProgress>
+
     fun findByMemberIdAndQuizSetIdIn(
         memberId: Long,
         quizSetIds: List<Long>,

@@ -1,6 +1,6 @@
 package com.ditto.api.admin.member
 
-import com.ditto.api.admin.member.dto.MemberSearchResult
+import com.ditto.api.admin.member.dto.MemberSummary
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Member
@@ -28,15 +28,15 @@ class AdminMemberService(
 
     /** `#123`은 회원 ID 정확 일치, 그 외는 닉네임 부분 일치다. */
     @Transactional(readOnly = true)
-    fun searchByNicknameOrId(query: String): List<MemberSearchResult> {
+    fun searchByNicknameOrId(query: String): List<MemberSummary> {
         val keyword = query.trim()
         if (keyword.isEmpty()) return emptyList()
         if (keyword.startsWith(MEMBER_ID_PREFIX)) {
             val member = findMemberById(keyword.removePrefix(MEMBER_ID_PREFIX))
-            return listOfNotNull(member).map { MemberSearchResult.of(it) }
+            return listOfNotNull(member).map { MemberSummary.of(it) }
         }
         return memberRepository.findByNicknameContainingOrderByIdAsc(keyword, Limit.of(SEARCH_LIMIT))
-            .map { MemberSearchResult.of(it) }
+            .map { MemberSummary.of(it) }
     }
 
     /** 현재 ADMIN 권한 보유 회원 목록. */

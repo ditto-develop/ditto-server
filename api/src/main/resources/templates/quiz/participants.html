@@ -100,8 +100,9 @@
                                             </th:block>
                                         </div>
                                     </th:block>
-                                    <div class="member-actions" th:if="${p.kind.name() != 'DELETED' and p.answeredCount > 0}">
-                                        <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
+                                    <div class="member-actions" th:if="${p.kind.name() != 'DELETED'}">
+                                        <a class="text-link" th:href="@{/admin/members/{id}/quizzes(id=${p.memberId})}">회원별 퀴즈 현황</a>
+                                        <a class="text-link" th:if="${p.answeredCount > 0}" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
                                     </div>
                                     <form class="member-reset" th:if="${memberAnswerReset != null and memberAnswerReset.isResettable}"
                                           th:action="@{/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers(id=${quizSet.id},memberId=${p.memberId})}" method="post"

@@ -68,6 +68,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 // 같은 컨텍스트를 쓰는 IntegrationTest(AdminQaWebTest 등)가 커밋한 행이 남아 있을 수 있어 시작 전에 비운다.
 @SpringBootTest
@@ -672,6 +673,44 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/members").param("q", "없는닉네임").with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("맞는 회원이 없습니다")))
+    }
+
+    @Test
+    @DisplayName("회원 검색 결과와 참여 현황에서 회원별 퀴즈 현황으로 넘어간다")
+    fun memberQuizzesLinks() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val member = saveCompletedMember(quizSet.id, "링크회원")
+
+        mockMvc.perform(get("/admin/members").param("q", "#$member").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/$member/quizzes")))
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/$member/quizzes")))
+    }
+
+    @Test
+    @DisplayName("회원별 퀴즈 현황은 참여한 셋의 진행·매칭과 참여하지 않은 셋을 함께 그린다")
+    fun memberQuizzesPage() {
+        val joined = quizSetRepository.save(QuizSetFixture.create(title = "참여한 셋"))
+        val skipped = quizSetRepository.save(
+            QuizSetFixture.create(
+                title = "건너뛴 셋",
+                startDate = LocalDateTime.of(2026, 3, 30, 0, 0),
+                endDate = LocalDateTime.of(2026, 4, 1, 0, 0),
+            ),
+        )
+        val member = memberRepository.save(MemberFixture.create(nickname = "현황회원", status = MemberStatus.ACTIVE)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = member, quizSetId = joined.id, totalCount = 3))
+
+        mockMvc.perform(get("/admin/members/{id}/quizzes", member).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("현황회원")))
+            .andExpect(content().string(containsString("1 / 2")))
+            .andExpect(content().string(containsString("건너뛴 셋")))
+            .andExpect(content().string(containsString("참여 안 함")))
+            .andExpect(content().string(containsString("0/3")))
+            .andExpect(content().string(containsString("<span class=\"muted\">미완주</span>")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${joined.id}/participants?q=%23$member")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${skipped.id}\"")))
     }
 
     @Test

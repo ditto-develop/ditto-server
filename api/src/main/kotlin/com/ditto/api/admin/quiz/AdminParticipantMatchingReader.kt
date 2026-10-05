@@ -3,9 +3,8 @@ package com.ditto.api.admin.quiz
 import com.ditto.api.admin.quiz.dto.GroupCandidate
 import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
-import com.ditto.api.admin.quiz.dto.OutsideRequest
+import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
-import com.ditto.api.admin.quiz.dto.PersonalCandidate
 import com.ditto.api.admin.quiz.dto.QuizSetMatching
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -59,15 +58,9 @@ class AdminParticipantMatchingReader(
         )
 
         val byMemberId = source.memberIds.associateWith { memberId ->
-            val candidates = candidatesByOwnerId[memberId].orEmpty().sortedByDescending { it.score }
-            val (requestsWithCandidates, outsideRequests) = personalMatches
-                .filter { memberId in setOf(it.memberId1, it.memberId2) }
-                .partition { match -> candidates.any { it.otherMemberId == match.counterpartOf(memberId) } }
-            ParticipantMatching(
-                personalCandidates = candidates.map { PersonalCandidate.of(it, requestsWithCandidates, nicknames) },
-                outsideRequests = outsideRequests.map { OutsideRequest.of(it, memberId, nicknames) },
-                miss = missByMemberId[memberId],
-            )
+            val requests = personalMatches.filter { memberId in setOf(it.memberId1, it.memberId2) }
+            val records = OneToOneRecords(memberId, candidatesByOwnerId[memberId].orEmpty(), requests)
+            ParticipantMatching.ofOneToOne(records, nicknames, missByMemberId[memberId])
         }
         return QuizSetMatching(generatedAt, byMemberId)
     }

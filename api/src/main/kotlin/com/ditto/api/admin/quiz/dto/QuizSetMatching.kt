@@ -29,8 +29,33 @@ class ParticipantMatching(
 ) {
     companion object {
         val EMPTY = ParticipantMatching()
+
+        /** 후보 상대와의 신청은 후보 줄에 붙이고, 나머지 신청은 후보 밖으로 나눈다. */
+        fun ofOneToOne(
+            records: OneToOneRecords,
+            nicknames: Map<Long, String>,
+            miss: MatchMiss?,
+        ): ParticipantMatching {
+            val memberId = records.memberId
+            val candidates = records.candidates.sortedByDescending { it.score }
+            val (requestsWithCandidates, outsideRequests) = records.requests.partition { request ->
+                candidates.any { it.otherMemberId == request.counterpartOf(memberId) }
+            }
+            return ParticipantMatching(
+                personalCandidates = candidates.map { PersonalCandidate.of(it, requestsWithCandidates, nicknames) },
+                outsideRequests = outsideRequests.map { OutsideRequest.of(it, memberId, nicknames) },
+                miss = miss,
+            )
+        }
     }
 }
+
+/** 한 퀴즈셋에서 [memberId]가 주인인 1:1 후보와 [memberId]가 낀 1:1 신청. */
+class OneToOneRecords(
+    val memberId: Long,
+    val candidates: List<MatchCandidate>,
+    val requests: List<PersonalMatch>,
+)
 
 class PersonalCandidate(
     val otherMemberId: Long,
@@ -42,7 +67,11 @@ class PersonalCandidate(
 ) {
     companion object {
         /** [requests]는 후보 주인이 낀 1:1 신청이고, 그중 이 후보 상대와의 신청 상태를 붙인다. */
-        fun of(candidate: MatchCandidate, requests: List<PersonalMatch>, nicknames: Map<Long, String>): PersonalCandidate {
+        fun of(
+            candidate: MatchCandidate,
+            requests: List<PersonalMatch>,
+            nicknames: Map<Long, String>,
+        ): PersonalCandidate {
             val request = requests.firstOrNull { it.counterpartOf(candidate.ownerMemberId) == candidate.otherMemberId }
             return PersonalCandidate(
                 otherMemberId = candidate.otherMemberId,
@@ -196,4 +225,7 @@ enum class MatchMissReason(val label: String, val nextAction: String?, val empha
     CUT_BY_HARD_LIMIT("1인 후보 수 제한에서 밀림(정상)", null, MissEmphasis.NORMAL),
     STATE_CHANGED_AFTER_GENERATION("매칭 뒤 상태 변경", "매칭 화면에서 재생성", MissEmphasis.ACTION_NEEDED),
     NOT_ASSIGNED_TO_GROUP("그룹 미배정(인원 나머지·차단, 정상)", null, MissEmphasis.NORMAL),
+
+    /** 회원 화면은 1:1 풀 전체를 다시 계산하지 않아 풀 단계 이유를 모른다. */
+    POOL_REASON_NOT_COMPUTED("후보 없음", "참여 현황에서 이유 보기", MissEmphasis.NORMAL),
 }

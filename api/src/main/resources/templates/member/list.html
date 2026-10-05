@@ -35,7 +35,7 @@
                            th:text="|ID 순으로 앞 ${searchLimit}명까지만 보여 줍니다. 더 좁혀 찾으세요.|">앞 50명까지만</p>
                         <table class="tbl">
                             <thead>
-                            <tr><th>회원</th><th>상태</th></tr>
+                            <tr><th>회원</th><th>상태</th><th></th></tr>
                             </thead>
                             <tbody>
                             <tr th:each="m : ${searchResults}">
@@ -45,6 +45,7 @@
                                     <span class="badge cat" th:unless="${m.isDummy}">실회원</span>
                                 </td>
                                 <td class="num" th:text="${m.status}">ACTIVE</td>
+                                <td><a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.memberId})}">퀴즈 현황</a></td>
                             </tr>
                             </tbody>
                         </table>
