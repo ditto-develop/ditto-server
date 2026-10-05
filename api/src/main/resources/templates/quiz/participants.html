@@ -47,6 +47,11 @@
                         </ol>
                         <p class="muted" style="margin:0 0 12px">Q 열은 위 문항 번호이고, 안 푼 문항은 <b>-</b> 입니다.</p>
                     </th:block>
+                    <div class="field" style="max-width:320px">
+                        <label for="participantSearch">참여자 찾기</label>
+                        <input type="search" id="participantSearch" placeholder="닉네임 또는 #회원ID" autocomplete="off"/>
+                    </div>
+                    <p class="muted" id="participantSearchEmpty" style="margin:0 0 12px" hidden>이 퀴즈셋에 참여하지 않았습니다.</p>
                     <div style="overflow-x:auto">
                         <table class="tbl">
                             <thead>
@@ -58,7 +63,8 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="p : ${view.participants}" style="vertical-align:top">
+                            <tr th:each="p : ${view.participants}" style="vertical-align:top"
+                                data-participant th:attr="data-member-id=${p.memberId},data-nickname=${p.nickname}">
                                 <td style="white-space:nowrap" th:switch="${p.kind.name()}">
                                     <th:block th:case="'DELETED'">
                                         <span th:text="|#${p.memberId}|">#1</span>
@@ -129,5 +135,6 @@
         </main>
     </div>
 </div>
+<script th:src="@{/admin/js/participant-search.js}"></script>
 </body>
 </html>
