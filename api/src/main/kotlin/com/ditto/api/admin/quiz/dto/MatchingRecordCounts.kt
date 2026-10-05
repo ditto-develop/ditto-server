@@ -29,11 +29,13 @@ class MatchingEraseSummary(
     val counts: MatchingRecordCounts,
     val notificationCount: Int,
 ) {
-    fun toDisplayText(): String {
+    val isNothingErased: Boolean get() = composeErasedText().isEmpty()
+
+    fun toDisplayText(): String = composeErasedText().ifEmpty { "지운 기록 없음" }
+
+    private fun composeErasedText(): String {
         val notificationText = if (notificationCount > 0) "알림 ${notificationCount}개" else null
-        return listOfNotNull(counts.toDisplayText().ifEmpty { null }, notificationText)
-            .joinToString(" · ")
-            .ifEmpty { "지운 기록 없음" }
+        return listOfNotNull(counts.toDisplayText().ifEmpty { null }, notificationText).joinToString(" · ")
     }
 }
 
@@ -41,6 +43,4 @@ class MatchingEraseSummary(
 class MatchingErasePreview(
     val counts: MatchingRecordCounts,
     val realMemberRoomCount: Int,
-    val participantCount: Int,
-    val isResettable: Boolean,
 )

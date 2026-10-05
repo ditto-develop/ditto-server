@@ -1,8 +1,9 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.MatchingErasePreview
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetAvailability
 import com.ditto.api.admin.quiz.dto.QuizSetForm
-import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
@@ -21,8 +22,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQuizController(
     private val adminQuizService: AdminQuizService,
     private val adminQuizParticipantService: AdminQuizParticipantService,
-    private val adminQaToolsProperties: AdminQaToolsProperties,
+    private val qaToolGuard: QaToolGuard,
     private val adminQuizQaService: AdminQuizQaService,
+    private val adminQuizAnswerResetService: AdminQuizAnswerResetService,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -73,7 +75,8 @@ class AdminQuizController(
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
         val hasMatchRecords = adminQuizService.hasMatchRecords(id)
         model.addAttribute("hasMatchRecords", hasMatchRecords)
-        model.addAttribute("qaPreview", findQaPreview(id, hasMatchRecords))
+        model.addAttribute("matchingErasePreview", findMatchingErasePreview(id, hasMatchRecords))
+        model.addAttribute("answerResetPreview", findAnswerResetPreview(id, hasMatchRecords))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -81,6 +84,7 @@ class AdminQuizController(
     @GetMapping("/admin/quiz-sets/{id}/participants")
     fun participants(@PathVariable id: Long, model: Model): String {
         model.addAttribute("view", adminQuizParticipantService.getParticipants(id))
+        model.addAttribute("memberAnswerReset", findMemberAnswerResetAvailability(id))
         model.addAttribute("active", "quiz")
         return "quiz/participants"
     }
@@ -156,9 +160,21 @@ class AdminQuizController(
             )
 
     // 매칭 기록이 없는 셋은 일반 삭제로 충분해 QA 도구를 보이지 않는다.
-    private fun findQaPreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
-        if (!adminQaToolsProperties.enabled || !hasMatchRecords) return null
+    private fun findMatchingErasePreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
+        if (!qaToolGuard.isEnabled || !hasMatchRecords) return null
         return adminQuizQaService.previewErase(quizSetId)
+    }
+
+    // 참여자도 매칭 기록도 없으면 지울 것이 없어 QA 도구 카드를 보이지 않는다.
+    private fun findAnswerResetPreview(quizSetId: Long, hasMatchRecords: Boolean): AnswerResetPreview? {
+        if (!qaToolGuard.isEnabled) return null
+        return adminQuizAnswerResetService.previewAllAnswersReset(quizSetId)
+            .takeIf { it.participantCount > 0 || hasMatchRecords }
+    }
+
+    private fun findMemberAnswerResetAvailability(quizSetId: Long): MemberAnswerResetAvailability? {
+        if (!qaToolGuard.isEnabled) return null
+        return adminQuizAnswerResetService.findMemberAnswerResetAvailability(quizSetId)
     }
 
     companion object {
