@@ -26,7 +26,7 @@ class MatchingRecordEraser(
     private val reviewAnswerRepository: ReviewAnswerRepository,
     private val notificationRepository: NotificationRepository,
 ) {
-    /** @return 지운 알림 수 */
+    /** 지운 알림 수를 돌려준다. */
     fun erase(targets: MatchingRecordTargets): Int {
         deleteReviewsIn(targets.roomIds)
         chatRoomEraser.deleteRooms(targets.roomIds)

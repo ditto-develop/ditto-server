@@ -45,3 +45,7 @@ ditto:
     refresh-expiration-ms: 1209600000
   front:
     oauth-callback-url: ${FRONT_OAUTH_CALLBACK_URL:http://localhost:3000/auth/callback}
+  admin:
+    # 운영 데이터를 지우는 QA 도구(매칭 기록 초기화·강제 삭제). 실제 서비스 시작 전에 끈다.
+    qa-tools:
+      enabled: ${ADMIN_QA_TOOLS_ENABLED:false}
