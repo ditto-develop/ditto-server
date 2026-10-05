@@ -7,9 +7,18 @@ import com.ditto.api.match.service.CandidateGenerationSummary
 import com.ditto.api.match.service.CandidateRowCounts
 import com.ditto.api.support.JunitDatabaseCleanExtension
 import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.entity.MatchCandidate
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Interest
+import com.ditto.domain.member.entity.Job
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -96,6 +105,15 @@ class AdminWebTest {
 
     @Autowired
     lateinit var groupMatchRepository: GroupMatchRepository
+
+    @Autowired
+    lateinit var groupMatchMemberRepository: GroupMatchMemberRepository
+
+    @Autowired
+    lateinit var matchCandidateRepository: MatchCandidateRepository
+
+    @Autowired
+    lateinit var personalMatchRepository: PersonalMatchRepository
 
     @Autowired
     lateinit var systemNoticeRepository: SystemNoticeRepository
@@ -203,6 +221,53 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("1:1 퀴즈셋 참여 현황은 저장된 후보·점수·신청 상태와 후보가 없는 이유를 그린다")
+    fun quizSetParticipantsPersonalMatchingColumn() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val requester = saveCompletedMember(quizSet.id, "신청한회원")
+        val receiver = saveCompletedMember(quizSet.id, "dummy-female-0001")
+        matchCandidateRepository.save(MatchCandidate.create(requester, receiver, quizSet.id, 66.7, 2, 3))
+        matchCandidateRepository.save(MatchCandidate.create(receiver, requester, quizSet.id, 66.7, 2, 3))
+        personalMatchRepository.save(PersonalMatchFixture.create(requesterId = requester, receiverId = receiver, quizSetId = quizSet.id))
+        val notCompleted = memberRepository.save(MemberFixture.create(nickname = "미완주회원", status = MemberStatus.ACTIVE)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = notCompleted, quizSetId = quizSet.id, totalCount = 1))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("매칭 열: 후보 생성")))
+            .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
+            .andExpect(content().string(containsString("66.7 (2/3)")))
+            .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
+            .andExpect(content().string(containsString("<span class=\"muted\">미완주</span>")))
+            .andExpect(content().string(containsString("→ 퀴즈를 끝까지 풀기")))
+    }
+
+    @Test
+    @DisplayName("그룹 퀴즈셋 참여 현황은 그룹 점수·성사 여부·구성원 응답을 그린다")
+    fun quizSetParticipantsGroupMatchingColumn() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP))
+        val members = listOf("그룹원A", "그룹원B", "그룹원C").map { saveCompletedMember(quizSet.id, it) }
+        val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id, score = 75.0, acceptedCount = 1))
+        groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, members[0]).also { it.accept() })
+        members.drop(1).forEach { groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, it)) }
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("그룹 #${group.id} · 75.0 · 수락 1/3")))
+            .andExpect(content().string(containsString("<span class=\"badge on\">수락</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge matching\">대기</span>")))
+    }
+
+    private fun saveCompletedMember(quizSetId: Long, nickname: String): Long {
+        val memberId = memberRepository.save(MemberFixture.create(nickname = nickname, status = MemberStatus.ACTIVE)).id
+        val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 1)
+        progress.recordAnswer()
+        quizProgressRepository.save(progress)
+        return memberId
+    }
+
+    @Test
     @DisplayName("퀴즈셋 참여 현황은 실회원·더미·삭제된 회원의 진행·프로필·고른 선택지를 그린다")
     fun quizSetParticipantsPage() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
@@ -217,6 +282,9 @@ class AdminWebTest {
             MemberFixture.create(
                 nickname = "dummy-female-1a2b",
                 status = MemberStatus.ACTIVE,
+                interests = setOf(Interest.MUSIC, Interest.TRAVEL),
+                location = Location.SEOUL,
+                job = Job.DESIGN,
                 caricature = "/onboarding/profileimg/avatar/f3.svg",
             ),
         )
@@ -248,7 +316,10 @@ class AdminWebTest {
             .andExpect(content().string(containsString("<span class=\"badge matching\">진행 중</span>")))
             .andExpect(content().string(containsString("<span class=\"badge off\">시작 전</span>")))
             .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
-            .andExpect(content().string(containsString(">여<")))
+            .andExpect(content().string(containsString(">여성<")))
+            .andExpect(content().string(containsString(">서울<")))
+            .andExpect(content().string(containsString(">디자인<")))
+            .andExpect(content().string(containsString("음악")))
             .andExpect(content().string(containsString("<li>여행 계획은?</li>")))
     }
 
