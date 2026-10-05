@@ -799,7 +799,7 @@ class AdminWebTest {
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
-            .andExpect(flash().attribute("error", containsString("이미 응답이 시작된 퀴즈셋")))
+            .andExpect(flash().attribute("error", containsString("이미 그룹 매칭에 응답한 회원이 있어")))
             .andExpect(flash().attribute("message", null))
     }
 
