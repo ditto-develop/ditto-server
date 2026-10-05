@@ -94,7 +94,7 @@ class AdminSingleDummyWebTest(
         "더미 페이지에서 퀴즈셋을 골라 들어가는 폼이 있다" {
             mockMvc.perform(get("/admin/dummy").with(authentication(admin)))
                 .andExpect(status().isOk)
-                .andExpect(content().string(containsString("더미 한 명 생성")))
+                .andExpect(content().string(containsString("더미 직접 만들기")))
                 .andExpect(content().string(containsString("/admin/dummy/single")))
         }
 
