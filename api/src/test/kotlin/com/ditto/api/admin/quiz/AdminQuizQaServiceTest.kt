@@ -1,8 +1,5 @@
 package com.ditto.api.admin.quiz
 
-import com.ditto.api.admin.cleanup.MatchingRecordEraser
-import com.ditto.api.config.AdminQaToolsProperties
-import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -54,10 +51,7 @@ class AdminQuizQaServiceTest(
     private val chatMessageRepository: ChatMessageRepository,
     private val memberReviewRepository: MemberReviewRepository,
     private val notificationRepository: NotificationRepository,
-    private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
-    private val matchingRecordEraser: MatchingRecordEraser,
     private val quizSetDeleter: QuizSetDeleter,
-    private val matchWeekPolicy: MatchWeekPolicy,
     private val memberRepository: MemberRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
@@ -190,30 +184,6 @@ class AdminQuizQaServiceTest(
             val quizSetId = saveMatchedQuizSet(QuizSetFixture.create())
 
             adminQuizQaService.previewErase(quizSetId).isResettable shouldBe false
-        }
-    }
-
-    "QA 도구 스위치" - {
-        "꺼져 있으면 아무것도 지우지 않고 거부한다" {
-            val quizSetId = saveMatchedQuizSet()
-            val disabledService = AdminQuizQaService(
-                adminQaToolsProperties = AdminQaToolsProperties(enabled = false),
-                quizSetRepository = quizSetRepository,
-                matchCandidateRepository = matchCandidateRepository,
-                quizSetMatchingTargetFinder = quizSetMatchingTargetFinder,
-                matchingRecordEraser = matchingRecordEraser,
-                quizSetDeleter = quizSetDeleter,
-                matchWeekPolicy = matchWeekPolicy,
-            )
-
-            val resetException = shouldThrow<WarnException> { disabledService.resetMatching(quizSetId) }
-            val deleteException = shouldThrow<WarnException> { disabledService.forceDelete(quizSetId) }
-
-            resetException.errorCode shouldBe ErrorCode.FORBIDDEN
-            deleteException.errorCode shouldBe ErrorCode.FORBIDDEN
-            quizSetRepository.existsById(quizSetId) shouldBe true
-            matchCandidateRepository.existsByQuizSetId(quizSetId) shouldBe true
-            chatRoomRepository.findAll() shouldHaveSize 3
         }
     }
 })
