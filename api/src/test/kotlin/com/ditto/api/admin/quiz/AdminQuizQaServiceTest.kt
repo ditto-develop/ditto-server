@@ -162,7 +162,7 @@ class AdminQuizQaServiceTest(
     }
 
     "미리보기" - {
-        "지우지 않고 지울 개수와 실회원이 낀 방 수를 세고 이번 주 셋이면 초기화할 수 있다고 알려 준다" {
+        "지우지 않고 지울 개수와 실회원이 낀 방 수, 참여 회원 수를 세고 이번 주 셋이면 초기화할 수 있다고 알려 준다" {
             val quizSetId = saveMatchedQuizSet()
             val real = memberRepository.save(MemberFixture.create(nickname = "실회원", email = "real@example.com"))
             val dummy = memberRepository.save(MemberFixture.create(nickname = "dummy-male-0001", email = "d@dummy.local"))
@@ -178,6 +178,7 @@ class AdminQuizQaServiceTest(
             preview.counts.candidateRowCount shouldBe 2
             preview.counts.roomCount shouldBe 3
             preview.realMemberRoomCount shouldBe 1
+            preview.participantCount shouldBe 1
             preview.isResettable shouldBe true
             chatRoomRepository.findAll() shouldHaveSize 3
         }

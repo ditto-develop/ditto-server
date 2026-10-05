@@ -328,11 +328,13 @@ class AdminWebTest {
     fun quizSetDetailShowsQaTools() {
         val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
         personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id))
 
         mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("href=\"#qa-tools\"")))
-            .andExpect(content().string(containsString("누르면 지워지는 것: 1:1 신청 1건")))
+            .andExpect(content().string(containsString("두 도구가 함께 지우는 것: 1:1 신청 1건")))
+            .andExpect(content().string(containsString("참여 회원 1명의 답·진행을 지웁니다.")))
             .andExpect(content().string(containsString(">매칭 기록 초기화</button>")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }
@@ -346,6 +348,7 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
+            .andExpect(content().string(not(containsString("서버 시각을 그 주 목요일"))))
             .andExpect(content().string(containsString("이번 주 퀴즈셋만 초기화할 수 있습니다.")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }

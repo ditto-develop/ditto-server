@@ -11,6 +11,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional
 class AdminQuizQaService(
     private val adminQaToolsProperties: AdminQaToolsProperties,
     private val quizSetRepository: QuizSetRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
     private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
     private val matchingRecordEraser: MatchingRecordEraser,
@@ -37,6 +39,7 @@ class AdminQuizQaService(
         return MatchingErasePreview(
             counts = countsOf(targets, matchCandidateRepository.countByQuizSetId(quizSetId)),
             realMemberRoomCount = quizSetMatchingTargetFinder.findRoomIdsWithRealMembers(targets.roomIds).size,
+            participantCount = quizProgressRepository.countByQuizSetId(quizSetId).toInt(),
             isResettable = matchWeekPolicy.isCurrentWeek(quizSet),
         )
     }
