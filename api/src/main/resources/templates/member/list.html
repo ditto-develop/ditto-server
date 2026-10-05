@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">회원 관리</h1>
-            <p class="page-desc">닉네임·회원 ID나 이메일로 회원을 찾고, 권한(Role)을 변경합니다.</p>
+            <p class="page-desc">닉네임·회원 ID나 이메일로 회원을 찾아 퀴즈 현황을 보거나 권한을 바꿉니다. 현재 관리자 목록에서도 바로 바꿀 수 있습니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <!-- 현재 관리자 -->
@@ -46,7 +46,9 @@
                                     <span class="member-name" th:text="${member.nickname}">닉네임</span>
                                     <span class="member-id" th:text="|#${member.memberId}|">#1</span>
                                     <span class="badge cat" th:unless="${member.isDummy}">실회원</span>
-                                    <th:block th:replace="~{member/parts :: statusBadge(${member.status})}"></th:block>
+                                    <th:block th:if="${member.status.name() != 'ACTIVE'}">
+                                        <span th:replace="~{member/parts :: memberStatusBadge(${member.status})}"></span>
+                                    </th:block>
                                 </td>
                                 <td class="actions">
                                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${member.memberId},q=${q})}">퀴즈 현황</a>

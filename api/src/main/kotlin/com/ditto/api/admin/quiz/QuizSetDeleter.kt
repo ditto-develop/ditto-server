@@ -34,7 +34,7 @@ class QuizSetDeleter(
     @Transactional
     fun delete(quizSetId: Long) {
         if (!quizSetRepository.existsById(quizSetId)) {
-            throw WarnException(ErrorCode.NOT_FOUND)
+            throw WarnException(ErrorCode.NOT_FOUND, "없는 퀴즈셋입니다: #$quizSetId")
         }
         if (hasMatchRecords(quizSetId)) {
             throw WarnException(

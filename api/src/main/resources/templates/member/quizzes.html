@@ -13,7 +13,9 @@
                 <span class="member-id" th:text="|#${member.memberId}|">#1</span>
                 퀴즈 현황
                 <span class="badge cat" th:unless="${member.isDummy}">실회원</span>
-                <th:block th:replace="~{member/parts :: statusBadge(${member.status})}"></th:block>
+                <th:block th:if="${member.status.name() != 'ACTIVE'}">
+                    <span th:replace="~{member/parts :: memberStatusBadge(${member.status})}"></span>
+                </th:block>
             </h1>
             <p class="page-desc">
                 <span th:text="${member.gender?.description} ?: '성별 없음'">남성</span> ·
@@ -39,7 +41,7 @@
                             <td class="nowrap" th:text="${@weekLabel.of(quizSet.weekStartedOn)}">2026.10.05 ~ 2026.10.11</td>
                             <td>
                                 <a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}" th:text="${quizSet.title}">제목</a>
-                                <span class="muted" th:text="${quizSet.matchingType}">TYPE</span>
+                                <span class="muted" th:text="${@matchingTypeLabel.of(quizSet.matchingType)}">1:1</span>
                                 <span class="badge off" th:unless="${quizSet.isActive}">비활성</span>
                                 <div th:if="${progress != null}">
                                     <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${member.memberId}|)}"

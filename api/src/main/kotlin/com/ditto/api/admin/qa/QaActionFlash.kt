@@ -55,4 +55,4 @@ private fun RedirectAttributes.flashSuccess(actionLabel: String) {
     addFlashAttribute("message", "$actionLabel 완료")
 }
 
-private fun WarnException.toDisplayText(): String = "$message (${errorCode.code})"
+private fun WarnException.toDisplayText(): String = "$message (코드 ${errorCode.code})"

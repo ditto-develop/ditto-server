@@ -3,6 +3,7 @@ package com.ditto.api.admin.quiz
 import com.ditto.api.admin.quiz.dto.QuizChoiceForm
 import com.ditto.api.admin.quiz.dto.QuizForm
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.api.admin.support.MatchingTypeLabel
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.Quiz
@@ -29,13 +30,14 @@ class AdminQuizService(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizProgressRepository: QuizProgressRepository,
     private val quizSetDeleter: QuizSetDeleter,
+    private val matchingTypeLabel: MatchingTypeLabel,
 ) {
     @Transactional(readOnly = true)
     fun listQuizSets(): List<QuizSet> = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
 
     @Transactional(readOnly = true)
     fun getQuizSet(id: Long): QuizSet =
-        quizSetRepository.findById(id).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        quizSetRepository.findById(id).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 퀴즈셋입니다: #$id") }
 
     @Transactional(readOnly = true)
     fun getQuizzes(quizSetId: Long): List<Quiz> =
@@ -235,7 +237,7 @@ class AdminQuizService(
 
         throw WarnException(
             ErrorCode.BAD_REQUEST,
-            "이미 활성화된 ${quizSet.matchingType} 퀴즈셋이 그 주차에 있습니다. 기존 퀴즈셋을 먼저 비활성화하세요.",
+            "그 주차에 이미 활성화된 ${matchingTypeLabel.of(quizSet.matchingType)} 퀴즈셋이 있습니다. 기존 퀴즈셋을 먼저 비활성화하세요.",
         )
     }
 

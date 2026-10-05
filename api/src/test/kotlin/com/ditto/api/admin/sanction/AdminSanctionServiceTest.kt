@@ -132,6 +132,7 @@ class AdminSanctionServiceTest(
                 adminSanctionService.lift(sanction.id, now)
             }
             exception.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+            exception.message shouldBe "이미 만료됐거나 해제된 제재입니다."
         }
     }
 })

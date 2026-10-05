@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">신고 검토</h1>
-            <p class="page-desc">접수된 신고는 24시간 내 검토합니다. 초과 건은 붉게 표시됩니다.</p>
+            <p class="page-desc">신고는 접수 후 24시간 안에 검토합니다. 24시간이 지난 신고는 빨간색으로 표시됩니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <!-- 상태 필터 -->
@@ -23,7 +23,7 @@
 
             <div class="card">
                 <h2>목록 <span class="badge cat" th:text="${reports.size()} + '건'">0건</span></h2>
-                <p class="muted" th:if="${reports.isEmpty()}">해당 상태의 신고가 없습니다.</p>
+                <p class="muted" th:if="${reports.isEmpty()}">이 상태의 신고가 없습니다.</p>
                 <table class="tbl" th:unless="${reports.isEmpty()}">
                     <thead>
                     <tr>
@@ -41,7 +41,7 @@
                         <td th:text="${r.id}">1</td>
                         <td>
                             <span th:text="${#strings.listJoin(r.reasonDescriptions, ', ')}">사유</span>
-                            <span class="badge warn" th:if="${r.isSevere}">즉시 조치 권고</span>
+                            <span class="badge warn" th:if="${r.isSevere}">심각 사유</span>
                         </td>
                         <td th:text="${r.reporterNickname}">신고자</td>
                         <td th:text="${r.reportedNickname}">피신고자</td>
@@ -49,9 +49,9 @@
                         <td>
                             <span th:text="${r.elapsedText}"
                                   th:classappend="${r.overdue} ? 'overdue'">경과</span>
-                            <span class="badge warn" th:if="${r.overdue}">SLA 초과</span>
+                            <span class="badge warn" th:if="${r.overdue}">24시간 지남</span>
                         </td>
-                        <td><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}">검토</a></td>
+                        <td><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}" th:text="${r.received} ? '검토' : '보기'">검토</a></td>
                     </tr>
                     </tbody>
                 </table>

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 신고 검토 화면 — 접수 대기열(24시간 SLA)과 검토에 필요한 컨텍스트(이력·추천 차수·가이드라인)를 제공한다.
+ * 신고 검토 화면. 접수 대기열(24시간 안에 검토)과 검토에 필요한 이력·차수·가이드라인을 보여 준다.
  */
 @Controller
 class AdminReportController(
@@ -69,7 +69,7 @@ class AdminReportController(
                 log.info { "어드민[${admin.displayName}] 이 신고 #$id 를 ${decision.name} 로 처리" }
                 // 검토 트랜잭션이 커밋된 뒤라 알림 실패가 검토를 되돌리지 않는다(notifier 가 실패를 삼킨다).
                 sanction?.let(reportSanctionNotifier::notifyImposed)
-                redirectAttributes.addFlashAttribute("message", "신고 #$id 를 '${decision.description}' 로 처리했습니다.")
+                redirectAttributes.addFlashAttribute("message", reviewedMessage(id, decision))
             }
             .onFailure { e ->
                 // 입력값·상태 오류(WarnException)는 화면에 안내하고, 예기치 못한 예외는 전역 핸들러로 전파한다.
@@ -77,6 +77,12 @@ class AdminReportController(
                 redirectAttributes.addFlashAttribute("error", e.message)
             }
         return "redirect:/admin/reports/$id"
+    }
+
+    private fun reviewedMessage(reportId: Long, decision: ReviewDecision): String {
+        val reviewed = "신고 #$reportId 처리를 마쳤습니다: ${decision.description}"
+        if (decision != ReviewDecision.REJECT_ABUSIVE) return reviewed
+        return "$reviewed. 신고자는 '제재 관리'에서 따로 제재하세요."
     }
 
     companion object {

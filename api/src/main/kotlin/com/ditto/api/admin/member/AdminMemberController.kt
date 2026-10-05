@@ -65,7 +65,7 @@ class AdminMemberController(
     ): String {
         adminMemberService.changeRole(id, role)
         log.info { "어드민[${admin.displayName}] 이 회원 #$id 의 권한을 $role 로 변경" }
-        redirectAttributes.addFlashAttribute("message", "회원 #$id 의 권한을 ${role.label} 로 변경했습니다.")
+        redirectAttributes.addFlashAttribute("message", "회원 #${id}의 권한을 바꿨습니다: ${role.description}")
         if (!email.isNullOrBlank()) redirectAttributes.addAttribute("email", email)
         return "redirect:/admin/members"
     }

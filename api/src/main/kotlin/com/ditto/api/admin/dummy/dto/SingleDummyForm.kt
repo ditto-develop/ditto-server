@@ -7,7 +7,7 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import java.io.Serializable
 
-/** 더미 한 명 생성 폼(스프링 폼 바인딩). 비운 값은 무작위나 자동으로 채운다. */
+/** 더미 직접 만들기 폼(스프링 폼 바인딩). 비운 값은 무작위나 자동으로 채운다. */
 class SingleDummyForm(
     var quizSetId: Long = 0L,
     /** `dummy-` 뒤에 붙일 부분. 비우면 자동으로 만든다. */
@@ -28,7 +28,7 @@ class SingleDummyForm(
 
     /**
      * 연달아 만들 때 다음 폼 값. 성별·나이·문항별 답·푼 문항 수는 이어 쓰고,
-     * 닉네임은 비우고 사는 곳·직업·관심사·캐리커쳐는 다시 무작위로 채운다.
+     * 닉네임은 비우고 사는 곳·직업·관심사·캐리커처는 다시 무작위로 채운다.
      */
     fun forNextDummy() = withRandomProfile(quizSetId).also {
         it.gender = gender

@@ -48,7 +48,7 @@ class AdminQaVoteController(
         }
 
         val request = ChatVoteCastRequest(placeIds = placeIds, timeIds = timeIds)
-        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #$voteId 투표") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #${voteId}에 투표") {
             chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, request)
         }
         return QaRoutes.room(roomId)
@@ -62,7 +62,7 @@ class AdminQaVoteController(
     ): String {
         val vote = adminQaRoomService.findVote(roomId, voteId)
         if (vote == null) {
-            redirectAttributes.addFlashAttribute("error", "투표 #$voteId 가 이 방에 없습니다.")
+            redirectAttributes.addFlashAttribute("error", "이 방에 없는 투표입니다: #$voteId")
             return QaRoutes.room(roomId)
         }
 

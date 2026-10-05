@@ -11,21 +11,21 @@
             <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
             <h1 class="page-title" style="margin-top:8px">더미 직접 만들기</h1>
             <p class="page-desc">
-                <span th:text="|${@weekLabel.of(questions.quizSet.weekStartedOn)} · ${questions.quizSet.title} (${questions.quizSet.matchingType})|">퀴즈셋</span>
-                에 프로필과 답을 지정해 더미를 생성합니다. 사는 곳·직업·관심사는 들어올 때마다 무작위로 채워 두고,
-                닉네임·캐리커쳐·문항별 답은 비우면 무작위로 정합니다.
-                매칭 후보는 만들지 않으니, 생성한 뒤 매칭을 재생성하세요.
+                <span th:text="${@weekLabel.of(questions.quizSet.weekStartedOn) + ' · ' + questions.quizSet.title + ' (' + @matchingTypeLabel.of(questions.quizSet.matchingType) + ')'}">퀴즈셋</span>에
+                프로필과 답을 지정해 더미를 만듭니다. 사는 곳·직업·관심사는 화면을 열거나 하나 만들 때마다 새로 무작위로 채웁니다.
+                닉네임·캐리커처·문항별 답은 비우면 무작위로 정합니다.
+                매칭 후보는 만들지 않으니, 만든 뒤 매칭을 재생성하세요.
             </p>
             <p class="muted" style="margin:-12px 0 20px">
-                생성한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 재생성 →</a>
+                <a class="text-link" th:href="@{/admin/matching}">매칭 재생성 →</a>
                 · <a class="text-link" th:href="@{/admin/qa}">QA 콘솔 →</a>
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
             <div class="alert success" th:if="${answersFromMemberId}"
-                 th:text="|회원 #${answersFromMemberId} 의 답을 불러왔습니다. 성별은 반대로, 나이는 같게 채웠습니다. 점수를 낮추려면 몇 문항만 바꾸세요.|">답을 불러왔습니다</div>
+                 th:text="|회원 #${answersFromMemberId}의 답을 불러왔습니다. 성별은 반대로, 나이는 같게 채웠습니다. 매칭 점수를 낮추려면 몇 문항만 바꾸세요.|">답을 불러왔습니다</div>
 
             <form th:object="${form}" th:action="@{/admin/dummy/single}" method="post"
-                  onsubmit="return confirm('운영 환경을 포함한 모든 환경에서 실행됩니다.\n이 값으로 더미를 생성할까요?');">
+                  onsubmit="return confirm('운영 서버에서도 실제로 만들어집니다.\n이 값으로 더미를 만들까요?');">
                 <input type="hidden" th:field="*{quizSetId}"/>
 
                 <div class="card">
@@ -49,7 +49,7 @@
                         </div>
                         <div class="field"><label>나이</label><input type="number" th:field="*{age}" th:min="${ageRange.first}" th:max="${ageRange.last}"/></div>
                         <div class="field">
-                            <label>캐리커쳐</label>
+                            <label>캐리커처</label>
                             <select th:field="*{avatarNumber}">
                                 <option value="">무작위</option>
                                 <option th:each="n : ${avatarNumbers}" th:value="${n}" th:text="|${n}번|">1번</option>
@@ -79,7 +79,7 @@
                             </label>
                         </div>
                     </div>
-                    <p class="muted" style="margin:0">캐리커쳐는 성별에 맞는 아바타 중 그 번호를 씁니다.</p>
+                    <p class="muted" style="margin:0">캐리커처는 성별에 맞는 그림 중 고른 번호를 씁니다.</p>
                     <p class="muted" style="margin:4px 0 0" th:if="${isOneToOne}"
                        th:text="|1:1은 실회원처럼 이성끼리, 나이 차가 ${maxAgeGap}살 이내인 회원만 후보가 됩니다.|">1:1 후보 조건</p>
                 </div>
@@ -89,9 +89,9 @@
                     <div class="field">
                         <label>푼 문항 수</label>
                         <input type="number" th:field="*{answeredCount}" min="0"
-                               th:max="${#lists.size(questions.quizzes)}" placeholder="비우면 전부 풀이(완료)"/>
-                        <p class="muted" style="margin:6px 0 0">값을 주면 위에서부터 그 수만큼만 답하고 진행 중으로 둡니다. 그 뒤 문항에서 고른 답은 쓰지 않습니다.
-                            0이면 퀴즈를 시작하지 않은 회원이 되어 진행 기록이 없으므로 참여 현황에 나오지 않습니다.</p>
+                               th:max="${#lists.size(questions.quizzes)}" placeholder="비우면 전부 푼 상태"/>
+                        <p class="muted" style="margin:6px 0 0">숫자를 넣으면 앞에서부터 그 수만큼만 답하고 '진행 중'으로 남깁니다. 그 뒤 문항에 고른 답은 무시합니다.
+                            0이면 퀴즈를 시작하지 않은 회원이라 참여 현황에 나오지 않습니다.</p>
                     </div>
                     <div class="ro-quiz" th:each="quiz, stat : ${questions.quizzes}">
                         <span class="no" th:text="${stat.count}">1</span>
@@ -116,7 +116,7 @@
                 <div class="savebar">
                     <div class="counts" th:text="|퀴즈셋 #${questions.quizSetId} · ${#lists.size(questions.quizzes)}문항|">퀴즈셋</div>
                     <div class="btn-row">
-                        <button type="submit" class="btn">더미 생성</button>
+                        <button type="submit" class="btn">더미 만들기</button>
                     </div>
                 </div>
             </form>

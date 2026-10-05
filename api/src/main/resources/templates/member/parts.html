@@ -11,16 +11,16 @@
         <td class="num" th:text="${m.id}">-</td>
         <td th:text="${m.nickname}">nick</td>
         <td th:text="${m.email}">email</td>
-        <td class="num" th:text="${m.status}">status</td>
+        <td><span th:replace="~{member/parts :: memberStatusBadge(${m.status})}"></span></td>
         <td>
-            <span class="badge" th:classappend="${m.admin} ? 'on' : 'off'" th:text="${m.role}">role</span>
+            <span class="badge" th:classappend="${m.admin} ? 'on' : 'off'" th:text="${m.role.description}">일반 회원</span>
         </td>
         <td>
             <form class="btn-row" style="margin:0" th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
                   onsubmit="return confirm('이 회원의 권한을 변경할까요?');">
                 <input type="hidden" name="email" th:value="${email}"/>
                 <select name="role" style="width:auto; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit;">
-                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r.label}" th:selected="${r == m.role}"></option>
+                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r.description}" th:selected="${r == m.role}"></option>
                 </select>
                 <button class="btn sm" type="submit">변경</button>
             </form>
@@ -30,12 +30,15 @@
     </tbody>
 </table>
 
-<!-- 회원 상태 배지. ACTIVE면 아무것도 그리지 않는다. -->
-<th:block th:fragment="statusBadge(status)" th:if="${status != null}" th:switch="${status.name()}">
-    <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
-    <span class="badge matching" th:case="'SUSPENDED'">정지</span>
-    <span class="badge matching" th:case="'BANNED'">차단</span>
-    <span class="badge matching" th:case="'LEFT'">탈퇴</span>
+<!-- 회원 상태 배지(재사용). 회원 행이 지워져 status 가 null 이면 탈퇴로 보여 준다. -->
+<th:block th:fragment="memberStatusBadge(status)">
+    <th:block th:switch="${status?.name()}">
+        <span class="badge on" th:case="'ACTIVE'">정상</span>
+        <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
+        <span class="badge matching" th:case="'SUSPENDED'">정지</span>
+        <span class="badge matching" th:case="'BANNED'">차단</span>
+        <span class="badge matching" th:case="*">탈퇴</span>
+    </th:block>
 </th:block>
 </body>
 </html>
