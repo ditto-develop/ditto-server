@@ -1,6 +1,7 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQuizController(
     private val adminQuizService: AdminQuizService,
     private val adminQuizParticipantService: AdminQuizParticipantService,
+    private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -68,6 +70,7 @@ class AdminQuizController(
         model.addAttribute("quizzes", quizzes)
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
         model.addAttribute("hasMatchRecords", adminQuizService.hasMatchRecords(id))
+        model.addAttribute("qaToolsEnabled", adminQaToolsProperties.enabled)
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }

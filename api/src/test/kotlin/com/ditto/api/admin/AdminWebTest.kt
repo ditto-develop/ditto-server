@@ -7,7 +7,9 @@ import com.ditto.api.match.service.CandidateGenerationSummary
 import com.ditto.api.match.service.CandidateRowCounts
 import com.ditto.api.support.JunitDatabaseCleanExtension
 import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
@@ -96,6 +98,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var groupMatchRepository: GroupMatchRepository
+
+    @Autowired
+    lateinit var personalMatchRepository: PersonalMatchRepository
 
     @Autowired
     lateinit var systemNoticeRepository: SystemNoticeRepository
@@ -250,6 +255,54 @@ class AdminWebTest {
             .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
             .andExpect(content().string(containsString(">여<")))
             .andExpect(content().string(containsString("<li>여행 계획은?</li>")))
+    }
+
+    @Test
+    @DisplayName("QA 도구가 켜져 있으면 매칭이 끝난 퀴즈셋 상세에 QA 도구 카드와 안내를 보여 준다")
+    fun quizSetDetailShowsQaTools() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("QA 중이면 아래 QA 도구로 지울 수 있습니다.")))
+            .andExpect(content().string(containsString("매칭 기록 초기화")))
+            .andExpect(content().string(containsString("매칭 기록까지 강제 삭제")))
+    }
+
+    @Test
+    @DisplayName("매칭 기록 초기화는 매칭 기록만 지우고 상세로 돌아간다")
+    fun resetQuizSetMatching() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-matching", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
+            .andExpect(flash().attributeExists("message"))
+
+        personalMatchRepository.existsByQuizSetId(quizSet.id) shouldBe false
+        quizSetRepository.existsById(quizSet.id) shouldBe true
+    }
+
+    @Test
+    @DisplayName("강제 삭제는 매칭이 끝난 퀴즈셋도 지우고 목록으로 돌아간다")
+    fun forceDeleteQuizSet() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/force-delete", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets"))
+            .andExpect(flash().attributeExists("message"))
+
+        quizSetRepository.existsById(quizSet.id) shouldBe false
+    }
+
+    @Test
+    @DisplayName("없는 퀴즈셋에 QA 도구를 쓰면 목록으로 돌아가 오류를 보여 준다")
+    fun qaToolsOnMissingQuizSet() {
+        mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-matching", 99999L).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets"))
+            .andExpect(flash().attributeExists("error"))
     }
 
     @Test

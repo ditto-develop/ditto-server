@@ -34,6 +34,7 @@
 - [0036 — 그룹 초대 응답 마감을 금요일 00:00으로 맞추고 미응답을 자동 거절한다](0036-group-response-deadline-friday.md)
 - [0037 — 그룹 평가·재매칭 명단에 나간 사람을 포함한다](0037-group-review-roster-includes-leavers.md)
 - [0038 — 어드민 QA 콘솔은 앱 API 컨트롤러를 더미 principal 로 그대로 호출한다](0038-admin-qa-console-acts-as-dummy.md)
+- [0039 — 운영 데이터를 지우는 어드민 QA 도구는 환경변수 스위치 뒤에 둔다](0039-admin-qa-tools-env-switch.md)
 
 ## 언제 ADR을 쓰는가
 
