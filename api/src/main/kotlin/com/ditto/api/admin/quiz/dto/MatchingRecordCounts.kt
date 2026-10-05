@@ -8,8 +8,6 @@ class MatchingRecordCounts(
     val rematchCount: Int,
     val roomCount: Int,
 ) {
-    val isEmpty: Boolean = candidateRowCount + personalMatchCount + groupMatchCount + rematchCount + roomCount == 0
-
     /** 0인 항목은 뺀다. */
     fun toDisplayText(): String =
         listOfNotNull(

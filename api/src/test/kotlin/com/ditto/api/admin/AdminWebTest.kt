@@ -38,7 +38,6 @@ import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
-import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -281,7 +280,7 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
-            .andExpect(content().string(containsString("지난 주 퀴즈셋은 초기화해도 앱에 보이지 않아")))
+            .andExpect(content().string(containsString("이번 주 퀴즈셋만 초기화할 수 있습니다.")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }
 

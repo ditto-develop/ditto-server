@@ -37,7 +37,7 @@ class MatchWeekPolicy(
      * 그룹이 오늘 성사돼 채팅방이 열릴 수 있다. 쓰기 경로에서 막는다.
      */
     fun validateCurrentWeek(quizSetId: Long) {
-        if (findQuizSetOrThrow(quizSetId).weekStartedOn != currentWeek().startedOn) {
+        if (!isCurrentWeek(findQuizSetOrThrow(quizSetId))) {
             throw WarnException(ErrorCode.NOT_MATCHING_PERIOD)
         }
     }

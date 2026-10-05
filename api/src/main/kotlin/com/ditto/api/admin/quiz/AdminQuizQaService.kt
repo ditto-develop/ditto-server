@@ -41,19 +41,11 @@ class AdminQuizQaService(
         )
     }
 
-    /**
-     * 퀴즈셋·답·진행은 남기고 매칭 기록만 지워 같은 셋으로 매칭을 다시 돌릴 수 있게 한다. 지난 주 셋은 거부한다.
-     * 다시 돌려도 앱에 보이지 않고, 그대로 두면 다음 목요일 배치가 다시 매칭해 결과 알림을 보낸다.
-     */
+    /** 퀴즈셋·답·진행은 남기고 매칭 기록만 지워 같은 셋으로 매칭을 다시 돌릴 수 있게 한다. */
     fun resetMatching(quizSetId: Long): MatchingEraseSummary {
         validateQaToolsEnabled()
         val quizSet = findQuizSet(quizSetId)
-        if (!matchWeekPolicy.isCurrentWeek(quizSet)) {
-            throw WarnException(
-                ErrorCode.BAD_REQUEST,
-                "지난 주 퀴즈셋은 초기화해도 앱에 보이지 않습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.",
-            )
-        }
+        validateCurrentWeek(quizSet)
         return eraseMatchingRecordsOf(quizSet)
     }
 
@@ -91,6 +83,13 @@ class AdminQuizQaService(
     private fun validateQaToolsEnabled() {
         if (!adminQaToolsProperties.enabled) {
             throw WarnException(ErrorCode.FORBIDDEN, "QA 도구가 꺼져 있습니다. QA 도구 스위치를 켠 환경에서만 쓸 수 있습니다.")
+        }
+    }
+
+    // 다른 주 셋은 다시 돌려도 앱에 보이지 않고, 그대로 두면 다음 목요일 배치가 다시 매칭해 결과 알림을 보낸다.
+    private fun validateCurrentWeek(quizSet: QuizSet) {
+        if (!matchWeekPolicy.isCurrentWeek(quizSet)) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "이번 주 퀴즈셋만 초기화할 수 있습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.")
         }
     }
 

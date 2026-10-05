@@ -4,8 +4,8 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatMessageFixture
-import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
@@ -166,7 +166,9 @@ class AdminQuizQaServiceTest(
             val quizSetId = saveMatchedQuizSet()
             val real = memberRepository.save(MemberFixture.create(nickname = "실회원", email = "real@example.com"))
             val dummy = memberRepository.save(MemberFixture.create(nickname = "dummy-male-0001", email = "d@dummy.local"))
-            val (realRoom, dummyOnlyRoom) = chatRoomRepository.findAll().take(2)
+            val rooms = chatRoomRepository.findAll()
+            val realRoom = rooms.single { it.sourceType == ChatRoomType.PERSONAL }
+            val dummyOnlyRoom = rooms.single { it.sourceType == ChatRoomType.GROUP }
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = realRoom.id, memberId = real.id))
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = realRoom.id, memberId = dummy.id))
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = dummyOnlyRoom.id, memberId = dummy.id))

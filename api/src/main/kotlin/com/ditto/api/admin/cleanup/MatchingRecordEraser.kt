@@ -25,7 +25,7 @@ class MatchingRecordEraser(
 ) {
     /** 지운 알림 수를 돌려준다. */
     fun erase(targets: MatchingRecordTargets): Int {
-        reviewEraser.eraseInRooms(targets.roomIds)
+        reviewEraser.eraseByRooms(targets.roomIds)
         chatRoomEraser.erase(targets.roomIds)
         personalMatchRepository.deleteAllByIdInBatch(targets.personalMatchIds)
         deleteGroupMatches(targets.groupMatchIds)

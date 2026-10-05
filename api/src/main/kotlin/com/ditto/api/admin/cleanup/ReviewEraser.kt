@@ -10,11 +10,11 @@ class ReviewEraser(
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
 ) {
-    fun eraseInRooms(roomIds: Collection<Long>) {
+    fun eraseByRooms(roomIds: Collection<Long>) {
         if (roomIds.isEmpty()) return
 
         val reviewIds = memberReviewRepository.findByChatRoomIdIn(roomIds).map { it.id }
-        eraseWithAnswers(reviewIds, extraAnswerIds = emptyList())
+        eraseWithAnswers(reviewIds, answerIdsAboutMembers = emptyList())
     }
 
     /** 회원이 쓴 평가와, 다른 사람이 그 회원을 대상으로 남긴 답변. */
@@ -26,11 +26,11 @@ class ReviewEraser(
         eraseWithAnswers(reviewIds, answerIdsAboutMembers)
     }
 
-    private fun eraseWithAnswers(reviewIds: List<Long>, extraAnswerIds: List<Long>) {
+    private fun eraseWithAnswers(reviewIds: List<Long>, answerIdsAboutMembers: List<Long>) {
         val answerIdsOfReviews =
             if (reviewIds.isEmpty()) emptyList()
             else reviewAnswerRepository.findAllByMemberReviewIdInOrderByIdAsc(reviewIds).map { it.id }
-        reviewAnswerRepository.deleteAllByIdInBatch((answerIdsOfReviews + extraAnswerIds).toSet())
+        reviewAnswerRepository.deleteAllByIdInBatch((answerIdsOfReviews + answerIdsAboutMembers).toSet())
         memberReviewRepository.deleteAllByIdInBatch(reviewIds)
     }
 }

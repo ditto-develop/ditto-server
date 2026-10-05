@@ -61,7 +61,7 @@
                     <span th:if="${qaPreview.realMemberRoomCount > 0}"
                           th:text="|실회원이 있는 채팅방 ${qaPreview.realMemberRoomCount}개의 메시지·평가도 함께 사라집니다.|">실회원 방</span>
                 </div>
-                <p style="margin:0 0 12px" th:unless="${qaPreview.counts.isEmpty}"
+                <p style="margin:0 0 12px"
                    th:text="|누르면 지워지는 것: ${qaPreview.counts.toDisplayText()} · 이를 가리키는 알림|">누르면 지워지는 것</p>
                 <ul class="muted" style="margin:0 0 16px; padding-left:20px">
                     <li>
@@ -86,7 +86,7 @@
                     </form>
                 </div>
                 <p class="muted" style="margin:8px 0 0" th:unless="${qaPreview.isResettable}">
-                    지난 주 퀴즈셋은 초기화해도 앱에 보이지 않아 초기화를 막았습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.
+                    이번 주 퀴즈셋만 초기화할 수 있습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.
                 </p>
             </div>
         </main>

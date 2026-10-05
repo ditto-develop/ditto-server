@@ -28,7 +28,12 @@ class QuizSetMatchingTargetFinder(
         val roomIds = chatRoomEraser.findRoomIdsFrom(ChatRoomType.PERSONAL, personalMatchIds) +
             chatRoomEraser.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
             chatRoomEraser.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
-        return MatchingRecordTargets(roomIds, personalMatchIds, groupMatchIds, rematchIds)
+        return MatchingRecordTargets(
+            roomIds = roomIds,
+            personalMatchIds = personalMatchIds,
+            groupMatchIds = groupMatchIds,
+            rematchIds = rematchIds,
+        )
     }
 
     /** 더미가 아닌 회원이 한 번이라도 들어온 방. 나간 멤버도 행이 남아 함께 센다. */
