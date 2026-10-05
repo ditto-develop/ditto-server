@@ -1,5 +1,6 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.MatchingErasePreview
 import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.common.exception.ErrorCode
@@ -21,6 +22,7 @@ class AdminQuizController(
     private val adminQuizService: AdminQuizService,
     private val adminQuizParticipantService: AdminQuizParticipantService,
     private val adminQaToolsProperties: AdminQaToolsProperties,
+    private val adminQuizQaService: AdminQuizQaService,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -69,8 +71,9 @@ class AdminQuizController(
         model.addAttribute("quizSet", adminQuizService.getQuizSet(id))
         model.addAttribute("quizzes", quizzes)
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
-        model.addAttribute("hasMatchRecords", adminQuizService.hasMatchRecords(id))
-        model.addAttribute("qaToolsEnabled", adminQaToolsProperties.enabled)
+        val hasMatchRecords = adminQuizService.hasMatchRecords(id)
+        model.addAttribute("hasMatchRecords", hasMatchRecords)
+        model.addAttribute("qaPreview", findQaPreview(id, hasMatchRecords))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -151,6 +154,12 @@ class AdminQuizController(
                     if (quizSetGone) "redirect:/admin/quiz-sets" else "redirect:/admin/quiz-sets/$id"
                 },
             )
+
+    // 매칭 기록이 없는 셋은 일반 삭제로 충분해 QA 도구를 보이지 않는다.
+    private fun findQaPreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
+        if (!adminQaToolsProperties.enabled || !hasMatchRecords) return null
+        return adminQuizQaService.previewErase(quizSetId)
+    }
 
     companion object {
         private const val NEW_QUIZ_ROW_COUNT = 3

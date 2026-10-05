@@ -38,6 +38,7 @@ import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
+import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -258,16 +259,40 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("QA 도구가 켜져 있으면 매칭이 끝난 퀴즈셋 상세에 QA 도구 카드와 안내를 보여 준다")
+    @DisplayName("이번 주 매칭이 끝난 퀴즈셋 상세는 QA 도구 카드에 미리보기와 두 버튼을 보여 준다")
     fun quizSetDetailShowsQaTools() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("href=\"#qa-tools\"")))
+            .andExpect(content().string(containsString("누르면 지워지는 것: 1:1 신청 1건")))
+            .andExpect(content().string(containsString(">매칭 기록 초기화</button>")))
+            .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
+    }
+
+    @Test
+    @DisplayName("지난 주 퀴즈셋 상세는 초기화 버튼 대신 강제 삭제 안내를 보여 준다")
+    fun pastWeekQuizSetDetailHidesReset() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
 
         mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("QA 중이면 아래 QA 도구로 지울 수 있습니다.")))
-            .andExpect(content().string(containsString("매칭 기록 초기화")))
-            .andExpect(content().string(containsString("매칭 기록까지 강제 삭제")))
+            .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
+            .andExpect(content().string(containsString("지난 주 퀴즈셋은 초기화해도 앱에 보이지 않아")))
+            .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
+    }
+
+    @Test
+    @DisplayName("매칭 기록이 없는 퀴즈셋 상세에는 QA 도구 카드가 없다")
+    fun quizSetWithoutMatchingHasNoQaTools() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(not(containsString("id=\"qa-tools\""))))
     }
 
     @Test
@@ -292,7 +317,7 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/quiz-sets/{id}/qa/force-delete", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(redirectedUrl("/admin/quiz-sets"))
-            .andExpect(flash().attributeExists("message"))
+            .andExpect(flash().attribute("message", containsString("퀴즈셋 #${quizSet.id}(${quizSet.title})을 강제 삭제했습니다.")))
 
         quizSetRepository.existsById(quizSet.id) shouldBe false
     }
