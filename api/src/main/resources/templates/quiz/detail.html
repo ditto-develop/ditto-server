@@ -69,7 +69,7 @@
                     <p class="muted" style="margin:0 0 4px">채팅방은 메시지·투표·평가와 함께 지우고, 이 기록들을 가리키는 알림도 지웁니다.</p>
                 </th:block>
                 <p class="muted" style="margin:0">신고·제재·차단은 회원 기록이라 남깁니다.</p>
-                <p class="muted" style="margin:4px 0 0" th:if="${answerResetPreview.isQuizPeriodOver or matchingErasePreview != null}">
+                <p class="muted" style="margin:4px 0 0" th:if="${answerResetPreview.isCurrentWeek and (answerResetPreview.isQuizPeriodOver or matchingErasePreview != null)}">
                     아래 안내대로 시간 오버라이드를 쓰면 실회원을 포함한 모든 회원에게 적용됩니다. QA가 끝나면 바로 해제하세요.
                 </p>
 

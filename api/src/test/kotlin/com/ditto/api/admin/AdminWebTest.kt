@@ -370,6 +370,7 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(not(containsString(">매칭 기록 초기화</button>"))))
             .andExpect(content().string(not(containsString("서버 시각을 그 주 목요일"))))
+            .andExpect(content().string(not(containsString("아래 안내대로 시간 오버라이드를 쓰면"))))
             .andExpect(content().string(containsString("이번 주 퀴즈셋만 초기화할 수 있습니다.")))
             .andExpect(content().string(containsString(">퀴즈셋 강제 삭제</button>")))
     }
