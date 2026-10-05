@@ -1,18 +1,16 @@
 package com.ditto.api.admin.dummy.cleanup
 
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
-import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
 import org.springframework.stereotype.Component
 
-/** 더미가 낀 매칭과 그 뒤에 이어지는 평가·재매칭. */
+/** 더미가 낀 매칭·재매칭을 찾고, 더미가 쓰거나 받은 평가를 지운다. 찾은 매칭 기록은 MatchingRecordEraser 가 지운다. */
 @Component
 class DummyMatchDataCleaner(
     private val personalMatchRepository: PersonalMatchRepository,
-    private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val rematchRepository: RematchRepository,
     private val memberReviewRepository: MemberReviewRepository,
@@ -31,26 +29,9 @@ class DummyMatchDataCleaner(
     fun findPersonalMatchIdsWith(dummyIds: Collection<Long>): Set<Long> =
         personalMatchRepository.findByMemberId1InOrMemberId2In(dummyIds, dummyIds).map { it.id }.toSet()
 
-    fun deletePersonalMatches(matchIds: Collection<Long>) {
-        personalMatchRepository.deleteAllByIdInBatch(matchIds)
-    }
-
-    /** 구성원 전원의 초대까지 지운다. */
-    fun deleteGroupMatches(groupMatchIds: Collection<Long>) {
-        if (groupMatchIds.isEmpty()) return
-
-        val invitationIds = groupMatchMemberRepository.findByRoomIdIn(groupMatchIds.toList()).map { it.id }
-        groupMatchMemberRepository.deleteAllByIdInBatch(invitationIds)
-        groupMatchRepository.deleteAllByIdInBatch(groupMatchIds)
-    }
-
-    fun deleteRematches(rematchIds: Collection<Long>) {
-        rematchRepository.deleteAllByIdInBatch(rematchIds)
-    }
-
-    /** 지운 방에서 열린 평가와, 더미가 쓰거나 받은 평가. */
-    fun deleteReviewsWith(dummyIds: Collection<Long>, deletedRoomIds: Collection<Long>) {
-        val reviewIds = memberReviewRepository.findByChatRoomIdInOrAuthorMemberIdIn(deletedRoomIds, dummyIds)
+    /** 지운 방 밖에서 더미가 쓰거나 받은 평가. 지운 방의 평가는 MatchingRecordEraser 가 먼저 지운다. */
+    fun deleteReviewsOf(dummyIds: Collection<Long>) {
+        val reviewIds = memberReviewRepository.findByChatRoomIdInOrAuthorMemberIdIn(emptyList(), dummyIds)
             .map { it.id }
         val answerIds = reviewAnswerRepository.findByMemberReviewIdInOrReviewedMemberIdIn(reviewIds, dummyIds)
             .map { it.id }

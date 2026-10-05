@@ -1,4 +1,4 @@
-package com.ditto.api.admin.dummy.cleanup
+package com.ditto.api.admin.cleanup
 
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 
 /** 지울 채팅방을 찾고, 방에 딸린 멤버·메시지·투표까지 통째로 지운다. */
 @Component
-class DummyChatDataCleaner(
+class ChatRoomEraser(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,

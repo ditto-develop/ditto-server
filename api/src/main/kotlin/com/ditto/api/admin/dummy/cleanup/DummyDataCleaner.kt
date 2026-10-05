@@ -1,52 +1,54 @@
 package com.ditto.api.admin.dummy.cleanup
 
+import com.ditto.api.admin.cleanup.ChatRoomEraser
+import com.ditto.api.admin.cleanup.MatchingRecordEraser
+import com.ditto.api.admin.cleanup.MatchingRecordTargets
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import org.springframework.stereotype.Component
 
-/** 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 알림은 지울 대상의 id 가 다 모인 뒤 마지막에 지운다. */
+/**
+ * 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 더미가 낀 매칭 기록은 [MatchingRecordEraser]가 지우고,
+ * 여기서는 더미 본인의 데이터와 더미를 상대로 한 신고·제재를 지운다.
+ */
 @Component
 class DummyDataCleaner(
-    private val dummyChatDataCleaner: DummyChatDataCleaner,
+    private val chatRoomEraser: ChatRoomEraser,
+    private val matchingRecordEraser: MatchingRecordEraser,
     private val dummyMatchDataCleaner: DummyMatchDataCleaner,
     private val dummyMemberDataCleaner: DummyMemberDataCleaner,
     private val notificationRepository: NotificationRepository,
 ) {
     fun deleteDataOf(dummyIds: Collection<Long>): DummyCleanupSummary {
-        val targets = findTargetsOf(dummyIds)
-        deleteTargets(dummyIds, targets)
+        val matchingTargets = findMatchingTargetsOf(dummyIds)
+        val reportIds = dummyMemberDataCleaner.findReportIdsWith(dummyIds)
+        val sanctionIds = dummyMemberDataCleaner.findSanctionIdsWith(dummyIds, reportIds)
+
+        val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
+        dummyMatchDataCleaner.deleteReviewsOf(dummyIds)
+        dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
+        dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
+        val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
+
         return DummyCleanupSummary(
             dummyCount = dummyIds.size,
-            roomCount = targets.roomIds.size,
-            matchCount = targets.personalMatchIds.size + targets.groupMatchIds.size,
-            notificationCount = deleteNotifications(dummyIds, targets),
+            roomCount = matchingTargets.roomIds.size,
+            matchCount = matchingTargets.personalMatchIds.size + matchingTargets.groupMatchIds.size,
+            notificationCount = matchingNotificationCount + dummyNotificationCount,
         )
     }
 
-    private fun findTargetsOf(dummyIds: Collection<Long>): DeletedTargetIds {
+    private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {
         val groupMatchIds = dummyMatchDataCleaner.findGroupMatchIdsWith(dummyIds)
         val rematchIds = dummyMatchDataCleaner.findRematchIdsWith(dummyIds, groupMatchIds)
-        val reportIds = dummyMemberDataCleaner.findReportIdsWith(dummyIds)
-        return DeletedTargetIds(
+        return MatchingRecordTargets(
             roomIds = findRoomIdsToDelete(dummyIds, groupMatchIds, rematchIds),
             personalMatchIds = dummyMatchDataCleaner.findPersonalMatchIdsWith(dummyIds),
             groupMatchIds = groupMatchIds,
             rematchIds = rematchIds,
-            reportIds = reportIds,
-            sanctionIds = dummyMemberDataCleaner.findSanctionIdsWith(dummyIds, reportIds),
         )
-    }
-
-    private fun deleteTargets(dummyIds: Collection<Long>, targets: DeletedTargetIds) {
-        dummyChatDataCleaner.deleteRooms(targets.roomIds)
-        dummyMatchDataCleaner.deletePersonalMatches(targets.personalMatchIds)
-        dummyMatchDataCleaner.deleteGroupMatches(targets.groupMatchIds)
-        dummyMatchDataCleaner.deleteRematches(targets.rematchIds)
-        dummyMatchDataCleaner.deleteReviewsWith(dummyIds, targets.roomIds)
-        dummyMemberDataCleaner.deleteReportsAndSanctions(targets.reportIds, targets.sanctionIds)
-        dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
     }
 
     /**
@@ -58,43 +60,26 @@ class DummyDataCleaner(
         groupMatchIds: Set<Long>,
         rematchIds: Set<Long>,
     ): Set<Long> =
-        dummyChatDataCleaner.findRoomIdsWithMembers(dummyIds) +
-            dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
-            dummyChatDataCleaner.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
+        chatRoomEraser.findRoomIdsWithMembers(dummyIds) +
+            chatRoomEraser.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
+            chatRoomEraser.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
 
-    private fun deleteNotifications(dummyIds: Collection<Long>, deletedTargets: DeletedTargetIds): Int {
-        val pointingToDeleted = NotificationTarget.entries
-            .map { target -> target to deletedTargets.idsOf(target) }
-            .filter { (_, ids) -> ids.isNotEmpty() }
-            .flatMap { (target, ids) ->
-                notificationRepository.findByTypeInAndTargetIdIn(NotificationType.pointingTo(target), ids)
-            }
+    private fun deleteNotificationsOf(
+        dummyIds: Collection<Long>,
+        reportIds: Set<Long>,
+        sanctionIds: Set<Long>,
+    ): Int {
+        val pointingToReports = findNotificationsPointingTo(NotificationTarget.MEMBER_REPORT, reportIds)
+        val pointingToSanctions = findNotificationsPointingTo(NotificationTarget.SANCTION, sanctionIds)
         val receivedByDummies = notificationRepository.findByMemberIdIn(dummyIds)
-        val notificationIds = (receivedByDummies + pointingToDeleted).map { it.id }.toSet()
+        val notificationIds = (receivedByDummies + pointingToReports + pointingToSanctions).map { it.id }.toSet()
         notificationRepository.deleteAllByIdInBatch(notificationIds)
         return notificationIds.size
     }
-}
 
-private class DeletedTargetIds(
-    val roomIds: Set<Long>,
-    val personalMatchIds: Set<Long>,
-    val groupMatchIds: Set<Long>,
-    val rematchIds: Set<Long>,
-    val reportIds: Set<Long>,
-    val sanctionIds: Set<Long>,
-) {
-    /** 대상 종류가 늘면 여기서 컴파일이 막혀, 정리가 그 대상을 가리키는 알림을 지울지 정하게 된다. */
-    fun idsOf(target: NotificationTarget): Set<Long> =
-        when (target) {
-            NotificationTarget.CHAT_ROOM -> roomIds
-            NotificationTarget.PERSONAL_MATCH -> personalMatchIds
-            NotificationTarget.GROUP_MATCH -> groupMatchIds
-            NotificationTarget.REMATCH -> rematchIds
-            NotificationTarget.MEMBER_REPORT -> reportIds
-            NotificationTarget.SANCTION -> sanctionIds
-            NotificationTarget.QUIZ_SET, NotificationTarget.SYSTEM_NOTICE -> emptySet()
-        }
+    private fun findNotificationsPointingTo(target: NotificationTarget, ids: Set<Long>) =
+        if (ids.isEmpty()) emptyList()
+        else notificationRepository.findByTypeInAndTargetIdIn(NotificationType.pointingTo(target), ids)
 }
 
 class DummyCleanupSummary(
