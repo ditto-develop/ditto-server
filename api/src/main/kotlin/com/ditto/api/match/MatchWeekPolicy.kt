@@ -54,6 +54,8 @@ class MatchWeekPolicy(
         }
     }
 
+    fun isCurrentWeek(quizSet: QuizSet): Boolean = quizSet.weekStartedOn == currentWeek().startedOn
+
     fun currentWeek(): OperationWeek = OperationWeek.containing(serverTimeProvider.now().toLocalDate())
 
     private fun findQuizSetOrThrow(quizSetId: Long): QuizSet =

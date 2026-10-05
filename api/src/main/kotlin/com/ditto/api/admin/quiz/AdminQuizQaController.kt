@@ -22,8 +22,9 @@ class AdminQuizQaController(
     ): String = runCatching { adminQuizQaService.resetMatching(id) }
         .fold(
             onSuccess = { summary ->
-                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 매칭 기록 초기화: ${summary.toDisplayText()}" }
-                redirectAttributes.addFlashAttribute("message", "매칭 기록을 초기화했습니다. ${summary.toDisplayText()}")
+                val erased = summary.toDisplayText()
+                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 매칭 기록 초기화: $erased" }
+                redirectAttributes.addFlashAttribute("message", "매칭 기록을 초기화했습니다. $erased")
                 "redirect:/admin/quiz-sets/$id"
             },
             onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes) },
@@ -37,8 +38,12 @@ class AdminQuizQaController(
     ): String = runCatching { adminQuizQaService.forceDelete(id) }
         .fold(
             onSuccess = { summary ->
-                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 강제 삭제: ${summary.toDisplayText()}" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋을 강제 삭제했습니다. ${summary.toDisplayText()}")
+                val erased = summary.toDisplayText()
+                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 강제 삭제: $erased" }
+                redirectAttributes.addFlashAttribute(
+                    "message",
+                    "퀴즈셋 #$id(${summary.quizSetTitle})을 강제 삭제했습니다. $erased",
+                )
                 "redirect:/admin/quiz-sets"
             },
             onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes) },

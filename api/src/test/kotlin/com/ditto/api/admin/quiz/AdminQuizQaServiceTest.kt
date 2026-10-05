@@ -2,13 +2,16 @@ package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.cleanup.MatchingRecordEraser
 import com.ditto.api.config.AdminQaToolsProperties
+import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatMessageFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.MatchCandidateFixture
@@ -18,11 +21,14 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.RematchFixture
@@ -51,12 +57,15 @@ class AdminQuizQaServiceTest(
     private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
     private val matchingRecordEraser: MatchingRecordEraser,
     private val quizSetDeleter: QuizSetDeleter,
+    private val matchWeekPolicy: MatchWeekPolicy,
+    private val memberRepository: MemberRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
     // 1:1 후보·신청·방, 그룹·초대·방, 재매칭·방, 방의 메시지·평가, 알림까지 갖춘 매칭이 끝난 퀴즈셋.
-    fun saveMatchedQuizSet(): Long {
-        val quizSetId = quizSetRepository.save(QuizSetFixture.create()).id
+    fun saveMatchedQuizSet(quizSet: QuizSet = QuizSetFixture.currentWeek()): Long {
+        val quizSetId = quizSetRepository.save(quizSet).id
         quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = quizSetId))
         matchCandidateRepository.save(MatchCandidateFixture.create(1L, 2L, quizSetId))
         matchCandidateRepository.save(MatchCandidateFixture.create(2L, 1L, quizSetId))
@@ -101,14 +110,14 @@ class AdminQuizQaServiceTest(
             notificationRepository.findAll().shouldBeEmpty()
             quizSetRepository.existsById(quizSetId) shouldBe true
             quizProgressRepository.findAll() shouldHaveSize 1
-            summary.candidateRowCount shouldBe 2
-            summary.roomCount shouldBe 3
+            summary.counts.candidateRowCount shouldBe 2
+            summary.counts.roomCount shouldBe 3
             summary.notificationCount shouldBe 3
         }
 
         "다른 퀴즈셋의 매칭 기록은 건드리지 않는다" {
             val quizSetId = saveMatchedQuizSet()
-            val otherQuizSetId = quizSetRepository.save(QuizSetFixture.create()).id
+            val otherQuizSetId = quizSetRepository.save(QuizSetFixture.currentWeek()).id
             matchCandidateRepository.save(MatchCandidateFixture.create(7L, 8L, otherQuizSetId))
             val otherMatch = personalMatchRepository.save(PersonalMatchFixture.create(7L, 8L, otherQuizSetId))
             val otherRoom = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = otherMatch.id))
@@ -120,6 +129,15 @@ class AdminQuizQaServiceTest(
             chatRoomRepository.findAll().map { it.id } shouldBe listOf(otherRoom.id)
         }
 
+        "지난 주 퀴즈셋은 초기화를 거부하고 아무것도 지우지 않는다" {
+            val quizSetId = saveMatchedQuizSet(QuizSetFixture.create())
+
+            val exception = shouldThrow<WarnException> { adminQuizQaService.resetMatching(quizSetId) }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            matchCandidateRepository.existsByQuizSetId(quizSetId) shouldBe true
+        }
+
         "없는 퀴즈셋이면 NOT_FOUND 예외가 발생한다" {
             val exception = shouldThrow<WarnException> { adminQuizQaService.resetMatching(99999L) }
 
@@ -128,6 +146,15 @@ class AdminQuizQaServiceTest(
     }
 
     "강제 삭제" - {
+        "지난 주 퀴즈셋도 강제 삭제는 된다" {
+            val quizSetId = saveMatchedQuizSet(QuizSetFixture.create())
+
+            val summary = adminQuizQaService.forceDelete(quizSetId)
+
+            quizSetRepository.existsById(quizSetId) shouldBe false
+            summary.quizSetTitle shouldBe "이번 주 1:1 매칭"
+        }
+
         "일반 삭제가 거부되는 퀴즈셋도 매칭 기록과 함께 지운다" {
             val quizSetId = saveMatchedQuizSet()
             shouldThrow<WarnException> { quizSetDeleter.delete(quizSetId) }
@@ -137,6 +164,32 @@ class AdminQuizQaServiceTest(
             quizSetRepository.existsById(quizSetId) shouldBe false
             quizProgressRepository.findAll().shouldBeEmpty()
             chatRoomRepository.findAll().shouldBeEmpty()
+        }
+    }
+
+    "미리보기" - {
+        "지우지 않고 지울 개수와 실회원이 낀 방 수를 세고 이번 주 셋이면 초기화할 수 있다고 알려 준다" {
+            val quizSetId = saveMatchedQuizSet()
+            val real = memberRepository.save(MemberFixture.create(nickname = "실회원", email = "real@example.com"))
+            val dummy = memberRepository.save(MemberFixture.create(nickname = "dummy-male-0001", email = "d@dummy.local"))
+            val (realRoom, dummyOnlyRoom) = chatRoomRepository.findAll().take(2)
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = realRoom.id, memberId = real.id))
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = realRoom.id, memberId = dummy.id))
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = dummyOnlyRoom.id, memberId = dummy.id))
+
+            val preview = adminQuizQaService.previewErase(quizSetId)
+
+            preview.counts.candidateRowCount shouldBe 2
+            preview.counts.roomCount shouldBe 3
+            preview.realMemberRoomCount shouldBe 1
+            preview.isResettable shouldBe true
+            chatRoomRepository.findAll() shouldHaveSize 3
+        }
+
+        "지난 주 셋은 초기화할 수 없다고 알려 준다" {
+            val quizSetId = saveMatchedQuizSet(QuizSetFixture.create())
+
+            adminQuizQaService.previewErase(quizSetId).isResettable shouldBe false
         }
     }
 
@@ -150,6 +203,7 @@ class AdminQuizQaServiceTest(
                 quizSetMatchingTargetFinder = quizSetMatchingTargetFinder,
                 matchingRecordEraser = matchingRecordEraser,
                 quizSetDeleter = quizSetDeleter,
+                matchWeekPolicy = matchWeekPolicy,
             )
 
             val resetException = shouldThrow<WarnException> { disabledService.resetMatching(quizSetId) }

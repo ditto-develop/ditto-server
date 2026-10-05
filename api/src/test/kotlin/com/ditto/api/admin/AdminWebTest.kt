@@ -273,7 +273,7 @@ class AdminWebTest {
     @Test
     @DisplayName("매칭 기록 초기화는 매칭 기록만 지우고 상세로 돌아간다")
     fun resetQuizSetMatching() {
-        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
         personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSet.id))
 
         mockMvc.perform(post("/admin/quiz-sets/{id}/qa/reset-matching", quizSet.id).with(authentication(admin())).with(csrf()))

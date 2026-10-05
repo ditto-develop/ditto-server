@@ -15,6 +15,8 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
 
     fun existsByQuizSetId(quizSetId: Long): Boolean
 
+    fun countByQuizSetId(quizSetId: Long): Int
+
     fun findByQuizSetIdInAndOwnerMemberIdIn(
         quizSetIds: Collection<Long>,
         ownerMemberIds: Collection<Long>,
