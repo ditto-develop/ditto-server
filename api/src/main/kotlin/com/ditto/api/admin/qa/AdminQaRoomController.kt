@@ -29,7 +29,7 @@ class AdminQaRoomController(
     fun page(@PathVariable roomId: Long, model: Model, redirectAttributes: RedirectAttributes): String {
         val room = adminQaRoomService.findRoom(roomId)
         if (room == null) {
-            redirectAttributes.addFlashAttribute("error", "채팅방 #$roomId 이 없습니다.")
+            redirectAttributes.addFlashAttribute("error", "없는 채팅방입니다: #$roomId")
             return QaRoutes.ROOMS_SECTION
         }
         model.addAttribute("room", room)
@@ -72,7 +72,7 @@ class AdminQaRoomController(
     @PostMapping("/admin/qa/rooms/{roomId}/read-all-dummies")
     fun readAsAllDummies(@PathVariable roomId: Long, redirectAttributes: RedirectAttributes): String {
         redirectAttributes.flashEachDummyAction(
-            "방 #$roomId 더미 모두 읽음",
+            "방 #$roomId 더미 모두 끝까지 읽기",
             adminQaRoomService.findActiveDummiesIn(roomId),
         ) { dummy -> readLatest(dummy.id, roomId) }
         return QaRoutes.room(roomId)

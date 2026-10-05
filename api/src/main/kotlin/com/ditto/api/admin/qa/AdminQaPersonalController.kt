@@ -23,7 +23,7 @@ class AdminQaPersonalController(
         redirectAttributes: RedirectAttributes,
     ): String {
         val receiver = qaMemberLabels.one(receiverId)
-        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "→ ${receiver.label} 1:1 신청") {
+        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "${receiver.label}에게 1:1 신청") {
             personalMatchController.requestMatch(
                 qaDummies.principalOf(dummyId),
                 PersonalMatchRequest(receiverId = receiverId, quizSetId = quizSetId),

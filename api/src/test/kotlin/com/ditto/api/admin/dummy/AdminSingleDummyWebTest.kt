@@ -131,7 +131,7 @@ class AdminSingleDummyWebTest(
         "퀴즈셋 없이 들어오면 더미 페이지로 돌려보낸다" {
             mockMvc.perform(get("/admin/dummy/single").with(authentication(admin)))
                 .andExpect(redirectedUrl("/admin/dummy"))
-                .andExpect(flash().attribute("error", "더미를 생성할 퀴즈셋을 골라 주세요."))
+                .andExpect(flash().attribute("error", "더미를 만들 퀴즈셋을 골라 주세요."))
         }
 
         "없는 퀴즈셋이면 더미 페이지로 돌려보낸다" {
@@ -179,7 +179,7 @@ class AdminSingleDummyWebTest(
                     .param("answersFromMemberId", memberId.toString()).with(authentication(admin)),
             )
                 .andExpect(status().isOk)
-                .andExpect(content().string(containsString("회원 #$memberId 의 답을 불러왔습니다")))
+                .andExpect(content().string(containsString("회원 #${memberId}의 답을 불러왔습니다")))
                 .andReturn().modelAndView.shouldNotBeNull().model["form"] as SingleDummyForm
 
             form.gender shouldBe Gender.FEMALE
@@ -196,7 +196,7 @@ class AdminSingleDummyWebTest(
                     .param("answersFromMemberId", member.id.toString()).with(authentication(admin)),
             )
                 .andExpect(redirectedUrl("/admin/dummy"))
-                .andExpect(flash().attribute("error", "회원 #${member.id} 는 이 퀴즈셋에 답한 문항이 없습니다."))
+                .andExpect(flash().attribute("error", "이 퀴즈셋에 답한 문항이 없는 회원입니다: #${member.id}"))
         }
     }
 
@@ -216,7 +216,7 @@ class AdminSingleDummyWebTest(
 
             val dummy = memberRepository.findByNicknameStartingWith("dummy-웹테스트").single()
             result.flashMap["message"] shouldBe
-                "퀴즈셋 #${setup.quizSetId} 에 더미를 생성했습니다: dummy-웹테스트 (#${dummy.id} · 여성 · 2/2 풀이)"
+                "퀴즈셋 #${setup.quizSetId}에 더미를 만들었습니다: dummy-웹테스트 (#${dummy.id} · 여성 · 2/2 풀이)"
             dummy.gender shouldBe Gender.FEMALE
             dummy.age shouldBe 30
             dummy.location shouldBe Location.BUSAN

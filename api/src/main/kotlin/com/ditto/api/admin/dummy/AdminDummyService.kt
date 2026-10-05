@@ -60,10 +60,10 @@ class AdminDummyService(
 
     private fun validate(form: DummyGenerateForm) {
         if (form.maleCount < 0 || form.femaleCount < 0) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "생성 인원수는 음수일 수 없습니다.")
+            throw WarnException(ErrorCode.BAD_REQUEST, "남자 수·여자 수는 0 이상이어야 합니다.")
         }
         if (form.maleCount + form.femaleCount == 0) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "생성할 인원수를 입력해주세요.")
+            throw WarnException(ErrorCode.BAD_REQUEST, "남자 수나 여자 수를 1명 이상 넣어 주세요.")
         }
         if (form.minAge <= 0) {
             throw WarnException(ErrorCode.BAD_REQUEST, "나이는 1 이상이어야 합니다.")

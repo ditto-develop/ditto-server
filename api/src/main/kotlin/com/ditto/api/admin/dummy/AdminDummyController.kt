@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 더미 참여자 생성(서버 렌더링). 선택한 퀴즈셋을 랜덤하게 푼 더미 회원을 남/여 인원수만큼 만든다.
+ * 더미 생성(서버 렌더링). 선택한 퀴즈셋을 무작위 답으로 끝까지 푼 더미를 남녀 인원수만큼 만든다.
  * 데이터(회원·진행·답변)만 생성하며, 매칭 후보는 '매칭 실행'에서 별도로 재생성한다.
  */
 @Controller
@@ -50,7 +50,7 @@ class AdminDummyController(
         runCatching { adminDummyService.generate(form) }
             .onSuccess { created ->
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 ${created}명 생성" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미 ${created}명을 생성했습니다.")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId}에 더미 ${created}명을 생성했습니다.")
                 redirectAttributes.addFlashAttribute("createdQuizSetId", form.quizSetId)
             }
             .onFailure { e -> redirectAttributes.addFlashAttribute("error", warnOrRethrow(e).message) }
@@ -65,7 +65,7 @@ class AdminDummyController(
         redirectAttributes: RedirectAttributes,
     ): String {
         if (quizSetId == null) {
-            redirectAttributes.addFlashAttribute("error", "더미를 생성할 퀴즈셋을 골라 주세요.")
+            redirectAttributes.addFlashAttribute("error", "더미를 만들 퀴즈셋을 골라 주세요.")
             return "redirect:/admin/dummy"
         }
         val formCarriedOver = (model.getAttribute(FORM) as? SingleDummyForm)?.takeIf { it.quizSetId == quizSetId }
@@ -90,7 +90,7 @@ class AdminDummyController(
             onSuccess = { created ->
                 val summary = created.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 생성: $summary" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId} 에 더미를 생성했습니다: $summary")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId}에 더미를 만들었습니다: $summary")
                 redirectAttributes.addFlashAttribute(FORM, form.forNextDummy())
                 "redirect:/admin/dummy/single?quizSetId=${form.quizSetId}"
             },
@@ -110,7 +110,7 @@ class AdminDummyController(
     ): String {
         val deletedText = adminDummyService.deleteAllDummies().toDisplayText()
         log.info { "어드민[${admin.displayName}] 이 $deletedText 삭제" }
-        redirectAttributes.addFlashAttribute("message", "$deletedText 를 삭제했습니다.")
+        redirectAttributes.addFlashAttribute("message", "${deletedText}를 삭제했습니다.")
         return "redirect:/admin/dummy"
     }
 

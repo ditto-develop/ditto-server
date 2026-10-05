@@ -19,7 +19,7 @@
             <div class="qa-bar" id="qa-bar" data-qa-live>
                 <span>서버 시각 <b th:text="${@qaTime.of(console.now)}">-</b>
                     <span class="badge matching" th:if="${console.timeOverridden}">조정 중</span></span>
-                <span>운영 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
+                <span>이번 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
                 <span class="qa-bar-links">
                     <a th:href="@{/admin/dummy}">더미 생성 →</a>
@@ -33,7 +33,7 @@
                         <input type="hidden" name="dateTime" th:value="${shortcut.dateTime}"/>
                         <button class="btn secondary sm" type="submit"
                                 th:text="|${shortcut.label} · ${@qaTime.of(shortcut.dateTime)}|">
-                            채팅 개방 직후 · 10/10(금) 00:01</button>
+                            채팅방 열린 직후 · 10/10(금) 00:01</button>
                     </form>
                     <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
                         <button class="btn secondary sm" type="submit">실제 시각으로</button>
@@ -45,19 +45,19 @@
             <details class="card qa-guide" th:open="${console.dummyCount == 0}">
                 <summary>혼자 QA하는 순서</summary>
                 <ol>
-                    <li>퀴즈는 수요일 23:59까지만 풀 수 있습니다. 지금이 그 뒤라면 위 [퀴즈 응답 마감 직전]으로 시각을 옮긴 뒤,
-                        테스트 계정(앱)으로 이번 주 퀴즈셋을 풉니다.</li>
+                    <li>퀴즈는 수요일 23:59까지만 풀 수 있습니다. 지금이 그 뒤라면 위 [퀴즈 마감 직전]으로 시각을 옮긴 뒤,
+                        앱에서 테스트 계정으로 이번 주 퀴즈셋을 풉니다.</li>
                     <li><a th:href="@{/admin/dummy}">더미 생성</a>에서 같은 퀴즈셋으로 더미를 만듭니다.
-                        특정 회원과 점수를 맞추거나 퀴즈를 덜 푼 더미가 필요하면 같은 화면의 [더미 직접 만들기]을 씁니다.</li>
-                    <li>위 [그룹 응답 마감 직전]으로 옮긴 뒤 <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋을 재생성합니다.
+                        특정 회원과의 매칭 점수를 조절하거나 퀴즈를 덜 푼 더미가 필요하면 같은 화면의 [직접 만들러 가기]를 누릅니다.</li>
+                    <li>위 [그룹 응답 마감 직전]으로 옮긴 뒤 <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋의 매칭을 재생성합니다.
                         금요일 00:00 이후에 재생성하면 스케줄러가 1분 안에 새 그룹 초대를 자동 거절합니다.</li>
                     <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
-                    <li>그룹은 앱과 아래에서 수락합니다. 3명이 수락하면 성사됩니다.</li>
-                    <li>[채팅 개방 직후]로 옮기면 1분 안에 방이 열립니다. 아래 채팅방에서 [열기]를 눌러 더미로 대화합니다.</li>
+                    <li>그룹 초대는 실회원은 앱에서, 더미는 아래에서 수락합니다. 3명이 수락하면 성사됩니다.</li>
+                    <li>[채팅방 열린 직후]로 옮기면 1분 안에 방이 열립니다. 아래 채팅방에서 [열기]를 눌러 더미로 대화합니다.</li>
                     <li>[채팅 마감 직후]로 옮기면 방이 끝나고 평가가 열립니다.</li>
                     <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. QA를 마치면 [실제 시각으로]를 누르세요.</li>
                     <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 생성</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
-                        더미가 낀 방·매칭은 같은 방 실회원의 메시지·알림까지 함께 지워집니다.</li>
+                        더미가 낀 방·매칭을 지우면 같은 방 실회원의 메시지·알림도 함께 지워집니다.</li>
                 </ol>
             </details>
 
@@ -176,7 +176,7 @@
                 <h2>그룹 · 초대 응답
                     <span class="count" th:text="${console.group.groups.size()}">0</span></h2>
                 <div class="alert info" th:if="${console.group.responseClosed and console.group.hasPendingInvitation}">
-                    <th:block th:text="|이번 주 그룹 응답 마감(${@qaTime.of(console.group.responseDeadline)})이 지나 남은 초대에 응답할 수 없습니다(${console.group.closedErrorCode}).|">
+                    <th:block th:text="|이번 주 그룹 응답 마감(${@qaTime.of(console.group.responseDeadline)})이 지나 남은 초대에 응답할 수 없습니다(코드 ${console.group.closedErrorCode}).|">
                         이번 주 그룹 응답 마감이 지나 남은 초대에 응답할 수 없습니다.</th:block>
                     응답하려면 위 [그룹 응답 마감 직전]으로 시각을 옮기세요.</div>
                 <p class="muted" th:if="${console.group.groups.isEmpty()}">
