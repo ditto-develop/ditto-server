@@ -24,7 +24,7 @@
             <div class="card">
                 <h2>목록 <span class="badge cat" th:text="${reports.size()} + '건'">0건</span></h2>
                 <p class="muted" th:if="${reports.isEmpty()}">해당 상태의 신고가 없습니다.</p>
-                <table th:unless="${reports.isEmpty()}">
+                <table class="tbl" th:unless="${reports.isEmpty()}">
                     <thead>
                     <tr>
                         <th>#</th>
@@ -48,7 +48,7 @@
                         <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>
                         <td>
                             <span th:text="${r.elapsedText}"
-                                  th:style="${r.overdue} ? 'color:#c0392b;font-weight:700' : ''">경과</span>
+                                  th:classappend="${r.overdue} ? 'overdue'">경과</span>
                             <span class="badge warn" th:if="${r.overdue}">SLA 초과</span>
                         </td>
                         <td><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}">검토</a></td>

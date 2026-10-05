@@ -124,6 +124,8 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 .badge.matching { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
 .badge.chatting { background: rgba(34, 176, 125, 0.13); color: var(--success); }
 .badge.cat { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
+.badge.warn { background: rgba(232, 90, 107, 0.12); color: var(--danger); }
+.badge.locked { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
 
 /* Tables */
 table.tbl { width: 100%; border-collapse: collapse; }
@@ -131,6 +133,7 @@ table.tbl th, table.tbl td { text-align: left; padding: 12px 10px; border-bottom
 table.tbl th { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
 table.tbl tr:last-child td { border-bottom: none; }
 table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
+.overdue { color: var(--danger); font-weight: 700; }
 
 /* Buttons */
 .btn {
