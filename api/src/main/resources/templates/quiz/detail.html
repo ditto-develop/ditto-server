@@ -63,59 +63,78 @@
                     <span th:if="${matchingErasePreview != null and matchingErasePreview.realMemberRoomCount > 0}"
                           th:text="|실회원이 있는 채팅방 ${matchingErasePreview.realMemberRoomCount}개의 메시지·평가도 함께 사라집니다.|">실회원 방</span>
                 </div>
-                <ul style="margin:0 0 12px; padding-left:20px">
-                    <li th:if="${matchingErasePreview != null}"
-                        th:text="|매칭 기록: ${matchingErasePreview.counts.toDisplayText()} · 이를 가리키는 알림|">매칭 기록</li>
-                    <li th:text="|답·진행: 참여자 ${answerResetPreview.participantCount}명(실회원 ${answerResetPreview.realParticipantCount}명)|">답·진행</li>
-                </ul>
-                <ul class="muted" style="margin:0 0 16px; padding-left:20px">
-                    <li th:if="${matchingErasePreview != null}">매칭 기록 초기화는 매칭 기록만, 전체 답·진행 초기화는 매칭 기록과 답·진행을, 강제 삭제는 퀴즈셋까지 지웁니다.</li>
-                    <li th:unless="${matchingErasePreview != null}">
-                        전체 답·진행 초기화는 참여자 전원의 답·진행을 지웁니다. 한 명만 지우려면
-                        <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id})}">참여 현황</a>에서 회원별로 초기화하세요.
-                    </li>
-                    <li th:if="${answerResetPreview.isQuizPeriodOver}">
-                        퀴즈 기간이 끝나 답·진행을 지워도 앱에서 다시 풀 수 없습니다. 다시 풀게 하려면 서버 시각을 그 주 월~수로 맞추세요.
-                        <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
-                    </li>
-                    <th:block th:if="${matchingErasePreview != null}">
-                        <li>
-                            매칭을 다시 돌리기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
+                <th:block th:if="${matchingErasePreview != null}">
+                    <p style="margin:0 0 4px"
+                       th:text="|세 도구가 모두 지우는 매칭 기록: ${matchingErasePreview.counts.toDisplayText()}|">매칭 기록</p>
+                    <p class="muted" style="margin:0 0 4px">채팅방은 메시지·투표·평가와 함께 지우고, 이 기록들을 가리키는 알림도 지웁니다.</p>
+                </th:block>
+                <p class="muted" style="margin:0">신고·제재·차단은 회원 기록이라 남깁니다.</p>
+                <p class="muted" style="margin:4px 0 0" th:if="${answerResetPreview.isQuizPeriodOver or matchingErasePreview != null}">
+                    아래 안내대로 시간 오버라이드를 쓰면 실회원을 포함한 모든 회원에게 적용됩니다. QA가 끝나면 바로 해제하세요.
+                </p>
+
+                <th:block th:if="${matchingErasePreview != null}">
+                    <hr class="sep">
+                    <p style="margin:0 0 8px"><b>매칭 기록 초기화</b> <span class="muted">퀴즈셋·답·진행은 남기고 같은 셋으로 매칭을 다시 돌립니다.</span></p>
+                    <th:block th:if="${answerResetPreview.isCurrentWeek}">
+                        <ul class="muted" style="margin:0 0 12px; padding-left:20px">
+                            <li>
+                                다시 돌리기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
+                                <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
+                            </li>
+                            <li>
+                                초기화한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 화면</a>에서 다시 돌리면
+                                이 셋 참여자 전원(실회원 포함)에게 매칭 결과 알림이 다시 갑니다.
+                            </li>
+                            <li>정지된 더미는 계속 매칭에서 빠지고, 차단한 사이는 짝이 되지 않습니다.</li>
+                        </ul>
+                        <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/qa/reset-matching(id=${quizSet.id})}" method="post"
+                              onsubmit="return confirm('매칭 후보·1:1 신청·그룹·재매칭과, 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림을 지웁니다.\n퀴즈셋·답·진행은 남습니다.\n되돌릴 수 없습니다. 계속할까요?');">
+                            <button class="btn secondary" type="submit">매칭 기록 초기화</button>
+                        </form>
+                    </th:block>
+                </th:block>
+
+                <hr class="sep">
+                <p style="margin:0 0 8px"><b>전체 답·진행 초기화</b> <span class="muted">퀴즈셋·문항은 남기고 참여자 전원이 퀴즈를 처음부터 다시 풉니다.</span></p>
+                <p style="margin:0 0 4px"
+                   th:text="|참여 회원 ${answerResetPreview.participantCount}명(실회원 ${answerResetPreview.realParticipantCount}명)의 답·진행을 지웁니다.${matchingErasePreview != null ? ' 위 매칭 기록도 함께 지웁니다.' : ''}|">답·진행</p>
+                <th:block th:if="${answerResetPreview.isCurrentWeek}">
+                    <ul class="muted" style="margin:0 0 12px; padding-left:20px">
+                        <li th:unless="${matchingErasePreview != null}">
+                            한 명만 지우려면
+                            <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id})}">참여 현황</a>에서 회원별로 초기화하세요.
+                        </li>
+                        <li th:if="${answerResetPreview.isQuizPeriodOver}">
+                            퀴즈 기간이 끝나 답·진행을 지워도 앱에서 다시 풀 수 없습니다. 다시 풀게 하려면 서버 시각을 그 주 월~수로 맞추세요.
                             <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
                         </li>
-                        <li>
-                            초기화한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 화면</a>에서 다시 돌리면
-                            이 셋 참여자 전원(실회원 포함)에게 매칭 결과 알림이 다시 갑니다.
-                        </li>
-                    </th:block>
-                    <li th:if="${answerResetPreview.isQuizPeriodOver or matchingErasePreview != null}">
-                        시간 오버라이드는 실회원을 포함한 모든 회원에게 적용됩니다. QA가 끝나면 바로 해제하세요.
-                    </li>
-                    <li>신고·제재·차단은 회원 기록이라 지우지 않습니다. 정지된 더미는 계속 매칭에서 빠지고, 차단한 사이는 짝이 되지 않습니다.</li>
-                </ul>
-                <div class="btn-row">
-                    <form class="inline-form" th:if="${matchingErasePreview != null and answerResetPreview.isCurrentWeek}"
-                          th:action="@{/admin/quiz-sets/{id}/qa/reset-matching(id=${quizSet.id})}" method="post"
-                          onsubmit="return confirm('매칭 후보·1:1 신청·그룹·재매칭과, 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림을 지웁니다.\n퀴즈셋·답·진행은 남습니다.\n되돌릴 수 없습니다. 계속할까요?');">
-                        <button class="btn secondary" type="submit">매칭 기록 초기화</button>
-                    </form>
-                    <form class="inline-form" th:if="${answerResetPreview.isCurrentWeek}"
-                          th:action="@{/admin/quiz-sets/{id}/qa/reset-answers(id=${quizSet.id})}" method="post"
+                    </ul>
+                    <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/qa/reset-answers(id=${quizSet.id})}" method="post"
                           th:attr="data-confirm=|참여자 ${answerResetPreview.participantCount}명(실회원 ${answerResetPreview.realParticipantCount}명)의 답·진행을 지웁니다.${matchingErasePreview != null ? ' 매칭 기록과 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림도 함께 지웁니다.' : ''} 퀴즈셋·문항은 남습니다. 되돌릴 수 없습니다. 계속할까요?|"
                           onsubmit="return confirm(this.dataset.confirm);">
                         <button class="btn secondary" type="submit">전체 답·진행 초기화</button>
                     </form>
-                    <form class="inline-form" th:if="${matchingErasePreview != null}"
-                          th:action="@{/admin/quiz-sets/{id}/qa/force-delete(id=${quizSet.id})}" method="post"
+                </th:block>
+                <p class="muted" style="margin:0" th:unless="${answerResetPreview.isCurrentWeek}">
+                    이번 주 퀴즈셋만 초기화할 수 있습니다.
+                    <span th:if="${matchingErasePreview != null}">정리하려면 아래 퀴즈셋 강제 삭제를 쓰세요.</span>
+                    <span th:unless="${matchingErasePreview != null}">정리하려면 위 삭제 버튼을 쓰세요.</span>
+                </p>
+
+                <th:block th:if="${matchingErasePreview != null}">
+                    <hr class="sep">
+                    <p style="margin:0 0 8px"><b>퀴즈셋 강제 삭제</b></p>
+                    <p style="margin:0 0 4px"
+                       th:text="|위 기록에 더해 퀴즈셋과 문항 ${#lists.size(quizzes)}개, 참여 회원 ${answerResetPreview.participantCount}명의 답·진행을 지웁니다.|">퀴즈셋까지 지우는 것</p>
+                    <p class="muted" style="margin:0 0 12px">
+                        지운 셋으로는 다시 매칭할 수 없습니다. 퀴즈 오픈·마감 임박 알림은 그 주 퀴즈 화면을 가리킬 뿐이라 남깁니다.
+                    </p>
+                    <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/qa/force-delete(id=${quizSet.id})}" method="post"
                           onsubmit="return confirm('매칭 기록과 거기서 열린 채팅방(실회원 메시지 포함)·평가·알림을 지운 뒤\n퀴즈셋·문항·답·진행까지 모두 지웁니다.\n되돌릴 수 없습니다. 계속할까요?');">
                         <button class="btn danger" type="submit">퀴즈셋 강제 삭제</button>
                     </form>
-                </div>
-                <p class="muted" style="margin:8px 0 0" th:unless="${answerResetPreview.isCurrentWeek}">
-                    이번 주 퀴즈셋만 초기화할 수 있습니다.
-                    <span th:if="${matchingErasePreview != null}">정리하려면 퀴즈셋 강제 삭제를 쓰세요.</span>
-                    <span th:unless="${matchingErasePreview != null}">정리하려면 위 삭제 버튼을 쓰세요.</span>
-                </p>
+                </th:block>
             </div>
         </main>
     </div>
