@@ -12,7 +12,7 @@
             <h1 class="page-title" style="margin-top:8px" th:text="|${quizSet.title} 참여 현황|">참여 현황</h1>
             <p class="page-desc">
                 <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
-                <span th:text="${quizSet.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</span>
+                <span th:text="${@matchingTypeLabel.of(quizSet.matchingType)}">1:1</span>
                 · 진행 기록이 있는 회원을 실회원 먼저, 참여 순서대로 보여 줍니다.
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
@@ -92,11 +92,8 @@
                                             <span class="member-name" th:text="${p.nickname}">닉네임</span>
                                             <span class="member-id" th:text="|#${p.memberId}|">#1</span>
                                             <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
-                                            <th:block th:if="${p.memberStatus != null}" th:switch="${p.memberStatus.name()}">
-                                                <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
-                                                <span class="badge matching" th:case="'SUSPENDED'">정지</span>
-                                                <span class="badge matching" th:case="'BANNED'">차단</span>
-                                                <span class="badge matching" th:case="'LEFT'">탈퇴</span>
+                                            <th:block th:if="${p.memberStatus != null and p.memberStatus.name() != 'ACTIVE'}">
+                                                <span th:replace="~{member/parts :: memberStatusBadge(${p.memberStatus})}"></span>
                                             </th:block>
                                         </div>
                                     </th:block>

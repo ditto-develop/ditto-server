@@ -11,7 +11,7 @@
             <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${questions.quizSetId})}">이 퀴즈셋 참여 현황 보기 →</a>
             <h1 class="page-title" style="margin-top:8px">더미 직접 만들기</h1>
             <p class="page-desc">
-                <span th:text="${@weekLabel.of(questions.quizSet.weekStartedOn) + ' · ' + questions.quizSet.title + (questions.quizSet.matchingType.name() == 'ONE_TO_ONE' ? ' (1:1)' : ' (그룹)')}">퀴즈셋</span>에
+                <span th:text="${@weekLabel.of(questions.quizSet.weekStartedOn) + ' · ' + questions.quizSet.title + ' (' + @matchingTypeLabel.of(questions.quizSet.matchingType) + ')'}">퀴즈셋</span>에
                 프로필과 답을 지정해 더미를 만듭니다. 사는 곳·직업·관심사는 화면을 열거나 하나 만들 때마다 새로 무작위로 채웁니다.
                 닉네임·캐리커처·문항별 답은 비우면 무작위로 정합니다.
                 매칭 후보는 만들지 않으니, 만든 뒤 매칭을 재생성하세요.

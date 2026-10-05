@@ -13,7 +13,7 @@
 
             <div class="card" th:if="${regeneration}">
                 <h2>퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span> 재생성 결과
-                    <span class="badge cat" th:text="${regeneration.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</span>
+                    <span class="badge cat" th:text="${@matchingTypeLabel.of(regeneration.matchingType)}">1:1</span>
                     <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${regeneration.quizSetId})}">참여 현황 보기 →</a></h2>
                 <p class="muted">
                     매칭 대상 <b th:text="${regeneration.participantCount}">0</b>명 ·
@@ -55,7 +55,7 @@
                     <tr th:each="qs : ${quizSets}">
                         <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
                         <td><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
-                        <td class="num" th:text="${qs.matchingType.name() == 'GROUP'} ? '그룹' : '1:1'">1:1</td>
+                        <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
                         <td>
                             <span class="badge on" th:if="${qs.isActive}">활성</span>
                             <span class="badge off" th:unless="${qs.isActive}">비활성</span>
