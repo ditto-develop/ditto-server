@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** 퀴즈셋 상세의 QA 도구 카드. 지운 개수는 화면에 안내하고 누가 지웠는지 로그에 남긴다. */
 @Controller
 class AdminQuizQaController(
     private val adminQuizQaService: AdminQuizQaService,
@@ -48,7 +47,7 @@ class AdminQuizQaController(
     private fun redirectAfterFailure(id: Long, exception: Throwable, redirectAttributes: RedirectAttributes): String {
         if (exception !is WarnException) throw exception
 
-        log.warn { "퀴즈셋 #$id QA 도구 거부: ${exception.message}" }
+        log.warn { "퀴즈셋 #$id QA 도구 요청 거부: ${exception.message}" }
         redirectAttributes.addFlashAttribute("error", exception.message)
         if (exception.errorCode == ErrorCode.NOT_FOUND) return "redirect:/admin/quiz-sets"
         return "redirect:/admin/quiz-sets/$id"

@@ -7,43 +7,30 @@ import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.rematch.repository.RematchRepository
-import com.ditto.domain.review.repository.MemberReviewRepository
-import com.ditto.domain.review.repository.ReviewAnswerRepository
 import org.springframework.stereotype.Component
 
 /**
- * 매칭에서 이어지는 기록(채팅방·평가·1:1 신청·그룹·재매칭)을 대상 id 로 받아 지우고, 그것들을 가리키는 알림까지 지운다.
- * 어떤 대상을 지울지는 호출자가 정한다. 더미 정리는 더미가 낀 기록을, QA 도구는 퀴즈셋 하나의 기록을 넘긴다.
+ * 매칭에서 이어지는 채팅방·평가·1:1 신청·그룹·재매칭을 id 로 받아 지운다. 이들을 가리키는 알림도 지운다.
+ * 무엇을 넘길지는 호출자가 정한다. 더미 정리는 더미가 낀 기록을, QA 도구는 퀴즈셋 하나의 기록을 넘긴다.
  */
 @Component
 class MatchingRecordEraser(
     private val chatRoomEraser: ChatRoomEraser,
+    private val reviewEraser: ReviewEraser,
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val rematchRepository: RematchRepository,
-    private val memberReviewRepository: MemberReviewRepository,
-    private val reviewAnswerRepository: ReviewAnswerRepository,
     private val notificationRepository: NotificationRepository,
 ) {
     /** 지운 알림 수를 돌려준다. */
     fun erase(targets: MatchingRecordTargets): Int {
-        deleteReviewsIn(targets.roomIds)
-        chatRoomEraser.deleteRooms(targets.roomIds)
+        reviewEraser.eraseInRooms(targets.roomIds)
+        chatRoomEraser.erase(targets.roomIds)
         personalMatchRepository.deleteAllByIdInBatch(targets.personalMatchIds)
         deleteGroupMatches(targets.groupMatchIds)
         rematchRepository.deleteAllByIdInBatch(targets.rematchIds)
         return deleteNotificationsPointingTo(targets)
-    }
-
-    private fun deleteReviewsIn(roomIds: Set<Long>) {
-        if (roomIds.isEmpty()) return
-
-        val reviewIds = memberReviewRepository.findByChatRoomIdInOrAuthorMemberIdIn(roomIds, emptyList()).map { it.id }
-        val answerIds = reviewAnswerRepository.findByMemberReviewIdInOrReviewedMemberIdIn(reviewIds, emptyList())
-            .map { it.id }
-        reviewAnswerRepository.deleteAllByIdInBatch(answerIds)
-        memberReviewRepository.deleteAllByIdInBatch(reviewIds)
     }
 
     /** 그룹에 묶인 행을 응답 상태와 상관없이 모두 지운다. */
@@ -75,7 +62,8 @@ class MatchingRecordTargets(
     val groupMatchIds: Set<Long>,
     val rematchIds: Set<Long>,
 ) {
-    /** 대상 종류가 늘면 여기서 컴파일이 막혀, 정리가 그 대상을 가리키는 알림을 지울지 정하게 된다. */
+    // else 를 두지 않았다. 알림 대상이 늘면 여기서 컴파일이 깨지니 그 대상의 알림도 지울지 정한다.
+    // 신고·제재는 매칭 기록이 아니라 비워 둔다. 더미 정리가 따로 지운다.
     fun idsOf(target: NotificationTarget): Set<Long> =
         when (target) {
             NotificationTarget.CHAT_ROOM -> roomIds

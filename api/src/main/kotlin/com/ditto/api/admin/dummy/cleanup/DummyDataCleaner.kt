@@ -3,6 +3,7 @@ package com.ditto.api.admin.dummy.cleanup
 import com.ditto.api.admin.cleanup.ChatRoomEraser
 import com.ditto.api.admin.cleanup.MatchingRecordEraser
 import com.ditto.api.admin.cleanup.MatchingRecordTargets
+import com.ditto.api.admin.cleanup.ReviewEraser
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
@@ -10,14 +11,15 @@ import com.ditto.domain.notification.repository.NotificationRepository
 import org.springframework.stereotype.Component
 
 /**
- * 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 더미가 낀 매칭 기록은 [MatchingRecordEraser]가 지우고,
- * 여기서는 더미 본인의 데이터와 더미를 상대로 한 신고·제재를 지운다.
+ * 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 더미가 낀 매칭 기록은 MatchingRecordEraser 가 지우고,
+ * 여기서는 더미 본인의 데이터와 더미를 상대로 한 평가·신고·제재를 지운다.
  */
 @Component
 class DummyDataCleaner(
     private val chatRoomEraser: ChatRoomEraser,
     private val matchingRecordEraser: MatchingRecordEraser,
-    private val dummyMatchDataCleaner: DummyMatchDataCleaner,
+    private val dummyMatchingTargetFinder: DummyMatchingTargetFinder,
+    private val reviewEraser: ReviewEraser,
     private val dummyMemberDataCleaner: DummyMemberDataCleaner,
     private val notificationRepository: NotificationRepository,
 ) {
@@ -27,7 +29,7 @@ class DummyDataCleaner(
         val sanctionIds = dummyMemberDataCleaner.findSanctionIdsWith(dummyIds, reportIds)
 
         val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
-        dummyMatchDataCleaner.deleteReviewsOf(dummyIds)
+        reviewEraser.eraseByMembers(dummyIds)
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
@@ -41,11 +43,11 @@ class DummyDataCleaner(
     }
 
     private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {
-        val groupMatchIds = dummyMatchDataCleaner.findGroupMatchIdsWith(dummyIds)
-        val rematchIds = dummyMatchDataCleaner.findRematchIdsWith(dummyIds, groupMatchIds)
+        val groupMatchIds = dummyMatchingTargetFinder.findGroupMatchIdsWith(dummyIds)
+        val rematchIds = dummyMatchingTargetFinder.findRematchIdsWith(dummyIds, groupMatchIds)
         return MatchingRecordTargets(
             roomIds = findRoomIdsToDelete(dummyIds, groupMatchIds, rematchIds),
-            personalMatchIds = dummyMatchDataCleaner.findPersonalMatchIdsWith(dummyIds),
+            personalMatchIds = dummyMatchingTargetFinder.findPersonalMatchIdsWith(dummyIds),
             groupMatchIds = groupMatchIds,
             rematchIds = rematchIds,
         )

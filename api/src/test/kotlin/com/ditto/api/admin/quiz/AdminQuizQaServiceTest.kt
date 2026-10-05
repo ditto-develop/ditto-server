@@ -1,6 +1,5 @@
 package com.ditto.api.admin.quiz
 
-import com.ditto.api.admin.cleanup.ChatRoomEraser
 import com.ditto.api.admin.cleanup.MatchingRecordEraser
 import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.api.support.IntegrationTest
@@ -49,7 +48,7 @@ class AdminQuizQaServiceTest(
     private val chatMessageRepository: ChatMessageRepository,
     private val memberReviewRepository: MemberReviewRepository,
     private val notificationRepository: NotificationRepository,
-    private val chatRoomEraser: ChatRoomEraser,
+    private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
     private val matchingRecordEraser: MatchingRecordEraser,
     private val quizSetDeleter: QuizSetDeleter,
     dataSource: DataSource,
@@ -86,7 +85,7 @@ class AdminQuizQaServiceTest(
     }
 
     "매칭 기록 초기화" - {
-        "퀴즈셋의 후보·신청·그룹·재매칭과 그 방·메시지·평가·알림을 지우고 퀴즈셋과 진행은 남긴다" {
+        "매칭 기록만 지우고 퀴즈셋과 진행은 남긴다" {
             val quizSetId = saveMatchedQuizSet()
 
             val summary = adminQuizQaService.resetMatching(quizSetId)
@@ -129,7 +128,7 @@ class AdminQuizQaServiceTest(
     }
 
     "강제 삭제" - {
-        "일반 삭제는 막히는 매칭이 끝난 퀴즈셋도 매칭 기록과 함께 지운다" {
+        "일반 삭제가 거부되는 퀴즈셋도 매칭 기록과 함께 지운다" {
             val quizSetId = saveMatchedQuizSet()
             shouldThrow<WarnException> { quizSetDeleter.delete(quizSetId) }
 
@@ -148,10 +147,7 @@ class AdminQuizQaServiceTest(
                 adminQaToolsProperties = AdminQaToolsProperties(enabled = false),
                 quizSetRepository = quizSetRepository,
                 matchCandidateRepository = matchCandidateRepository,
-                personalMatchRepository = personalMatchRepository,
-                groupMatchRepository = groupMatchRepository,
-                rematchRepository = rematchRepository,
-                chatRoomEraser = chatRoomEraser,
+                quizSetMatchingTargetFinder = quizSetMatchingTargetFinder,
                 matchingRecordEraser = matchingRecordEraser,
                 quizSetDeleter = quizSetDeleter,
             )

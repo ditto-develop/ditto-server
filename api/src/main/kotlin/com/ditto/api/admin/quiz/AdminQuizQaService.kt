@@ -1,17 +1,11 @@
 package com.ditto.api.admin.quiz
 
-import com.ditto.api.admin.cleanup.ChatRoomEraser
 import com.ditto.api.admin.cleanup.MatchingRecordEraser
-import com.ditto.api.admin.cleanup.MatchingRecordTargets
 import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.chat.entity.ChatRoomType
-import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
-import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.rematch.repository.RematchRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -25,63 +19,45 @@ class AdminQuizQaService(
     private val adminQaToolsProperties: AdminQaToolsProperties,
     private val quizSetRepository: QuizSetRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
-    private val groupMatchRepository: GroupMatchRepository,
-    private val rematchRepository: RematchRepository,
-    private val chatRoomEraser: ChatRoomEraser,
+    private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
     private val matchingRecordEraser: MatchingRecordEraser,
     private val quizSetDeleter: QuizSetDeleter,
 ) {
     /** 퀴즈셋·답·진행은 남기고 매칭 기록만 지운다. 같은 셋으로 매칭을 다시 돌릴 수 있다. */
-    fun resetMatching(quizSetId: Long): MatchingResetSummary {
+    fun resetMatching(quizSetId: Long): MatchingEraseSummary {
         validateQaToolsEnabled()
         validateQuizSetExists(quizSetId)
-        return eraseMatchingOf(quizSetId)
+        return eraseMatchingRecordsOf(quizSetId)
     }
 
     /** 매칭 기록을 먼저 지워 일반 삭제가 막히지 않게 한 뒤 퀴즈셋까지 지운다. */
-    fun forceDelete(quizSetId: Long): MatchingResetSummary {
+    fun forceDelete(quizSetId: Long): MatchingEraseSummary {
         validateQaToolsEnabled()
         validateQuizSetExists(quizSetId)
-        val summary = eraseMatchingOf(quizSetId)
+        val summary = eraseMatchingRecordsOf(quizSetId)
+        // 일반 삭제가 매칭 결과 알림을 한 번 더 지우지만 이미 비어 있어 0건이다.
         quizSetDeleter.delete(quizSetId)
         return summary
     }
 
-    private fun eraseMatchingOf(quizSetId: Long): MatchingResetSummary {
-        val targets = findMatchingTargetsOf(quizSetId)
+    private fun eraseMatchingRecordsOf(quizSetId: Long): MatchingEraseSummary {
+        val targets = quizSetMatchingTargetFinder.findTargetsOf(quizSetId)
         val candidateRowCount = matchCandidateRepository.deleteByQuizSetId(quizSetId)
-        val notificationCount =
-            matchingRecordEraser.erase(targets) + quizSetDeleter.deleteMatchResultNotifications(quizSetId)
-        return MatchingResetSummary(
+        val matchingNotificationCount = matchingRecordEraser.erase(targets)
+        val matchResultNotificationCount = quizSetDeleter.deleteMatchResultNotifications(quizSetId)
+        return MatchingEraseSummary(
             candidateRowCount = candidateRowCount,
             personalMatchCount = targets.personalMatchIds.size,
             groupMatchCount = targets.groupMatchIds.size,
             rematchCount = targets.rematchIds.size,
             roomCount = targets.roomIds.size,
-            notificationCount = notificationCount,
+            notificationCount = matchingNotificationCount + matchResultNotificationCount,
         )
-    }
-
-    // 재매칭은 그룹에서만 나오므로 이 셋의 그룹으로 찾는다.
-    private fun findMatchingTargetsOf(quizSetId: Long): MatchingRecordTargets {
-        val personalMatchIds = personalMatchRepository.findByQuizSetIdIn(listOf(quizSetId)).map { it.id }.toSet()
-        val groupMatchIds = groupMatchRepository.findByQuizSetId(quizSetId).map { it.id }.toSet()
-        val rematchIds = findRematchIdsFrom(groupMatchIds)
-        val roomIds = chatRoomEraser.findRoomIdsFrom(ChatRoomType.PERSONAL, personalMatchIds) +
-            chatRoomEraser.findRoomIdsFrom(ChatRoomType.GROUP, groupMatchIds) +
-            chatRoomEraser.findRoomIdsFrom(ChatRoomType.REMATCH, rematchIds)
-        return MatchingRecordTargets(roomIds, personalMatchIds, groupMatchIds, rematchIds)
-    }
-
-    private fun findRematchIdsFrom(groupMatchIds: Set<Long>): Set<Long> {
-        if (groupMatchIds.isEmpty()) return emptySet()
-        return rematchRepository.findAllBySourceGroupMatchIdIn(groupMatchIds).map { it.id }.toSet()
     }
 
     private fun validateQaToolsEnabled() {
         if (!adminQaToolsProperties.enabled) {
-            throw WarnException(ErrorCode.FORBIDDEN, "QA 도구가 꺼져 있습니다. ADMIN_QA_TOOLS_ENABLED 를 켠 환경에서만 쓸 수 있습니다.")
+            throw WarnException(ErrorCode.FORBIDDEN, "QA 도구가 꺼져 있습니다. QA 도구 스위치를 켠 환경에서만 쓸 수 있습니다.")
         }
     }
 
@@ -90,7 +66,7 @@ class AdminQuizQaService(
     }
 }
 
-class MatchingResetSummary(
+class MatchingEraseSummary(
     val candidateRowCount: Int,
     val personalMatchCount: Int,
     val groupMatchCount: Int,

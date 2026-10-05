@@ -29,7 +29,7 @@ class ChatRoomEraser(
         return chatRoomRepository.findBySourceTypeAndSourceIdIn(sourceType, sourceIds).map { it.id }.toSet()
     }
 
-    fun deleteRooms(roomIds: Collection<Long>) {
+    fun erase(roomIds: Collection<Long>) {
         if (roomIds.isEmpty()) return
 
         deleteVotesIn(roomIds)
