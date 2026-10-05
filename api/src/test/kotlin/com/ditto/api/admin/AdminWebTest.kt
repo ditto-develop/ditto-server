@@ -237,6 +237,7 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("매칭 열: 후보 생성")))
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
+            .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants?q=%23$receiver")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
             .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
@@ -274,7 +275,21 @@ class AdminWebTest {
             .andExpect(content().string(containsString("/admin/js/participant-search.js")))
             .andExpect(content().string(containsString("data-member-id=\"$memberId\"")))
             .andExpect(content().string(containsString("data-nickname=\"찾을회원\"")))
-            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\">")))
+            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\" class=\"participant-deleted\">")))
+    }
+
+    @Test
+    @DisplayName("퀴즈셋 참여 현황은 ACTIVE가 아닌 회원 상태만 한글 배지로 보여 준다")
+    fun quizSetParticipantsInactiveMemberStatusBadge() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+        saveCompletedMember(quizSet.id, "활동회원")
+        val leftMemberId = memberRepository.save(MemberFixture.create(nickname = "탈퇴회원", status = MemberStatus.LEFT)).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = leftMemberId, quizSetId = quizSet.id, totalCount = 1))
+
+        mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(not(containsString(">ACTIVE<"))))
     }
 
     private fun saveCompletedMember(quizSetId: Long, nickname: String): Long {

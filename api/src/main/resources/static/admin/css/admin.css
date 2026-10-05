@@ -577,32 +577,46 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 
 /* 퀴즈셋 참여 현황 */
 .content.participants-page { max-width: none; }
-.participants-page .grid.cols-3 { max-width: 1080px; }
 .participant-guide { margin: 0 0 12px; }
-.participant-guide summary { cursor: pointer; color: var(--text-sub); font-size: 13px; font-weight: 600; }
+.participant-guide summary { cursor: pointer; color: var(--text-sub); font-size: 13px; font-weight: 700; }
 .participant-guide p, .participant-guide ol { margin: 8px 0 0; font-size: 13px; }
 .participant-guide ol { padding-left: 24px; }
 /* 세로로 스크롤하는 상자를 따로 두면 페이지 스크롤과 겹쳐서 헤더는 고정하지 않는다. */
 .participant-table { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-.participant-table table.tbl { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+/* 한글이 글자 단위로 끊기지 않고 띄어쓰기에서만 줄바꿈되게 한다. */
+.participant-table table.tbl { border-collapse: separate; border-spacing: 0; font-size: 13px; word-break: keep-all; }
 .participant-table table.tbl th,
 .participant-table table.tbl td { padding: 10px 12px; vertical-align: top; background: var(--surface); }
 .participant-table table.tbl th { white-space: nowrap; background: var(--bg); }
 .participant-table table.tbl th:first-child,
-.participant-table table.tbl td:first-child { position: sticky; left: 0; z-index: 1; border-right: 1px solid var(--border); }
-.participant-table table.tbl tbody tr:hover td { background: #fafaff; }
-.participant-table .badge { padding: 1px 8px; font-size: 11px; }
+.participant-table table.tbl td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 6px -4px rgba(20, 23, 40, 0.12);
+}
+.participant-table table.tbl tbody tr:hover td { background: var(--bg); }
+.participant-table table.tbl tr.participant-deleted td { color: var(--text-muted); }
 .participant-table .nowrap { white-space: nowrap; }
 .participant-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
-.member-cell { min-width: 200px; }
+.member-cell { min-width: 160px; }
 .member-cell .member-name { font-weight: 700; }
 .member-cell .member-id { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.member-actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 12px; }
-.member-actions form { margin: 0; }
+.member-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
+.member-actions .text-link { font-size: 12px; }
+.member-reset { margin: 6px 0 0; }
+.text-button { padding: 0; border: none; background: none; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.text-button.danger { color: var(--danger); }
+.text-button:hover { text-decoration: underline; }
 .profile-cell { line-height: 1.6; }
-.profile-cell .interests { max-width: 240px; font-size: 12px; }
-.match-cell { min-width: 280px; font-size: 12px; line-height: 1.7; }
-.match-cell > div { white-space: nowrap; }
+.profile-cell .interests { max-width: 180px; font-size: 12px; }
+.match-cell { min-width: 240px; font-size: 12px; line-height: 1.7; }
+.match-cell .badge { padding: 1px 7px; font-size: 11px; }
 .match-group + .match-group { margin-top: 6px; }
-.match-group-member { padding-left: 12px; }
-.answer-cell { white-space: nowrap; }
+.match-group-head { white-space: nowrap; font-weight: 600; color: var(--text); }
+.match-group-member { white-space: nowrap; padding-left: 12px; }
+.match-group-member .badge { padding: 0; background: none; }
+.member-search-link { color: inherit; }
+.member-search-link:hover { color: var(--primary); text-decoration: underline; }
+.answer-cell { min-width: 3em; }
