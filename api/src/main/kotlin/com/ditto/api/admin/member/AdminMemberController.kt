@@ -30,7 +30,6 @@ class AdminMemberController(
         model.addAttribute("q", q ?: "")
         if (!q.isNullOrBlank()) {
             model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(q))
-            model.addAttribute("searchLimit", AdminMemberService.NICKNAME_SEARCH_LIMIT)
         }
         model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
@@ -43,11 +42,15 @@ class AdminMemberController(
         return "member/list"
     }
 
-    // q는 회원 관리에서 들어올 때의 검색어로, 돌아가기 링크가 이어 쓴다.
     @GetMapping("/admin/members/{id}/quizzes")
-    fun quizzes(@PathVariable id: Long, @RequestParam(required = false) q: String?, model: Model): String {
+    fun quizzes(
+        @PathVariable id: Long,
+        @RequestParam(required = false) q: String?,
+        model: Model,
+    ): String {
+        val backQuery = q?.takeIf { it.isNotBlank() } ?: "#$id"
         model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
-        model.addAttribute("backQuery", q?.takeIf { it.isNotBlank() } ?: "#$id")
+        model.addAttribute("backQuery", backQuery)
         model.addAttribute("active", "member")
         return "member/quizzes"
     }

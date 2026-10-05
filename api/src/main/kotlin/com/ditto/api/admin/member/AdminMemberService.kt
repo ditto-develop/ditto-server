@@ -29,17 +29,18 @@ class AdminMemberService(
     @Transactional(readOnly = true)
     fun searchByNicknameOrId(query: String): MemberSearchResult {
         val keyword = query.trim()
-        if (keyword.isEmpty()) return MemberSearchResult.EMPTY
+        if (keyword.isEmpty()) return MemberSearchResult(emptyList(), NICKNAME_SEARCH_LIMIT, isTruncated = false)
         if (keyword.startsWith(MEMBER_ID_PREFIX)) {
             val member = findMemberByIdText(keyword.removePrefix(MEMBER_ID_PREFIX))
-            return MemberSearchResult(listOfNotNull(member).map { MemberSummary.of(it) }, isTruncated = false)
+            val members = listOfNotNull(member).map { MemberSummary.of(it) }
+            return MemberSearchResult(members, NICKNAME_SEARCH_LIMIT, isTruncated = false)
         }
 
-        // 한 명 더 읽어 제한을 넘었는지 안다.
-        val limit = Limit.of(NICKNAME_SEARCH_LIMIT + 1)
-        val members = memberRepository.findByNicknameContainingOrderByIdDesc(keyword, limit)
+        val limitWithOverflowProbe = Limit.of(NICKNAME_SEARCH_LIMIT + 1)
+        val members = memberRepository.findByNicknameContainingOrderByIdDesc(keyword, limitWithOverflowProbe)
         return MemberSearchResult(
-            members.take(NICKNAME_SEARCH_LIMIT).map { MemberSummary.of(it) },
+            members = members.take(NICKNAME_SEARCH_LIMIT).map { MemberSummary.of(it) },
+            limit = NICKNAME_SEARCH_LIMIT,
             isTruncated = members.size > NICKNAME_SEARCH_LIMIT,
         )
     }

@@ -203,7 +203,13 @@ enum class MissEmphasis(val cssClass: String) {
 }
 
 /** 후보가 없는 참여자가 매칭 단계 중 어디서 빠졌는지와, 테스터가 다음에 할 일. */
-enum class MatchMissReason(val label: String, val nextAction: String?, val emphasis: MissEmphasis) {
+/** 다음 조치를 참여 현황 링크로 그리는 이유는 linksToParticipants 를 켠다. */
+enum class MatchMissReason(
+    val label: String,
+    val nextAction: String?,
+    val emphasis: MissEmphasis,
+    val linksToParticipants: Boolean = false,
+) {
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
     NOT_GENERATED("매칭 전", "매칭 화면에서 재생성하거나 배치 시각까지 기다리기", MissEmphasis.EXPECTED),
     NOT_COMPLETED("미완주", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
@@ -227,5 +233,5 @@ enum class MatchMissReason(val label: String, val nextAction: String?, val empha
     NOT_ASSIGNED_TO_GROUP("그룹 미배정(인원 나머지·차단, 정상)", null, MissEmphasis.NORMAL),
 
     /** 회원 화면은 1:1 풀 전체를 다시 계산하지 않아 풀 단계 이유를 모른다. */
-    POOL_REASON_NOT_COMPUTED("후보 없음", "참여 현황에서 이유 보기", MissEmphasis.NORMAL),
+    POOL_REASON_NOT_COMPUTED("후보 없음", "참여 현황에서 이유 보기", MissEmphasis.NORMAL, linksToParticipants = true),
 }

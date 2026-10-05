@@ -31,10 +31,12 @@
     <th:block th:if="${matching.miss != null}" th:with="reason=${matching.miss.reason}">
         <span th:class="${reason.emphasis.cssClass}" th:text="${reason.label}">미완주</span>
         <span class="muted" th:if="${matching.miss.scoreGap != null}" th:text="|(${matching.miss.scoreGap})|">(최고 0.0 &lt; 컷 100.0)</span>
-        <div class="muted" th:if="${reason.name() == 'POOL_REASON_NOT_COMPUTED'}">
-            → <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSetId},q=|#${memberId}|)}" th:text="${reason.nextAction}">참여 현황에서 이유 보기</a>
-        </div>
-        <div class="muted" th:if="${reason.nextAction != null and reason.name() != 'POOL_REASON_NOT_COMPUTED'}" th:text="|→ ${reason.nextAction}|">→ 다음 조치</div>
+        <th:block th:if="${reason.nextAction != null}">
+            <div class="muted" th:if="${reason.linksToParticipants}">
+                → <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSetId},q=|#${memberId}|)}" th:text="${reason.nextAction}">참여 현황에서 이유 보기</a>
+            </div>
+            <div class="muted" th:unless="${reason.linksToParticipants}" th:text="|→ ${reason.nextAction}|">→ 다음 조치</div>
+        </th:block>
     </th:block>
 </th:block>
 </body>

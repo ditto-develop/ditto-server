@@ -72,7 +72,6 @@ class MemberMatchingReader(
         }
     }
 
-    // 후보가 0건이어도 매칭은 돌았을 수 있어 생성 시각이 없다고 매칭 전으로 보지 않는다.
     private fun oneToOneMissOf(
         member: Member,
         progress: QuizProgress,
@@ -85,6 +84,7 @@ class MemberMatchingReader(
         val reason = when {
             !member.isActive() -> MatchMissReason.EXCLUDED_INACTIVE
             requests.any { it.status == PersonalMatchStatus.ACCEPTED } -> MatchMissReason.EXCLUDED_ALREADY_MATCHED
+            // 후보가 0건이어도 매칭은 돌았을 수 있어 생성 시각이 없다고 매칭 전으로 보지 않는다.
             else -> MatchMissReason.POOL_REASON_NOT_COMPUTED
         }
         return MatchMiss(reason)
@@ -104,13 +104,12 @@ class MemberMatchingReader(
             val groupCandidates = myGroupMatches
                 .filter { it.quizSetId == quizSetId }
                 .map { GroupCandidate.of(it, invitationsByGroupMatchId[it.id].orEmpty(), member.id, nicknames) }
-            val matching = if (groupCandidates.isEmpty()) {
-                val miss = groupMissOf(member, participation.progress, generatedAtByQuizSetId[quizSetId])
-                ParticipantMatching(miss = miss)
+            val miss = if (groupCandidates.isEmpty()) {
+                groupMissOf(member, participation.progress, generatedAtByQuizSetId[quizSetId])
             } else {
-                ParticipantMatching(groupCandidates = groupCandidates)
+                null
             }
-            quizSetId to matching
+            quizSetId to ParticipantMatching(groupCandidates = groupCandidates, miss = miss)
         }
     }
 

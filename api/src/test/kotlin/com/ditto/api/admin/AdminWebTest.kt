@@ -723,6 +723,21 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("회원별 퀴즈 현황에서 1:1 후보가 없으면 그 셋 참여 현황으로 이유를 보러 간다")
+    fun memberQuizzesPoolReasonLink() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.ONE_TO_ONE))
+        val memberId = saveCompletedMember(quizSet.id, "후보없음회원")
+
+        mockMvc.perform(get("/admin/members/{id}/quizzes", memberId).with(authentication(admin())))
+            .andExpect(content().string(containsString("후보 없음")))
+            .andExpect(
+                content().string(
+                    containsString("href=\"/admin/quiz-sets/${quizSet.id}/participants?q=%23$memberId\">참여 현황에서 이유 보기</a>"),
+                ),
+            )
+    }
+
+    @Test
     @DisplayName("회원 권한 변경 후 검색어 유지 리다이렉트")
     fun memberRoleChange() {
         val member = memberRepository.save(

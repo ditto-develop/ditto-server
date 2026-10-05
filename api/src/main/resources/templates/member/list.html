@@ -35,7 +35,7 @@
                     </p>
                     <th:block th:unless="${searchResult.members.isEmpty()}">
                         <p class="muted" style="margin:0 0 12px" th:if="${searchResult.isTruncated}"
-                           th:text="|최근 가입 순으로 ${searchLimit}명까지만 보여 줍니다. 더 좁혀 찾으세요.|">최근 가입 순으로 50명까지만</p>
+                           th:text="|최근 가입 순으로 ${searchResult.limit}명까지만 보여 줍니다. 더 좁혀 찾으세요.|">최근 가입 순으로 50명까지만</p>
                         <table class="tbl">
                             <thead>
                             <tr><th title="회원 상태는 ACTIVE가 아닐 때만 표시합니다">회원</th><th></th></tr>
