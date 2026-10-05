@@ -264,13 +264,16 @@ class AdminWebTest {
     fun quizSetParticipantsSearchAttributes() {
         val quizSet = quizSetRepository.save(QuizSetFixture.create())
         val memberId = saveCompletedMember(quizSet.id, "찾을회원")
-        quizProgressRepository.save(QuizProgressFixture.create(memberId = 99999L, quizSetId = quizSet.id, totalCount = 1))
+        val deletedMemberId = 99999L
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = deletedMemberId, quizSetId = quizSet.id, totalCount = 1))
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("id=\"participantSearch\"")))
-            .andExpect(content().string(containsString("data-member-id=\"$memberId\" data-nickname=\"찾을회원\"")))
-            .andExpect(content().string(containsString("data-member-id=\"99999\">")))
+            .andExpect(content().string(containsString("/admin/js/participant-search.js")))
+            .andExpect(content().string(containsString("data-member-id=\"$memberId\"")))
+            .andExpect(content().string(containsString("data-nickname=\"찾을회원\"")))
+            .andExpect(content().string(containsString("data-member-id=\"$deletedMemberId\">")))
     }
 
     private fun saveCompletedMember(quizSetId: Long, nickname: String): Long {
