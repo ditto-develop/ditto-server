@@ -33,7 +33,11 @@ class MatchingEraseSummary(
         val notificationText = if (notificationCount > 0) "알림 ${notificationCount}개" else null
         return listOfNotNull(counts.toDisplayText().ifEmpty { null }, notificationText)
             .joinToString(" · ")
-            .ifEmpty { "지운 기록 없음" }
+            .ifEmpty { NOTHING_ERASED }
+    }
+
+    companion object {
+        const val NOTHING_ERASED = "지운 기록 없음"
     }
 }
 
