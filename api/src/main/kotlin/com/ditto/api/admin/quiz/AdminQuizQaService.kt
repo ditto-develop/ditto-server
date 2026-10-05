@@ -5,8 +5,6 @@ import com.ditto.api.admin.cleanup.MatchingRecordTargets
 import com.ditto.api.admin.quiz.dto.MatchingErasePreview
 import com.ditto.api.admin.quiz.dto.MatchingEraseSummary
 import com.ditto.api.admin.quiz.dto.MatchingRecordCounts
-import com.ditto.api.config.AdminQaToolsProperties
-import com.ditto.api.match.MatchWeekPolicy
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.repository.MatchCandidateRepository
@@ -22,13 +20,12 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 @Transactional
 class AdminQuizQaService(
-    private val adminQaToolsProperties: AdminQaToolsProperties,
+    private val qaToolGuard: QaToolGuard,
     private val quizSetRepository: QuizSetRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
     private val quizSetMatchingTargetFinder: QuizSetMatchingTargetFinder,
     private val matchingRecordEraser: MatchingRecordEraser,
     private val quizSetDeleter: QuizSetDeleter,
-    private val matchWeekPolicy: MatchWeekPolicy,
 ) {
     @Transactional(readOnly = true)
     fun previewErase(quizSetId: Long): MatchingErasePreview {
@@ -37,21 +34,21 @@ class AdminQuizQaService(
         return MatchingErasePreview(
             counts = countsOf(targets, matchCandidateRepository.countByQuizSetId(quizSetId)),
             realMemberRoomCount = quizSetMatchingTargetFinder.findRoomIdsWithRealMembers(targets.roomIds).size,
-            isResettable = matchWeekPolicy.isCurrentWeek(quizSet),
+            isResettable = qaToolGuard.isCurrentWeek(quizSet),
         )
     }
 
     /** 퀴즈셋·답·진행은 남기고 매칭 기록만 지워 같은 셋으로 매칭을 다시 돌릴 수 있게 한다. */
     fun resetMatching(quizSetId: Long): MatchingEraseSummary {
-        validateQaToolsEnabled()
+        qaToolGuard.validateEnabled()
         val quizSet = findQuizSet(quizSetId)
-        validateCurrentWeek(quizSet)
+        qaToolGuard.validateCurrentWeek(quizSet)
         return eraseMatchingRecordsOf(quizSet)
     }
 
     /** 매칭 기록을 먼저 지워 일반 삭제가 막히지 않게 한 뒤 퀴즈셋까지 지운다. */
     fun forceDelete(quizSetId: Long): MatchingEraseSummary {
-        validateQaToolsEnabled()
+        qaToolGuard.validateEnabled()
         val summary = eraseMatchingRecordsOf(findQuizSet(quizSetId))
         // 일반 삭제가 매칭 결과 알림을 한 번 더 지우지만 이미 비어 있어 0건이다.
         quizSetDeleter.delete(quizSetId)
@@ -79,19 +76,6 @@ class AdminQuizQaService(
             rematchCount = targets.rematchIds.size,
             roomCount = targets.roomIds.size,
         )
-
-    private fun validateQaToolsEnabled() {
-        if (!adminQaToolsProperties.enabled) {
-            throw WarnException(ErrorCode.FORBIDDEN, "QA 도구가 꺼져 있습니다. QA 도구 스위치를 켠 환경에서만 쓸 수 있습니다.")
-        }
-    }
-
-    // 다른 주 셋은 다시 돌려도 앱에 보이지 않고, 그대로 두면 다음 목요일 배치가 다시 매칭해 결과 알림을 보낸다.
-    private fun validateCurrentWeek(quizSet: QuizSet) {
-        if (!matchWeekPolicy.isCurrentWeek(quizSet)) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "이번 주 퀴즈셋만 초기화할 수 있습니다. 정리하려면 퀴즈셋 강제 삭제를 쓰세요.")
-        }
-    }
 
     private fun findQuizSet(quizSetId: Long): QuizSet =
         quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
