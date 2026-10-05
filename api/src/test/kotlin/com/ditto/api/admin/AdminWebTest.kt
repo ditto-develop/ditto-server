@@ -477,15 +477,58 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("검색한 채 회원별 초기화를 하면 같은 검색어로 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersKeepsSearchQuery() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", " 홍 길동 ")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants?q=%ED%99%8D%20%EA%B8%B8%EB%8F%99"))
+    }
+
+    @Test
+    @DisplayName("초기화한 회원만 #ID로 찾던 중이면 검색어 없이 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersDropsSearchForResetMember() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", "#$target")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+    }
+
+    @Test
+    @DisplayName("검색어가 공백뿐이면 회원별 초기화 뒤 검색어 없이 참여 현황에 돌아간다")
+    fun resetMemberQuizAnswersIgnoresBlankSearch() {
+        val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
+        val target = saveCompletedMember(quizSet.id, "dummy-male-0001")
+
+        mockMvc.perform(
+            post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, target)
+                .param("q", "   ")
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+    }
+
+    @Test
     @DisplayName("회원별 초기화가 거부되면 참여 현황으로 돌아가 이유를 보여 준다")
     fun resetMemberQuizAnswersRejected() {
         val quizSet = quizSetRepository.save(QuizSetFixture.currentWeek())
 
         mockMvc.perform(
             post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSet.id, 99999L)
+                .param("q", "#99999")
                 .with(authentication(admin())).with(csrf()),
         )
-            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants?q=%2399999"))
             .andExpect(flash().attribute("error", containsString("이 퀴즈셋에 참여하지 않은 회원입니다.")))
     }
 

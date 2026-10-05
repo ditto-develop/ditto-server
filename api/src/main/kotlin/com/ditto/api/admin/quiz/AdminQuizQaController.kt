@@ -8,7 +8,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
+import org.springframework.web.util.UriComponentsBuilder
 
 @Controller
 class AdminQuizQaController(
@@ -70,20 +72,22 @@ class AdminQuizQaController(
     fun resetMemberAnswers(
         @PathVariable id: Long,
         @PathVariable memberId: Long,
+        @RequestParam("q", required = false) searchQuery: String?,
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
-    ): String {
-        val participantsRedirect = "redirect:/admin/quiz-sets/$id/participants"
-        return runCatching { adminQuizAnswerResetService.resetMemberAnswers(id, memberId) }
-            .fold(
-                onSuccess = { summary ->
-                    log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 회원 #$memberId 답·진행 초기화" }
-                    redirectAttributes.addFlashAttribute("message", "${summary.toDisplayText()}의 답·진행을 초기화했습니다.")
-                    participantsRedirect
-                },
-                onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, participantsRedirect) },
-            )
-    }
+    ): String = runCatching { adminQuizAnswerResetService.resetMemberAnswers(id, memberId) }
+        .fold(
+            onSuccess = { summary ->
+                log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 회원 #$memberId 답·진행 초기화" }
+                redirectAttributes.addFlashAttribute("message", "${summary.toDisplayText()}의 답·진행을 초기화했습니다.")
+                // 초기화한 회원은 진행 행이 지워져 목록에서 빠지므로, 그 회원만 찾던 검색어로 돌아가면 빈 표만 남는다.
+                val searchQueryAfterReset = searchQuery.takeUnless { it?.trim() == "#$memberId" }
+                participantsRedirect(id, searchQueryAfterReset)
+            },
+            onFailure = { exception ->
+                redirectAfterFailure(exception, redirectAttributes, participantsRedirect(id, searchQuery))
+            },
+        )
 
     private fun redirectAfterFailure(
         exception: Throwable,
@@ -100,6 +104,14 @@ class AdminQuizQaController(
     }
 
     private fun detailRedirect(id: Long): String = "redirect:/admin/quiz-sets/$id"
+
+    private fun participantsRedirect(quizSetId: Long, searchQuery: String?): String {
+        val trimmedQuery = searchQuery?.trim().orEmpty()
+        val participantsUri = UriComponentsBuilder.fromPath("/admin/quiz-sets/{id}/participants")
+        if (trimmedQuery.isNotEmpty()) participantsUri.queryParam("q", "{q}")
+        val encodedUri = participantsUri.encode().buildAndExpand(mapOf("id" to quizSetId, "q" to trimmedQuery))
+        return "redirect:" + encodedUri.toUriString()
+    }
 
     companion object {
         private const val QUIZ_SET_LIST_REDIRECT = "redirect:/admin/quiz-sets"

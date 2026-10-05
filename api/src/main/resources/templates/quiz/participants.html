@@ -101,6 +101,7 @@
                                               th:action="@{/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers(id=${quizSet.id},memberId=${p.memberId})}" method="post"
                                               th:attr="data-confirm=|${p.kind.name() == 'REAL' ? '실회원 ' : ''}${p.nickname ?: '삭제된 회원'} (#${p.memberId})의 이 퀴즈셋 답·진행을 지웁니다. 되돌릴 수 없습니다. 계속할까요?|"
                                               onsubmit="return confirm(this.dataset.confirm);">
+                                            <input type="hidden" name="q" value=""/>
                                             <button class="btn danger sm" type="submit">답·진행 초기화</button>
                                         </form>
                                     </div>
