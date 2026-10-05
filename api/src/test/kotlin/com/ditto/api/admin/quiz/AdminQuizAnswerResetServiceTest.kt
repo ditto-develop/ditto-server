@@ -18,10 +18,13 @@ import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class AdminQuizAnswerResetServiceTest(
@@ -38,14 +41,19 @@ class AdminQuizAnswerResetServiceTest(
 
     class AnsweredQuizSet(val quizSetId: Long, val realMemberId: Long, val dummyId: Long)
 
+    var savedQuizSetCount = 0
+
     // 문항 2개짜리 셋에 실회원 1명과 더미 1명이 둘 다 끝까지 푼 상태.
     fun saveAnsweredQuizSet(quizSet: QuizSet = QuizSetFixture.currentWeek()): AnsweredQuizSet {
+        val sequence = ++savedQuizSetCount
         val quizSetId = quizSetRepository.save(quizSet).id
         val quizIds = (1..2).map { order ->
             quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = order)).id
         }
-        val real = memberRepository.save(MemberFixture.create(nickname = "실회원", email = "real@example.com"))
-        val dummy = memberRepository.save(MemberFixture.create(nickname = "dummy-male-0001", email = "d@dummy.local"))
+        val real = memberRepository.save(MemberFixture.create(nickname = "실회원$sequence", email = "real$sequence@example.com"))
+        val dummy = memberRepository.save(
+            MemberFixture.create(nickname = "dummy-male-000$sequence", email = "d$sequence@dummy.local"),
+        )
         listOf(real.id, dummy.id).forEach { memberId ->
             val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 2)
             repeat(2) { progress.recordAnswer() }
@@ -54,6 +62,9 @@ class AdminQuizAnswerResetServiceTest(
         }
         return AnsweredQuizSet(quizSetId, real.id, dummy.id)
     }
+
+    fun quizSetEndingAt(endDate: LocalDateTime): QuizSet =
+        QuizSetFixture.create(startDate = OperationWeek.containing(LocalDate.now()).startedOn.atStartOfDay(), endDate = endDate)
 
     fun saveMatchingRecords(quizSetId: Long, memberAId: Long, memberBId: Long) {
         matchCandidateRepository.save(MatchCandidateFixture.create(memberAId, memberBId, quizSetId))
@@ -93,6 +104,21 @@ class AdminQuizAnswerResetServiceTest(
 
             preview.participantCount shouldBe 2
             preview.realParticipantCount shouldBe 1
+            preview.isResettable shouldBe true
+        }
+
+        "미리보기는 지난 주 셋이면 초기화할 수 없다고 알려 준다" {
+            val answered = saveAnsweredQuizSet(QuizSetFixture.create())
+
+            adminQuizAnswerResetService.previewAllAnswersReset(answered.quizSetId).isResettable shouldBe false
+        }
+
+        "미리보기는 퀴즈 기간이 끝났는지 알려 준다" {
+            val open = saveAnsweredQuizSet(quizSetEndingAt(LocalDateTime.now().plusHours(1)))
+            val closed = saveAnsweredQuizSet(quizSetEndingAt(LocalDateTime.now().minusMinutes(1)))
+
+            adminQuizAnswerResetService.previewAllAnswersReset(open.quizSetId).isQuizPeriodOver shouldBe false
+            adminQuizAnswerResetService.previewAllAnswersReset(closed.quizSetId).isQuizPeriodOver shouldBe true
         }
     }
 
@@ -119,14 +145,14 @@ class AdminQuizAnswerResetServiceTest(
             quizProgressRepository.findAll() shouldHaveSize 2
         }
 
-        "참여하지 않은 회원이면 NOT_FOUND 예외가 발생한다" {
+        "참여하지 않은 회원이면 BAD_REQUEST 예외가 발생한다" {
             val answered = saveAnsweredQuizSet()
 
             val exception = shouldThrow<WarnException> {
                 adminQuizAnswerResetService.resetMemberAnswers(answered.quizSetId, 99999L)
             }
 
-            exception.errorCode shouldBe ErrorCode.NOT_FOUND
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
         }
 
         "지난 주 셋이면 거부한다" {
@@ -137,6 +163,17 @@ class AdminQuizAnswerResetServiceTest(
             }
 
             exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "이번 주 매칭 전 셋에서만 행별 버튼을 보이게 한다" {
+            val beforeMatching = saveAnsweredQuizSet()
+            val matched = saveAnsweredQuizSet()
+            saveMatchingRecords(matched.quizSetId, matched.realMemberId, matched.dummyId)
+            val lastWeek = saveAnsweredQuizSet(QuizSetFixture.create())
+
+            adminQuizAnswerResetService.findMemberAnswerResetOption(beforeMatching.quizSetId).isResettable shouldBe true
+            adminQuizAnswerResetService.findMemberAnswerResetOption(matched.quizSetId).isResettable shouldBe false
+            adminQuizAnswerResetService.findMemberAnswerResetOption(lastWeek.quizSetId).isResettable shouldBe false
         }
     }
 })

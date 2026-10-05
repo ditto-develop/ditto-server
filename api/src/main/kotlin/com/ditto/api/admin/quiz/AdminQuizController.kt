@@ -1,6 +1,8 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.MatchingErasePreview
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetOption
 import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -22,6 +24,7 @@ class AdminQuizController(
     private val adminQuizParticipantService: AdminQuizParticipantService,
     private val qaToolGuard: QaToolGuard,
     private val adminQuizQaService: AdminQuizQaService,
+    private val adminQuizAnswerResetService: AdminQuizAnswerResetService,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -73,6 +76,7 @@ class AdminQuizController(
         val hasMatchRecords = adminQuizService.hasMatchRecords(id)
         model.addAttribute("hasMatchRecords", hasMatchRecords)
         model.addAttribute("qaPreview", findQaPreview(id, hasMatchRecords))
+        model.addAttribute("answerResetPreview", findAnswerResetPreview(id, hasMatchRecords))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
     }
@@ -80,6 +84,7 @@ class AdminQuizController(
     @GetMapping("/admin/quiz-sets/{id}/participants")
     fun participants(@PathVariable id: Long, model: Model): String {
         model.addAttribute("view", adminQuizParticipantService.getParticipants(id))
+        model.addAttribute("memberResetOption", findMemberAnswerResetOption(id))
         model.addAttribute("active", "quiz")
         return "quiz/participants"
     }
@@ -158,6 +163,18 @@ class AdminQuizController(
     private fun findQaPreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
         if (!qaToolGuard.isEnabled || !hasMatchRecords) return null
         return adminQuizQaService.previewErase(quizSetId)
+    }
+
+    // 참여자도 매칭 기록도 없으면 지울 것이 없어 QA 도구 카드를 보이지 않는다.
+    private fun findAnswerResetPreview(quizSetId: Long, hasMatchRecords: Boolean): AnswerResetPreview? {
+        if (!qaToolGuard.isEnabled) return null
+        return adminQuizAnswerResetService.previewAllAnswersReset(quizSetId)
+            .takeIf { it.participantCount > 0 || hasMatchRecords }
+    }
+
+    private fun findMemberAnswerResetOption(quizSetId: Long): MemberAnswerResetOption? {
+        if (!qaToolGuard.isEnabled) return null
+        return adminQuizAnswerResetService.findMemberAnswerResetOption(quizSetId)
     }
 
     companion object {

@@ -45,5 +45,4 @@ class MatchingEraseSummary(
 class MatchingErasePreview(
     val counts: MatchingRecordCounts,
     val realMemberRoomCount: Int,
-    val isResettable: Boolean,
 )

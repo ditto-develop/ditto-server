@@ -29,12 +29,10 @@ class AdminQuizQaService(
 ) {
     @Transactional(readOnly = true)
     fun previewErase(quizSetId: Long): MatchingErasePreview {
-        val quizSet = findQuizSet(quizSetId)
         val targets = quizSetMatchingTargetFinder.findTargetsOf(quizSetId)
         return MatchingErasePreview(
             counts = countsOf(targets, matchCandidateRepository.countByQuizSetId(quizSetId)),
             realMemberRoomCount = quizSetMatchingTargetFinder.findRoomIdsWithRealMembers(targets.roomIds).size,
-            isResettable = qaToolGuard.isCurrentWeek(quizSet),
         )
     }
 

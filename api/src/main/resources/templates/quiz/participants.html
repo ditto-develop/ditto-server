@@ -41,6 +41,16 @@
                     <p class="muted" style="margin:0 0 12px" th:unless="${view.matching.isGenerated}">
                         매칭 열: 저장된 후보가 없습니다(매칭 전이거나 결과 0건).
                     </p>
+                    <th:block th:if="${memberResetOption != null}">
+                        <p class="muted" style="margin:0 0 12px" th:unless="${memberResetOption.isResettable}">
+                            회원별 답·진행 초기화는 이번 주 셋이 매칭되기 전에만 됩니다. 매칭이 진행됐다면
+                            <a class="text-link" th:href="@{|/admin/quiz-sets/${quizSet.id}#qa-tools|}">퀴즈셋 상세 QA 도구</a>로 전체를 초기화하세요.
+                        </p>
+                        <p class="muted" style="margin:0 0 12px" th:if="${memberResetOption.isResettable and memberResetOption.isQuizPeriodOver}">
+                            퀴즈 기간이 끝나 답·진행을 지워도 앱에서 다시 풀 수 없습니다. 다시 풀려면 서버 시각을 그 주 월~수로 맞추세요.
+                            <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
+                        </p>
+                    </th:block>
                     <th:block th:unless="${view.quizzes.isEmpty()}">
                         <ol class="muted" style="margin:0 0 16px; padding-left:28px">
                             <li th:each="quiz : ${view.quizzes}" th:text="${quiz.question}">질문</li>
@@ -59,18 +69,26 @@
                             </thead>
                             <tbody>
                             <tr th:each="p : ${view.participants}" style="vertical-align:top">
-                                <td style="white-space:nowrap" th:switch="${p.kind.name()}">
-                                    <th:block th:case="'DELETED'">
-                                        <span th:text="|#${p.memberId}|">#1</span>
-                                        <span class="badge off">삭제된 회원</span>
+                                <td style="white-space:nowrap">
+                                    <th:block th:switch="${p.kind.name()}">
+                                        <th:block th:case="'DELETED'">
+                                            <span th:text="|#${p.memberId}|">#1</span>
+                                            <span class="badge off">삭제된 회원</span>
+                                        </th:block>
+                                        <th:block th:case="*">
+                                            <span th:text="|${p.nickname} (#${p.memberId})|">닉네임 (#1)</span>
+                                            <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
+                                            <div th:if="${p.answeredCount > 0}">
+                                                <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
+                                            </div>
+                                        </th:block>
                                     </th:block>
-                                    <th:block th:case="*">
-                                        <span th:text="|${p.nickname} (#${p.memberId})|">닉네임 (#1)</span>
-                                        <span class="badge cat" th:if="${p.kind.name() == 'REAL'}">실회원</span>
-                                        <div th:if="${p.answeredCount > 0}">
-                                            <a class="text-link" th:href="@{/admin/dummy/single(quizSetId=${quizSet.id},answersFromMemberId=${p.memberId})}">이 답으로 더미</a>
-                                        </div>
-                                    </th:block>
+                                    <form class="inline-form" th:if="${memberResetOption != null and memberResetOption.isResettable}"
+                                          th:action="@{/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers(id=${quizSet.id},memberId=${p.memberId})}" method="post"
+                                          th:attr="data-confirm=|${p.nickname ?: '삭제된 회원'} (#${p.memberId})${p.kind.name() == 'REAL' ? ' 실회원' : ''}의 이 퀴즈셋 답·진행을 지웁니다. 되돌릴 수 없습니다. 계속할까요?|"
+                                          onsubmit="return confirm(this.dataset.confirm);">
+                                        <button class="btn danger sm" type="submit">답·진행 초기화</button>
+                                    </form>
                                 </td>
                                 <td th:text="${p.memberStatus} ?: '-'">ACTIVE</td>
                                 <td style="white-space:nowrap" th:switch="${p.progressStatus.name()}">

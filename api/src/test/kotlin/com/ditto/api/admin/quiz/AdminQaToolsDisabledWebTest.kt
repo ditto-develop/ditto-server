@@ -4,9 +4,12 @@ import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -31,6 +34,7 @@ class AdminQaToolsDisabledWebTest(
     private val mockMvc: MockMvc,
     private val quizSetRepository: QuizSetRepository,
     private val personalMatchRepository: PersonalMatchRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -43,6 +47,12 @@ class AdminQaToolsDisabledWebTest(
     fun saveMatchedQuizSet(): Long {
         val quizSetId = quizSetRepository.save(QuizSetFixture.currentWeek()).id
         personalMatchRepository.save(PersonalMatchFixture.create(1L, 2L, quizSetId))
+        return quizSetId
+    }
+
+    fun saveQuizSetWithParticipant(memberId: Long): Long {
+        val quizSetId = quizSetRepository.save(QuizSetFixture.currentWeek()).id
+        quizProgressRepository.save(QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 1))
         return quizSetId
     }
 
@@ -79,6 +89,34 @@ class AdminQaToolsDisabledWebTest(
 
             quizSetRepository.existsById(quizSetId) shouldBe true
             personalMatchRepository.existsByQuizSetId(quizSetId) shouldBe true
+        }
+
+        "답·진행 초기화 요청은 거부하고 진행을 남긴다" {
+            val quizSetId = saveQuizSetWithParticipant(memberId = 1L)
+
+            mockMvc.perform(
+                post("/admin/quiz-sets/{id}/qa/reset-answers", quizSetId).with(authentication(admin)).with(csrf()),
+            )
+                .andExpect(redirectedUrl("/admin/quiz-sets/$quizSetId"))
+                .andExpect(flash().attribute("error", containsString("QA 도구가 꺼져 있습니다")))
+
+            quizProgressRepository.findByMemberIdAndQuizSetId(1L, quizSetId) shouldNotBe null
+        }
+
+        "참여 현황에 행별 초기화 버튼이 없고 회원별 초기화 요청은 거부한다" {
+            val quizSetId = saveQuizSetWithParticipant(memberId = 1L)
+
+            mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSetId).with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(not(containsString("reset-answers"))))
+            mockMvc.perform(
+                post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSetId, 1L)
+                    .with(authentication(admin)).with(csrf()),
+            )
+                .andExpect(redirectedUrl("/admin/quiz-sets/$quizSetId/participants"))
+                .andExpect(flash().attribute("error", containsString("QA 도구가 꺼져 있습니다")))
+
+            quizProgressRepository.findByMemberIdAndQuizSetId(1L, quizSetId) shouldNotBe null
         }
     }
 })
