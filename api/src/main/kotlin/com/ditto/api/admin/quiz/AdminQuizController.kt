@@ -2,7 +2,7 @@ package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.MatchingErasePreview
-import com.ditto.api.admin.quiz.dto.MemberAnswerResetOption
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetAvailability
 import com.ditto.api.admin.quiz.dto.QuizSetForm
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -75,7 +75,7 @@ class AdminQuizController(
         model.addAttribute("choicesByQuiz", adminQuizService.getChoicesByQuizIds(quizzes.map { it.id }))
         val hasMatchRecords = adminQuizService.hasMatchRecords(id)
         model.addAttribute("hasMatchRecords", hasMatchRecords)
-        model.addAttribute("qaPreview", findQaPreview(id, hasMatchRecords))
+        model.addAttribute("matchingErasePreview", findMatchingErasePreview(id, hasMatchRecords))
         model.addAttribute("answerResetPreview", findAnswerResetPreview(id, hasMatchRecords))
         model.addAttribute("active", "quiz")
         return "quiz/detail"
@@ -84,7 +84,7 @@ class AdminQuizController(
     @GetMapping("/admin/quiz-sets/{id}/participants")
     fun participants(@PathVariable id: Long, model: Model): String {
         model.addAttribute("view", adminQuizParticipantService.getParticipants(id))
-        model.addAttribute("memberResetOption", findMemberAnswerResetOption(id))
+        model.addAttribute("memberAnswerReset", findMemberAnswerResetAvailability(id))
         model.addAttribute("active", "quiz")
         return "quiz/participants"
     }
@@ -160,7 +160,7 @@ class AdminQuizController(
             )
 
     // 매칭 기록이 없는 셋은 일반 삭제로 충분해 QA 도구를 보이지 않는다.
-    private fun findQaPreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
+    private fun findMatchingErasePreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
         if (!qaToolGuard.isEnabled || !hasMatchRecords) return null
         return adminQuizQaService.previewErase(quizSetId)
     }
@@ -172,9 +172,9 @@ class AdminQuizController(
             .takeIf { it.participantCount > 0 || hasMatchRecords }
     }
 
-    private fun findMemberAnswerResetOption(quizSetId: Long): MemberAnswerResetOption? {
+    private fun findMemberAnswerResetAvailability(quizSetId: Long): MemberAnswerResetAvailability? {
         if (!qaToolGuard.isEnabled) return null
-        return adminQuizAnswerResetService.findMemberAnswerResetOption(quizSetId)
+        return adminQuizAnswerResetService.findMemberAnswerResetAvailability(quizSetId)
     }
 
     companion object {

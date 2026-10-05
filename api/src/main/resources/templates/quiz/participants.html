@@ -41,12 +41,13 @@
                     <p class="muted" style="margin:0 0 12px" th:unless="${view.matching.isGenerated}">
                         매칭 열: 저장된 후보가 없습니다(매칭 전이거나 결과 0건).
                     </p>
-                    <th:block th:if="${memberResetOption != null}">
-                        <p class="muted" style="margin:0 0 12px" th:unless="${memberResetOption.isResettable}">
-                            회원별 답·진행 초기화는 이번 주 셋이 매칭되기 전에만 됩니다. 매칭이 진행됐다면
-                            <a class="text-link" th:href="@{|/admin/quiz-sets/${quizSet.id}#qa-tools|}">퀴즈셋 상세 QA 도구</a>로 전체를 초기화하세요.
+                    <th:block th:if="${memberAnswerReset != null}">
+                        <p class="muted" style="margin:0 0 12px" th:unless="${memberAnswerReset.isResettable}">
+                            <span th:text="${memberAnswerReset.refusal.message}">거부 이유</span>
+                            <a class="text-link" th:if="${memberAnswerReset.refusal.name() == 'AFTER_MATCHING'}"
+                               th:href="@{|/admin/quiz-sets/${quizSet.id}#qa-tools|}">퀴즈셋 상세 QA 도구로</a>
                         </p>
-                        <p class="muted" style="margin:0 0 12px" th:if="${memberResetOption.isResettable and memberResetOption.isQuizPeriodOver}">
+                        <p class="muted" style="margin:0 0 12px" th:if="${memberAnswerReset.isResettable and memberAnswerReset.isQuizPeriodOver}">
                             퀴즈 기간이 끝나 답·진행을 지워도 앱에서 다시 풀 수 없습니다. 다시 풀려면 서버 시각을 그 주 월~수로 맞추세요.
                             <a class="text-link" th:href="@{/admin/time-override}">시간 오버라이드</a>
                         </p>
@@ -83,7 +84,7 @@
                                             </div>
                                         </th:block>
                                     </th:block>
-                                    <form class="inline-form" th:if="${memberResetOption != null and memberResetOption.isResettable}"
+                                    <form class="inline-form" th:if="${memberAnswerReset != null and memberAnswerReset.isResettable}"
                                           th:action="@{/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers(id=${quizSet.id},memberId=${p.memberId})}" method="post"
                                           th:attr="data-confirm=|${p.nickname ?: '삭제된 회원'} (#${p.memberId})${p.kind.name() == 'REAL' ? ' 실회원' : ''}의 이 퀴즈셋 답·진행을 지웁니다. 되돌릴 수 없습니다. 계속할까요?|"
                                           onsubmit="return confirm(this.dataset.confirm);">

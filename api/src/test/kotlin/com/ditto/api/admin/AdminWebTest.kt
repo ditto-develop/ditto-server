@@ -430,7 +430,7 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(not(containsString(">답·진행 초기화</button>"))))
-            .andExpect(content().string(containsString("회원별 답·진행 초기화는 이번 주 셋이 매칭되기 전에만 됩니다.")))
+            .andExpect(content().string(containsString("매칭이 진행된 퀴즈셋은 회원별로 초기화할 수 없습니다.")))
             .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}#qa-tools")))
     }
 
@@ -446,7 +446,7 @@ class AdminWebTest {
                 .with(authentication(admin())).with(csrf()),
         )
             .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}/participants"))
-            .andExpect(flash().attribute("message", containsString("회원 #$target 의 답·진행을 초기화했습니다.")))
+            .andExpect(flash().attribute("message", containsString("회원 #${target}의 답·진행을 초기화했습니다.")))
 
         quizProgressRepository.findByMemberIdAndQuizSetId(target, quizSet.id) shouldBe null
         quizProgressRepository.findByMemberIdAndQuizSetId(other, quizSet.id) shouldNotBe null

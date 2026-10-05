@@ -5,6 +5,7 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
@@ -53,15 +54,22 @@ class QuizSetDeleter(
             groupMatchRepository.existsByQuizSetId(quizSetId)
 
     /** 매칭 결과 알림만 지우고 지운 수를 돌려준다. 퀴즈 열림·마감 알림은 그 주 대표 셋을 가리킬 뿐이라 남긴다. */
-    fun deleteMatchResultNotifications(quizSetId: Long): Int {
+    fun deleteMatchResultNotifications(quizSetId: Long): Int =
+        deleteNotifications(findMatchResultNotifications(quizSetId))
+
+    fun deleteMemberMatchResultNotifications(quizSetId: Long, memberId: Long): Int =
+        deleteNotifications(findMatchResultNotifications(quizSetId).filter { it.memberId == memberId })
+
+    private fun findMatchResultNotifications(quizSetId: Long): List<Notification> {
         val typesReadingQuizSet = NotificationType.pointingTo(NotificationTarget.QUIZ_SET)
             .filter { it.deepLinkTarget.readsTargetRow }
-        val notificationIds = notificationRepository
-            .findByTypeInAndTargetIdIn(typesReadingQuizSet, listOf(quizSetId))
-            .map { it.id }
-        if (notificationIds.isEmpty()) return 0
-        notificationRepository.deleteAllByIdInBatch(notificationIds)
-        return notificationIds.size
+        return notificationRepository.findByTypeInAndTargetIdIn(typesReadingQuizSet, listOf(quizSetId))
+    }
+
+    private fun deleteNotifications(notifications: List<Notification>): Int {
+        if (notifications.isEmpty()) return 0
+        notificationRepository.deleteAllByIdInBatch(notifications.map { it.id })
+        return notifications.size
     }
 
     private fun deleteQuizzesWithAnswers(quizSetId: Long) {

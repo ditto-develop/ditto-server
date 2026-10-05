@@ -3,7 +3,8 @@ package com.ditto.api.admin.quiz
 import com.ditto.api.admin.dummy.DummyMarker
 import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.AnswerResetSummary
-import com.ditto.api.admin.quiz.dto.MemberAnswerResetOption
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetAvailability
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetRefusal
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -39,55 +40,67 @@ class AdminQuizAnswerResetService(
         return AnswerResetPreview(
             participantCount = participantIds.size,
             realParticipantCount = realParticipantCount,
-            isResettable = qaToolGuard.isCurrentWeek(quizSet),
+            isCurrentWeek = qaToolGuard.isCurrentWeek(quizSet),
             isQuizPeriodOver = isQuizPeriodOver(quizSet),
         )
     }
 
-    /** resetMemberAnswers 가 받는 조건과 같게 둬야 버튼을 눌렀다가 거부되는 일이 없다. */
     @Transactional(readOnly = true)
-    fun findMemberAnswerResetOption(quizSetId: Long): MemberAnswerResetOption {
+    fun findMemberAnswerResetAvailability(quizSetId: Long): MemberAnswerResetAvailability {
         val quizSet = findQuizSet(quizSetId)
-        return MemberAnswerResetOption(
-            isResettable = qaToolGuard.isCurrentWeek(quizSet) && !quizSetDeleter.hasMatchRecords(quizSet.id),
+        return MemberAnswerResetAvailability(
+            refusal = findMemberAnswerResetRefusal(quizSet),
             isQuizPeriodOver = isQuizPeriodOver(quizSet),
         )
     }
 
-    /** 매칭 기록이 남으면 후보 점수가 근거로 삼던 답이 사라져 어긋나므로 매칭 기록부터 지운다. */
+    /** 답만 지우면 남은 후보 점수의 근거가 사라지므로 매칭 기록부터 지운다. */
     fun resetAllAnswers(quizSetId: Long): AnswerResetSummary {
-        val matching = adminQuizQaService.resetMatching(quizSetId)
-        val quizIds = findQuizIdsOf(quizSetId)
-        val answerCount = if (quizIds.isEmpty()) 0 else quizAnswerRepository.deleteByQuizIdIn(quizIds)
+        qaToolGuard.validateEnabled()
+        qaToolGuard.validateCurrentWeek(findQuizSet(quizSetId))
+
+        val matchingEraseSummary = adminQuizQaService.resetMatching(quizSetId)
+        val answerCount = deleteAnswersIn(findQuizIdsIn(quizSetId))
         val participantCount = quizProgressRepository.deleteByQuizSetId(quizSetId)
-        return AnswerResetSummary(matching = matching, participantCount = participantCount, answerCount = answerCount)
+        return AnswerResetSummary(
+            matchingErase = matchingEraseSummary,
+            participantCount = participantCount,
+            answerCount = answerCount,
+        )
     }
 
-    /** 한 명만 빼고 후보·그룹을 고칠 수 없으므로 매칭 전 셋에서만 받는다. */
+    /** 결과 0건으로 매칭이 돈 셋도 매칭 기록이 없어 받으므로, 그 회원의 노매칭 알림까지 지운다. */
     fun resetMemberAnswers(quizSetId: Long, memberId: Long) {
         qaToolGuard.validateEnabled()
-        val quizSet = findQuizSet(quizSetId)
-        qaToolGuard.validateCurrentWeek(quizSet)
-        validateBeforeMatching(quizSet)
-        quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
-            ?: throw WarnException(ErrorCode.BAD_REQUEST, "이 퀴즈셋에 참여하지 않은 회원입니다. 이미 초기화했을 수 있습니다.")
+        findMemberAnswerResetRefusal(findQuizSet(quizSetId))
+            ?.let { throw WarnException(ErrorCode.BAD_REQUEST, it.message) }
+        validateParticipated(memberId, quizSetId)
 
-        quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, findQuizIdsOf(quizSetId))
+        quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, findQuizIdsIn(quizSetId))
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, listOf(quizSetId))
+        quizSetDeleter.deleteMemberMatchResultNotifications(quizSetId, memberId)
     }
 
-    private fun validateBeforeMatching(quizSet: QuizSet) {
-        if (quizSetDeleter.hasMatchRecords(quizSet.id)) {
-            throw WarnException(
-                ErrorCode.BAD_REQUEST,
-                "매칭이 진행된 퀴즈셋은 회원별로 초기화할 수 없습니다. 퀴즈셋 상세에서 전체 답·진행 초기화를 쓰세요.",
-            )
+    // 후보·그룹에서 한 명만 빼낼 수 없어 매칭 전 셋에서만 받는다.
+    private fun findMemberAnswerResetRefusal(quizSet: QuizSet): MemberAnswerResetRefusal? = when {
+        !qaToolGuard.isCurrentWeek(quizSet) -> MemberAnswerResetRefusal.NOT_CURRENT_WEEK
+        quizSetDeleter.hasMatchRecords(quizSet.id) -> MemberAnswerResetRefusal.AFTER_MATCHING
+        else -> null
+    }
+
+    private fun validateParticipated(memberId: Long, quizSetId: Long) {
+        if (quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId) == null) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "이 퀴즈셋에 참여하지 않은 회원입니다. 이미 초기화했을 수 있습니다.")
         }
     }
 
+    // 빈 목록을 in 절에 넘기면 DB 에 따라 오류가 난다.
+    private fun deleteAnswersIn(quizIds: List<Long>): Int =
+        if (quizIds.isEmpty()) 0 else quizAnswerRepository.deleteByQuizIdIn(quizIds)
+
     private fun isQuizPeriodOver(quizSet: QuizSet): Boolean = serverTimeProvider.now() > quizSet.endDate
 
-    private fun findQuizIdsOf(quizSetId: Long): List<Long> =
+    private fun findQuizIdsIn(quizSetId: Long): List<Long> =
         quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId).map { it.id }
 
     private fun findQuizSet(quizSetId: Long): QuizSet =

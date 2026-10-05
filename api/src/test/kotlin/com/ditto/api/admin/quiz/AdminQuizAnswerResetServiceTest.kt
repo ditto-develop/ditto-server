@@ -1,5 +1,6 @@
 package com.ditto.api.admin.quiz
 
+import com.ditto.api.admin.quiz.dto.MemberAnswerResetRefusal
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -9,6 +10,9 @@ import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.NotificationFixture
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizProgressFixture
@@ -36,6 +40,7 @@ class AdminQuizAnswerResetServiceTest(
     private val memberRepository: MemberRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
     private val personalMatchRepository: PersonalMatchRepository,
+    private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -104,13 +109,13 @@ class AdminQuizAnswerResetServiceTest(
 
             preview.participantCount shouldBe 2
             preview.realParticipantCount shouldBe 1
-            preview.isResettable shouldBe true
+            preview.isCurrentWeek shouldBe true
         }
 
         "미리보기는 지난 주 셋이면 초기화할 수 없다고 알려 준다" {
             val answered = saveAnsweredQuizSet(QuizSetFixture.create())
 
-            adminQuizAnswerResetService.previewAllAnswersReset(answered.quizSetId).isResettable shouldBe false
+            adminQuizAnswerResetService.previewAllAnswersReset(answered.quizSetId).isCurrentWeek shouldBe false
         }
 
         "미리보기는 퀴즈 기간이 끝났는지 알려 준다" {
@@ -165,15 +170,31 @@ class AdminQuizAnswerResetServiceTest(
             exception.errorCode shouldBe ErrorCode.BAD_REQUEST
         }
 
-        "이번 주 매칭 전 셋에서만 행별 버튼을 보이게 한다" {
+        "결과 0건으로 매칭이 돈 셋이면 그 회원의 노매칭 알림도 지운다" {
+            val answered = saveAnsweredQuizSet()
+            notificationRepository.save(
+                NotificationFixture.create(memberId = answered.dummyId, type = NotificationType.NO_MATCH, targetId = answered.quizSetId),
+            )
+            notificationRepository.save(
+                NotificationFixture.create(memberId = answered.realMemberId, type = NotificationType.NO_MATCH, targetId = answered.quizSetId),
+            )
+
+            adminQuizAnswerResetService.resetMemberAnswers(answered.quizSetId, answered.dummyId)
+
+            notificationRepository.findAll().map { it.memberId } shouldBe listOf(answered.realMemberId)
+        }
+
+        "이번 주 매칭 전 셋에서만 할 수 있고 아니면 거부 이유를 알려 준다" {
             val beforeMatching = saveAnsweredQuizSet()
             val matched = saveAnsweredQuizSet()
             saveMatchingRecords(matched.quizSetId, matched.realMemberId, matched.dummyId)
             val lastWeek = saveAnsweredQuizSet(QuizSetFixture.create())
 
-            adminQuizAnswerResetService.findMemberAnswerResetOption(beforeMatching.quizSetId).isResettable shouldBe true
-            adminQuizAnswerResetService.findMemberAnswerResetOption(matched.quizSetId).isResettable shouldBe false
-            adminQuizAnswerResetService.findMemberAnswerResetOption(lastWeek.quizSetId).isResettable shouldBe false
+            adminQuizAnswerResetService.findMemberAnswerResetAvailability(beforeMatching.quizSetId).refusal shouldBe null
+            adminQuizAnswerResetService.findMemberAnswerResetAvailability(matched.quizSetId).refusal shouldBe
+                MemberAnswerResetRefusal.AFTER_MATCHING
+            adminQuizAnswerResetService.findMemberAnswerResetAvailability(lastWeek.quizSetId).refusal shouldBe
+                MemberAnswerResetRefusal.NOT_CURRENT_WEEK
         }
     }
 })

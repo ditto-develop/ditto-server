@@ -26,9 +26,9 @@ class AdminQuizQaController(
                 val erased = summary.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 매칭 기록 초기화: $erased" }
                 redirectAttributes.addFlashAttribute("message", "매칭 기록을 초기화했습니다. $erased")
-                "redirect:/admin/quiz-sets/$id"
+                detailRedirect(id)
             },
-            onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes) },
+            onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, detailRedirect(id)) },
         )
 
     @PostMapping("/admin/quiz-sets/{id}/qa/force-delete")
@@ -45,9 +45,9 @@ class AdminQuizQaController(
                     "message",
                     "퀴즈셋 #$id(${summary.quizSetTitle})을 강제 삭제했습니다. $erased",
                 )
-                "redirect:/admin/quiz-sets"
+                QUIZ_SET_LIST_REDIRECT
             },
-            onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes) },
+            onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, detailRedirect(id)) },
         )
 
     @PostMapping("/admin/quiz-sets/{id}/qa/reset-answers")
@@ -61,9 +61,9 @@ class AdminQuizQaController(
                 val erased = summary.toDisplayText()
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 답·진행 초기화: $erased" }
                 redirectAttributes.addFlashAttribute("message", "답·진행을 초기화했습니다. $erased")
-                "redirect:/admin/quiz-sets/$id"
+                detailRedirect(id)
             },
-            onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes) },
+            onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, detailRedirect(id)) },
         )
 
     @PostMapping("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers")
@@ -73,34 +73,36 @@ class AdminQuizQaController(
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
-        val participantsPage = "redirect:/admin/quiz-sets/$id/participants"
+        val participantsRedirect = "redirect:/admin/quiz-sets/$id/participants"
         return runCatching { adminQuizAnswerResetService.resetMemberAnswers(id, memberId) }
             .fold(
                 onSuccess = {
                     log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #$id 회원 #$memberId 답·진행 초기화" }
-                    redirectAttributes.addFlashAttribute("message", "회원 #$memberId 의 답·진행을 초기화했습니다.")
-                    participantsPage
+                    redirectAttributes.addFlashAttribute("message", "회원 #${memberId}의 답·진행을 초기화했습니다.")
+                    participantsRedirect
                 },
-                onFailure = { exception -> redirectAfterFailure(id, exception, redirectAttributes, participantsPage) },
+                onFailure = { exception -> redirectAfterFailure(exception, redirectAttributes, participantsRedirect) },
             )
     }
 
-    // NOT_FOUND 는 퀴즈셋이 없다는 뜻이라 돌아갈 화면이 없어 목록으로 보낸다.
     private fun redirectAfterFailure(
-        id: Long,
         exception: Throwable,
         redirectAttributes: RedirectAttributes,
-        returnPage: String = "redirect:/admin/quiz-sets/$id",
+        redirectOnWarn: String,
     ): String {
         if (exception !is WarnException) throw exception
 
-        log.warn { "퀴즈셋 #$id QA 도구 요청 거부: ${exception.message}" }
+        log.warn { "QA 도구 요청 거부($redirectOnWarn): ${exception.message}" }
         redirectAttributes.addFlashAttribute("error", exception.message)
-        if (exception.errorCode == ErrorCode.NOT_FOUND) return "redirect:/admin/quiz-sets"
-        return returnPage
+        // NOT_FOUND 는 퀴즈셋이 없다는 뜻이라 돌아갈 화면이 없다.
+        if (exception.errorCode == ErrorCode.NOT_FOUND) return QUIZ_SET_LIST_REDIRECT
+        return redirectOnWarn
     }
 
+    private fun detailRedirect(id: Long): String = "redirect:/admin/quiz-sets/$id"
+
     companion object {
+        private const val QUIZ_SET_LIST_REDIRECT = "redirect:/admin/quiz-sets"
         private val log = KotlinLogging.logger {}
     }
 }
