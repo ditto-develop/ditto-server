@@ -199,6 +199,16 @@
 
             <section class="card qa-reviews" id="qa-reviews" th:unless="${reviews.isEmpty()}">
                 <h2>더미 평가 <span class="muted">앱 평가 API로 더미가 냅니다. 낸 평가는 바꿀 수 없습니다.</span></h2>
+                <form class="qa-review-bulk" method="post" th:unless="${reviews.?[!pendingTargets.isEmpty()].isEmpty()}"
+                      th:action="@{/admin/qa/rooms/{id}/reviews/submit-all-dummies(id=${room.roomId})}"
+                      data-confirm="더미의 남은 평가를 모두 냅니다. 낸 평가는 바꿀 수 없습니다.">
+                    <span class="muted" th:text="|남은 대상 모두 ${bulkReviewDescription}|">남은 대상 모두 만났어요 · 5점</span>
+                    <select name="wantsRematch" th:if="${room.group}" aria-label="일괄 재매칭 의사">
+                        <option value="true">재매칭 원함</option>
+                        <option value="false">원하지 않음</option>
+                    </select>
+                    <button class="btn secondary sm" type="submit">더미 남은 평가 모두 내기</button>
+                </form>
                 <div class="qa-review" th:each="review : ${reviews}">
                     <div class="qa-review-head">
                         <b th:text="${review.author.nickname}">dummy</b>

@@ -37,6 +37,7 @@ class AdminQaRoomController(
         model.addAttribute("room", room)
         model.addAttribute("reviews", qaRoomReviews.of(roomId))
         model.addAttribute("meetingStatuses", MeetingStatus.entries)
+        model.addAttribute("bulkReviewDescription", QaBulkReviewAnswer.description)
         model.addAttribute("timelineSize", AdminQaRoomService.TIMELINE_SIZE)
         model.addAttribute("messagePresets", QaMessagePreset.entries)
         model.addAttribute("sampleVoteDescription", QaSampleVote.description)

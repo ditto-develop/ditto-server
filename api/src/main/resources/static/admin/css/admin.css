@@ -574,6 +574,8 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-review + .qa-review { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .qa-review-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .qa-review-head .muted { font-size: 12px; }
+.qa-review-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.qa-review-bulk select { width: auto; padding: 6px 8px; font-size: 13px; }
 .qa-review-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .qa-review-form select, .qa-review-form input { width: auto; padding: 6px 8px; font-size: 13px; }
 .qa-review-form input[name="comment"] { flex: 1; min-width: 120px; }
