@@ -571,6 +571,12 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-vote-actions { margin-top: 10px; }
 .qa-note { font-size: 12px; margin: -8px 0 8px; }
 .qa-closed-votes { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; }
+/* 상단 바(64px)가 고정이라 앵커로 내려오면 카드 제목이 가려진다. */
+#qa-reviews { scroll-margin-top: 80px; }
+/* 더미마다 표가 따로라 열 너비를 고정해야 재매칭 열이 줄을 맞춘다. */
+.qa-review .tbl { table-layout: fixed; }
+.qa-review .tbl th:first-child { width: 22%; }
+.qa-review .tbl th:nth-child(3) { width: 24%; }
 .qa-review + .qa-review { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .qa-review-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .qa-review-head .muted { font-size: 12px; }
