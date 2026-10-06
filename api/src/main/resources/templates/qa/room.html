@@ -42,6 +42,12 @@
                 <div class="alert error" th:if="${room.ended}">
                     종료된 방입니다(<th:block th:replace="~{qa/parts :: endReason(${room.endReason})}"></th:block>).
                     <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(코드 ${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block></div>
+                <div class="alert info qa-alert-with-action" th:unless="${reviews.isEmpty()}">
+                    <span>더미 평가가 열렸습니다. 평가 칸은 자동 갱신되지 않아 새로고침해야 최신 상태가 보입니다.</span>
+                    <form class="inline-form" method="get" th:action="@{/admin/qa/rooms/{id}(id=${room.roomId})} + '#qa-reviews'">
+                        <button class="btn secondary sm" type="submit">평가 칸 새로고침</button>
+                    </form>
+                </div>
             </div>
 
             <div class="qa-room">
@@ -190,6 +196,43 @@
                     </section>
                 </div>
             </div>
+
+            <section class="card qa-reviews" id="qa-reviews" th:unless="${reviews.isEmpty()}">
+                <h2>더미 평가</h2>
+                <div class="qa-review" th:each="review : ${reviews}">
+                    <div class="qa-review-head">
+                        <b th:text="${review.author.nickname}">dummy</b>
+                        <span class="muted"
+                              th:text="|평가 #${review.reviewId} · ${review.targets.size() - review.pendingTargets.size()}/${review.targets.size()}명 냄|">평가 #1 · 0/3명 냄</span>
+                    </div>
+                    <table class="tbl">
+                        <thead>
+                        <tr>
+                            <th>대상</th>
+                            <th>더미가 낸 평가</th>
+                            <th th:if="${review.canRematch}" title="더미의 의사 · 상대의 의사 · 쌍 상태">재매칭</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="target : ${review.targets}">
+                            <td th:text="${target.member.nickname}">홍길동</td>
+                            <td>
+                                <span th:if="${target.answered}"
+                                      th:text="${target.comment != null}
+                                            ? |${target.meetingStatus.description} · ${target.rating}점 · ${target.comment}|
+                                            : |${target.meetingStatus.description} · ${target.rating}점|">만났어요 · 5점</span>
+                                <span class="muted" th:unless="${target.answered}">아직 안 냄</span>
+                            </td>
+                            <td th:if="${review.canRematch}">
+                                더미 <th:block th:replace="~{qa/parts :: rematchWants(${target.authorWantsRematch})}"></th:block>
+                                · 상대 <th:block th:replace="~{qa/parts :: rematchWants(${target.counterpartWantsRematch})}"></th:block>
+                                <th:block th:replace="~{qa/parts :: rematchStatus(${target.rematchStatus})}"></th:block>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 </div>

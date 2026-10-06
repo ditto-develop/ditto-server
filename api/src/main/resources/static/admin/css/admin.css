@@ -570,6 +570,10 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-vote-actions { margin-top: 10px; }
 .qa-note { font-size: 12px; margin: -8px 0 8px; }
 .qa-closed-votes { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; }
+.qa-reviews { margin-top: 16px; }
+.qa-review + .qa-review { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.qa-review-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.qa-review-head .muted { font-size: 12px; }
 
 @media (max-width: 960px) {
     .qa-room { grid-template-columns: 1fr; }

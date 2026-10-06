@@ -32,6 +32,18 @@
     </label>
 </div>
 
+<th:block th:fragment="rematchWants(wants)" th:switch="${wants}">
+    <th:block th:case="true">원함</th:block>
+    <th:block th:case="false">원하지 않음</th:block>
+    <th:block th:case="*">아직 안 냄</th:block>
+</th:block>
+
+<th:block th:fragment="rematchStatus(status)" th:switch="${status?.name()}">
+    <span class="badge on" th:case="'MATCHED'">성사</span>
+    <span class="badge off" th:case="'CANCELLED'">취소</span>
+    <span class="badge matching" th:case="*">대기</span>
+</th:block>
+
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
     <span class="badge matching" th:case="'SCHEDULED'">열리기 전</span>
     <span class="badge on" th:case="'ACTIVE'">진행 중</span>

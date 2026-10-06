@@ -22,6 +22,7 @@ class AdminQaRoomController(
     private val adminQaRoomService: AdminQaRoomService,
     private val qaDummies: QaDummies,
     private val qaMemberLabels: QaMemberLabels,
+    private val qaRoomReviews: QaRoomReviews,
     private val chatController: ChatController,
     private val chatStompController: ChatStompController,
 ) {
@@ -33,6 +34,7 @@ class AdminQaRoomController(
             return QaRoutes.ROOMS_SECTION
         }
         model.addAttribute("room", room)
+        model.addAttribute("reviews", qaRoomReviews.of(roomId))
         model.addAttribute("timelineSize", AdminQaRoomService.TIMELINE_SIZE)
         model.addAttribute("messagePresets", QaMessagePreset.entries)
         model.addAttribute("sampleVoteDescription", QaSampleVote.description)
