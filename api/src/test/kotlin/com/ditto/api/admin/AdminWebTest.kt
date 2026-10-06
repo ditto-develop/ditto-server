@@ -656,6 +656,8 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(containsString("<h2>권한 바꿀 회원 찾기</h2>")))
+            .andExpect(content().string(not(containsString("<h2>검색 결과</h2>"))))
     }
 
     @Test

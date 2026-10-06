@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">회원 관리</h1>
-            <p class="page-desc">닉네임·회원 ID나 이메일로 회원을 찾아 퀴즈 현황을 보거나 권한을 바꿉니다. 현재 관리자 목록에서도 바로 바꿀 수 있습니다.</p>
+            <p class="page-desc">닉네임·회원 ID로 찾아 퀴즈 현황을 보거나, 이메일로 찾아 권한을 바꿉니다. 현재 관리자 목록에서도 권한을 바로 바꿀 수 있습니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <!-- 현재 관리자 -->
@@ -20,11 +20,12 @@
                 </th:block>
             </div>
 
-            <!-- 닉네임·회원 ID 검색 -->
+            <!-- 퀴즈 현황 볼 회원 찾기 -->
             <div class="card">
+                <h2>퀴즈 현황 볼 회원 찾기</h2>
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
-                        <label for="memberQuery">닉네임·회원 ID로 찾기</label>
+                        <label for="memberQuery">닉네임 또는 #회원 ID</label>
                         <input type="search" id="memberQuery" name="q" th:value="${q}" placeholder="예: dummy-female, #123" autocomplete="off"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">검색</button></div>
@@ -60,23 +61,21 @@
                 </th:block>
             </div>
 
-            <!-- 이메일 검색 -->
+            <!-- 권한 바꿀 회원 찾기 -->
             <div class="card">
+                <h2>권한 바꿀 회원 찾기</h2>
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
-                        <label for="memberEmail">이메일로 검색</label>
+                        <label for="memberEmail">이메일</label>
                         <input type="text" id="memberEmail" name="email" th:value="${email}" placeholder="member@example.com"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">검색</button></div>
                 </form>
-            </div>
-
-            <!-- 검색 결과 -->
-            <div class="card" th:if="${searched}">
-                <h2>검색 결과</h2>
-                <p class="muted" th:if="${members == null or members.isEmpty()}">검색 결과가 없습니다.</p>
-                <th:block th:unless="${members == null or members.isEmpty()}">
-                    <div th:replace="~{member/parts :: memberTable(${members})}"></div>
+                <th:block th:if="${searched}">
+                    <p class="muted" style="margin:0" th:if="${members == null or members.isEmpty()}">검색 결과가 없습니다.</p>
+                    <th:block th:unless="${members == null or members.isEmpty()}">
+                        <div th:replace="~{member/parts :: memberTable(${members})}"></div>
+                    </th:block>
                 </th:block>
             </div>
         </main>
