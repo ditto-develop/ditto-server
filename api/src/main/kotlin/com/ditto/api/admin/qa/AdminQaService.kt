@@ -79,11 +79,11 @@ class AdminQaService(
         return pendingDummyIds.map(members::of)
     }
 
-
     private fun chatReminderLeadHours() = QaChatReminderLeadHours(
-        noMessage = chatNoMessageNotifier.leadHours,
-        endingSoon = chatEndingSoonNotifier.leadHours,
+        firstMessageHours = chatNoMessageNotifier.leadHours,
+        endingSoonHours = chatEndingSoonNotifier.leadHours,
     )
+
     private fun composePersonalSection(quizSets: List<QuizSet>, dummyIds: Set<Long>): QaPersonalSection {
         if (quizSets.isEmpty() || dummyIds.isEmpty()) return QaPersonalSection.EMPTY
 

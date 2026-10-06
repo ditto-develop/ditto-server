@@ -8,10 +8,10 @@ import java.time.DayOfWeek
  * - 목: 매칭([MATCHING_PERIOD])
  * - 금~일: 채팅([CHATTING_PERIOD])
  */
-enum class SystemPeriod {
-    QUIZ_PERIOD,
-    MATCHING_PERIOD,
-    CHATTING_PERIOD,
+enum class SystemPeriod(val description: String) {
+    QUIZ_PERIOD("퀴즈"),
+    MATCHING_PERIOD("매칭"),
+    CHATTING_PERIOD("채팅"),
     ;
 
     companion object {
