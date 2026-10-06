@@ -1,7 +1,9 @@
 package com.ditto.api.admin.qa
 
+import com.ditto.api.admin.qa.dto.QaReview
 import com.ditto.api.review.controller.MemberReviewController
 import com.ditto.api.review.dto.ReviewAnswerSubmitRequest
+import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
@@ -9,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** 더미의 평가 제출. 앱 평가 API를 더미로 불러 재매칭 성사·신청 알림까지 앱과 똑같이 일어난다. */
+/** QA 방 화면의 더미 평가 내기. */
 @Controller
 class AdminQaReviewController(
     private val qaDummies: QaDummies,
@@ -18,7 +20,7 @@ class AdminQaReviewController(
     private val memberReviewController: MemberReviewController,
 ) {
     @PostMapping("/admin/qa/dummies/{dummyId}/rooms/{roomId}/reviews/{reviewId}/targets/{targetId}")
-    fun submit(
+    fun submitAsDummy(
         @PathVariable dummyId: Long,
         @PathVariable roomId: Long,
         @PathVariable reviewId: Long,
@@ -27,32 +29,47 @@ class AdminQaReviewController(
         redirectAttributes: RedirectAttributes,
     ): String {
         val target = qaMemberLabels.one(targetId)
-        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "${target.nickname} 평가 내기") {
-            memberReviewController.submitAnswer(qaDummies.principalOf(dummyId), reviewId, targetId, request)
+        redirectAttributes.flashDummyActionWithResult(qaMemberLabels.one(dummyId), "${target.label} 평가 내기") {
+            submit(dummyId, reviewId, targetId, request)
         }
-        return QaRoutes.roomReviews(roomId)
+        return QaRoutes.roomReviewsSection(roomId)
     }
 
-    /** 더미마다 남은 대상을 차례로 낸다. 한 대상이 거부되면 그 더미는 거기서 멈추고 다음 더미로 넘어간다. */
     @PostMapping("/admin/qa/rooms/{roomId}/reviews/submit-all-dummies")
-    fun submitAllPending(
+    fun submitPendingForAllDummies(
         @PathVariable roomId: Long,
-        @RequestParam(defaultValue = "true") wantsRematch: Boolean,
+        @RequestParam(defaultValue = "REAL_MEMBERS_ONLY") rematchChoice: QaBulkRematchChoice,
         redirectAttributes: RedirectAttributes,
     ): String {
-        val pendingReviewByAuthorId = qaRoomReviews.of(roomId)
-            .filter { it.pendingTargets.isNotEmpty() }
+        val pendingReviewByAuthorId = qaRoomReviews.findDummyReviews(roomId)
+            .filter { it.hasPendingTargets }
             .associateBy { it.author.id }
         redirectAttributes.flashEachDummyAction(
-            "더미 남은 평가 모두 내기",
+            "방 #$roomId 더미 남은 평가 모두 내기",
             pendingReviewByAuthorId.values.map { it.author },
-        ) { dummy ->
-            val review = pendingReviewByAuthorId.getValue(dummy.id)
-            val request = QaBulkReviewAnswer.request(review.canRematch, wantsRematch)
-            review.pendingTargets.forEach { target ->
-                memberReviewController.submitAnswer(qaDummies.principalOf(dummy.id), review.reviewId, target.member.id, request)
-            }
+        ) { dummy -> submitPendingTargets(pendingReviewByAuthorId.getValue(dummy.id), rematchChoice) }
+        return QaRoutes.roomReviewsSection(roomId)
+    }
+
+    /** 대상 하나가 거부되면 거기서 멈춘다. 앞 대상은 이미 확정됐으니 몇 명까지 냈는지 거부 문구에 붙인다. */
+    private fun submitPendingTargets(review: QaReview, rematchChoice: QaBulkRematchChoice) {
+        review.pendingTargets.forEachIndexed { submittedCount, target ->
+            val request = QaBulkReviewAnswer.request(
+                canRematch = review.canRematch,
+                wantsRematch = rematchChoice.wantsToward(target.isDummy),
+            )
+            runCatching { submit(review.author.id, review.reviewId, target.member.id, request) }
+                .onFailure { rejection ->
+                    if (rejection !is WarnException) throw rejection
+                    val progress = "${review.pendingTargets.size}명 중 ${submittedCount}명 낸 뒤 ${target.member.label}에서 멈춤"
+                    throw WarnException(rejection.errorCode, "$progress: ${rejection.message}")
+                }
         }
-        return QaRoutes.roomReviews(roomId)
+    }
+
+    /** 이번 제출로 재매칭이 성사되면 그 사실을 돌려준다. */
+    private fun submit(dummyId: Long, reviewId: Long, targetId: Long, request: ReviewAnswerSubmitRequest): String? {
+        val response = memberReviewController.submitAnswer(qaDummies.principalOf(dummyId), reviewId, targetId, request)
+        return response.data?.rematch?.let { "재매칭 성사" }
     }
 }

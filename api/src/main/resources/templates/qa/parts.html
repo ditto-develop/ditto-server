@@ -38,9 +38,9 @@
     <th:block th:case="*">아직 안 냄</th:block>
 </th:block>
 
-<th:block th:fragment="rematchStatus(status)" th:switch="${status?.name()}">
+<th:block th:fragment="rematchStatus(pair)" th:switch="${pair.status.name()}">
     <span class="badge on" th:case="'MATCHED'">성사</span>
-    <span class="badge off" th:case="'CANCELLED'">취소</span>
+    <span class="badge off" th:case="'CANCELLED'" th:text="${pair.cancelledByMemberLeave} ? '취소됨(탈퇴)' : '불성사'">불성사</span>
     <span class="badge matching" th:case="*">대기</span>
 </th:block>
 

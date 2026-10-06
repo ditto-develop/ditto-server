@@ -570,15 +570,23 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-vote-actions { margin-top: 10px; }
 .qa-note { font-size: 12px; margin: -8px 0 8px; }
 .qa-closed-votes { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; }
-.qa-reviews { margin-top: 16px; }
 .qa-review + .qa-review { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .qa-review-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
 .qa-review-head .muted { font-size: 12px; }
-.qa-review-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
-.qa-review-bulk select { width: auto; padding: 6px 8px; font-size: 13px; }
-.qa-review-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.qa-review-form select, .qa-review-form input { width: auto; padding: 6px 8px; font-size: 13px; }
+.qa-review-bulk, .qa-review-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qa-review-bulk { margin-bottom: 16px; }
+.qa-review-bulk select, .qa-review-form select, .qa-review-form input {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--surface);
+}
 .qa-review-form input[name="comment"] { flex: 1; min-width: 120px; }
+.qa-review .tbl td { padding: 8px 6px; }
+.qa-rematch-cell { word-break: keep-all; font-size: 13px; }
+.qa-rematch-cell .muted { font-size: 12px; }
 
 @media (max-width: 960px) {
     .qa-room { grid-template-columns: 1fr; }

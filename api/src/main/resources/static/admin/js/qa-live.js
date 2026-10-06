@@ -39,17 +39,38 @@
         alerts.appendChild(alert);
     }
 
-    // 고르던 더미(select)는 갈아 끼운 뒤에도 그대로 둔다. 남은 선택지에 없으면 첫 항목으로 돌아간다.
-    function keepSelectedValues(current, next) {
-        current.querySelectorAll('select[name]').forEach((select) => {
-            const replacement = next.querySelector(`select[name="${select.name}"]`);
-            if (replacement && [...replacement.options].some((option) => option.value === select.value)) {
-                replacement.value = select.value;
-            }
+    // 같은 이름의 칸이 폼마다 반복되는 영역(평가)은 폼 id 로 짝을 찾는다. id 가 없는 폼은 이름만 본다.
+    function replacementOf(field, next) {
+        const formId = field.form?.id;
+        if (formId) return next.querySelector(`#${CSS.escape(formId)} [name="${field.name}"]`);
+        return field.tagName === 'SELECT' ? next.querySelector(`select[name="${field.name}"]`) : null;
+    }
+
+    // 고르던 더미(select)와 쓰던 코멘트는 갈아 끼운 뒤에도 그대로 둔다. 남은 선택지에 없으면 첫 항목으로 돌아간다.
+    function keepFieldValues(current, next) {
+        current.querySelectorAll('select[name], input[type="text"][name]').forEach((field) => {
+            const replacement = replacementOf(field, next);
+            if (!replacement) return;
+            if (field.tagName === 'SELECT' && ![...replacement.options].some((option) => option.value === field.value)) return;
+            replacement.value = field.value;
         });
     }
 
-    // 체크를 고르던 영역(투표)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
+    // 영역 안에 띄운 결과 알림은 다음 제출 전까지 남긴다.
+    function keepInlineAlerts(current, next) {
+        const slot = current.querySelector('[data-qa-inline-alerts]');
+        const nextSlot = next.querySelector('[data-qa-inline-alerts]');
+        if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
+    }
+
+    // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽 영역에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
+    function showInlineAlerts(regionId) {
+        const slot = document.getElementById(regionId)?.querySelector('[data-qa-inline-alerts]');
+        const alerts = document.getElementById('qa-alerts');
+        if (slot && alerts) slot.replaceChildren(...[...alerts.children].map((alert) => alert.cloneNode(true)));
+    }
+
+    // 체크를 고르던 영역(투표)과 입력 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
     // 스크롤을 올려 지난 대화를 보는 중이면 갱신이 바닥으로 끌어내리지 않는다.
     function swapLiveRegions(doc, submittedRegion = null) {
         const current = timeline();
@@ -58,7 +79,8 @@
             if (region.dataset.editing === 'true' && region !== submittedRegion) return;
             const next = doc.getElementById(region.id);
             if (!next) return;
-            keepSelectedValues(region, next);
+            keepFieldValues(region, next);
+            keepInlineAlerts(region, next);
             region.replaceWith(next);
         });
         if (stickToBottom) scrollTimelineToBottom();
@@ -96,7 +118,7 @@
             if (startedGeneration !== submitGeneration || submitting) return;
             swapLiveRegions(parse(html));
             const editing = document.querySelector('[data-qa-live][data-editing="true"]');
-            showLiveState(editing ? `${LIVE_TEXT} (고르던 투표 영역은 제출 전까지 멈춤)` : LIVE_TEXT, true);
+            showLiveState(editing ? `${LIVE_TEXT} (고르거나 입력 중인 영역은 제출 전까지 멈춤)` : LIVE_TEXT, true);
         } catch (ignored) {
             showLiveState('갱신 실패(네트워크), 다시 시도 중', false);
         } finally {
@@ -124,6 +146,12 @@
         if (anyChecked) region.dataset.editing = 'true';
         else delete region.dataset.editing;
     });
+
+    // 평가처럼 고르고 쓰는 칸이 많은 영역은 손대는 순간 멈춘다. 제출하면 영역이 새로 그려지며 풀린다.
+    ['input', 'change'].forEach((type) => document.addEventListener(type, (event) => {
+        const region = event.target.closest('[data-qa-live][data-qa-hold-while-editing]');
+        if (region) region.dataset.editing = 'true';
+    }));
 
     // 버튼마다 다른 엔드포인트(formaction)와 확인 문구(data-confirm)를 둘 수 있다.
     document.addEventListener('submit', async (event) => {
@@ -160,6 +188,7 @@
             const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);
             swapLiveRegions(doc, submittedRegion);
+            if (submittedRegion) showInlineAlerts(submittedRegion.id);
             clearComposerIfSent(form, submitter, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {

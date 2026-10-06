@@ -9,7 +9,7 @@ object QaRoutes {
 
     fun room(roomId: Long): String = "redirect:$CONSOLE_PATH/rooms/$roomId"
 
-    fun roomReviews(roomId: Long): String = "${room(roomId)}#qa-reviews"
+    fun roomReviewsSection(roomId: Long): String = "${room(roomId)}#qa-reviews"
 
     /** 콘솔 밖이나 다른 호스트로는 보내지 않는다. */
     fun backTo(returnTo: String): String {
