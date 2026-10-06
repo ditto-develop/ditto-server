@@ -9,8 +9,9 @@ import com.ditto.api.admin.qa.dto.QaPersonalRequestOption
 import com.ditto.api.admin.qa.dto.QaPersonalSection
 import com.ditto.api.admin.qa.dto.QaReceivedPersonalRequest
 import com.ditto.api.admin.qa.dto.QaSentPersonalRequest
-import com.ditto.api.admin.qa.dto.QaTimeShortcutOption
 import com.ditto.api.match.GroupResponseDeadline
+import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
+import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.system.ServerTimeService
 import com.ditto.domain.chat.entity.ChatRoomType
@@ -44,6 +45,8 @@ class AdminQaService(
     private val chatRoomRepository: ChatRoomRepository,
     private val serverTimeProvider: ServerTimeProvider,
     private val serverTimeService: ServerTimeService,
+    private val chatNoMessageNotifier: ChatNoMessageNotifier,
+    private val chatEndingSoonNotifier: ChatEndingSoonNotifier,
 ) {
     /** 시각은 한 번만 읽는다. 운영 주와 그룹 응답 마감이 같은 순간을 기준으로 해야 화면 안에서 어긋나지 않는다. */
     fun getConsole(): QaConsoleView {
@@ -63,9 +66,7 @@ class AdminQaService(
                 responseDeadline = GroupResponseDeadline.deadlineOf(week),
                 isResponseClosed = GroupResponseDeadline.hasPassed(week, now),
             ),
-            timeShortcuts = QaTimeShortcut.entries.map {
-                QaTimeShortcutOption(it.label, dateTime = it.dateTimeIn(week), confirmMessage = it.confirmMessage)
-            },
+            timeline = QaTimelineComposer.compose(week, now, chatReminderLeadHours()),
         )
     }
 
@@ -77,6 +78,11 @@ class AdminQaService(
         val members = qaMemberLabels.load(pendingDummyIds)
         return pendingDummyIds.map(members::of)
     }
+
+    private fun chatReminderLeadHours() = QaChatReminderLeadHours(
+        firstMessageHours = chatNoMessageNotifier.leadHours,
+        endingSoonHours = chatEndingSoonNotifier.leadHours,
+    )
 
     private fun composePersonalSection(quizSets: List<QuizSet>, dummyIds: Set<Long>): QaPersonalSection {
         if (quizSets.isEmpty() || dummyIds.isEmpty()) return QaPersonalSection.EMPTY

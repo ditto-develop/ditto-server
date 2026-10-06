@@ -26,7 +26,7 @@ class ChatEndingSoonNotifier(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationAppender: NotificationAppender,
-    @Value("\${chat.ending-soon.lead-hours:6}") private val leadHours: Long,
+    @Value("\${chat.ending-soon.lead-hours:6}") val leadHours: Long,
 ) {
     /**
      * [now] 기준으로 [leadHours] 안에 끝나는 방의 참여자에게 알린다.
