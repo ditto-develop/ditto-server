@@ -34,7 +34,6 @@ class AdminMemberController(
         model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
         model.addAttribute("admins", adminMemberService.listAdmins())
-        model.addAttribute("searched", !email.isNullOrBlank())
         if (!email.isNullOrBlank()) {
             model.addAttribute("members", adminMemberService.searchByEmail(email))
         }

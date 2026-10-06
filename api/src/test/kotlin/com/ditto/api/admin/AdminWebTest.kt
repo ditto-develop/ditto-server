@@ -46,6 +46,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
+import org.hamcrest.Matchers.stringContainsInOrder
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -645,19 +646,25 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("회원 관리 페이지 — 검색 전/검색 결과 렌더")
-    fun memberSearchPage() {
-        // 검색 전 빈 상태
-        mockMvc.perform(get("/admin/members").with(authentication(admin()))).andExpect(status().isOk)
-
-        // 같은 이메일을 가진 회원 2명
+    @DisplayName("이메일 검색 결과는 권한 바꾸기 카드 안에 그린다")
+    fun memberSearchByEmail() {
         memberRepository.save(MemberFixture.create(nickname = "m1", email = "dup@ditto.pics", role = MemberRole.USER))
         memberRepository.save(MemberFixture.create(nickname = "m2", email = "dup@ditto.pics", role = MemberRole.ADMIN))
 
         mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<h2>권한 바꿀 회원 찾기</h2>")))
-            .andExpect(content().string(not(containsString("<h2>검색 결과</h2>"))))
+            .andExpect(content().string(stringContainsInOrder("<h2>권한 바꾸기</h2>", ">m1<", ">m2<", "<h2>현재 관리자")))
+    }
+
+    @Test
+    @DisplayName("이메일로 찾은 회원이 없으면 전체를 정확히 입력하라고 안내한다")
+    fun memberSearchByEmailNoMatch() {
+        val noMatchGuide = "이메일 전체를 정확히 입력하세요."
+
+        mockMvc.perform(get("/admin/members").with(authentication(admin())))
+            .andExpect(content().string(not(containsString(noMatchGuide))))
+        mockMvc.perform(get("/admin/members").param("email", "dup").with(authentication(admin())))
+            .andExpect(content().string(containsString(noMatchGuide)))
     }
 
     @Test
@@ -684,7 +691,7 @@ class AdminWebTest {
     fun memberPageWithoutAdmins() {
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(containsString("관리자가 없습니다.")))
-            .andExpect(content().string(not(containsString("<th>권한 변경</th>"))))
+            .andExpect(content().string(not(containsString("<th>권한 바꾸기</th>"))))
     }
 
     @Test

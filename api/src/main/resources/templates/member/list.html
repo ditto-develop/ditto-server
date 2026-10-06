@@ -11,18 +11,8 @@
             <p class="page-desc">닉네임·회원 ID로 찾아 퀴즈 현황을 보거나, 이메일로 찾아 권한을 바꿉니다. 현재 관리자 목록에서도 권한을 바로 바꿀 수 있습니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
-            <!-- 현재 관리자 -->
             <div class="card">
-                <h2>현재 관리자 <span class="badge cat" th:text="${admins.size()} + '명'">0명</span></h2>
-                <p class="muted" th:if="${admins.isEmpty()}">관리자가 없습니다.</p>
-                <th:block th:unless="${admins.isEmpty()}">
-                    <div th:replace="~{member/parts :: memberTable(${admins})}"></div>
-                </th:block>
-            </div>
-
-            <!-- 퀴즈 현황 볼 회원 찾기 -->
-            <div class="card">
-                <h2>퀴즈 현황 볼 회원 찾기</h2>
+                <h2>퀴즈 현황 보기</h2>
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
                         <label for="memberQuery">닉네임 또는 #회원 ID</label>
@@ -61,21 +51,28 @@
                 </th:block>
             </div>
 
-            <!-- 권한 바꿀 회원 찾기 -->
             <div class="card">
-                <h2>권한 바꿀 회원 찾기</h2>
+                <h2>권한 바꾸기</h2>
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
                         <label for="memberEmail">이메일</label>
-                        <input type="text" id="memberEmail" name="email" th:value="${email}" placeholder="member@example.com"/>
+                        <input type="search" id="memberEmail" name="email" th:value="${email}" placeholder="예: member@example.com" autocomplete="off"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">검색</button></div>
                 </form>
-                <th:block th:if="${searched}">
-                    <p class="muted" style="margin:0" th:if="${members == null or members.isEmpty()}">검색 결과가 없습니다.</p>
-                    <th:block th:unless="${members == null or members.isEmpty()}">
+                <th:block th:if="${members != null}">
+                    <p class="muted" style="margin:0" th:if="${members.isEmpty()}">검색 결과가 없습니다. 이메일 전체를 정확히 입력하세요.</p>
+                    <th:block th:unless="${members.isEmpty()}">
                         <div th:replace="~{member/parts :: memberTable(${members})}"></div>
                     </th:block>
+                </th:block>
+            </div>
+
+            <div class="card">
+                <h2>현재 관리자 <span class="badge cat" th:text="${admins.size()} + '명'">0명</span></h2>
+                <p class="muted" th:if="${admins.isEmpty()}">관리자가 없습니다.</p>
+                <th:block th:unless="${admins.isEmpty()}">
+                    <div th:replace="~{member/parts :: memberTable(${admins})}"></div>
                 </th:block>
             </div>
         </main>
