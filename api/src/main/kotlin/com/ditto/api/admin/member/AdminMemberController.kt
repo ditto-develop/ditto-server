@@ -45,11 +45,13 @@ class AdminMemberController(
     fun quizzes(
         @PathVariable id: Long,
         @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) email: String?,
         model: Model,
     ): String {
-        val backQuery = q?.takeIf { it.isNotBlank() } ?: "#$id"
+        val hasSearch = !q.isNullOrBlank() || !email.isNullOrBlank()
         model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
-        model.addAttribute("backQuery", backQuery)
+        model.addAttribute("backQuery", if (hasSearch) q.orEmpty() else "#$id")
+        model.addAttribute("backEmail", email.orEmpty())
         model.addAttribute("active", "member")
         return "member/quizzes"
     }
@@ -58,6 +60,7 @@ class AdminMemberController(
     fun changeRole(
         @PathVariable id: Long,
         @RequestParam role: MemberRole,
+        @RequestParam(required = false) q: String?,
         @RequestParam(required = false) email: String?,
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
@@ -65,6 +68,7 @@ class AdminMemberController(
         adminMemberService.changeRole(id, role)
         log.info { "어드민[${admin.displayName}] 이 회원 #$id 의 권한을 $role 로 변경" }
         redirectAttributes.addFlashAttribute("message", "회원 #${id}의 권한을 바꿨습니다: ${role.description}")
+        if (!q.isNullOrBlank()) redirectAttributes.addAttribute("q", q)
         if (!email.isNullOrBlank()) redirectAttributes.addAttribute("email", email)
         return "redirect:/admin/members"
     }

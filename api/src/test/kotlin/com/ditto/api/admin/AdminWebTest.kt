@@ -668,6 +668,25 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("한쪽을 검색해도 다른 쪽 검색어를 함께 보내 두 결과를 유지한다")
+    fun memberSearchKeepsOtherSearch() {
+        mockMvc.perform(get("/admin/members").param("q", "닉네임").param("email", "keep@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"email\" value=\"keep@ditto.pics\"/>")))
+            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"q\" value=\"닉네임\"/>")))
+    }
+
+    @Test
+    @DisplayName("이메일 검색에서 퀴즈 현황에 갔다가 돌아오면 그 이메일 검색으로 돌아온다")
+    fun memberQuizzesBackToEmailSearch() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "이메일회원", email = "back@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("email", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=&amp;email=back@ditto.pics")))
+        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("email", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("href=\"/admin/members?q=&amp;email=back@ditto.pics\"")))
+    }
+
+    @Test
     @DisplayName("회원 관리에서 닉네임 부분 일치로 회원을 찾는다")
     fun memberSearchByNickname() {
         val member = memberRepository.save(MemberFixture.create(nickname = "찾을회원", email = "find@ditto.pics"))
@@ -758,9 +777,9 @@ class AdminWebTest {
 
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
-                .param("role", "ADMIN").param("email", "role@ditto.pics"),
+                .param("role", "ADMIN").param("q", "rolechg").param("email", "role@ditto.pics"),
         )
-            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/members?q=rolechg&email=role%40ditto.pics"))
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
     }
 

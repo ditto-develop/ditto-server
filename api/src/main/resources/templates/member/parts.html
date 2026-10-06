@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${email} 을 사용한다. -->
+<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${q}, ${email} 을 사용한다. -->
 <table th:fragment="memberTable(rows)" class="tbl">
     <thead>
     <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 바꾸기</th><th></th></tr>
@@ -19,13 +19,14 @@
             <form class="btn-row" style="margin:0" th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
                   onsubmit="return confirm('이 회원의 권한을 바꿀까요?');">
                 <input type="hidden" name="email" th:value="${email}"/>
+                <input type="hidden" name="q" th:value="${q}"/>
                 <select name="role" style="width:auto; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit;">
                     <option th:each="r : ${roles}" th:value="${r}" th:text="${r.description}" th:selected="${r == m.role}"></option>
                 </select>
                 <button class="btn sm" type="submit">바꾸기</button>
             </form>
         </td>
-        <td class="actions"><a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.id})}">퀴즈 현황</a></td>
+        <td class="actions"><a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.id},q=${q},email=${email})}">퀴즈 현황</a></td>
     </tr>
     </tbody>
 </table>
