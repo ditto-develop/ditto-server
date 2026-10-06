@@ -45,6 +45,12 @@
     <span class="badge matching" th:case="*">대기</span>
 </th:block>
 
+<th:block th:fragment="systemPeriod(period)" th:switch="${period.name()}">
+    <th:block th:case="'QUIZ_PERIOD'">퀴즈(월~수)</th:block>
+    <th:block th:case="'MATCHING_PERIOD'">매칭(목)</th:block>
+    <th:block th:case="*">채팅(금~일)</th:block>
+</th:block>
+
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
     <span class="badge matching" th:case="'SCHEDULED'">열리기 전</span>
     <span class="badge on" th:case="'ACTIVE'">진행 중</span>

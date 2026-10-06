@@ -23,7 +23,7 @@ class ChatNoMessageNotifier(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationAppender: NotificationAppender,
-    @Value("\${chat.no-message.lead-hours:12}") private val leadHours: Long,
+    @Value("\${chat.no-message.lead-hours:12}") val leadHours: Long,
 ) {
     /** 조회 실패는 여기서 삼킨다. 스케줄러의 다른 처리를 막지 않기 위해서다. 실패하면 0. */
     fun notifyNoMessage(now: LocalDateTime): Int =

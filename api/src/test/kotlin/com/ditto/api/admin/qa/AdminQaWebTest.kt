@@ -333,13 +333,15 @@ class AdminQaWebTest(
     }
 
     "시각 바로가기" - {
-        "이번 주의 퀴즈 마감 직전·그룹 응답 마감 직전·채팅방 열린 직후·채팅 마감 직후를 보여준다" {
-            console().timeShortcuts.map { it.dateTime } shouldBe listOf(
-                thisMonday.plusDays(2).atTime(23, 49, 59),
-                thisMonday.plusDays(3).atTime(23, 50),
-                thisMonday.plusDays(4).atTime(0, 1),
-                thisMonday.plusDays(7).atTime(0, 1),
-            )
+        "이번 주 타임라인에 퀴즈부터 채팅 마감까지의 바로가기를 보여준다" {
+            val timeline = console().timeline
+
+            timeline.shortcuts.first().dateTime shouldBe thisMonday.atTime(0, 1)
+            timeline.shortcuts.last().dateTime shouldBe thisMonday.plusDays(7).atTime(0, 1)
+            timeline.shortcuts.map { it.label } shouldBe QaTimeShortcut.entries.map { it.label }
+            mockMvc.perform(get("/admin/qa").with(authentication(admin)))
+                .andExpect(content().string(containsString("첫 메시지 리마인드 직후")))
+                .andExpect(content().string(containsString(">+1시간</button>")))
         }
 
         "서버 시각을 옮기고 보던 화면으로 돌아간다" {

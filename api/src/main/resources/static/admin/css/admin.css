@@ -446,8 +446,97 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
-.qa-time-shortcuts { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.qa-time-shortcuts a { color: var(--primary); font-weight: 600; margin-left: 4px; }
+/* 시각 바로가기 타임라인. 위치(--pos, --start, --width)는 이번 주 안의 백분율이다. */
+.qa-week { flex-basis: 100%; --lane-height: 52px; }
+.qa-week-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qa-week-head a { color: var(--primary); font-weight: 600; margin-left: 4px; }
+.qa-week-track { position: relative; height: 26px; margin-top: 30px; border-radius: 6px; background: var(--bg); }
+.qa-week-period {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--start) * 1%);
+    width: calc(var(--width) * 1%);
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border-right: 2px solid var(--surface);
+}
+.qa-week-period.QUIZ_PERIOD { background: rgba(58, 134, 255, 0.13); color: var(--blue); border-radius: 6px 0 0 6px; }
+.qa-week-period.MATCHING_PERIOD { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
+.qa-week-period.CHATTING_PERIOD { background: rgba(34, 176, 125, 0.13); color: var(--success); border-radius: 0 6px 6px 0; }
+.qa-week-day {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: calc(var(--start) * 1%);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.qa-week-dot {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--pos) * 1%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--surface);
+    transform: translate(-50%, -50%);
+}
+.qa-week-dot.past { background: var(--text-muted); }
+.qa-week-now {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: calc(var(--pos) * 1%);
+    width: 2px;
+    background: var(--danger);
+    color: transparent;
+    font-size: 0;
+}
+.qa-week-now::after {
+    content: "지금";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.qa-week-lanes { position: relative; height: calc(var(--lanes) * var(--lane-height) + 14px); margin-top: 14px; }
+.qa-week-shortcut {
+    position: absolute;
+    top: calc(var(--lane) * var(--lane-height) + 14px);
+    left: calc(var(--pos) * 1%);
+    transform: translateX(calc(var(--pos) * -1%));
+    margin: 0;
+}
+/* 점에서 라벨까지 잇는 세로선. 라벨보다 먼저 그려 라벨이 선을 덮게 한다. */
+.qa-week-stem {
+    position: absolute;
+    top: -14px;
+    left: calc(var(--pos) * 1%);
+    width: 1px;
+    height: calc(var(--lane) * var(--lane-height) + 28px);
+    background: var(--border);
+}
+.qa-week-shortcut .btn { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.3; white-space: nowrap; }
+.qa-week-shortcut .btn span { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.qa-week-shortcut.past .btn { opacity: 0.55; }
+
+@media (max-width: 960px) {
+    .qa-week-lanes { height: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+    .qa-week-shortcut { position: static; transform: none; }
+    .qa-week-stem { display: none; }
+}
 .qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
 .qa-guide summary { cursor: pointer; font-weight: 700; }

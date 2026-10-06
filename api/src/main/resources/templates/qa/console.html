@@ -25,20 +25,48 @@
                     <a th:href="@{/admin/dummy}">더미 생성 →</a>
                     <a th:href="@{/admin/matching}">매칭 재생성 →</a>
                 </span>
-                <div class="qa-time-shortcuts">
-                    <span class="muted">시각 옮기기</span>
-                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
-                          th:each="shortcut : ${console.timeShortcuts}"
-                          th:attr="data-confirm=${shortcut.confirmMessage}">
-                        <input type="hidden" name="dateTime" th:value="${shortcut.dateTime}"/>
-                        <button class="btn secondary sm" type="submit"
-                                th:text="|${shortcut.label} · ${@qaTime.of(shortcut.dateTime)}|">
-                            채팅방 열린 직후 · 10/10(금) 00:01</button>
-                    </form>
-                    <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
-                        <button class="btn secondary sm" type="submit">시간 조정 끄기</button>
-                    </form>
-                    <a th:href="@{/admin/time-override}">직접 설정 →</a>
+                <div class="qa-week" th:with="timeline=${console.timeline}">
+                    <div class="qa-week-head">
+                        <span class="muted">시각 옮기기</span>
+                        <form class="inline-form" method="post" th:action="@{/admin/qa/server-time}"
+                              th:each="step : ${timeline.steps}" th:attr="data-confirm=${step.confirmMessage}">
+                            <input type="hidden" name="dateTime" th:value="${step.dateTime}"/>
+                            <button class="btn secondary sm" type="submit" th:title="${@qaTime.of(step.dateTime)}"
+                                    th:text="${step.label}">+1시간</button>
+                        </form>
+                        <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
+                            <button class="btn secondary sm" type="submit">시간 조정 끄기</button>
+                        </form>
+                        <a th:href="@{/admin/time-override}">직접 설정 →</a>
+                    </div>
+                    <div class="qa-week-track">
+                        <span class="qa-week-period" th:each="period : ${timeline.periods}"
+                              th:classappend="${period.period.name()}"
+                              th:style="|--start: ${period.startPercent}; --width: ${period.widthPercent}|">
+                            <th:block th:replace="~{qa/parts :: systemPeriod(${period.period})}"></th:block>
+                        </span>
+                        <span class="qa-week-day" th:each="day : ${timeline.days}"
+                              th:style="|--start: ${day.startPercent}|" th:text="${day.label}">10/05(월)</span>
+                        <span class="qa-week-dot" th:each="shortcut : ${timeline.shortcuts}"
+                              th:classappend="${shortcut.past} ? 'past'" th:style="|--pos: ${shortcut.percent}|"></span>
+                        <span class="qa-week-now" th:style="|--pos: ${timeline.nowPercent}|"
+                              th:title="|서버 시각 ${@qaTime.of(console.now)}|">지금</span>
+                    </div>
+                    <div class="qa-week-lanes" th:style="|--lanes: ${timeline.laneCount}|">
+                        <span class="qa-week-stem" th:each="shortcut : ${timeline.shortcuts}"
+                              th:style="|--pos: ${shortcut.percent}; --lane: ${shortcut.lane}|"></span>
+                        <form class="qa-week-shortcut" method="post" th:action="@{/admin/qa/server-time}"
+                              th:each="shortcut : ${timeline.shortcuts}"
+                              th:classappend="${shortcut.past} ? 'past'"
+                              th:style="|--pos: ${shortcut.percent}; --lane: ${shortcut.lane}|"
+                              th:attr="data-confirm=${shortcut.confirmMessage}">
+                            <input type="hidden" name="dateTime" th:value="${shortcut.dateTime}"/>
+                            <button class="btn secondary sm" type="submit">
+                                <b th:text="${shortcut.label}">채팅방 열린 직후</b>
+                                <span th:text="${@qaTime.of(shortcut.dateTime)}">10/09(금) 00:01</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
