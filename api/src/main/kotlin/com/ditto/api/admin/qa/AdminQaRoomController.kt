@@ -6,6 +6,7 @@ import com.ditto.api.chat.dto.ChatSendRequest
 import com.ditto.api.chat.websocket.ChatStompController
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.review.entity.MeetingStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
@@ -35,6 +36,7 @@ class AdminQaRoomController(
         }
         model.addAttribute("room", room)
         model.addAttribute("reviews", qaRoomReviews.of(roomId))
+        model.addAttribute("meetingStatuses", MeetingStatus.entries)
         model.addAttribute("timelineSize", AdminQaRoomService.TIMELINE_SIZE)
         model.addAttribute("messagePresets", QaMessagePreset.entries)
         model.addAttribute("sampleVoteDescription", QaSampleVote.description)

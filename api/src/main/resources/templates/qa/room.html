@@ -198,7 +198,7 @@
             </div>
 
             <section class="card qa-reviews" id="qa-reviews" th:unless="${reviews.isEmpty()}">
-                <h2>더미 평가</h2>
+                <h2>더미 평가 <span class="muted">앱 평가 API로 더미가 냅니다. 낸 평가는 바꿀 수 없습니다.</span></h2>
                 <div class="qa-review" th:each="review : ${reviews}">
                     <div class="qa-review-head">
                         <b th:text="${review.author.nickname}">dummy</b>
@@ -221,7 +221,23 @@
                                       th:text="${target.comment != null}
                                             ? |${target.meetingStatus.description} · ${target.rating}점 · ${target.comment}|
                                             : |${target.meetingStatus.description} · ${target.rating}점|">만났어요 · 5점</span>
-                                <span class="muted" th:unless="${target.answered}">아직 안 냄</span>
+                                <form class="qa-review-form" method="post" th:unless="${target.answered}"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/reviews/{reviewId}/targets/{targetId}(dummyId=${review.author.id},roomId=${room.roomId},reviewId=${review.reviewId},targetId=${target.member.id})}">
+                                    <select name="meetingStatus" aria-label="만남 상태">
+                                        <option th:each="meetingStatus : ${meetingStatuses}" th:value="${meetingStatus.name()}"
+                                                th:text="${meetingStatus.description}">만났어요</option>
+                                    </select>
+                                    <select name="rating" aria-label="별점">
+                                        <option th:each="score : ${#numbers.sequence(5, 1, -1)}" th:value="${score}"
+                                                th:text="|${score}점|">5점</option>
+                                    </select>
+                                    <input type="text" name="comment" maxlength="50" placeholder="코멘트(선택)" aria-label="코멘트"/>
+                                    <select name="wantsOneToOneRematch" th:if="${review.canRematch}" aria-label="재매칭 의사">
+                                        <option value="true">재매칭 원함</option>
+                                        <option value="false">원하지 않음</option>
+                                    </select>
+                                    <button class="btn sm" type="submit">내기</button>
+                                </form>
                             </td>
                             <td th:if="${review.canRematch}">
                                 더미 <th:block th:replace="~{qa/parts :: rematchWants(${target.authorWantsRematch})}"></th:block>
