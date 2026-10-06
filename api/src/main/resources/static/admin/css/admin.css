@@ -473,6 +473,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 /* QA 콘솔 방 화면 */
 .content.qa-room-page { max-width: 1240px; }
 .qa-back { display: inline-block; margin-bottom: 10px; color: var(--primary); font-weight: 600; font-size: 13px; }
+.qa-back-source { margin-left: 14px; }
 .page-title .badge { vertical-align: middle; margin-left: 6px; }
 .qa-status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .qa-live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
@@ -570,6 +571,29 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-vote-actions { margin-top: 10px; }
 .qa-note { font-size: 12px; margin: -8px 0 8px; }
 .qa-closed-votes { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; }
+/* 상단 바(64px)가 고정이라 앵커로 내려오면 카드 제목이 가려진다. */
+#qa-reviews { scroll-margin-top: 80px; }
+/* 더미마다 표가 따로라 열 너비를 고정해야 재매칭 열이 줄을 맞춘다. */
+.qa-review .tbl { table-layout: fixed; }
+.qa-review .tbl th:first-child { width: 22%; }
+.qa-review .tbl th:nth-child(3) { width: 24%; }
+.qa-review + .qa-review { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.qa-review-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.qa-review-head .muted { font-size: 12px; }
+.qa-review-bulk, .qa-review-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.qa-review-bulk { margin-bottom: 16px; }
+.qa-review-bulk select, .qa-review-form select, .qa-review-form input {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--surface);
+}
+.qa-review-form input[name="comment"] { flex: 1; min-width: 120px; }
+.qa-review .tbl th, .qa-review .tbl td { padding: 8px 6px; vertical-align: baseline; }
+.qa-rematch-cell { word-break: keep-all; font-size: 13px; }
+.qa-rematch-cell .muted { font-size: 12px; }
 
 @media (max-width: 960px) {
     .qa-room { grid-template-columns: 1fr; }

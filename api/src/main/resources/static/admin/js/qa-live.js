@@ -39,26 +39,63 @@
         alerts.appendChild(alert);
     }
 
-    // 고르던 더미(select)는 갈아 끼운 뒤에도 그대로 둔다. 남은 선택지에 없으면 첫 항목으로 돌아간다.
-    function keepSelectedValues(current, next) {
-        current.querySelectorAll('select[name]').forEach((select) => {
-            const replacement = next.querySelector(`select[name="${select.name}"]`);
-            if (replacement && [...replacement.options].some((option) => option.value === select.value)) {
-                replacement.value = select.value;
-            }
+    // 같은 이름의 칸이 폼마다 반복되는 영역(평가)은 폼 id 로 짝을 찾는다. id 가 없는 폼은 select 만 이름으로 찾는다.
+    function replacementOf(field, next) {
+        const formId = field.form?.id;
+        if (formId) return next.querySelector(`#${CSS.escape(formId)} [name="${field.name}"]`);
+        return field.tagName === 'SELECT' ? next.querySelector(`select[name="${field.name}"]`) : null;
+    }
+
+    // 고르던 더미(select)와 쓰던 코멘트는 갈아 끼운 뒤에도 그대로 둔다. 남은 선택지에 없으면 첫 항목으로 돌아간다.
+    function keepFieldValues(current, next) {
+        current.querySelectorAll('select[name], input[type="text"][name]').forEach((field) => {
+            const replacement = replacementOf(field, next);
+            if (!replacement) return;
+            if (field.tagName === 'SELECT' && ![...replacement.options].some((option) => option.value === field.value)) return;
+            replacement.value = field.value;
         });
     }
 
-    // 체크를 고르던 영역(투표)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
+    // 영역 안에 띄운 결과 알림은 다음 제출 전까지 남긴다.
+    function keepInlineAlerts(current, next) {
+        const slot = current.querySelector('[data-qa-inline-alerts]');
+        const nextSlot = next.querySelector('[data-qa-inline-alerts]');
+        if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
+    }
+
+    // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽 영역에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
+    // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
+    function showInlineAlerts(submittedRegionId) {
+        const alerts = [...(document.getElementById('qa-alerts')?.children ?? [])];
+        document.querySelectorAll('[data-qa-live]').forEach((region) => {
+            const slot = region.querySelector('[data-qa-inline-alerts]');
+            if (!slot) return;
+            if (region.id !== submittedRegionId) {
+                slot.replaceChildren();
+                return;
+            }
+            slot.replaceChildren(...alerts.map((alert) => alert.cloneNode(true)));
+            slot.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    // 손대는 중인 영역(평가)은 갈아 끼우면 열린 선택지가 닫히고 커서가 사라지니 건너뛴다.
+    function isBeingEdited(region) {
+        if (region.dataset.editing === 'true') return true;
+        return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
+    }
+
+    // 체크를 고르던 영역(투표)과 손대는 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
     // 스크롤을 올려 지난 대화를 보는 중이면 갱신이 바닥으로 끌어내리지 않는다.
     function swapLiveRegions(doc, submittedRegion = null) {
         const current = timeline();
         const stickToBottom = !current || isNearBottom(current);
         document.querySelectorAll('[data-qa-live]').forEach((region) => {
-            if (region.dataset.editing === 'true' && region !== submittedRegion) return;
+            if (isBeingEdited(region) && region !== submittedRegion) return;
             const next = doc.getElementById(region.id);
             if (!next) return;
-            keepSelectedValues(region, next);
+            keepFieldValues(region, next);
+            keepInlineAlerts(region, next);
             region.replaceWith(next);
         });
         if (stickToBottom) scrollTimelineToBottom();
@@ -104,6 +141,13 @@
         }
     }
 
+    // 확인 창에 고른 선택지(일괄 평가의 재매칭 의사)를 함께 보여 실수로 누른 것을 알아차리게 한다.
+    function withChosenOption(form, message) {
+        const select = form.dataset.confirmChoice ? form.elements[form.dataset.confirmChoice] : null;
+        const chosen = select?.selectedOptions?.[0]?.text;
+        return message && chosen ? `${message}\n${chosen}` : message;
+    }
+
     function setButtonsDisabled(form, disabled) {
         form.querySelectorAll('button').forEach((button) => { button.disabled = disabled; });
     }
@@ -136,7 +180,7 @@
         }
         event.preventDefault();
         const submitter = event.submitter;
-        const confirmMessage = submitter?.dataset.confirm || form.dataset.confirm;
+        const confirmMessage = withChosenOption(form, submitter?.dataset.confirm || form.dataset.confirm);
         if (confirmMessage && !window.confirm(confirmMessage)) return;
 
         const body = new FormData(form, submitter);
@@ -160,6 +204,7 @@
             const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);
             swapLiveRegions(doc, submittedRegion);
+            showInlineAlerts(submittedRegion?.id);
             clearComposerIfSent(form, submitter, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
