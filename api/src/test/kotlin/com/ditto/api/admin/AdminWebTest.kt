@@ -46,6 +46,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.not
+import org.hamcrest.Matchers.stringContainsInOrder
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -645,17 +646,44 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("회원 관리 페이지 — 검색 전/검색 결과 렌더")
-    fun memberSearchPage() {
-        // 검색 전 빈 상태
-        mockMvc.perform(get("/admin/members").with(authentication(admin()))).andExpect(status().isOk)
-
-        // 같은 이메일을 가진 회원 2명
+    @DisplayName("이메일 검색 결과는 권한 바꾸기 카드 안에 그린다")
+    fun memberSearchByEmail() {
         memberRepository.save(MemberFixture.create(nickname = "m1", email = "dup@ditto.pics", role = MemberRole.USER))
         memberRepository.save(MemberFixture.create(nickname = "m2", email = "dup@ditto.pics", role = MemberRole.ADMIN))
 
         mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(stringContainsInOrder("<h2>권한 바꾸기</h2>", ">m1<", ">m2<", "<h2>현재 관리자")))
+    }
+
+    @Test
+    @DisplayName("이메일로 찾은 회원이 없으면 전체를 정확히 입력하라고 안내한다")
+    fun memberSearchByEmailNoMatch() {
+        val noMatchGuide = "이메일 전체를 정확히 입력하세요."
+
+        mockMvc.perform(get("/admin/members").with(authentication(admin())))
+            .andExpect(content().string(not(containsString(noMatchGuide))))
+        mockMvc.perform(get("/admin/members").param("email", "dup").with(authentication(admin())))
+            .andExpect(content().string(containsString(noMatchGuide)))
+    }
+
+    @Test
+    @DisplayName("한쪽을 검색해도 다른 쪽 검색어를 함께 보내 두 결과를 유지한다")
+    fun memberSearchKeepsOtherSearch() {
+        mockMvc.perform(get("/admin/members").param("q", "닉네임").param("email", "keep@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"email\" value=\"keep@ditto.pics\"/>")))
+            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"q\" value=\"닉네임\"/>")))
+    }
+
+    @Test
+    @DisplayName("이메일 검색에서 퀴즈 현황에 갔다가 돌아오면 그 이메일 검색으로 돌아온다")
+    fun memberQuizzesBackToEmailSearch() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "이메일회원", email = "back@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("email", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=&amp;email=back@ditto.pics")))
+        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("email", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("href=\"/admin/members?q=&amp;email=back@ditto.pics\"")))
     }
 
     @Test
@@ -682,7 +710,7 @@ class AdminWebTest {
     fun memberPageWithoutAdmins() {
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(containsString("관리자가 없습니다.")))
-            .andExpect(content().string(not(containsString("<th>권한 변경</th>"))))
+            .andExpect(content().string(not(containsString("<th>권한 바꾸기</th>"))))
     }
 
     @Test
@@ -749,9 +777,9 @@ class AdminWebTest {
 
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
-                .param("role", "ADMIN").param("email", "role@ditto.pics"),
+                .param("role", "ADMIN").param("q", "rolechg").param("email", "role@ditto.pics"),
         )
-            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/members?q=rolechg&email=role%40ditto.pics"))
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
     }
 

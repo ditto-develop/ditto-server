@@ -7,7 +7,7 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content" th:with="member=${view.member}">
-            <a class="muted" th:href="@{/admin/members(q=${backQuery})}">← 회원 관리</a>
+            <a class="muted" th:href="@{/admin/members(q=${backQuery},email=${backEmail})}">← 회원 관리</a>
             <h1 class="page-title member-heading" style="margin-top:8px">
                 <span th:text="${member.nickname}">닉네임</span>
                 <span class="member-id" th:text="|#${member.memberId}|">#1</span>
