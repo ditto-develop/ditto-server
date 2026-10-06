@@ -9,10 +9,13 @@ import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.rematch.entity.Rematch
+import com.ditto.domain.rematch.entity.RematchStatus
+import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.ReviewAnswer
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -24,6 +27,7 @@ class QaRoomReviews(
     private val qaMemberLabels: QaMemberLabels,
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
+    private val rematchRepository: RematchRepository,
     private val rematchSubmitter: RematchSubmitter,
     private val chatRoomRepository: ChatRoomRepository,
 ) {
@@ -37,61 +41,76 @@ class QaRoomReviews(
         val answersByReviewId = reviewAnswerRepository.findAllByMemberReviewIdInOrderByIdAsc(reviews.map { it.id })
             .groupBy { it.memberReviewId }
         val pairsByMatchId = rematchSubmitter.findPairsByMatchId(reviews)
-        val sources = ReviewSources(
+        val targetIds = answersByReviewId.values.flatten().map { it.reviewedMemberId }
+        val memberIds = reviews.map { it.authorMemberId } + targetIds
+        val targetRows = ReviewTargetRows(
             dummyIds = dummyIds,
-            members = qaMemberLabels.load(reviews.map { it.authorMemberId } + answersByReviewId.values.flatten().map { it.reviewedMemberId }),
+            members = qaMemberLabels.load(memberIds),
             rematchRoomsByRematchId = findRematchRooms(pairsByMatchId.values.flatten()),
         )
 
         return reviews.map { review ->
-            val pairs = pairsByMatchId[review.matchId].orEmpty()
+            val answers = answersByReviewId[review.id].orEmpty()
             QaReview(
                 reviewId = review.id,
-                author = sources.members.of(review.authorMemberId),
+                author = targetRows.members.of(review.authorMemberId),
                 canRematch = review.canRematch(),
-                targets = answersByReviewId[review.id].orEmpty().map { sources.targetOf(review, it, pairs) },
+                targets = targetRows.of(review, answers, pairsByMatchId[review.matchId].orEmpty()),
             )
         }
     }
 
-    private fun findRematchRooms(pairs: List<Rematch>): Map<Long, ChatRoom> {
-        val matchedIds = pairs.filter { it.matchedAt() != null }.map { it.id }
-        if (matchedIds.isEmpty()) return emptyMap()
-        return chatRoomRepository.findBySourceTypeAndSourceIdIn(ChatRoomType.REMATCH, matchedIds).associateBy { it.sourceId }
+    /** 의사를 낸 직후 쌍의 결과. 재매칭을 받지 않는 평가거나 아직 상대가 내지 않았으면 null 이다. */
+    fun findRematchOutcome(reviewId: Long, authorId: Long, targetId: Long): QaRematchOutcome? {
+        val review = memberReviewRepository.findByIdOrNull(reviewId)?.takeIf { it.canRematch() } ?: return null
+        val pair = rematchRepository.findBySourceGroupMatchIdAndMemberId1AndMemberId2(
+            review.matchId,
+            minOf(authorId, targetId),
+            maxOf(authorId, targetId),
+        ) ?: return null
+        return QaRematchOutcome.of(pair)
     }
 
-    private inner class ReviewSources(
+    private fun findRematchRooms(pairs: List<Rematch>): Map<Long, ChatRoom> {
+        val matchedIds = pairs.filter { it.status == RematchStatus.MATCHED }.map { it.id }
+        if (matchedIds.isEmpty()) return emptyMap()
+        return chatRoomRepository.findBySourceTypeAndSourceIdIn(ChatRoomType.REMATCH, matchedIds)
+            .associateBy { it.sourceId }
+    }
+
+    private inner class ReviewTargetRows(
         val dummyIds: Set<Long>,
         val members: QaMembers,
         val rematchRoomsByRematchId: Map<Long, ChatRoom>,
     ) {
-        fun targetOf(review: MemberReview, answer: ReviewAnswer, pairs: List<Rematch>): QaReviewTarget {
-            val targetId = answer.reviewedMemberId
-            return QaReviewTarget(
-                member = members.of(targetId),
-                isDummy = targetId in dummyIds,
-                isAnswered = answer.isAnswered,
-                meetingStatus = answer.meetingStatus,
-                rating = answer.rating,
-                comment = answer.comment,
-                rematch = pairs.firstOrNull { it.involves(review.authorMemberId, targetId) }
-                    ?.let { pairOf(it, review.authorMemberId, pairs) },
-            )
+        fun of(review: MemberReview, answers: List<ReviewAnswer>, pairs: List<Rematch>): List<QaReviewTarget> {
+            val authorId = review.authorMemberId
+            val counterpartWantsByTargetId = rematchSubmitter.counterpartWantsByTarget(pairs, authorId)
+            return answers.map { answer ->
+                val targetId = answer.reviewedMemberId
+                QaReviewTarget(
+                    member = members.of(targetId),
+                    isDummy = targetId in dummyIds,
+                    isAnswered = answer.isAnswered,
+                    meetingStatus = answer.meetingStatus,
+                    rating = answer.rating,
+                    comment = answer.comment,
+                    rematch = pairs.firstOrNull { it.isBetween(authorId, targetId) }?.let { pair ->
+                        pair.toQaRematchPair(authorId, counterpartWantsByTargetId[targetId])
+                    },
+                )
+            }
         }
 
-        private fun pairOf(pair: Rematch, authorId: Long, pairs: List<Rematch>): QaRematchPair {
-            val counterpartId = pair.counterpartOf(authorId)
-            return QaRematchPair(
-                rematchId = pair.id,
-                status = pair.status,
-                isCancelledByMemberLeave = pair.isCancelledByMemberLeave(),
-                authorWants = pair.wantsOf(authorId),
-                counterpartWants = rematchSubmitter.counterpartWantsByTarget(pairs, authorId)[counterpartId],
-                room = rematchRoomsByRematchId[pair.id]?.let { QaRematchRoom(it.id, it.opensAt) },
-            )
-        }
+        private fun Rematch.toQaRematchPair(authorId: Long, counterpartWants: Boolean?) = QaRematchPair(
+            rematchId = id,
+            outcome = QaRematchOutcome.of(this),
+            authorWants = wantsOf(authorId),
+            counterpartWants = counterpartWants,
+            room = rematchRoomsByRematchId[id]?.let { QaRematchRoom(it.id, it.opensAt) },
+        )
     }
 
-    private fun Rematch.involves(memberId: Long, otherId: Long): Boolean =
+    private fun Rematch.isBetween(memberId: Long, otherId: Long): Boolean =
         (memberId1 == memberId && memberId2 == otherId) || (memberId1 == otherId && memberId2 == memberId)
 }

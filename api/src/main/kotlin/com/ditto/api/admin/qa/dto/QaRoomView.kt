@@ -41,6 +41,8 @@ class QaRoomView(
     /** 두 사람 방은 [채팅 종료], 그룹은 [나가기]. 앱의 [ChatRoom.canEndByUser]를 그대로 받는다. */
     val canEndByUser: Boolean,
     val leaveDissolvesRoom: Boolean,
+    /** 재매칭 방이면 그 쌍이 나온 그룹 방. */
+    val sourceGroupRoomId: Long?,
 ) {
     val activeDummies: List<QaMember> = members.filter { it.isDummy && !it.hasLeft }.map { it.member }
 

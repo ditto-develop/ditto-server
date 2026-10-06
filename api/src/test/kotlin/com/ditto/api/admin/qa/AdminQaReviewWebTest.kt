@@ -2,6 +2,7 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.admin.qa.dto.QaReview
+import com.ditto.api.admin.qa.dto.QaRoomView
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
@@ -26,6 +27,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.hamcrest.CoreMatchers.containsString
+import org.hamcrest.CoreMatchers.not
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -35,6 +37,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -65,6 +68,8 @@ class AdminQaReviewWebTest(
             MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", status = MemberStatus.ACTIVE),
         )
 
+    fun labelOf(member: Member) = "${member.nickname}(#${member.id})"
+
     fun saveEndedRoom(room: ChatRoom, members: List<Member>): ChatRoom {
         val saved = chatRoomRepository.save(room.apply { expire(LocalDateTime.now()) })
         chatRoomMemberRepository.saveAll(members.map { ChatRoomMemberFixture.create(saved.id, it.id) })
@@ -83,7 +88,9 @@ class AdminQaReviewWebTest(
                 chatRoomId = room.id,
             ),
         )
-        reviewAnswerRepository.saveAll(targets.map { ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = it.id) })
+        reviewAnswerRepository.saveAll(
+            targets.map { ReviewAnswerFixture.pending(memberReviewId = review.id, reviewedMemberId = it.id) },
+        )
         return review
     }
 
@@ -98,7 +105,8 @@ class AdminQaReviewWebTest(
         return rematchRepository.save(pair)
     }
 
-    fun rematchStatusOf(pair: Rematch): RematchStatus = rematchRepository.findByIdOrNull(pair.id).shouldNotBeNull().status
+    fun rematchStatusOf(pair: Rematch): RematchStatus =
+        rematchRepository.findByIdOrNull(pair.id).shouldNotBeNull().status
 
     fun reviewStatusOf(review: MemberReview): ReviewProgressStatus =
         memberReviewRepository.findByIdOrNull(review.id).shouldNotBeNull().status
@@ -123,12 +131,13 @@ class AdminQaReviewWebTest(
                 .with(authentication(admin)).with(csrf()),
         )
 
-    fun reviewsOf(room: ChatRoom): List<QaReview> {
-        @Suppress("UNCHECKED_CAST")
-        return mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+    fun roomPageModel(room: ChatRoom): Map<String, Any> =
+        mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
             .andExpect(status().isOk)
-            .andReturn().modelAndView.shouldNotBeNull().model["reviews"] as List<QaReview>
-    }
+            .andReturn().modelAndView.shouldNotBeNull().model
+
+    @Suppress("UNCHECKED_CAST")
+    fun reviewsOf(room: ChatRoom): List<QaReview> = roomPageModel(room)["reviews"] as List<QaReview>
 
     "화면" - {
         "그룹 방은 더미 평가마다 대상과 양쪽 재매칭 의사를 보여 준다" {
@@ -149,7 +158,7 @@ class AdminQaReviewWebTest(
             towardTester.isDummy shouldBe false
             towardTester.rematch.shouldNotBeNull().let {
                 it.rematchId shouldBe pair.id
-                it.status shouldBe RematchStatus.WAITING
+                it.outcome shouldBe null
                 it.authorWants shouldBe null
                 it.counterpartWants shouldBe true
             }
@@ -179,7 +188,32 @@ class AdminQaReviewWebTest(
             submitAsDummy(dummy, room, review, tester, wantsRematch = true)
             val rematchRoom = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = pair.id))
 
-            reviewsOf(room).single().targets.single().rematch.shouldNotBeNull().room.shouldNotBeNull().roomId shouldBe rematchRoom.id
+            val pairView = reviewsOf(room).single().targets.single().rematch.shouldNotBeNull()
+            pairView.isMatched shouldBe true
+            pairView.room.shouldNotBeNull().roomId shouldBe rematchRoom.id
+        }
+
+        "재매칭 방은 쌍이 나온 그룹 방으로 돌아가는 링크를 준다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            val groupRoom = saveEndedGroupRoom(tester, dummy, saveMember("dummy-male-bbbb"))
+            val pair = saveGroupRematch(groupRoom, tester, dummy)
+            val rematchRoom = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = pair.id))
+
+            (roomPageModel(rematchRoom)["room"] as QaRoomView).sourceGroupRoomId shouldBe groupRoom.id
+        }
+
+        "평가가 열린 종료 방은 위에서 더미 평가 칸으로 가는 링크를 준다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            val room = saveEndedRoom(ChatRoomFixture.personal(), listOf(tester, dummy))
+            val guide = "아래 '더미 평가'에서 평가를 냅니다"
+
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(content().string(not(containsString(guide))))
+            openReview(room, dummy, listOf(tester))
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(content().string(containsString(guide)))
         }
 
         "1:1 방은 재매칭을 받지 않는다" {
@@ -208,7 +242,7 @@ class AdminQaReviewWebTest(
 
             submitAsDummy(dummy, room, review, tester, wantsRematch = true)
                 .andExpect(redirectedUrl("/admin/qa/rooms/${room.id}#qa-reviews"))
-                .andExpect(flash().attribute("message", "dummy-female-aaaa(#${dummy.id}) · 테스터(#${tester.id}) 평가 내기 완료 · 재매칭 성사"))
+                .andExpect(flash().attribute("message", "${labelOf(dummy)} · ${labelOf(tester)} 평가 완료(재매칭 성사)"))
 
             rematchStatusOf(pair) shouldBe RematchStatus.MATCHED
             reviewsOf(room).single().targets.single().let {
@@ -218,6 +252,21 @@ class AdminQaReviewWebTest(
             }
         }
 
+        "상대가 원하지 않았으면 불성사로 알린다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            val room = saveEndedGroupRoom(tester, dummy, saveMember("dummy-male-bbbb"))
+            val review = openReview(room, dummy, listOf(tester))
+            val pair = rematchRepository.save(
+                saveGroupRematch(room, tester, dummy).apply { submitWants(tester.id, false, LocalDateTime.now()) },
+            )
+
+            submitAsDummy(dummy, room, review, tester, wantsRematch = true)
+                .andExpect(flash().attribute("message", "${labelOf(dummy)} · ${labelOf(tester)} 평가 완료(재매칭 불성사)"))
+
+            rematchStatusOf(pair) shouldBe RematchStatus.CANCELLED
+        }
+
         "1:1 평가는 재매칭 없이 내고 마지막 대상이면 평가가 끝난다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
@@ -225,12 +274,12 @@ class AdminQaReviewWebTest(
             val review = openReview(room, dummy, listOf(tester))
 
             submitAsDummy(dummy, room, review, tester)
-                .andExpect(flash().attribute("message", "dummy-female-aaaa(#${dummy.id}) · 테스터(#${tester.id}) 평가 내기 완료"))
+                .andExpect(flash().attribute("message", "${labelOf(dummy)} · ${labelOf(tester)} 평가 완료"))
 
             reviewStatusOf(review) shouldBe ReviewProgressStatus.COMPLETED
         }
 
-        "그룹 평가를 재매칭 의사 없이 내면 앱의 거부 코드를 띄운다" {
+        "그룹 평가를 재매칭 의사 없이 내면 앱의 거부를 코드와 함께 띄운다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             val room = saveEndedGroupRoom(tester, dummy, saveMember("dummy-male-bbbb"))
@@ -238,7 +287,8 @@ class AdminQaReviewWebTest(
             saveGroupRematch(room, tester, dummy)
 
             submitAsDummy(dummy, room, review, tester, wantsRematch = null)
-                .andExpect(flash().attribute("error", containsString("테스터(#${tester.id}) 평가 내기 실패")))
+                .andExpect(flash().attribute("error", containsString("${labelOf(tester)} 평가 실패")))
+                .andExpect(flash().attribute("error", containsString("(코드 ")))
 
             reviewsOf(room).single().targets.single().isAnswered shouldBe false
         }
@@ -258,7 +308,9 @@ class AdminQaReviewWebTest(
 
             submitPendingForAllDummies(room)
                 .andExpect(redirectedUrl("/admin/qa/rooms/${room.id}#qa-reviews"))
-                .andExpect(flash().attribute("message", "방 #${room.id} 더미 남은 평가 모두 내기 (2명) 완료"))
+                .andExpect(
+                    flash().attribute("message", "방 #${room.id} 더미 모두 남은 평가 내기 (2명) 완료(재매칭 성사 1건, 재매칭 불성사 1건)"),
+                )
 
             reviewStatusOf(dummyReview) shouldBe ReviewProgressStatus.COMPLETED
             reviewStatusOf(otherDummyReview) shouldBe ReviewProgressStatus.COMPLETED
@@ -281,7 +333,7 @@ class AdminQaReviewWebTest(
             rematchStatusOf(dummyAndOtherDummy) shouldBe RematchStatus.MATCHED
         }
 
-        "모두 안 함으로 내면 테스터가 원한 쌍도 불성사가 된다" {
+        "아무에게도 원하지 않으면 테스터가 원한 쌍도 불성사가 된다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             val room = saveEndedGroupRoom(tester, dummy, saveMember("dummy-male-bbbb"))
@@ -299,13 +351,14 @@ class AdminQaReviewWebTest(
             val otherDummy = saveMember("dummy-male-bbbb")
             val room = saveEndedGroupRoom(tester, dummy, otherDummy)
             val review = openReview(room, dummy, listOf(tester, otherDummy))
+            // 더미끼리 쌍을 만들지 않아 두 번째 대상(otherDummy)에서 앱이 거부한다.
             saveGroupRematch(room, tester, dummy)
 
             submitPendingForAllDummies(room)
                 .andExpect(
                     flash().attribute(
                         "error",
-                        containsString("dummy-female-aaaa(#${dummy.id}) 2명 중 1명 낸 뒤 dummy-male-bbbb(#${otherDummy.id})에서 멈춤"),
+                        containsString("${labelOf(dummy)} 대상 2명 중 1명까지 내고 ${labelOf(otherDummy)}에서 멈춤"),
                     ),
                 )
 
@@ -316,7 +369,7 @@ class AdminQaReviewWebTest(
             val room = saveEndedRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), saveMember("dummy-female-aaaa")))
 
             submitPendingForAllDummies(room)
-                .andExpect(flash().attribute("error", "방 #${room.id} 더미 남은 평가 모두 내기: 대상 더미가 없습니다."))
+                .andExpect(flash().attribute("error", "방 #${room.id} 더미 모두 남은 평가 내기: 대상 더미가 없습니다."))
         }
     }
 })

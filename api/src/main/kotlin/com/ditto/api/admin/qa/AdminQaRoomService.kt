@@ -19,6 +19,7 @@ import com.ditto.domain.chat.entity.ChatVoteStatus
 import com.ditto.domain.chat.repository.ChatMessageRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.rematch.repository.RematchRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -38,6 +39,7 @@ class AdminQaRoomService(
     private val chatVoteService: ChatVoteService,
     private val serverTimeProvider: ServerTimeProvider,
     private val qaRoomSourceLabels: QaRoomSourceLabels,
+    private val rematchRepository: RematchRepository,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -99,6 +101,7 @@ class AdminQaRoomService(
             votes = votes.map { it.toQaVote(members) },
             canEndByUser = room.canEndByUser(),
             leaveDissolvesRoom = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft }),
+            sourceGroupRoomId = findSourceGroupRoomId(room),
         )
     }
 
@@ -118,6 +121,11 @@ class AdminQaRoomService(
             .map { it.memberId }
         val members = qaMemberLabels.load(activeDummyIds)
         return activeDummyIds.map(members::of)
+    }
+
+    private fun findSourceGroupRoomId(room: ChatRoom): Long? {
+        if (room.sourceType != ChatRoomType.REMATCH) return null
+        return rematchRepository.findByIdOrNull(room.sourceId)?.sourceChatRoomId
     }
 
     /**

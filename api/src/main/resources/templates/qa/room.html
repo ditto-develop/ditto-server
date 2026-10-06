@@ -8,6 +8,9 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content qa-room-page">
             <a class="qa-back" th:href="@{/admin/qa#rooms}">← QA 콘솔</a>
+            <a class="qa-back qa-back-source" th:if="${room.sourceGroupRoomId != null}"
+               th:href="@{/admin/qa/rooms/{id}(id=${room.sourceGroupRoomId})}"
+               th:text="|← 원래 그룹 방 #${room.sourceGroupRoomId}|">← 원래 그룹 방 #1</a>
             <h1 class="page-title">채팅방 #<span th:text="${room.roomId}">88</span>
                 <th:block th:replace="~{qa/parts :: roomType(${room.sourceType})}"></th:block>
             </h1>
@@ -41,7 +44,8 @@
                 </div>
                 <div class="alert error" th:if="${room.ended}">
                     종료된 방입니다(<th:block th:replace="~{qa/parts :: endReason(${room.endReason})}"></th:block>).
-                    <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(코드 ${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block></div>
+                    <th:block th:text="|전송은 막히고 조회·읽음만 됩니다(코드 ${room.endedErrorCode}).|">전송은 막히고 조회·읽음만 됩니다.</th:block>
+                    <a th:unless="${reviews.isEmpty()}" href="#qa-reviews">아래 '더미 평가'에서 평가를 냅니다 ↓</a></div>
             </div>
 
             <div class="qa-room">
@@ -193,17 +197,17 @@
 
             <div id="qa-reviews" data-qa-live data-qa-hold-while-editing>
                 <section class="card qa-reviews" th:unless="${reviews.isEmpty()}">
-                    <h2>더미 평가 <span class="muted">앱과 같은 경로로 더미가 냅니다. 낸 평가는 되돌릴 수 없습니다.</span></h2>
+                    <h2>더미 평가 <span class="muted">더미 계정으로 앱과 똑같이 냅니다. 낸 평가는 되돌릴 수 없습니다.</span></h2>
                     <div data-qa-inline-alerts></div>
                     <form class="qa-review-bulk" method="post" data-qa-async th:unless="${reviews.?[hasPendingTargets].isEmpty()}"
                           th:action="@{/admin/qa/rooms/{id}/reviews/submit-all-dummies(id=${room.roomId})}"
-                          data-confirm="더미의 남은 평가를 모두 냅니다. 되돌릴 수 없습니다.">
-                        <span class="muted" th:text="|남은 대상: ${bulkReviewDescription}|">남은 대상: 만났어요 · 5점</span>
+                          data-confirm="더미의 남은 평가를 모두 냅니다. 되돌릴 수 없습니다." data-confirm-choice="rematchChoice">
+                        <span class="muted" th:text="|남은 대상 모두 '${bulkReviewDescription}'으로|">남은 대상 모두 '만났어요 · 5점'으로</span>
                         <select name="rematchChoice" th:if="${room.group}" aria-label="일괄 재매칭 의사">
                             <option th:each="choice : ${bulkRematchChoices}" th:value="${choice.name()}"
                                     th:text="${choice.label}">실회원에게만 재매칭 원함</option>
                         </select>
-                        <button class="btn secondary sm" type="submit">더미 남은 평가 모두 내기</button>
+                        <button class="btn secondary sm" type="submit">더미 모두 남은 평가 내기</button>
                     </form>
                     <div class="qa-review" th:each="review : ${reviews}">
                         <div class="qa-review-head">
@@ -240,7 +244,7 @@
                                         <input type="text" name="comment" maxlength="50" placeholder="코멘트(선택)" aria-label="코멘트"/>
                                         <select name="wantsOneToOneRematch" th:if="${review.canRematch}" aria-label="재매칭 의사">
                                             <option value="true">재매칭 원함</option>
-                                            <option value="false">재매칭 안 함</option>
+                                            <option value="false" th:selected="${target.dummy}">재매칭 원하지 않음</option>
                                         </select>
                                         <button class="btn sm" type="submit">평가 내기</button>
                                     </form>
@@ -250,17 +254,17 @@
                                     <th:block th:if="${pair != null}">
                                         <div>
                                             <th:block th:replace="~{qa/parts :: rematchStatus(${pair})}"></th:block>
-                                            <span class="muted" th:text="|재매칭 #${pair.rematchId}|">재매칭 #1</span>
+                                            <span class="muted" th:text="|#${pair.rematchId}|">#1</span>
                                         </div>
-                                        <div class="muted" th:if="${pair.cancelledByMemberLeave}">탈퇴로 취소돼 의사를 저장하지 않습니다.</div>
+                                        <div class="muted" th:if="${pair.cancelledByMemberLeave}">한쪽이 탈퇴해 더는 성사되지 않습니다.</div>
                                         <div class="muted" th:unless="${pair.cancelledByMemberLeave}">
                                             더미 <th:block th:replace="~{qa/parts :: rematchWants(${pair.authorWants})}"></th:block>
                                             · 상대 <th:block th:replace="~{qa/parts :: rematchWants(${pair.counterpartWants})}"></th:block>
                                         </div>
-                                        <div class="muted" th:if="${pair.matched and pair.room == null}">1분 안에 재매칭 방이 예약됩니다.</div>
+                                        <div class="muted" th:if="${pair.matched and pair.room == null}">1분 안에 재매칭 방이 생깁니다.</div>
                                         <div th:if="${pair.room != null}">
-                                            <a th:href="@{/admin/qa/rooms/{id}(id=${pair.room.roomId})}"
-                                               th:text="|방 #${pair.room.roomId} · ${@qaTime.of(pair.room.opensAt)} 열림|">방 #9 · 10/16(금) 00:00 열림</a>
+                                            <a class="text-link" th:href="@{/admin/qa/rooms/{id}(id=${pair.room.roomId})}"
+                                               th:text="|방 #${pair.room.roomId} · ${@qaTime.of(pair.room.opensAt)}에 열림|">방 #9 · 10/16(금) 00:00에 열림</a>
                                         </div>
                                     </th:block>
                                 </td>

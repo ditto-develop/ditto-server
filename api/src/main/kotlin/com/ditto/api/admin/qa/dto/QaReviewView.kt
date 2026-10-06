@@ -1,6 +1,6 @@
 package com.ditto.api.admin.qa.dto
 
-import com.ditto.domain.rematch.entity.RematchStatus
+import com.ditto.api.admin.qa.QaRematchOutcome
 import com.ditto.domain.review.entity.MeetingStatus
 import java.time.LocalDateTime
 
@@ -32,16 +32,17 @@ class QaReviewTarget(
     }
 }
 
-/** 평가 작성자 쪽에서 본 재매칭 쌍. 탈퇴로 취소된 쌍은 의사를 저장하지 않으므로 의사 대신 취소를 보여 준다. */
+/** 평가 작성자 쪽에서 본 재매칭 쌍. 결과가 없으면 아직 한쪽 이상이 의사를 내지 않은 것이다. */
 class QaRematchPair(
     val rematchId: Long,
-    val status: RematchStatus,
-    val isCancelledByMemberLeave: Boolean,
+    val outcome: QaRematchOutcome?,
     val authorWants: Boolean?,
     val counterpartWants: Boolean?,
     val room: QaRematchRoom?,
 ) {
-    val isMatched: Boolean = status == RematchStatus.MATCHED
+    val isMatched: Boolean = outcome == QaRematchOutcome.MATCHED
+
+    val isCancelledByMemberLeave: Boolean = outcome == QaRematchOutcome.CANCELLED_BY_MEMBER_LEAVE
 }
 
 class QaRematchRoom(

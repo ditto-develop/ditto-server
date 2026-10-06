@@ -473,6 +473,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 /* QA 콘솔 방 화면 */
 .content.qa-room-page { max-width: 1240px; }
 .qa-back { display: inline-block; margin-bottom: 10px; color: var(--primary); font-weight: 600; font-size: 13px; }
+.qa-back-source { margin-left: 14px; }
 .page-title .badge { vertical-align: middle; margin-left: 6px; }
 .qa-status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .qa-live-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; }
@@ -584,7 +585,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     background: var(--surface);
 }
 .qa-review-form input[name="comment"] { flex: 1; min-width: 120px; }
-.qa-review .tbl td { padding: 8px 6px; }
+.qa-review .tbl th, .qa-review .tbl td { padding: 8px 6px; vertical-align: baseline; }
 .qa-rematch-cell { word-break: keep-all; font-size: 13px; }
 .qa-rematch-cell .muted { font-size: 12px; }
 
