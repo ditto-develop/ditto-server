@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** 더미의 신고. 앱 신고 API 를 더미로 불러 중복 신고 거부·차단 생성까지 앱과 똑같이 일어난다. */
+/** 더미의 신고. 앱 신고 API 를 더미 principal 로 불러 중복 신고 거부·차단 생성까지 앱과 같게 한다. */
 @Controller
 class AdminQaReportController(
     private val qaDummies: QaDummies,
@@ -21,23 +21,33 @@ class AdminQaReportController(
 ) {
     @PostMapping("/admin/qa/reports")
     fun reportAsDummy(@ModelAttribute form: QaReportForm, redirectAttributes: RedirectAttributes): String {
+        redirectAttributes.addFlashAttribute(FROM_REPORT_CARD, true)
         val dummyId = form.dummyId
-        val targetId = form.targetMemberId
-        if (dummyId == null || targetId == null) {
-            redirectAttributes.addFlashAttribute("error", "신고하는 더미와 신고받을 회원을 골라 주세요.")
+        val request = form.toRequestOrNull()
+        if (dummyId == null || request == null) {
+            redirectAttributes.flashRejection("신고하는 더미와 신고할 회원을 골라야 신고할 수 있습니다.")
             return QaRoutes.REPORT_SECTION
         }
 
-        redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "${qaMemberLabels.one(targetId).label} 신고") {
-            val request = form.toRequest(targetId).also(::validateLikeApp)
-            userReportController.createUserReport(request, qaDummies.principalOf(dummyId))
+        val members = qaMemberLabels.load(listOf(dummyId, request.reportedMemberId))
+        val actionLabel = "${members.of(request.reportedMemberId).label} 신고"
+        redirectAttributes.flashDummyActionWithResult(members.of(dummyId), actionLabel) {
+            validateLikeApp(request)
+            val response = userReportController.createUserReport(request, qaDummies.principalOf(dummyId))
+            response.data?.let { "신고 #${it.id}" }
         }
         return QaRoutes.REPORT_SECTION
     }
 
     /** 컨트롤러를 직접 부르면 @Valid 가 돌지 않아 앱과 같은 요청 검증을 여기서 한다. */
     private fun validateLikeApp(request: CreateUserReportRequest) {
-        val violation = validator.validate(request).firstOrNull() ?: return
-        throw WarnException(ErrorCode.BAD_REQUEST, violation.message)
+        val messages = validator.validate(request).map { it.message }.sorted()
+        if (messages.isEmpty()) return
+        throw WarnException(ErrorCode.BAD_REQUEST, messages.joinToString(" "))
+    }
+
+    companion object {
+        /** 결과 알림을 신고 카드 안에도 그리라는 표시. 카드가 맨 아래라 위쪽 알림은 화면 밖이다. */
+        const val FROM_REPORT_CARD = "fromReportCard"
     }
 }

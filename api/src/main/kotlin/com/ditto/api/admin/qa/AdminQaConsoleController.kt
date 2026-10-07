@@ -17,10 +17,11 @@ class AdminQaConsoleController(
 ) {
     @GetMapping("/admin/qa")
     fun page(model: Model): String {
-        model.addAttribute("console", adminQaService.getConsole())
+        val console = adminQaService.getConsole()
         val rooms = adminQaRoomService.getRoomSummaries()
+        model.addAttribute("console", console)
         model.addAttribute("rooms", rooms)
-        model.addAttribute("report", qaDummyReports.composeSection(rooms))
+        model.addAttribute("report", qaDummyReports.composeSection(console, rooms))
         model.addAttribute("active", "qa")
         return "qa/console"
     }

@@ -447,10 +447,23 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
 .content.qa-console-page { max-width: 1320px; }
-.qa-report-form .field-row .field { flex: 1; }
-.qa-report-options { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
-.qa-report-options .check input { width: auto; margin: 0; }
-.qa-report-title { margin: 20px 0 10px; font-size: 14px; }
+#report { scroll-margin-top: 80px; }
+.qa-report-desc { margin: -8px 0 16px; }
+.qa-report-form { max-width: 860px; }
+.qa-report-form .field-row .field { min-width: 220px; }
+.qa-report-form .field-row .field:has(.qa-report-target) { flex: 1.6; }
+.qa-report-target { display: flex; align-items: center; gap: 8px; }
+.qa-report-target span { white-space: nowrap; }
+.qa-report-target input { width: 110px; flex: none; }
+.qa-report-hint { margin: 6px 0 0; font-size: 12px; }
+.qa-report-hint a { color: var(--primary); font-weight: 600; }
+.qa-report-group { border: 0; padding: 0; margin: 0 0 16px; }
+.qa-report-group legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.qa-report-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.qa-report-block { margin: 0 0 16px; }
+.qa-report-submit { padding-top: 16px; border-top: 1px solid var(--border); }
+.qa-report-title { margin: 24px 0 10px; font-size: 14px; }
+.qa-report-table td { word-break: keep-all; }
 
 /* 시각 바로가기 타임라인. 위치(--pos, --start, --width)는 이번 주 안의 백분율이다. */
 .qa-week { flex-basis: 100%; container: qa-week / inline-size; --lane-height: 64px; --stem-gap: 14px; }

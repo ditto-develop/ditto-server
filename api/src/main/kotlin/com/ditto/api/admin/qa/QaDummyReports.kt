@@ -1,10 +1,12 @@
 package com.ditto.api.admin.qa
 
-import com.ditto.api.admin.qa.dto.QaDummyReport
+import com.ditto.api.admin.qa.dto.QaConsoleView
 import com.ditto.api.admin.qa.dto.QaMember
+import com.ditto.api.admin.qa.dto.QaReportRow
 import com.ditto.api.admin.qa.dto.QaReportSection
 import com.ditto.api.admin.qa.dto.QaReportTarget
 import com.ditto.api.admin.qa.dto.QaRoomSummary
+import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Component
@@ -18,37 +20,45 @@ class QaDummyReports(
     private val qaMemberLabels: QaMemberLabels,
     private val memberReportRepository: MemberReportRepository,
 ) {
-    fun composeSection(rooms: List<QaRoomSummary>): QaReportSection {
+    fun composeSection(console: QaConsoleView, rooms: List<QaRoomSummary>): QaReportSection {
         val dummyIds = qaDummies.findIds().sorted()
-        if (dummyIds.isEmpty()) return QaReportSection(emptyList(), emptyList(), emptyList(), RECENT_REPORT_LIMIT)
+        if (dummyIds.isEmpty()) return QaReportSection.EMPTY
 
-        val realMembers = rooms.flatMap { it.realMembers }.distinctBy { it.id }
-        val reports = memberReportRepository.findByReporterIdInOrderByIdDesc(dummyIds, Limit.of(RECENT_REPORT_LIMIT))
+        val reports = memberReportRepository.findByReporterIdInOrderByIdDesc(
+            dummyIds,
+            Limit.of(QaReportSection.RECENT_REPORT_LIMIT),
+        )
         val members = qaMemberLabels.load(dummyIds + reports.map { it.reportedMemberId })
         val dummies = dummyIds.map(members::of)
+        val realMembers = realMembersOnConsole(console, rooms).filterNot { it.id in dummyIds }
 
         return QaReportSection(
             dummies = dummies,
             targets = realMembers.map { QaReportTarget(it, isDummy = false) } +
-                dummiesExceptDefaultReporter(dummies).map { QaReportTarget(it, isDummy = true) },
-            reports = reports.map { report ->
-                QaDummyReport(
-                    reportId = report.id,
-                    reporter = members.of(report.reporterId),
-                    reported = members.of(report.reportedMemberId),
-                    reasonDescriptions = report.reasons.sortedBy { it.ordinal }.map { it.description },
-                    status = report.status,
-                )
-            },
-            recentLimit = RECENT_REPORT_LIMIT,
+                dummiesWithDefaultReporterLast(dummies).map { QaReportTarget(it, isDummy = true) },
+            reports = reports.map { it.toRow(members) },
         )
     }
 
-    /** 실회원이 없으면 첫 대상이 기본 신고자와 같아 자기 신고로 거부된다. 기본 신고자를 대상 맨 뒤로 보낸다. */
-    private fun dummiesExceptDefaultReporter(dummies: List<QaMember>): List<QaMember> =
+    /** 테스트 계정이 아직 방에 없어도 고를 수 있게, 콘솔 어디에든 나온 실회원을 모은다. */
+    private fun realMembersOnConsole(console: QaConsoleView, rooms: List<QaRoomSummary>): List<QaMember> =
+        (
+            rooms.flatMap { it.realMembers } +
+                console.personal.receivedRequests.map { it.requester } +
+                console.personal.sentRequests.map { it.receiver } +
+                console.personal.requestOptions.map { it.receiver } +
+                console.group.groups.flatMap { group -> group.members.filterNot { it.isDummy }.map { it.member } }
+            ).distinctBy { it.id }
+
+    /** 실회원이 없으면 첫 대상이 기본 신고자와 같아 자기 신고로 거부된다. */
+    private fun dummiesWithDefaultReporterLast(dummies: List<QaMember>): List<QaMember> =
         dummies.drop(1) + dummies.take(1)
 
-    companion object {
-        private const val RECENT_REPORT_LIMIT = 20
-    }
+    private fun MemberReport.toRow(members: QaMembers) = QaReportRow(
+        reportId = id,
+        reporter = members.of(reporterId),
+        reportedMember = members.of(reportedMemberId),
+        reasonDescriptions = reasons.sortedBy { it.ordinal }.map { it.description },
+        status = status,
+    )
 }

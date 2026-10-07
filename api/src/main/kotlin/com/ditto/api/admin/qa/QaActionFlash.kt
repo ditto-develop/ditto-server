@@ -74,7 +74,7 @@ private fun summarize(results: List<String>): String? =
         ?.joinToString(", ")
 
 /** 앱이 받는 거부라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
-private fun RedirectAttributes.flashRejection(text: String) {
+internal fun RedirectAttributes.flashRejection(text: String) {
     log.info { "QA 콘솔 거부: $text" }
     addFlashAttribute("error", text)
 }

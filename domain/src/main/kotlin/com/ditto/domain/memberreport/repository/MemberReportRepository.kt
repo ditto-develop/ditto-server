@@ -28,7 +28,6 @@ interface MemberReportRepository : JpaRepository<MemberReport, Long> {
     /** 어드민 검토 목록 — 접수 오래된 순 (SLA 대기열) */
     fun findAllByStatusOrderByCreatedAtAsc(status: MemberReportStatus): List<MemberReport>
 
-    /** QA 콘솔이 더미가 낸 최근 신고를 보여 줄 때 쓴다. */
     fun findByReporterIdInOrderByIdDesc(reporterIds: Collection<Long>, limit: Limit): List<MemberReport>
 
     /** 신고자 이력 통계용 — 총 신고 수 */
