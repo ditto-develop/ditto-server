@@ -13,6 +13,8 @@ import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.entity.SanctionLevel
+import com.ditto.domain.sanction.entity.SanctionStatus
+import com.ditto.domain.sanction.repository.SanctionRepository
 import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 
@@ -29,6 +31,7 @@ class DummyDataCleaner(
     private val dummyMemberDataCleaner: DummyMemberDataCleaner,
     private val notificationRepository: NotificationRepository,
     private val memberRepository: MemberRepository,
+    private val sanctionRepository: SanctionRepository,
     private val memberStatusRecalculator: MemberStatusRecalculator,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
@@ -46,7 +49,7 @@ class DummyDataCleaner(
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
         val now = serverTimeProvider.now()
         recalculateStatusesAfterSanctionDeletion(sanctionedRealMemberIds, now)
-        val sanctionRemovedMembers = describeSanctionRemovedMembers(realMemberSanctions, now)
+        val sanctionRemovedMembers = composeSanctionRemovedMembers(sanctionedRealMemberIds, realMemberSanctions, now)
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
 
@@ -71,18 +74,28 @@ class DummyDataCleaner(
         realMemberIds.forEach { memberStatusRecalculator.recalculateFromRemainingSanctions(it, now) }
     }
 
-    private fun describeSanctionRemovedMembers(
+    /** 재계산이 끝난 뒤 불러야 지금 상태가 나온다. */
+    private fun composeSanctionRemovedMembers(
+        memberIds: Set<Long>,
         removedSanctions: List<Sanction>,
         now: LocalDateTime,
     ): List<SanctionRemovedMember> {
-        val restrictedMemberIds = removedSanctions
-            .filter { it.level != SanctionLevel.WARNING }
+        val liftedSuspensionOrBanMemberIds = removedSanctions
+            .filter { it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
             .map { it.memberId }
             .toSet()
-        return memberRepository.findAllById(removedSanctions.map { it.memberId }.distinct())
-            .sortedBy { it.id }
-            .map { SanctionRemovedMember.of(it, now, wasRestricted = it.id in restrictedMemberIds) }
+        return memberRepository.findAllById(memberIds).sortedBy { it.id }.map { member ->
+            val facts = SanctionRemovalFacts(
+                liftedSuspensionOrBan = member.id in liftedSuspensionOrBanMemberIds,
+                hasRemainingWarning = hasRemainingWarning(member.id, now),
+            )
+            SanctionRemovedMember.of(member, now, facts)
+        }
     }
+
+    private fun hasRemainingWarning(memberId: Long, now: LocalDateTime): Boolean =
+        sanctionRepository.findAllByMemberIdAndStatus(memberId, SanctionStatus.ACTIVE)
+            .any { it.level == SanctionLevel.WARNING && it.isEffectiveAt(now) }
 
     private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {
         val groupMatchIds = dummyMatchingTargetFinder.findGroupMatchIdsWith(dummyIds)

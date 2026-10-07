@@ -111,6 +111,7 @@ class AdminDummyController(
         val summary = adminDummyService.deleteAllDummies()
         log.info { "어드민[${admin.displayName}] 이 ${summary.toDisplayText()} 삭제" }
         redirectAttributes.addFlashAttribute("message", summary.toResultMessage())
+        summary.toFollowUpWarning()?.let { redirectAttributes.addFlashAttribute("error", it) }
         return "redirect:/admin/dummy"
     }
 

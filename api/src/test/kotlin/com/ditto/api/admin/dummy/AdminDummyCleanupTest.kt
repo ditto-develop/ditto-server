@@ -1,5 +1,6 @@
 package com.ditto.api.admin.dummy
 
+import com.ditto.api.admin.qa.QaTimeFormat
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
@@ -249,6 +250,26 @@ class AdminDummyCleanupTest(
             summary.toResultMessage() shouldContain "더미 신고로 걸린 제재를 지운 실회원: 테스터(#${tester.id}) 정상(앱에서 다시 로그인)."
         }
 
+        "직접 건 경고가 남아 있으면 정상이어도 따로 알린다" {
+            val tester = saveMember("테스터")
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    origin = SanctionOrigin.MANUAL,
+                    level = SanctionLevel.WARNING,
+                    startsAt = LocalDateTime.now().plusDays(3),
+                    endsAt = LocalDateTime.now().plusDays(10),
+                ),
+            )
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            val summary = adminDummyService.deleteAllDummies()
+
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
+            summary.toFollowUpWarning().shouldNotBeNull() shouldContain
+                "테스터(#${tester.id}) 정상(앱에서 다시 로그인, 남은 경고로 다음 주 퀴즈 차단)"
+        }
+
         "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {
             val tester = saveMember("테스터")
             // 저장 후 다시 읽은 정지 종료 시각과 그대로 비교하려고 DB 가 담는 초 단위로 맞춘다.
@@ -271,7 +292,9 @@ class AdminDummyCleanupTest(
                 it.status shouldBe MemberStatus.SUSPENDED
                 it.suspendedUntil shouldBe manualSuspension.endsAt
             }
-            summary.toResultMessage() shouldContain "테스터(#${tester.id}) 이용 정지 중(남은 제재가 있어 제재 관리에서 해제)"
+            val suspendedUntil = QaTimeFormat.format(manualSuspension.endsAt.shouldNotBeNull())
+            summary.toFollowUpWarning().shouldNotBeNull() shouldContain
+                "테스터(#${tester.id}) 이용 정지 ~$suspendedUntil 상태(남은 제재가 있어 제재 관리에서 해제)"
         }
     }
 })
