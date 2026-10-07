@@ -800,8 +800,8 @@ class AdminWebTest {
         val expectedBadges = mapOf(
             MemberStatus.ACTIVE to "<span class=\"badge on\">정상</span>",
             MemberStatus.PENDING to "<span class=\"badge matching\">가입 미완료</span>",
-            MemberStatus.SUSPENDED to "<span class=\"badge matching\">정지</span>",
-            MemberStatus.BANNED to "<span class=\"badge matching\">차단</span>",
+            MemberStatus.SUSPENDED to "<span class=\"badge warn\">이용 정지</span>",
+            MemberStatus.BANNED to "<span class=\"badge warn\">영구 차단</span>",
             MemberStatus.LEFT to "<span class=\"badge matching\">탈퇴</span>",
         )
 
@@ -1042,7 +1042,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">정지</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge warn\">이용 정지</span>")))
             .andExpect(content().string(containsString("누적 제재 <strong>1</strong>건")))
     }
 
