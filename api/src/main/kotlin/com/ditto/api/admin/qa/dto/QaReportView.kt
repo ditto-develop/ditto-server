@@ -33,7 +33,7 @@ class QaReportTarget(
     val member: QaMember,
     val isDummy: Boolean,
 ) {
-    val optionLabel: String = if (isDummy) "${member.labelWithRestriction} · 더미" else member.labelWithRestriction
+    val optionLabel: String = if (isDummy) "${member.labelWithStatus} · 더미" else member.labelWithStatus
 }
 
 class QaReportRow(

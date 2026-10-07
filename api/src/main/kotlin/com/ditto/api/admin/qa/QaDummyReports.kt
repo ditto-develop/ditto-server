@@ -40,11 +40,11 @@ class QaDummyReports(
         )
         val realMemberIds = collectRealMemberIds(realMembersInRequestsAndGroups, reports, dummyIds.toSet())
         val members = qaMemberLabels.load(dummyIds + realMemberIds)
-        val dummies = dummyIds.map(members::of).sortedBy { it.isRestricted }
+        val dummiesAvailableFirst = dummyIds.map(members::of).sortedBy { it.isUnavailable }
 
         return QaReportSection(
-            dummies = dummies,
-            targets = composeTargets(realMemberIds.map(members::of), dummies),
+            dummies = dummiesAvailableFirst,
+            targets = composeTargets(realMemberIds.map(members::of), dummiesAvailableFirst),
             reports = composeRows(reports, members),
         )
     }
@@ -70,10 +70,7 @@ class QaDummyReports(
         return chatRoomMemberRepository.findByRoomIdIn(roomIds).sortedByDescending { it.roomId }.map { it.memberId }
     }
 
-    /**
-     * 화면은 첫 더미를 기본 신고자로 고른다(제재 중이 아닌 더미 먼저, id 순).
-     * 실회원이 없으면 첫 대상이 기본 신고자와 같아 자기 신고로 거부되니, 기본 신고자를 맨 뒤로 보낸다.
-     */
+    /** 화면은 첫 더미를 기본 신고자로 고른다. 실회원이 없으면 첫 대상이 자기 자신이 되니 기본 신고자를 맨 뒤로 보낸다. */
     private fun composeTargets(realMembers: List<QaMember>, dummies: List<QaMember>): List<QaReportTarget> {
         val dummiesWithDefaultReporterLast = dummies.drop(1) + dummies.take(1)
         return realMembers.map { QaReportTarget(it, isDummy = false) } +

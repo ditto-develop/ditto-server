@@ -275,7 +275,7 @@ class AdminQaReportWebTest(
             val row = reportSection().reports.single()
 
             row.sanctionSummaryText shouldBe "영구 차단 · 적용 중"
-            row.reportedMember.restriction shouldBe "영구 차단"
+            row.reportedMember.unavailability.shouldNotBeNull().text shouldBe "영구 차단"
         }
 
         "실회원이 없으면 기본 신고자를 대상 맨 뒤에 둬 자기 신고가 기본값이 되지 않는다" {

@@ -24,6 +24,8 @@ import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import org.hamcrest.CoreMatchers.containsString
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.data.repository.findByIdOrNull
@@ -307,11 +309,30 @@ class AdminQaRoomWebTest(
 
             mockMvc.perform(post("/admin/qa/rooms/{id}/read-all-dummies", room.id).asAdmin())
                 .andExpect(flash().attribute("error", containsString("1명 성공")))
-                .andExpect(flash().attribute("error", containsString("1명 제재 중이라 건너뜀(${suspendedDummy.nickname}(#")))
+                .andExpect(flash().attribute("error", containsString("1명 앱을 쓸 수 없어 건너뜀(${suspendedDummy.nickname}(#")))
                 .andExpect(flash().attribute("error", containsString("이용 정지 ~")))
 
             lastReadMessageIdOf(room, activeDummy) shouldBe latest.id
             lastReadMessageIdOf(room, suspendedDummy) shouldBe null
+        }
+
+        "탈퇴한 더미는 건너뛰되 제재 해제를 안내하지 않는다" {
+            val activeDummy = saveMember("dummy-female-aaaa")
+            val leftDummy = memberRepository.save(
+                MemberFixture.create(
+                    nickname = "dummy-male-bbbb",
+                    email = "left-reader@ditto.pics",
+                    status = MemberStatus.LEFT,
+                ),
+            )
+            val room = saveRoom(ChatRoomFixture.group(), listOf(activeDummy, leftDummy, saveMember("테스터")))
+            saveMessage(room, activeDummy)
+
+            val error = mockMvc.perform(post("/admin/qa/rooms/{id}/read-all-dummies", room.id).asAdmin())
+                .andReturn().flashMap["error"] as String
+
+            error shouldContain "${leftDummy.nickname}(#${leftDummy.id}) (탈퇴)"
+            error shouldNotContain "제재 관리"
         }
 
         "읽을 메시지가 없으면 알려준다" {
