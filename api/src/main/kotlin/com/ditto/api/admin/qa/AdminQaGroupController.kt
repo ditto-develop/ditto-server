@@ -21,7 +21,7 @@ class AdminQaGroupController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "그룹 #$groupMatchId 수락") {
-            groupMatchController.accept(qaDummies.principalOf(dummyId), groupMatchId)
+            groupMatchController.accept(qaDummies.requireActiveDummyPrincipal(dummyId), groupMatchId)
         }
         return QaRoutes.GROUP_SECTION
     }
@@ -33,7 +33,7 @@ class AdminQaGroupController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "그룹 #$groupMatchId 거절") {
-            groupMatchController.decline(qaDummies.principalOf(dummyId), groupMatchId)
+            groupMatchController.decline(qaDummies.requireActiveDummyPrincipal(dummyId), groupMatchId)
         }
         return QaRoutes.GROUP_SECTION
     }
@@ -47,7 +47,7 @@ class AdminQaGroupController(
             "그룹 #$groupMatchId 대기 중인 더미 수락",
             adminQaService.findPendingDummiesIn(groupMatchId),
         ) { dummy ->
-            groupMatchController.accept(qaDummies.principalOf(dummy.id), groupMatchId)
+            groupMatchController.accept(qaDummies.requireActiveDummyPrincipal(dummy.id), groupMatchId)
         }
         return QaRoutes.GROUP_SECTION
     }

@@ -72,7 +72,7 @@ class AdminQaReviewController(
         targetId: Long,
         request: ReviewAnswerSubmitRequest,
     ): QaRematchOutcome? {
-        memberReviewController.submitAnswer(qaDummies.principalOf(dummyId), reviewId, targetId, request)
+        memberReviewController.submitAnswer(qaDummies.requireActiveDummyPrincipal(dummyId), reviewId, targetId, request)
         if (request.wantsOneToOneRematch == null) return null
         return qaRoomReviews.findRematchOutcome(reviewId, dummyId, targetId)
     }

@@ -1,5 +1,6 @@
 package com.ditto.api.admin.report.dto
 
+import com.ditto.api.admin.dummy.DummyMarker
 import com.ditto.domain.member.entity.MemberStatus
 import java.time.LocalDateTime
 
@@ -30,7 +31,9 @@ data class ReporterSummary(
     val nickname: String,
     val totalReportCount: Long,
     val abusiveRejectedCount: Long,
-)
+) {
+    val isQaDummy: Boolean = DummyMarker.isDummy(nickname)
+}
 
 /** 피신고자 요약 — 제재 수위 판단용. */
 data class ReportedSummary(

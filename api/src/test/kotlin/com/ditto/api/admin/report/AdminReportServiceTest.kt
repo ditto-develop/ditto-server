@@ -60,9 +60,33 @@ class AdminReportServiceTest(
 
             rows[0].overdue shouldBe false
         }
+
+        "더미가 낸 신고는 QA 신고로 표시한다" {
+            val report = memberReportRepository.save(
+                MemberReportFixture.create(
+                    reporterId = saveActiveMember("dummy-female-aaaa").id,
+                    reportedMemberId = saveActiveMember("피신고자").id,
+                ),
+            )
+
+            val rows = adminReportService.listReports(MemberReportStatus.RECEIVED, report.createdAt.plusHours(3))
+
+            rows.single().isReportedByQaDummy shouldBe true
+        }
     }
 
     "신고 상세" - {
+        "더미가 신고자면 QA 더미로 표시한다" {
+            val report = memberReportRepository.save(
+                MemberReportFixture.create(
+                    reporterId = saveActiveMember("dummy-female-aaaa").id,
+                    reportedMemberId = saveActiveMember("피신고자").id,
+                ),
+            )
+
+            adminReportService.getReportDetail(report.id, report.createdAt).reporter.isQaDummy shouldBe true
+        }
+
         "피신고자의 추천 차수는 유효 제재 수 + 1 — 허위 신고자 제재와 직권 해제는 제외한다" {
             val reporter = saveActiveMember("신고자")
             val reported = saveActiveMember("피신고자")

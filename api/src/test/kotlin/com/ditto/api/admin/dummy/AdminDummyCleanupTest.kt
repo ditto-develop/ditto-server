@@ -1,5 +1,6 @@
 package com.ditto.api.admin.dummy
 
+import com.ditto.api.admin.qa.QaTimeFormat
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
@@ -39,8 +40,15 @@ import com.ditto.domain.review.ReviewAnswerFixture
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.ditto.domain.sanction.SanctionFixture
+import com.ditto.domain.sanction.entity.SanctionLevel
+import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.repository.SanctionRepository
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import org.springframework.data.repository.findByIdOrNull
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import javax.sql.DataSource
 
 class AdminDummyCleanupTest(
@@ -211,6 +219,82 @@ class AdminDummyCleanupTest(
             memberDeviceRepository.count() shouldBe 0
             notificationRepository.count() shouldBe 0
             memberRepository.findAll().map { it.id } shouldBe listOf(tester.id)
+        }
+    }
+
+    "더미가 실회원을 신고해 생긴 제재" - {
+        fun banByDummyReport(tester: Member, dummy: Member) {
+            val report = memberReportRepository.save(MemberReportFixture.create(dummy.id, reportedMemberId = tester.id))
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    origin = SanctionOrigin.REPORTED,
+                    level = SanctionLevel.PERMANENT_BAN,
+                    startsAt = LocalDateTime.now().minusHours(1),
+                    memberReportId = report.id,
+                ),
+            )
+            memberRepository.save(tester.apply { ban() })
+        }
+
+        "제재를 지우면서 테스트 계정을 정상으로 되돌리고 결과에 알린다" {
+            val tester = saveMember("테스터")
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            val summary = adminDummyService.deleteAllDummies()
+
+            sanctionRepository.count() shouldBe 0
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
+            summary.reportCount shouldBe 1
+            summary.sanctionCount shouldBe 1
+            summary.toResultMessage() shouldContain "더미 신고로 걸린 제재를 지운 실회원: 테스터(#${tester.id}) 정상(앱에서 다시 로그인)."
+        }
+
+        "직접 건 경고가 남아 있으면 정상이어도 따로 알린다" {
+            val tester = saveMember("테스터")
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    origin = SanctionOrigin.MANUAL,
+                    level = SanctionLevel.WARNING,
+                    startsAt = LocalDateTime.now().plusDays(3),
+                    endsAt = LocalDateTime.now().plusDays(10),
+                ),
+            )
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            val summary = adminDummyService.deleteAllDummies()
+
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
+            summary.toFollowUpWarning().shouldNotBeNull() shouldContain
+                "테스터(#${tester.id}) 정상(앱에서 다시 로그인, 남은 경고로 다음 주 퀴즈 차단)"
+        }
+
+        "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {
+            val tester = saveMember("테스터")
+            // 저장 후 다시 읽은 정지 종료 시각과 그대로 비교하려고 DB 가 담는 초 단위로 맞춘다.
+            val startsAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).minusDays(1)
+            val manualSuspension = sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    origin = SanctionOrigin.MANUAL,
+                    level = SanctionLevel.SUSPENSION,
+                    startsAt = startsAt,
+                    endsAt = startsAt.plusDays(14),
+                ),
+            )
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            val summary = adminDummyService.deleteAllDummies()
+
+            sanctionRepository.findAll().map { it.id } shouldBe listOf(manualSuspension.id)
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().let {
+                it.status shouldBe MemberStatus.SUSPENDED
+                it.suspendedUntil shouldBe manualSuspension.endsAt
+            }
+            val suspendedUntil = QaTimeFormat.format(manualSuspension.endsAt.shouldNotBeNull())
+            summary.toFollowUpWarning().shouldNotBeNull() shouldContain
+                "테스터(#${tester.id}) 이용 정지 ~$suspendedUntil 상태(남은 제재가 있어 제재 관리에서 해제)"
         }
     }
 })

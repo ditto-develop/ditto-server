@@ -1,5 +1,6 @@
 package com.ditto.api.admin.report.dto
 
+import com.ditto.api.admin.dummy.DummyMarker
 import java.time.LocalDateTime
 
 /** 신고 검토 목록의 한 행. */
@@ -15,4 +16,6 @@ data class ReportListItem(
     val createdAt: LocalDateTime,
     val elapsedText: String,
     val overdue: Boolean,
-)
+) {
+    val isReportedByQaDummy: Boolean = DummyMarker.isDummy(reporterNickname)
+}

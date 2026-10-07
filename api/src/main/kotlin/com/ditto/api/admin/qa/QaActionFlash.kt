@@ -37,6 +37,7 @@ internal fun RedirectAttributes.flashEachDummyAction(
 
 /**
  * 더미마다 따로 실행한다. 앞 더미가 거부돼도 나머지는 계속한다.
+ * 앱을 쓸 수 없는 더미(탈퇴·제재 중)는 건너뛴다. 다음 단계가 막힐 수 있어 실패 알림으로 띄운다.
  * block 이 돌려준 결과(재매칭 성사 등)는 종류별 건수로 묶어 메시지 뒤에 붙인다.
  */
 internal fun RedirectAttributes.flashEachDummyActionWithResults(
@@ -49,18 +50,35 @@ internal fun RedirectAttributes.flashEachDummyActionWithResults(
         return
     }
 
-    val attempts = dummies.map { dummy -> dummy to runRejectable { block(dummy) } }
+    val (unavailableDummies, actingDummies) = dummies.partition { it.isUnavailable }
+    val attempts = actingDummies.map { dummy -> dummy to runRejectable { block(dummy) } }
     val resultSummary = summarize(attempts.flatMap { (_, attempt) -> attempt.getOrDefault(emptyList()) })
     val rejections = attempts.mapNotNull { (dummy, attempt) ->
         (attempt.exceptionOrNull() as WarnException?)?.let { "${dummy.label} ${it.toDisplayText()}" }
     }
-    if (rejections.isEmpty()) {
+    if (rejections.isEmpty() && unavailableDummies.isEmpty()) {
         flashSuccess("$action (${dummies.size}명)", resultSummary)
         return
     }
-    val succeededCount = dummies.size - rejections.size
-    val failureText = "$action: ${succeededCount}명 성공, ${rejections.size}명 실패. ${rejections.joinToString(", ")}"
+    val succeededCount = actingDummies.size - rejections.size
+    val failureText = listOfNotNull(
+        "$action: ${succeededCount}명 성공",
+        rejectedTextOf(rejections),
+        skippedTextOf(unavailableDummies),
+    ).joinToString(" / ")
     flashRejection(listOfNotNull(failureText, resultSummary).joinToString(" · "))
+}
+
+private fun rejectedTextOf(rejections: List<String>): String? {
+    if (rejections.isEmpty()) return null
+    return "${rejections.size}명 실패: ${rejections.joinToString(", ")}"
+}
+
+private fun skippedTextOf(unavailableDummies: List<QaMember>): String? {
+    if (unavailableDummies.isEmpty()) return null
+    val dummyLabels = unavailableDummies.joinToString(", ") { it.labelWithStatus }
+    val hint = if (unavailableDummies.any { it.isSanctioned }) ". 제재 중인 더미는 제재 관리에서 해제하세요" else ""
+    return "${unavailableDummies.size}명 앱을 쓸 수 없어 건너뜀($dummyLabels)$hint"
 }
 
 /** 앱의 거부(WarnException)만 결과로 담는다. 그 밖의 예외는 서버 오류라 그대로 던진다. */
@@ -73,8 +91,8 @@ private fun summarize(results: List<String>): String? =
         .takeIf { it.isNotEmpty() }
         ?.joinToString(", ")
 
-/** 앱이 받는 거부라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
-private fun RedirectAttributes.flashRejection(text: String) {
+/** 앱의 거부나 입력 누락이라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
+internal fun RedirectAttributes.flashRejection(text: String) {
     log.info { "QA 콘솔 거부: $text" }
     addFlashAttribute("error", text)
 }

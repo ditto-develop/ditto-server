@@ -1,6 +1,7 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.qa.dto.QaMember
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -10,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class QaMemberLabels(
     private val memberRepository: MemberRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
-    fun load(memberIds: Collection<Long>): QaMembers = QaMembers(memberRepository.findAllById(memberIds.distinct()))
+    fun load(memberIds: Collection<Long>): QaMembers =
+        QaMembers(memberRepository.findAllById(memberIds.distinct()), serverTimeProvider.now())
 
     fun one(memberId: Long): QaMember = load(listOf(memberId)).of(memberId)
 }

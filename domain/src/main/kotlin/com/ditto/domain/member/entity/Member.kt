@@ -4,6 +4,8 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import com.ditto.domain.member.converter.InterestSetConverter
+import com.ditto.domain.sanction.entity.Sanction
+import com.ditto.domain.sanction.entity.SanctionLevel
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
@@ -293,23 +295,60 @@ class Member(
         this.role = role
     }
 
-    /** 기간 이용 정지. 영구 차단(BANNED)은 정지로 낮출 수 없다. */
+    /** 기간 이용 정지. ACTIVE·SUSPENDED에서만 전이하며, 영구 차단(BANNED)은 정지로 낮출 수 없다. */
     fun suspendUntil(until: LocalDateTime) {
-        if (status == MemberStatus.BANNED) {
-            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+        val rejection = when (status) {
+            MemberStatus.BANNED -> "영구 차단 중인 회원은 정지할 수 없습니다. 차단을 먼저 해제하세요."
+            MemberStatus.LEFT -> "탈퇴한 회원은 정지할 수 없습니다. 경고나 기각으로 처리하세요."
+            MemberStatus.PENDING -> "가입을 마치지 않은 회원은 정지할 수 없습니다."
+            MemberStatus.ACTIVE, MemberStatus.SUSPENDED -> null
         }
+        if (rejection != null) throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, rejection)
         status = MemberStatus.SUSPENDED
         suspendedUntil = until
     }
 
     /** 영구 차단. ACTIVE·SUSPENDED에서만 전이하며, 해제는 [reinstate](어드민 직권)로만 가능하다. */
     fun ban() {
+        if (status == MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 영구 차단된 회원입니다.")
+        }
         if (status != MemberStatus.ACTIVE && status != MemberStatus.SUSPENDED) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
         }
         status = MemberStatus.BANNED
         suspendedUntil = null
     }
+
+    /**
+     * 제재를 해제하거나 지운 뒤 남은 제재 중 지금 유효한 가장 무거운 것으로 상태를 맞춘다. 경고는 상태와 무관하다.
+     * 제재가 줄어든 뒤에만 불러, 정지·차단 중이 아니면 그대로 두고 전이 검사 없이 결과 상태를 넣는다.
+     */
+    fun alignStatusWith(remainingSanctions: List<Sanction>, now: LocalDateTime) {
+        require(remainingSanctions.all { it.memberId == id }) { "회원 #$id 의 제재만 넘겨야 합니다." }
+        if (!hasSuspendedOrBannedStatus()) return
+
+        val heaviest = remainingSanctions
+            .filter { it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
+            .maxWithOrNull(BY_LEVEL_THEN_LATEST_END)
+        when (heaviest?.level) {
+            SanctionLevel.PERMANENT_BAN -> {
+                status = MemberStatus.BANNED
+                suspendedUntil = null
+            }
+            SanctionLevel.SUSPENSION -> {
+                status = MemberStatus.SUSPENDED
+                suspendedUntil = requireNotNull(heaviest.endsAt) { "이용 정지 제재 #${heaviest.id}에 종료 시각이 없습니다." }
+            }
+            else -> {
+                status = MemberStatus.ACTIVE
+                suspendedUntil = null
+            }
+        }
+    }
+
+    private fun hasSuspendedOrBannedStatus(): Boolean =
+        status == MemberStatus.SUSPENDED || status == MemberStatus.BANNED
 
     /** 제재 해제 — 정지 만료·어드민 직권 해제 시 활성으로 원복한다. */
     fun reinstate() {
@@ -354,6 +393,10 @@ class Member(
     }
 
     companion object {
+        /** 같은 수위면 늦게 끝나는 제재가 더 무겁다. 영구 차단은 끝이 없다. */
+        private val BY_LEVEL_THEN_LATEST_END: Comparator<Sanction> =
+            compareBy<Sanction> { it.level }.thenBy { it.endsAt ?: LocalDateTime.MAX }
+
         const val NICKNAME_CHANGE_LIMIT = 2
         const val NICKNAME_CHANGE_LOCK_DAYS = 14L
     }

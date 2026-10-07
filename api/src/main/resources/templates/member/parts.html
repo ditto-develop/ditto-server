@@ -36,8 +36,8 @@
     <th:block th:switch="${status?.name()}">
         <span class="badge on" th:case="'ACTIVE'">정상</span>
         <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
-        <span class="badge matching" th:case="'SUSPENDED'">정지</span>
-        <span class="badge matching" th:case="'BANNED'">차단</span>
+        <span class="badge warn" th:case="'SUSPENDED'">이용 정지</span>
+        <span class="badge warn" th:case="'BANNED'">영구 차단</span>
         <span class="badge matching" th:case="*">탈퇴</span>
     </th:block>
 </th:block>

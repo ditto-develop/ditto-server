@@ -27,7 +27,7 @@ class AdminQaVoteController(
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "샘플 투표 만들기") {
             val request = QaSampleVote.request(allowMultiple, serverTimeProvider.now())
-            chatVoteController.createVote(qaDummies.principalOf(dummyId), roomId, request)
+            chatVoteController.createVote(qaDummies.requireActiveDummyPrincipal(dummyId), roomId, request)
         }
         return QaRoutes.room(roomId)
     }
@@ -49,7 +49,7 @@ class AdminQaVoteController(
 
         val request = ChatVoteCastRequest(placeIds = placeIds, timeIds = timeIds)
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #${voteId}에 투표") {
-            chatVoteController.cast(qaDummies.principalOf(dummyId), roomId, voteId, request)
+            chatVoteController.cast(qaDummies.requireActiveDummyPrincipal(dummyId), roomId, voteId, request)
         }
         return QaRoutes.room(roomId)
     }
@@ -70,7 +70,8 @@ class AdminQaVoteController(
             "투표 #$voteId 더미 모두 무작위 투표",
             adminQaRoomService.findActiveDummiesIn(roomId),
         ) { dummy ->
-            chatVoteController.cast(qaDummies.principalOf(dummy.id), roomId, voteId, QaRandomCast.of(vote))
+            val voter = qaDummies.requireActiveDummyPrincipal(dummy.id)
+            chatVoteController.cast(voter, roomId, voteId, QaRandomCast.of(vote))
         }
         return QaRoutes.room(roomId)
     }
@@ -83,7 +84,7 @@ class AdminQaVoteController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "투표 #$voteId 마감") {
-            chatVoteController.close(qaDummies.principalOf(dummyId), roomId, voteId)
+            chatVoteController.close(qaDummies.requireActiveDummyPrincipal(dummyId), roomId, voteId)
         }
         return QaRoutes.room(roomId)
     }

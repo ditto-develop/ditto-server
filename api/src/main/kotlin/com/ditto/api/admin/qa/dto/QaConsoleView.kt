@@ -1,5 +1,6 @@
 package com.ditto.api.admin.qa.dto
 
+import com.ditto.api.admin.qa.AppUnavailability
 import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.InvitationStatus
@@ -15,14 +16,35 @@ class QaConsoleView(
     val personal: QaPersonalSection,
     val group: QaGroupSection,
     val timeline: QaTimeline,
-)
+) {
+    /** 1:1 신청과 그룹 초대에 나온 실회원. 신고 카드가 아직 방이 없는 테스트 계정도 대상으로 고르게 한다. */
+    val realMembersInRequestsAndGroups: List<QaMember> =
+        (
+            personal.receivedRequests.map { it.requester } +
+                personal.sentRequests.map { it.receiver } +
+                personal.requestOptions.map { it.receiver } +
+                group.groups.flatMap { group -> group.members.filterNot { it.isDummy }.map { it.member } }
+            ).distinctBy { it.id }
+}
 
 class QaMember(
     val id: Long,
     val nickname: String,
+    val unavailability: AppUnavailability? = null,
+    /** 정지 기간은 지났지만 상태 반영(배치·로그인) 전이다. */
+    val isSuspensionOverdue: Boolean = false,
 ) {
     /** 결과 메시지용. 화면의 닉네임과 로그의 id 를 함께 대조할 수 있게 한다. */
     val label: String = "$nickname(#$id)"
+
+    val isUnavailable: Boolean = unavailability != null
+
+    val isSanctioned: Boolean = unavailability?.isSanction == true
+
+    /** 배지를 달 수 없는 select 보기용. */
+    val nicknameWithStatus: String = unavailability?.let { "$nickname (${it.text})" } ?: nickname
+
+    val labelWithStatus: String = unavailability?.let { "$label (${it.text})" } ?: label
 }
 
 class QaPersonalSection(

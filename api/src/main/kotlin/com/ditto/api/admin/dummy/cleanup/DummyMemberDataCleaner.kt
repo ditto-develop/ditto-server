@@ -8,10 +8,11 @@ import com.ditto.domain.memberreport.repository.MemberReportImageRepository
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
+import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.repository.SanctionRepository
 import org.springframework.stereotype.Component
 
-/** 더미 본인의 데이터와, 테스터가 앱에서 더미를 상대로 남긴 신고·차단·제재. */
+/** 더미 본인의 데이터와, 더미가 낀 신고·차단·제재. 더미가 실회원을 신고해 생긴 제재도 포함한다. */
 @Component
 class DummyMemberDataCleaner(
     private val memberReportRepository: MemberReportRepository,
@@ -29,8 +30,8 @@ class DummyMemberDataCleaner(
         memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds).map { it.id }.toSet()
 
     /** 더미가 받은 제재와, 지울 신고에서 나온 제재. */
-    fun findSanctionIdsWith(dummyIds: Collection<Long>, reportIds: Collection<Long>): Set<Long> =
-        sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds).map { it.id }.toSet()
+    fun findSanctionsWith(dummyIds: Collection<Long>, reportIds: Collection<Long>): List<Sanction> =
+        sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds)
 
     fun deleteReportsAndSanctions(reportIds: Collection<Long>, sanctionIds: Collection<Long>) {
         val imageIds = memberReportImageRepository.findByMemberReportIdIn(reportIds).map { it.id }

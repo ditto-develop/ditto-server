@@ -4,11 +4,14 @@ import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.entity.SanctionStatus
+import jakarta.persistence.LockModeType
 import java.time.LocalDateTime
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 interface SanctionRepository : JpaRepository<Sanction, Long> {
@@ -19,6 +22,13 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
     ): List<Sanction>
 
     fun findAllByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
+
+    /** 앞선 비잠금 읽기가 있어도 대기 중 커밋된 제재를 보려고 잠금 읽기한다(ADR 0011 규칙 6·7). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findAllWithLockByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
+
+    fun findByMemberReportIdIn(memberReportIds: Collection<Long>): List<Sanction>
 
     /** 회원별 제재 이력 — 최신순 */
     fun findAllByMemberIdOrderByIdDesc(memberId: Long): List<Sanction>

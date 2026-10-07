@@ -5,6 +5,7 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import java.time.LocalDateTime
+import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -26,6 +27,8 @@ interface MemberReportRepository : JpaRepository<MemberReport, Long> {
 
     /** 어드민 검토 목록 — 접수 오래된 순 (SLA 대기열) */
     fun findAllByStatusOrderByCreatedAtAsc(status: MemberReportStatus): List<MemberReport>
+
+    fun findByReporterIdInOrderByIdDesc(reporterIds: Collection<Long>, limit: Limit): List<MemberReport>
 
     /** 신고자 이력 통계용 — 총 신고 수 */
     fun countByReporterId(reporterId: Long): Long

@@ -117,6 +117,7 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
 }
 .badge.on { background: rgba(34, 176, 125, 0.13); color: var(--success); }
 .badge.off { background: rgba(154, 160, 180, 0.16); color: var(--text-muted); }
@@ -447,6 +448,46 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
 .content.qa-console-page { max-width: 1320px; }
+#report { scroll-margin-top: 80px; }
+.qa-sanction-link { font-size: 12px; }
+.qa-report-desc { margin: -8px 0 16px; }
+.qa-report-form { max-width: 860px; }
+.qa-report-form .field-row .field { min-width: min(220px, 100%); }
+.qa-report-form .field-row .qa-report-target-field { flex: 1.6; min-width: min(300px, 100%); }
+.qa-report-target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qa-report-target select { flex: 1; min-width: min(180px, 100%); }
+.qa-report-typed { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.qa-report-typed input { width: 110px; }
+/* 회원 ID를 넣으면 그쪽이 우선이라 목록을 흐리게 해 알린다. */
+.qa-report-target:has(input:not(:placeholder-shown)) select:not(:focus) { opacity: 0.45; }
+.qa-report-hint { margin: 6px 0 0; font-size: 12px; }
+.qa-report-hint a { color: var(--primary); font-weight: 600; }
+/* 흰 배경에서 읽히게 경고색보다 어두운 갈색을 쓴다. */
+.qa-report-warning { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #8a5a00; }
+.qa-report-group { border: 0; padding: 0; margin: 0 0 16px; }
+.qa-report-group legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.qa-report-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.qa-report-form textarea { resize: vertical; }
+.qa-report-block { margin: 0 0 16px; }
+.qa-report-list { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.qa-report-title { margin: 0 0 10px; font-size: 14px; }
+.qa-report-title .muted { font-size: 12px; font-weight: 400; }
+.qa-report-table { overflow-x: auto; }
+.qa-report-table td { word-break: keep-all; }
+.qa-report-sanction { margin-top: 4px; font-size: 12px; }
+/* 카드 안 결과 알림으로 스크롤할 때 고정 상단바에 가리지 않게 한다. */
+[data-qa-inline-alerts] { scroll-margin-top: 80px; }
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 
 /* 시각 바로가기 타임라인. 위치(--pos, --start, --width)는 이번 주 안의 백분율이다. */
 .qa-week { flex-basis: 100%; container: qa-week / inline-size; --lane-height: 64px; --stem-gap: 14px; }
@@ -551,7 +592,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
 .qa-guide summary { cursor: pointer; font-weight: 700; }
 .qa-guide ol { margin: 12px 0 0; padding-left: 20px; color: var(--text-sub); line-height: 1.9; }
-.card h2 .count {
+.card h2 .count, .qa-report-title .count {
     margin-left: 6px;
     padding: 1px 8px;
     border-radius: 999px;
@@ -560,7 +601,8 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     font-size: 12px;
 }
 table.tbl td.actions { text-align: right; white-space: nowrap; }
-table.tbl td.actions form + form, table.tbl td.actions form + a { margin-left: 6px; }
+table.tbl td.actions form + form, table.tbl td.actions form + a,
+table.tbl td.actions a + a, table.tbl td.actions a + form { margin-left: 6px; }
 .qa-group { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
 .qa-group-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .qa-group-head > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
