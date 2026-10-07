@@ -44,6 +44,7 @@ import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.repository.SanctionRepository
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.springframework.data.repository.findByIdOrNull
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -235,14 +236,17 @@ class AdminDummyCleanupTest(
             memberRepository.save(tester.apply { ban() })
         }
 
-        "제재를 지우면서 테스트 계정을 정상으로 되돌린다" {
+        "제재를 지우면서 테스트 계정을 정상으로 되돌리고 결과에 알린다" {
             val tester = saveMember("테스터")
             banByDummyReport(tester, saveMember("dummy-female-aaaa"))
 
-            adminDummyService.deleteAllDummies()
+            val summary = adminDummyService.deleteAllDummies()
 
             sanctionRepository.count() shouldBe 0
             memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
+            summary.reportCount shouldBe 1
+            summary.sanctionCount shouldBe 1
+            summary.toResultMessage() shouldContain "더미 신고로 걸린 제재를 지운 실회원: 테스터(#${tester.id}) 정상."
         }
 
         "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {

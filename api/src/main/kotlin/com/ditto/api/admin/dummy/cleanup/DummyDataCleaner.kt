@@ -7,9 +7,12 @@ import com.ditto.api.admin.cleanup.ReviewEraser
 import com.ditto.api.admin.sanction.MemberStatusRecalculator
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
+import java.time.LocalDateTime
 import org.springframework.stereotype.Component
 
 /**
@@ -24,6 +27,7 @@ class DummyDataCleaner(
     private val reviewEraser: ReviewEraser,
     private val dummyMemberDataCleaner: DummyMemberDataCleaner,
     private val notificationRepository: NotificationRepository,
+    private val memberRepository: MemberRepository,
     private val memberStatusRecalculator: MemberStatusRecalculator,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
@@ -37,7 +41,7 @@ class DummyDataCleaner(
         val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
         reviewEraser.eraseByMembers(dummyIds)
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
-        recalculateStatusesAfterSanctionDeletion(sanctionedRealMemberIds)
+        val sanctionClearedMembers = recalculateStatusesAfterSanctionDeletion(sanctionedRealMemberIds)
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
 
@@ -45,14 +49,26 @@ class DummyDataCleaner(
             dummyCount = dummyIds.size,
             roomCount = matchingTargets.roomIds.size,
             matchCount = matchingTargets.personalMatchIds.size + matchingTargets.groupMatchIds.size,
+            reportCount = reportIds.size,
+            sanctionCount = sanctionIds.size,
             notificationCount = matchingNotificationCount + dummyNotificationCount,
+            sanctionClearedMembers = sanctionClearedMembers,
         )
     }
 
     /** 안 하면 지운 제재로 걸린 정지·차단이 실회원에게 남는다. */
-    private fun recalculateStatusesAfterSanctionDeletion(realMemberIds: Set<Long>) {
+    private fun recalculateStatusesAfterSanctionDeletion(realMemberIds: Set<Long>): List<String> {
         val now = serverTimeProvider.now()
         realMemberIds.forEach { memberStatusRecalculator.recalculateFromRemainingSanctions(it, now) }
+        return memberRepository.findAllById(realMemberIds)
+            .sortedBy { it.id }
+            .map { "${it.nickname}(#${it.id}) ${statusLabelOf(it, now)}" }
+    }
+
+    private fun statusLabelOf(member: Member, now: LocalDateTime): String = when {
+        member.isBanned() -> "영구 차단 중"
+        member.isSuspendedAt(now) -> "이용 정지 중"
+        else -> "정상"
     }
 
     private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {
@@ -101,12 +117,30 @@ class DummyCleanupSummary(
     val dummyCount: Int,
     val roomCount: Int,
     val matchCount: Int,
+    val reportCount: Int,
+    val sanctionCount: Int,
     val notificationCount: Int,
+    val sanctionClearedMembers: List<String>,
 ) {
     fun toDisplayText(): String =
-        "더미 ${dummyCount}명, 채팅방 ${roomCount}개, 매칭 ${matchCount}건, 알림 ${notificationCount}개"
+        "더미 ${dummyCount}명, 채팅방 ${roomCount}개, 매칭 ${matchCount}건, " +
+            "신고 ${reportCount}건, 제재 ${sanctionCount}건, 알림 ${notificationCount}개"
+
+    fun toResultMessage(): String {
+        val deleted = "${toDisplayText()}를 삭제했습니다."
+        if (sanctionClearedMembers.isEmpty()) return deleted
+        return "$deleted 더미 신고로 걸린 제재를 지운 실회원: ${sanctionClearedMembers.joinToString(", ")}. 앱에서 다시 로그인하세요."
+    }
 
     companion object {
-        val NONE = DummyCleanupSummary(dummyCount = 0, roomCount = 0, matchCount = 0, notificationCount = 0)
+        val NONE = DummyCleanupSummary(
+            dummyCount = 0,
+            roomCount = 0,
+            matchCount = 0,
+            reportCount = 0,
+            sanctionCount = 0,
+            notificationCount = 0,
+            sanctionClearedMembers = emptyList(),
+        )
     }
 }
