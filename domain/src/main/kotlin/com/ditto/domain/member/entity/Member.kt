@@ -4,6 +4,8 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.BaseEntity
 import com.ditto.domain.member.converter.InterestSetConverter
+import com.ditto.domain.sanction.entity.Sanction
+import com.ditto.domain.sanction.entity.SanctionLevel
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
@@ -277,6 +279,7 @@ class Member(
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
     fun isAdmin(): Boolean = role == MemberRole.ADMIN
     fun isBanned(): Boolean = status == MemberStatus.BANNED
+    fun isRestricted(): Boolean = status == MemberStatus.SUSPENDED || status == MemberStatus.BANNED
 
     /**
      * 주어진 시각 기준 이용 정지 중인지. 해제 예정일이 지났으면 정지로 보지 않는다
@@ -309,6 +312,32 @@ class Member(
         }
         status = MemberStatus.BANNED
         suspendedUntil = null
+    }
+
+    /**
+     * 제재를 해제하거나 지운 뒤, 남은 제재 중 지금 유효한 가장 무거운 것으로 상태를 맞춘다. 경고는 상태와 무관하다.
+     * 제재가 줄어든 뒤에만 부르므로 정지·차단 중이 아니면 그대로 둔다.
+     */
+    fun alignStatusWith(sanctions: List<Sanction>, now: LocalDateTime) {
+        if (!isRestricted()) return
+
+        val heaviest = sanctions
+            .filter { it.memberId == id && it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
+            .maxByOrNull { it.level }
+        when (heaviest?.level) {
+            SanctionLevel.PERMANENT_BAN -> {
+                status = MemberStatus.BANNED
+                suspendedUntil = null
+            }
+            SanctionLevel.SUSPENSION -> {
+                status = MemberStatus.SUSPENDED
+                suspendedUntil = requireNotNull(heaviest.endsAt) { "이용 정지 제재 #${heaviest.id}에 종료 시각이 없습니다." }
+            }
+            else -> {
+                status = MemberStatus.ACTIVE
+                suspendedUntil = null
+            }
+        }
     }
 
     /** 제재 해제 — 정지 만료·어드민 직권 해제 시 활성으로 원복한다. */

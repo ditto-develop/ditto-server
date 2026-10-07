@@ -56,7 +56,7 @@ class AdminSanctionService(
         memberReportId: Long? = null,
         note: String? = null,
     ): Sanction {
-        val member = memberRepository.findById(memberId).getOrNull()
+        val member = memberRepository.findWithLockById(memberId)
             ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원이라 제재를 적용할 수 없습니다: #$memberId")
 
         val (startsAt, endsAt) = sanctionPeriod(level, now)
@@ -95,7 +95,7 @@ class AdminSanctionService(
         if (sanctionRepository.liftIfActive(sanctionId, now) == 0) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 만료됐거나 해제된 제재입니다.")
         }
-        memberStatusRecalculator.recalculateBySanctions(sanction.memberId, now)
+        memberStatusRecalculator.recalculateFromRemainingSanctions(sanction.memberId, now)
         return sanction
     }
 

@@ -29,7 +29,7 @@ class DummyMemberDataCleaner(
     fun findReportIdsWith(dummyIds: Collection<Long>): Set<Long> =
         memberReportRepository.findByReporterIdInOrReportedMemberIdIn(dummyIds, dummyIds).map { it.id }.toSet()
 
-    /** 더미가 받은 제재와, 지울 신고에서 나온 제재(더미가 신고한 실회원의 제재 포함). */
+    /** 더미가 받은 제재와, 지울 신고에서 나온 제재. */
     fun findSanctionsWith(dummyIds: Collection<Long>, reportIds: Collection<Long>): List<Sanction> =
         sanctionRepository.findByMemberIdInOrMemberReportIdIn(dummyIds, reportIds)
 

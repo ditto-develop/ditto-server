@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component
 
 /**
  * 더미 회원을 지우기 전에 더미가 남긴 데이터를 지운다. 더미가 낀 매칭 기록은 MatchingRecordEraser 가 지우고,
- * 여기서는 더미 본인의 데이터와 더미를 상대로 한 평가·신고·제재를 지운다.
+ * 여기서는 더미 본인의 데이터와 더미가 낀 평가·신고·제재를 지운다.
  */
 @Component
 class DummyDataCleaner(
@@ -32,11 +32,12 @@ class DummyDataCleaner(
         val reportIds = dummyMemberDataCleaner.findReportIdsWith(dummyIds)
         val sanctions = dummyMemberDataCleaner.findSanctionsWith(dummyIds, reportIds)
         val sanctionIds = sanctions.map { it.id }.toSet()
+        val sanctionedRealMemberIds = sanctions.map { it.memberId }.toSet() - dummyIds.toSet()
 
         val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
         reviewEraser.eraseByMembers(dummyIds)
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
-        recalculateRealMemberStatuses(sanctions.map { it.memberId }.filterNot { it in dummyIds }.toSet())
+        recalculateStatusesAfterSanctionDeletion(sanctionedRealMemberIds)
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
 
@@ -48,10 +49,10 @@ class DummyDataCleaner(
         )
     }
 
-    /** 더미가 신고해 실회원에게 걸린 제재를 지웠으니, 그 회원 상태를 남은 제재로 되돌린다. 안 하면 정지·차단이 풀리지 않는다. */
-    private fun recalculateRealMemberStatuses(realMemberIds: Set<Long>) {
+    /** 안 하면 지운 제재로 걸린 정지·차단이 실회원에게 남는다. */
+    private fun recalculateStatusesAfterSanctionDeletion(realMemberIds: Set<Long>) {
         val now = serverTimeProvider.now()
-        realMemberIds.forEach { memberStatusRecalculator.recalculateBySanctions(it, now) }
+        realMemberIds.forEach { memberStatusRecalculator.recalculateFromRemainingSanctions(it, now) }
     }
 
     private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {

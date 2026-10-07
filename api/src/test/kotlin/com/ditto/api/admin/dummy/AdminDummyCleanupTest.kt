@@ -40,11 +40,13 @@ import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.ditto.domain.sanction.SanctionFixture
 import com.ditto.domain.sanction.entity.SanctionLevel
+import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.repository.SanctionRepository
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.data.repository.findByIdOrNull
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import javax.sql.DataSource
 
 class AdminDummyCleanupTest(
@@ -224,6 +226,7 @@ class AdminDummyCleanupTest(
             sanctionRepository.save(
                 SanctionFixture.create(
                     tester.id,
+                    origin = SanctionOrigin.REPORTED,
                     level = SanctionLevel.PERMANENT_BAN,
                     startsAt = LocalDateTime.now().minusHours(1),
                     memberReportId = report.id,
@@ -242,13 +245,16 @@ class AdminDummyCleanupTest(
             memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
         }
 
-        "더미와 무관한 직접 제재가 남아 있으면 그 제재로 맞춘다" {
+        "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {
             val tester = saveMember("테스터")
+            val startsAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).minusDays(1)
             val manualSuspension = sanctionRepository.save(
                 SanctionFixture.create(
                     tester.id,
+                    origin = SanctionOrigin.MANUAL,
                     level = SanctionLevel.SUSPENSION,
-                    startsAt = LocalDateTime.now().minusDays(1),
+                    startsAt = startsAt,
+                    endsAt = startsAt.plusDays(14),
                 ),
             )
             banByDummyReport(tester, saveMember("dummy-female-aaaa"))
@@ -256,7 +262,10 @@ class AdminDummyCleanupTest(
             adminDummyService.deleteAllDummies()
 
             sanctionRepository.findAll().map { it.id } shouldBe listOf(manualSuspension.id)
-            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.SUSPENDED
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().let {
+                it.status shouldBe MemberStatus.SUSPENDED
+                it.suspendedUntil shouldBe manualSuspension.endsAt
+            }
         }
     }
 })

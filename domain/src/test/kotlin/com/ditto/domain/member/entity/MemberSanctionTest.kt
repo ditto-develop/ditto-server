@@ -3,6 +3,8 @@ package com.ditto.domain.member.entity
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.sanction.SanctionFixture
+import com.ditto.domain.sanction.entity.SanctionLevel
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -81,6 +83,61 @@ class MemberSanctionTest : FreeSpec(
                 }
 
                 exception.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+            }
+        }
+
+        "alignStatusWith" - {
+            val now = LocalDateTime.of(2026, 7, 20, 12, 0)
+
+            fun sanctionOf(member: Member, level: SanctionLevel, startsAt: LocalDateTime = now.minusDays(1)) =
+                SanctionFixture.create(memberId = member.id, level = level, startsAt = startsAt)
+
+            "남은 제재가 없으면 정지·차단을 풀어 ACTIVE로 되돌린다" {
+                val member = MemberFixture.create(id = 1L, status = MemberStatus.BANNED)
+
+                member.alignStatusWith(emptyList(), now)
+
+                member.status shouldBe MemberStatus.ACTIVE
+                member.suspendedUntil.shouldBeNull()
+            }
+
+            "남은 유효 제재 중 가장 무거운 것으로 맞춘다" {
+                val member = MemberFixture.create(id = 1L, status = MemberStatus.SUSPENDED, suspendedUntil = until)
+                val suspension = sanctionOf(member, SanctionLevel.SUSPENSION)
+                val ban = sanctionOf(member, SanctionLevel.PERMANENT_BAN)
+
+                member.alignStatusWith(listOf(suspension, ban), now)
+
+                member.status shouldBe MemberStatus.BANNED
+                member.suspendedUntil.shouldBeNull()
+            }
+
+            "차단이 사라지고 정지만 남으면 그 정지의 종료 시각으로 정지한다" {
+                val member = MemberFixture.create(id = 1L, status = MemberStatus.BANNED)
+                val suspension = sanctionOf(member, SanctionLevel.SUSPENSION)
+
+                member.alignStatusWith(listOf(suspension), now)
+
+                member.status shouldBe MemberStatus.SUSPENDED
+                member.suspendedUntil shouldBe suspension.endsAt
+            }
+
+            "경고와 기간이 지난 정지는 상태에 반영하지 않는다" {
+                val member = MemberFixture.create(id = 1L, status = MemberStatus.SUSPENDED, suspendedUntil = until)
+                val warning = sanctionOf(member, SanctionLevel.WARNING)
+                val expiredSuspension = sanctionOf(member, SanctionLevel.SUSPENSION, startsAt = now.minusDays(30))
+
+                member.alignStatusWith(listOf(warning, expiredSuspension), now)
+
+                member.status shouldBe MemberStatus.ACTIVE
+            }
+
+            "정지·차단 중이 아니면 상태를 바꾸지 않는다" {
+                val member = MemberFixture.create(id = 1L, status = MemberStatus.LEFT)
+
+                member.alignStatusWith(listOf(sanctionOf(member, SanctionLevel.PERMANENT_BAN)), now)
+
+                member.status shouldBe MemberStatus.LEFT
             }
         }
 

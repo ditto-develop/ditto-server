@@ -1,6 +1,6 @@
 # sanction 도메인
 
-회원 제재 이력. 신고 검토(`/admin/reports/{id}/action`)와 어드민 직접 제재(`/admin/members/{id}/sanctions`)의 결과가 여기 쌓이고, 집행은 `Member.status` 반영값으로 수행된다 (ADR 0009). 적용·해제 공용 로직은 `api/admin/sanction/AdminSanctionService`.
+회원 제재 이력. 신고 검토(`/admin/reports/{id}/action`)와 어드민 직접 제재(`/admin/members/{id}/sanctions`)의 결과가 여기 쌓이고, 집행은 `Member.status` 반영값으로 수행된다 (ADR 0009). 적용·해제 공용 로직은 `api/admin/sanction/AdminSanctionService`, 해제·삭제 뒤 상태 재계산은 `MemberStatusRecalculator`(규칙은 `Member.alignStatusWith`).
 
 ## 용어
 
@@ -16,7 +16,8 @@
 - 누적 제재(`SanctionRepository.countStrikes`)는 `origin = FALSE_REPORT`(허위 신고자 제재)와 `status = LIFTED`(어드민이 해제한 제재, 오처리 정정용)를 세지 않는다. 어드민 화면의 차수 = 이 값 + 1 (참고값일 뿐, 최종 제재 종류는 어드민이 정한다).
 - 제재 기간(`AdminSanctionService.sanctionPeriod`): WARNING = 확정 시점 기준 차주 월요일 00:00부터 7일(일요일 23:59:59까지 차단과 동일 — endsAt은 exclusive 비교, 확정 주 잔여 참여 허용), SUSPENSION = 즉시부터 14일, PERMANENT_BAN = 종료 없음.
 - WARNING(1차)은 `Member.status`·세션을 바꾸지 않는다 — 퀴즈 참여만 sanction 구간으로 차단.
-- 어드민이 해제(lift)한 뒤에는 남은 제재 가운데 지금 적용 중인(ACTIVE이고 기간 안) 것 중 가장 무거운 제재로 `Member.status`를 재계산한다 (경고는 상태와 무관).
+- 어드민이 해제(lift)하거나 QA 더미 정리로 더미 신고에서 나온 제재를 지운 뒤에는 남은 제재 가운데 지금 적용 중인(ACTIVE이고 기간 안) 것 중 가장 무거운 제재로 `Member.status`를 재계산한다 (경고는 상태와 무관).
+- 적용과 재계산은 회원 행을 잠그고(`MemberRepository.findWithLockById`) 상태를 바꾼다. 동시에 돌 때 낡은 상태를 덮어쓰지 않게 하려는 것이다.
 - `creator_name`은 처리자 표시명 스냅샷 — 어드민 계정이 삭제돼도 감사 기록이 남는다.
 
 ## 상태 전이
