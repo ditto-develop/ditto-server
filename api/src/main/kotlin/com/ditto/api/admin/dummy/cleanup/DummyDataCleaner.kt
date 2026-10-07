@@ -38,12 +38,14 @@ class DummyDataCleaner(
         val sanctions = dummyMemberDataCleaner.findSanctionsWith(dummyIds, reportIds)
         val sanctionIds = sanctions.map { it.id }.toSet()
         val realMemberSanctions = sanctions.filterNot { it.memberId in dummyIds }
+        val sanctionedRealMemberIds = realMemberSanctions.map { it.memberId }.toSortedSet()
+        lockMembersBeforeTouchingSanctions(sanctionedRealMemberIds)
 
         val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
         reviewEraser.eraseByMembers(dummyIds)
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
         val now = serverTimeProvider.now()
-        recalculateStatusesAfterSanctionDeletion(realMemberSanctions.map { it.memberId }.toSet(), now)
+        recalculateStatusesAfterSanctionDeletion(sanctionedRealMemberIds, now)
         val sanctionRemovedMembers = describeSanctionRemovedMembers(realMemberSanctions, now)
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
@@ -59,9 +61,14 @@ class DummyDataCleaner(
         )
     }
 
-    /** 안 하면 지운 제재로 걸린 정지·차단이 실회원에게 남는다. 잠금 순서가 매번 같게 id 순으로 돈다. */
+    /** 잠금 순서는 회원 → 제재(해제와 같다). id 순으로 잠가 여러 회원을 잡을 때도 순서가 매번 같다. */
+    private fun lockMembersBeforeTouchingSanctions(sortedMemberIds: Set<Long>) {
+        sortedMemberIds.forEach { memberRepository.findWithLockById(it) }
+    }
+
+    /** 안 하면 지운 제재로 걸린 정지·차단이 실회원에게 남는다. */
     private fun recalculateStatusesAfterSanctionDeletion(realMemberIds: Set<Long>, now: LocalDateTime) {
-        realMemberIds.sorted().forEach { memberStatusRecalculator.recalculateFromRemainingSanctions(it, now) }
+        realMemberIds.forEach { memberStatusRecalculator.recalculateFromRemainingSanctions(it, now) }
     }
 
     private fun describeSanctionRemovedMembers(

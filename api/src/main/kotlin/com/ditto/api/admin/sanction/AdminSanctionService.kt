@@ -90,6 +90,8 @@ class AdminSanctionService(
     fun lift(sanctionId: Long, now: LocalDateTime): Sanction {
         val sanction = sanctionRepository.findById(sanctionId).getOrNull()
             ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 제재입니다: #$sanctionId")
+        // 잠금 순서는 회원 → 제재. 제재 행을 먼저 바꾸면 같은 회원의 다른 해제와 서로 기다리다 교착된다.
+        memberRepository.findWithLockById(sanction.memberId)
 
         // 조건부 UPDATE가 이중 해제를 방어한다 — 0이면 이미 종결(만료·해제)된 제재.
         if (sanctionRepository.liftIfActive(sanctionId, now) == 0) {
