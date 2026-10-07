@@ -140,7 +140,9 @@ class AdminWebTest {
     @Test
     @DisplayName("미인증 사용자는 로그인으로 리다이렉트된다")
     fun unauthenticatedRedirects() {
-        mockMvc.perform(get("/admin")).andExpect(status().is3xxRedirection)
+        mockMvc.perform(get("/admin"))
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/login"))
     }
 
     @Test
