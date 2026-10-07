@@ -20,6 +20,9 @@ class QaReportSection(
 
     val recentReportLimit: Int = RECENT_REPORT_LIMIT
 
+    /** 최근 건수 한도에 닿으면 더 있을 수 있다. */
+    val reportCountText: String = if (reports.size >= RECENT_REPORT_LIMIT) "${reports.size}+" else "${reports.size}"
+
     val detailMaxLength: Int = MemberReport.DETAIL_MAX_LENGTH
 
     companion object {

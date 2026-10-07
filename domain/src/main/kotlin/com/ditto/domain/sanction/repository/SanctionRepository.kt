@@ -23,10 +23,7 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
 
     fun findAllByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
 
-    /**
-     * 회원 상태 재계산용. 잠금을 기다리기 전에 비잠금 읽기가 있던 트랜잭션은 잠그지 않고 읽으면
-     * 대기 중 커밋된 제재를 못 본다(ADR 0011 규칙 7). MANDATORY 인 이유는 규칙 6 과 같다.
-     */
+    /** 앞선 비잠금 읽기가 있어도 대기 중 커밋된 제재를 보려고 잠금 읽기한다(ADR 0011 규칙 6·7). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Transactional(propagation = Propagation.MANDATORY)
     fun findAllWithLockByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>

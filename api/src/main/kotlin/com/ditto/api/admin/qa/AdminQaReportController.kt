@@ -32,7 +32,7 @@ class AdminQaReportController(
             "${members.of(request.reportedMemberId).label} 신고",
         ) {
             validateLikeApp(request)
-            createReportAsDummy(request, dummyId)
+            createUserReportAsDummy(request, dummyId).data?.let { "신고 #${it.id}" }
         }
         return QaRoutes.REPORT_SECTION
     }
@@ -49,12 +49,12 @@ class AdminQaReportController(
         throw WarnException(ErrorCode.BAD_REQUEST, messages.joinToString(" "))
     }
 
-    private fun createReportAsDummy(request: CreateUserReportRequest, dummyId: Long): String? {
-        val response = runCatching {
-            userReportController.createUserReport(request, qaDummies.requireActiveDummyPrincipal(dummyId))
-        }.getOrElse { throw if (it is WarnException) it.withDuplicateReportHint() else it }
-        return response.data?.let { "신고 #${it.id}" }
-    }
+    private fun createUserReportAsDummy(request: CreateUserReportRequest, dummyId: Long) =
+        runCatching { userReportController.createUserReport(request, qaDummies.requireActiveDummyPrincipal(dummyId)) }
+            .getOrElse { failure ->
+                if (failure !is WarnException) throw failure
+                throw failure.withDuplicateReportHint()
+            }
 
     private fun WarnException.withDuplicateReportHint(): WarnException {
         if (errorCode != ErrorCode.DUPLICATE_REPORT) return this

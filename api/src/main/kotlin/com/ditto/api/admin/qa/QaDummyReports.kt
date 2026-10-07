@@ -13,8 +13,6 @@ import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.entity.SanctionStatus
 import com.ditto.domain.sanction.repository.SanctionRepository
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import org.springframework.data.domain.Limit
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -94,22 +92,17 @@ class QaDummyReports(
     }
 
     /**
-     * 신고 상태는 처리 결과만 말하니, 제재가 지금 어떤지를 함께 보여 준다.
-     * 만료는 배치·로그인 때 반영돼 기간이 지나도 ACTIVE 로 남을 수 있다. 시작 전인 제재는 다음 주부터 걸리는 경고뿐이다.
+     * 신고 상태는 처리 결과만 말하니 제재가 지금 어떤지를 함께 보여 준다. 만료는 늦게 반영돼 ACTIVE 로 남을 수 있다.
+     * 정지·차단은 걸 때 회원 상태에 바로 반영돼, 시작 시각은 다음 주부터 걸리는 경고만 보인다.
      */
     private fun summarizeSanction(sanction: Sanction, now: LocalDateTime): String {
         val state = when {
             sanction.status != SanctionStatus.ACTIVE -> sanction.status.description
             !sanction.isEffectiveAt(now) -> "기간 지남"
             sanction.level == SanctionLevel.WARNING && sanction.startsAt > now ->
-                "${SANCTION_START_FORMATTER.format(sanction.startsAt)}부터"
-            else -> sanction.status.description
+                "${QaTimeFormat.format(sanction.startsAt)}부터"
+            else -> SanctionStatus.ACTIVE.description
         }
         return "${sanction.level.description} · $state"
-    }
-
-    companion object {
-        private val SANCTION_START_FORMATTER: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("MM/dd(E) HH:mm", Locale.KOREAN)
     }
 }

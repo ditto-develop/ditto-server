@@ -117,6 +117,7 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
+    white-space: nowrap;
 }
 .badge.on { background: rgba(34, 176, 125, 0.13); color: var(--success); }
 .badge.off { background: rgba(154, 160, 180, 0.16); color: var(--text-muted); }
@@ -461,7 +462,8 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-report-target:has(input:not(:placeholder-shown)) select:not(:focus) { opacity: 0.45; }
 .qa-report-hint { margin: 6px 0 0; font-size: 12px; }
 .qa-report-hint a { color: var(--primary); font-weight: 600; }
-.qa-report-warning { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--warning); }
+/* 흰 배경에서 읽히게 경고색보다 어두운 갈색을 쓴다. */
+.qa-report-warning { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #8a5a00; }
 .qa-report-group { border: 0; padding: 0; margin: 0 0 16px; }
 .qa-report-group legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
 .qa-report-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }

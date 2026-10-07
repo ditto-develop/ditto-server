@@ -77,7 +77,8 @@
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reporter.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reporter.qaDummy}">QA 콘솔에서 더미로 낸 신고입니다. 더미를 제재하면 콘솔에서도 그 더미로 움직일 수 없고,
-                    더미 정리 때 이 신고와 여기서 건 제재가 함께 지워집니다. <a th:href="@{/admin/qa#report}">QA 콘솔 신고 칸으로</a></p>
+                    더미 정리 때 이 신고와 여기서 건 제재가 함께 지워집니다.
+                    <a class="text-link" th:href="@{/admin/qa#report}" target="_blank">QA 콘솔 신고 칸<span aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a></p>
                 <p class="muted">
                     총 신고 <strong th:text="${report.reporter.totalReportCount}">0</strong>건 ·
                     허위 신고로 기각 <strong th:text="${report.reporter.abusiveRejectedCount}">0</strong>건

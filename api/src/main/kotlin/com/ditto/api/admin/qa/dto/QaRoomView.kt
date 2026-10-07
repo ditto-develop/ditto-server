@@ -44,7 +44,11 @@ class QaRoomView(
     /** 재매칭 방이면 그 쌍이 나온 그룹 방. */
     val sourceGroupRoomId: Long?,
 ) {
-    val activeDummies: List<QaMember> = members.filter { it.isDummy && !it.hasLeft }.map { it.member }
+    /** 앱을 쓸 수 없는 더미는 뒤로 보내 보내기·투표 칸의 기본 선택이 되지 않게 한다. */
+    val activeDummies: List<QaMember> = members
+        .filter { it.isDummy && !it.hasLeft }
+        .map { it.member }
+        .sortedBy { it.isUnavailable }
 
     /** 그룹은 한 명이 나가도 방이 이어지고, 두 사람 방은 나가는 것이 곧 종료다. */
     val isGroup: Boolean = sourceType == ChatRoomType.GROUP

@@ -141,22 +141,16 @@
         }
     }
 
-    function namesIn(value) {
+    function fieldNamesIn(value) {
         return (value ?? '').split(' ').filter(Boolean);
     }
 
-    // 직접 넣은 값이 함께 있는 목록에 없으면(다른 회원 ID 를 잘못 친 경우 등) 확인 창에서 한 번 더 알린다.
-    function unlistedWarningOf(form, field) {
-        const list = form.elements[field.dataset.confirmUnlistedIn ?? ''];
-        if (!list || [...list.options].some((option) => option.value === field.value)) return null;
-        return field.dataset.confirmUnlisted ?? null;
-    }
-
+    // 빈 값 보기('회원 ID를 직접 넣으세요' 같은 안내)는 고른 값으로 치지 않는다.
     function chosenTextOf(form, name) {
         const field = form.elements[name];
-        if (!field) return null;
+        if (!field?.value) return null;
         if (field.tagName === 'SELECT') return field.selectedOptions?.[0]?.text ?? null;
-        return field.value ? `${field.dataset.confirmPrefix ?? ''}${field.value}` : null;
+        return `${field.dataset.confirmPrefix ?? ''}${field.value}`;
     }
 
     // 'typedMemberId|listedMemberId' 처럼 앞 칸이 비었으면 다음 칸을 쓴다.
@@ -164,24 +158,37 @@
         return alternatives.split('|').map((name) => chosenTextOf(form, name)).find(Boolean) ?? null;
     }
 
-    // 확인 창에 고른 값(일괄 평가의 재매칭 의사, 신고자와 대상)과 체크한 선택(data-confirm-flags)을 함께 보여
-    // 실수로 누른 것을 알아차리게 한다.
-    function withChosenOptions(form, message) {
-        if (!message) return message;
-        const chosen = namesIn(form.dataset.confirmChoice).map((names) => firstChosenTextOf(form, names)).filter(Boolean);
-        const filledFields = [...form.elements].filter((field) => field.dataset?.confirmUnlistedIn && field.value);
-        const warnings = filledFields.map((field) => unlistedWarningOf(form, field)).filter(Boolean);
-        const flags = namesIn(form.dataset.confirmFlags)
+    // 직접 넣은 값이 함께 있는 목록에 없으면(다른 회원 ID 를 잘못 친 경우 등) 한 번 더 알린다.
+    function unlistedWarningsOf(form) {
+        return [...form.elements]
+            .filter((field) => field.dataset?.confirmUnlistedIn && field.value)
+            .filter((field) => {
+                const list = form.elements[field.dataset.confirmUnlistedIn];
+                return list && ![...list.options].some((option) => option.value === field.value);
+            })
+            .map((field) => field.dataset.confirmUnlisted);
+    }
+
+    function checkedFlagLabelsOf(form) {
+        return fieldNamesIn(form.dataset.confirmFlags)
             .map((name) => form.elements[name])
             .filter((field) => field?.checked)
             .map((field) => field.dataset.confirmLabel);
-        return [message, chosen.join(' → '), ...flags, ...warnings].filter(Boolean).join('\n');
     }
 
-    // 성공한 뒤 다음 신고에 그대로 실리면 안 되는 칸(차단·직접 넣은 ID·상세)을 비운다. 거부되면 고쳐 다시 내게 남긴다.
+    // 확인 창에 고른 값(일괄 평가의 재매칭 의사, 신고자와 대상), 대상 경고, 체크한 선택을 함께 보여
+    // 실수로 누른 것을 알아차리게 한다.
+    function withConfirmDetails(form, message) {
+        if (!message) return message;
+        const chosen = fieldNamesIn(form.dataset.confirmChoice).map((names) => firstChosenTextOf(form, names));
+        const details = [chosen.filter(Boolean).join(' → '), ...unlistedWarningsOf(form), ...checkedFlagLabelsOf(form)];
+        return [message, ...details].filter(Boolean).join('\n');
+    }
+
+    // 성공한 뒤 다음 신고에 그대로 실리면 안 되는 칸(차단·상세)을 비운다. 거부되면 고쳐 다시 내게 남긴다.
     function resetFieldsAfterSuccess(form, failed) {
         if (failed) return;
-        namesIn(form.dataset.resetOnSuccess).forEach((name) => {
+        fieldNamesIn(form.dataset.resetOnSuccess).forEach((name) => {
             const field = form.elements[name];
             if (!field) return;
             if (field.type === 'checkbox') field.checked = false;
@@ -221,7 +228,7 @@
         }
         event.preventDefault();
         const submitter = event.submitter;
-        const confirmMessage = withChosenOptions(form, submitter?.dataset.confirm || form.dataset.confirm);
+        const confirmMessage = withConfirmDetails(form, submitter?.dataset.confirm || form.dataset.confirm);
         if (confirmMessage && !window.confirm(confirmMessage)) return;
 
         const body = new FormData(form, submitter);
