@@ -64,7 +64,8 @@
                 <h2>더미 정리</h2>
                 <p class="muted">현재 더미 <strong th:text="${dummyCount}">0</strong>명. 닉네임이 <code>dummy-</code>로 시작하는 더미와 그 진행·답·매칭 후보를 모두 삭제합니다.</p>
                 <p class="muted">더미가 한 명이라도 낀 채팅방·1:1 매칭·그룹은 통째로 삭제합니다. 같은 방·그룹 실회원의 메시지,
-                    이 방·매칭에 걸린 실회원의 알림·평가·재매칭, 더미를 상대로 한 신고·차단·제재도 함께 삭제합니다.</p>
+                    이 방·매칭에 걸린 실회원의 알림·평가·재매칭, 더미가 낀 신고·차단·제재도 함께 삭제합니다.
+                    더미가 신고해 실회원에게 걸린 정지·차단은 지우면서 그 회원 상태를 원래대로 되돌립니다.</p>
                 <form th:action="@{/admin/dummy/clear}" method="post" class="inline-form"
                       onsubmit="return confirm('모든 더미와 더미가 낀 채팅방·매칭을 삭제합니다. 같은 방 실회원의 메시지·알림도 함께 삭제합니다. 되돌릴 수 없습니다. 계속할까요?');">
                     <button class="btn secondary" type="submit">더미 전체 삭제</button>

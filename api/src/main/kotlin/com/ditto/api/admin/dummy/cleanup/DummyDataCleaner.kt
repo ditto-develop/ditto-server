@@ -4,6 +4,8 @@ import com.ditto.api.admin.cleanup.ChatRoomEraser
 import com.ditto.api.admin.cleanup.MatchingRecordEraser
 import com.ditto.api.admin.cleanup.MatchingRecordTargets
 import com.ditto.api.admin.cleanup.ReviewEraser
+import com.ditto.api.admin.sanction.MemberStatusRecalculator
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.notification.entity.NotificationTarget
 import com.ditto.domain.notification.entity.NotificationType
@@ -22,15 +24,19 @@ class DummyDataCleaner(
     private val reviewEraser: ReviewEraser,
     private val dummyMemberDataCleaner: DummyMemberDataCleaner,
     private val notificationRepository: NotificationRepository,
+    private val memberStatusRecalculator: MemberStatusRecalculator,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
     fun deleteDataOf(dummyIds: Collection<Long>): DummyCleanupSummary {
         val matchingTargets = findMatchingTargetsOf(dummyIds)
         val reportIds = dummyMemberDataCleaner.findReportIdsWith(dummyIds)
-        val sanctionIds = dummyMemberDataCleaner.findSanctionIdsWith(dummyIds, reportIds)
+        val sanctions = dummyMemberDataCleaner.findSanctionsWith(dummyIds, reportIds)
+        val sanctionIds = sanctions.map { it.id }.toSet()
 
         val matchingNotificationCount = matchingRecordEraser.erase(matchingTargets)
         reviewEraser.eraseByMembers(dummyIds)
         dummyMemberDataCleaner.deleteReportsAndSanctions(reportIds, sanctionIds)
+        recalculateRealMemberStatuses(sanctions.map { it.memberId }.filterNot { it in dummyIds }.toSet())
         dummyMemberDataCleaner.deleteAccountDataOf(dummyIds)
         val dummyNotificationCount = deleteNotificationsOf(dummyIds, reportIds, sanctionIds)
 
@@ -40,6 +46,12 @@ class DummyDataCleaner(
             matchCount = matchingTargets.personalMatchIds.size + matchingTargets.groupMatchIds.size,
             notificationCount = matchingNotificationCount + dummyNotificationCount,
         )
+    }
+
+    /** 더미가 신고해 실회원에게 걸린 제재를 지웠으니, 그 회원 상태를 남은 제재로 되돌린다. 안 하면 정지·차단이 풀리지 않는다. */
+    private fun recalculateRealMemberStatuses(realMemberIds: Set<Long>) {
+        val now = serverTimeProvider.now()
+        realMemberIds.forEach { memberStatusRecalculator.recalculateBySanctions(it, now) }
     }
 
     private fun findMatchingTargetsOf(dummyIds: Collection<Long>): MatchingRecordTargets {

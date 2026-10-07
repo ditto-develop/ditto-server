@@ -5,7 +5,6 @@ import com.ditto.api.admin.sanction.dto.MemberSanctionsView
 import com.ditto.api.admin.sanction.dto.SanctionRow
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.sanction.entity.Sanction
@@ -29,6 +28,7 @@ class AdminSanctionService(
     private val memberRepository: MemberRepository,
     private val sanctionRepository: SanctionRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val memberStatusRecalculator: MemberStatusRecalculator,
 ) {
 
     @Transactional(readOnly = true)
@@ -95,27 +95,8 @@ class AdminSanctionService(
         if (sanctionRepository.liftIfActive(sanctionId, now) == 0) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 만료됐거나 해제된 제재입니다.")
         }
-        recalculateMemberStatus(sanction.memberId, now)
+        memberStatusRecalculator.recalculateBySanctions(sanction.memberId, now)
         return sanction
-    }
-
-    /** 해제 후 남은 유효 제재 중 가장 무거운 것으로 회원 상태를 맞춘다 (경고는 상태와 무관). */
-    private fun recalculateMemberStatus(memberId: Long, now: LocalDateTime) {
-        val member = memberRepository.findById(memberId).getOrNull() ?: return
-        if (member.status != MemberStatus.SUSPENDED && member.status != MemberStatus.BANNED) {
-            return
-        }
-
-        val heaviest = sanctionRepository.findAllByMemberIdAndStatus(memberId, SanctionStatus.ACTIVE)
-            .filter { it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
-            .maxByOrNull { it.level }
-
-        member.reinstate()
-        when (heaviest?.level) {
-            SanctionLevel.SUSPENSION -> member.suspendUntil(requireNotNull(heaviest.endsAt))
-            SanctionLevel.PERMANENT_BAN -> member.ban()
-            else -> {}
-        }
     }
 
     /**

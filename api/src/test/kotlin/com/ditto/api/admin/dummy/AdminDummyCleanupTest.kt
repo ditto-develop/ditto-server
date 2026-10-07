@@ -39,8 +39,12 @@ import com.ditto.domain.review.ReviewAnswerFixture
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.ditto.domain.sanction.SanctionFixture
+import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.repository.SanctionRepository
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import org.springframework.data.repository.findByIdOrNull
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class AdminDummyCleanupTest(
@@ -211,6 +215,48 @@ class AdminDummyCleanupTest(
             memberDeviceRepository.count() shouldBe 0
             notificationRepository.count() shouldBe 0
             memberRepository.findAll().map { it.id } shouldBe listOf(tester.id)
+        }
+    }
+
+    "더미가 실회원을 신고해 생긴 제재" - {
+        fun banByDummyReport(tester: Member, dummy: Member) {
+            val report = memberReportRepository.save(MemberReportFixture.create(dummy.id, reportedMemberId = tester.id))
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    level = SanctionLevel.PERMANENT_BAN,
+                    startsAt = LocalDateTime.now().minusHours(1),
+                    memberReportId = report.id,
+                ),
+            )
+            memberRepository.save(tester.apply { ban() })
+        }
+
+        "제재를 지우면서 테스트 계정을 정상으로 되돌린다" {
+            val tester = saveMember("테스터")
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            adminDummyService.deleteAllDummies()
+
+            sanctionRepository.count() shouldBe 0
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
+        }
+
+        "더미와 무관한 직접 제재가 남아 있으면 그 제재로 맞춘다" {
+            val tester = saveMember("테스터")
+            val manualSuspension = sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    level = SanctionLevel.SUSPENSION,
+                    startsAt = LocalDateTime.now().minusDays(1),
+                ),
+            )
+            banByDummyReport(tester, saveMember("dummy-female-aaaa"))
+
+            adminDummyService.deleteAllDummies()
+
+            sanctionRepository.findAll().map { it.id } shouldBe listOf(manualSuspension.id)
+            memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.SUSPENDED
         }
     }
 })
