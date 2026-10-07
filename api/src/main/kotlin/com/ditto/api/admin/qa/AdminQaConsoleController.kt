@@ -21,7 +21,7 @@ class AdminQaConsoleController(
         val rooms = adminQaRoomService.getRoomSummaries()
         model.addAttribute("console", console)
         model.addAttribute("rooms", rooms)
-        model.addAttribute("report", qaDummyReports.composeSection(console, rooms))
+        model.addAttribute("reportSection", qaDummyReports.composeSection(console))
         model.addAttribute("active", "qa")
         return "qa/console"
     }

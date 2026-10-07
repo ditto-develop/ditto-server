@@ -73,7 +73,7 @@ private fun summarize(results: List<String>): String? =
         .takeIf { it.isNotEmpty() }
         ?.joinToString(", ")
 
-/** 앱이 받는 거부라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
+/** 앱의 거부나 입력 누락이라 서버 오류 알람을 울리지 않게 INFO 로 남긴다. */
 internal fun RedirectAttributes.flashRejection(text: String) {
     log.info { "QA 콘솔 거부: $text" }
     addFlashAttribute("error", text)

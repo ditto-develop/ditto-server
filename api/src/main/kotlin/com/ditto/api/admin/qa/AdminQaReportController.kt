@@ -23,36 +23,44 @@ class AdminQaReportController(
 ) {
     @PostMapping("/admin/qa/reports")
     fun reportAsDummy(@ModelAttribute form: QaReportForm, redirectAttributes: RedirectAttributes): String {
-        redirectAttributes.addFlashAttribute(FROM_REPORT_CARD, true)
-        val dummyId = form.dummyId
+        val dummyId = form.dummyId ?: return redirectAttributes.rejectMissingSelection("신고하는 더미를 골라야 신고할 수 있습니다.")
         val request = form.toRequestOrNull()
-        if (dummyId == null || request == null) {
-            redirectAttributes.flashRejection("신고하는 더미와 신고할 회원을 골라야 신고할 수 있습니다.")
-            return QaRoutes.REPORT_SECTION
-        }
+            ?: return redirectAttributes.rejectMissingSelection("신고할 회원을 고르거나 회원 ID를 넣어야 신고할 수 있습니다.")
 
         val members = qaMemberLabels.load(listOf(dummyId, request.reportedMemberId))
-        val actionLabel = "${members.of(request.reportedMemberId).label} 신고"
-        redirectAttributes.flashDummyActionWithResult(members.of(dummyId), actionLabel) {
+        redirectAttributes.flashDummyActionWithResult(
+            members.of(dummyId),
+            "${members.of(request.reportedMemberId).label} 신고",
+        ) {
             validateLikeApp(request)
-            val response = userReportController.createUserReport(
-                request,
-                qaDummies.activePrincipalOf(dummyId, serverTimeProvider.now()),
-            )
-            response.data?.let { "신고 #${it.id}" }
+            reportWithRetryHint(request, dummyId)
         }
         return QaRoutes.REPORT_SECTION
     }
 
-    /** 컨트롤러를 직접 부르면 @Valid 가 돌지 않아 앱과 같은 요청 검증을 여기서 한다. */
+    private fun RedirectAttributes.rejectMissingSelection(text: String): String {
+        flashRejection(text)
+        return QaRoutes.REPORT_SECTION
+    }
+
+    /** 컨트롤러를 직접 부르면 @Valid 가 돌지 않아 앱과 같은 요청 검증을 여기서 한다. 문구 순서는 매번 같게 정렬한다. */
     private fun validateLikeApp(request: CreateUserReportRequest) {
         val messages = validator.validate(request).map { it.message }.sorted()
         if (messages.isEmpty()) return
         throw WarnException(ErrorCode.BAD_REQUEST, messages.joinToString(" "))
     }
 
-    companion object {
-        /** 결과 알림을 신고 카드 안에도 그리라는 표시. 카드가 맨 아래라 위쪽 알림은 화면 밖이다. */
-        const val FROM_REPORT_CARD = "fromReportCard"
+    private fun reportWithRetryHint(request: CreateUserReportRequest, dummyId: Long): String? =
+        runRejectable {
+            val dummy = qaDummies.activePrincipalOf(dummyId, serverTimeProvider.now())
+            userReportController.createUserReport(request, dummy)
+        }.fold(
+            onSuccess = { response -> response.data?.let { "신고 #${it.id}" } },
+            onFailure = { rejection -> throw (rejection as WarnException).withRetryHint() },
+        )
+
+    private fun WarnException.withRetryHint(): WarnException {
+        if (errorCode != ErrorCode.DUPLICATE_REPORT) return this
+        return WarnException(errorCode, "$message 검토를 끝내거나 다른 더미로 신고하세요.")
     }
 }

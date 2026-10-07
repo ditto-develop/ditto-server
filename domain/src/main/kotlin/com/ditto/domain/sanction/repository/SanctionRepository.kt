@@ -20,6 +20,8 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
 
     fun findAllByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
 
+    fun findByMemberReportIdIn(memberReportIds: Collection<Long>): List<Sanction>
+
     /** 회원별 제재 이력 — 최신순 */
     fun findAllByMemberIdOrderByIdDesc(memberId: Long): List<Sanction>
 

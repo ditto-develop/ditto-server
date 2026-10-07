@@ -451,19 +451,26 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-report-desc { margin: -8px 0 16px; }
 .qa-report-form { max-width: 860px; }
 .qa-report-form .field-row .field { min-width: 220px; }
-.qa-report-form .field-row .field:has(.qa-report-target) { flex: 1.6; }
-.qa-report-target { display: flex; align-items: center; gap: 8px; }
+.qa-report-form .field-row .qa-report-target-field { flex: 1.6; min-width: 300px; }
+.qa-report-target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qa-report-target select { flex: 1; min-width: 180px; }
 .qa-report-target span { white-space: nowrap; }
 .qa-report-target input { width: 110px; flex: none; }
+/* 회원 ID를 넣으면 그쪽이 우선이라 목록을 흐리게 해 알린다. */
+.qa-report-target:has(input:not(:placeholder-shown)) select { opacity: 0.45; }
 .qa-report-hint { margin: 6px 0 0; font-size: 12px; }
 .qa-report-hint a { color: var(--primary); font-weight: 600; }
 .qa-report-group { border: 0; padding: 0; margin: 0 0 16px; }
 .qa-report-group legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
-.qa-report-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.qa-report-reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
 .qa-report-block { margin: 0 0 16px; }
-.qa-report-submit { padding-top: 16px; border-top: 1px solid var(--border); }
-.qa-report-title { margin: 24px 0 10px; font-size: 14px; }
+.qa-report-list { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.qa-report-title { margin: 0 0 10px; font-size: 14px; }
+.qa-report-title .muted { font-size: 12px; font-weight: 400; }
+.qa-report-table { overflow-x: auto; }
 .qa-report-table td { word-break: keep-all; }
+.qa-report-table td.actions a + a { margin-left: 6px; }
+.qa-report-sanction { margin-top: 4px; font-size: 12px; }
 
 /* 시각 바로가기 타임라인. 위치(--pos, --start, --width)는 이번 주 안의 백분율이다. */
 .qa-week { flex-basis: 100%; container: qa-week / inline-size; --lane-height: 64px; --stem-gap: 14px; }

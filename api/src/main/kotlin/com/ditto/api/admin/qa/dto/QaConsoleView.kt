@@ -15,7 +15,16 @@ class QaConsoleView(
     val personal: QaPersonalSection,
     val group: QaGroupSection,
     val timeline: QaTimeline,
-)
+) {
+    /** 1:1 신청과 그룹 초대에 나온 실회원. 아직 방이 없는 테스트 계정도 여기서 보인다. */
+    val realMembersInRequestsAndGroups: List<QaMember> =
+        (
+            personal.receivedRequests.map { it.requester } +
+                personal.sentRequests.map { it.receiver } +
+                personal.requestOptions.map { it.receiver } +
+                group.groups.flatMap { group -> group.members.filterNot { it.isDummy }.map { it.member } }
+            ).distinctBy { it.id }
+}
 
 class QaMember(
     val id: Long,

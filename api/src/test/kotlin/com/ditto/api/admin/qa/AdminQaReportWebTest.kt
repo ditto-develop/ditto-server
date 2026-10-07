@@ -18,6 +18,10 @@ import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportSource
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.memberreport.repository.MemberReportRepository
+import com.ditto.domain.sanction.SanctionFixture
+import com.ditto.domain.sanction.entity.SanctionLevel
+import com.ditto.domain.sanction.entity.SanctionOrigin
+import com.ditto.domain.sanction.repository.SanctionRepository
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -35,6 +39,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 @AutoConfigureMockMvc
@@ -45,6 +50,7 @@ class AdminQaReportWebTest(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val memberReportRepository: MemberReportRepository,
     private val memberBlockRepository: MemberBlockRepository,
+    private val sanctionRepository: SanctionRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -86,7 +92,7 @@ class AdminQaReportWebTest(
     fun reportSection(): QaReportSection =
         mockMvc.perform(get("/admin/qa").with(authentication(admin)))
             .andExpect(status().isOk)
-            .andReturn().modelAndView.shouldNotBeNull().model["report"] as QaReportSection
+            .andReturn().modelAndView.shouldNotBeNull().model["reportSection"] as QaReportSection
 
     "신고 제출" - {
         "더미가 앱 신고 API로 실회원을 신고하면 검토 대기로 접수되고 신고 번호를 알린다" {
@@ -99,16 +105,13 @@ class AdminQaReportWebTest(
                 reasons = listOf(MemberReportReason.INAPPROPRIATE_BEHAVIOR, MemberReportReason.MONEY_DEMAND),
             ).andExpect(redirectedUrl("/admin/qa#report"))
 
-            val reportId = reportsBy(dummy).single().id
-            val expectedMessage = "${labelOf(dummy)} · ${labelOf(tester)} 신고 완료(신고 #$reportId)"
+            val report = reportsBy(dummy).single()
+            val expectedMessage = "${labelOf(dummy)} · ${labelOf(tester)} 신고 완료(신고 #${report.id})"
             result.andExpect(flash().attribute("message", expectedMessage))
-
-            reportsBy(dummy).single().let {
-                it.reportedMemberId shouldBe tester.id
-                it.status shouldBe MemberReportStatus.RECEIVED
-                it.source shouldBe MemberReportSource.CHAT_ROOM
-                it.reasons shouldBe setOf(MemberReportReason.INAPPROPRIATE_BEHAVIOR, MemberReportReason.MONEY_DEMAND)
-            }
+            report.reportedMemberId shouldBe tester.id
+            report.status shouldBe MemberReportStatus.RECEIVED
+            report.source shouldBe MemberReportSource.CHAT_ROOM
+            report.reasons shouldBe setOf(MemberReportReason.INAPPROPRIATE_BEHAVIOR, MemberReportReason.MONEY_DEMAND)
         }
 
         "차단을 고르면 신고와 함께 차단도 만든다" {
@@ -131,11 +134,20 @@ class AdminQaReportWebTest(
             reportsBy(dummy).single().reportedMemberId shouldBe typed.id
         }
 
-        "더미나 신고할 회원을 고르지 않으면 신고하지 않고 알린다" {
+        "신고하는 더미를 고르지 않으면 신고하지 않고 알린다" {
             val tester = saveMember("테스터")
 
             reportAsDummy(dummy = null, target = tester)
-                .andExpect(flash().attribute("error", "신고하는 더미와 신고할 회원을 골라야 신고할 수 있습니다."))
+                .andExpect(flash().attribute("error", "신고하는 더미를 골라야 신고할 수 있습니다."))
+
+            memberReportRepository.count() shouldBe 0
+        }
+
+        "신고할 회원을 고르지도 넣지도 않으면 신고하지 않고 알린다" {
+            val dummy = saveMember("dummy-female-aaaa")
+
+            reportAsDummy(dummy, target = null)
+                .andExpect(flash().attribute("error", "신고할 회원을 고르거나 회원 ID를 넣어야 신고할 수 있습니다."))
 
             memberReportRepository.count() shouldBe 0
         }
@@ -153,23 +165,25 @@ class AdminQaReportWebTest(
             reportsBy(dummy).shouldBeEmpty()
         }
 
-        "앱처럼 상세 설명 길이를 검증한다" {
+        "상세 설명이 최대 길이를 넘으면 앱과 같은 검증 문구로 거부한다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
+            val maxLength = MemberReport.DETAIL_MAX_LENGTH
 
-            reportAsDummy(dummy, tester) { param("detail", "가".repeat(MemberReport.DETAIL_MAX_LENGTH + 1)) }
-                .andExpect(flash().attribute("error", containsString("상세 설명은 최대 500자까지 가능합니다.")))
+            reportAsDummy(dummy, tester) { param("detail", "가".repeat(maxLength + 1)) }
+                .andExpect(flash().attribute("error", containsString("상세 설명은 최대 ${maxLength}자까지 가능합니다.")))
 
             reportsBy(dummy).shouldBeEmpty()
         }
 
-        "검토 전에 같은 회원을 다시 신고하면 앱의 중복 신고 거부를 띄운다" {
+        "검토 전에 같은 회원을 다시 신고하면 앱의 중복 신고 거부와 다시 낼 방법을 띄운다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             reportAsDummy(dummy, tester)
 
             reportAsDummy(dummy, tester)
                 .andExpect(flash().attribute("error", containsString("(코드 ${ErrorCode.DUPLICATE_REPORT.code})")))
+                .andExpect(flash().attribute("error", containsString("검토를 끝내거나 다른 더미로 신고하세요.")))
 
             reportsBy(dummy).size shouldBe 1
         }
@@ -194,13 +208,14 @@ class AdminQaReportWebTest(
             val tester = saveMember("테스터")
             val realMember = saveMember("실회원")
 
-            reportAsDummy(realMember, tester).andExpect(flash().attribute("error", containsString("더미 회원만")))
+            reportAsDummy(realMember, tester)
+                .andExpect(flash().attribute("error", containsString("(코드 ${ErrorCode.FORBIDDEN.code})")))
 
             reportsBy(realMember).shouldBeEmpty()
         }
     }
 
-    "콘솔 카드" - {
+    "신고 카드 화면" - {
         "더미가 있던 방의 실회원을 맨 앞에 두고, 더미가 낸 신고를 보여 준다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
@@ -217,6 +232,46 @@ class AdminQaReportWebTest(
                 it.reportedMember.id shouldBe tester.id
                 it.isAwaitingReview shouldBe true
             }
+        }
+
+        "방을 나간 테스트 계정과 이미 신고한 회원도 대상에 둔다" {
+            val leftTester = saveMember("나간테스터")
+            val reportedTester = saveMember("신고된테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            val room = chatRoomRepository.save(ChatRoomFixture.personal())
+            chatRoomMemberRepository.saveAll(
+                listOf(
+                    ChatRoomMemberFixture.create(room.id, dummy.id),
+                    ChatRoomMemberFixture.create(room.id, leftTester.id).apply { leave(LocalDateTime.now()) },
+                ),
+            )
+            reportAsDummy(dummy, reportedTester)
+
+            val realTargetIds = reportSection().targets.filterNot { it.isDummy }.map { it.member.id }
+
+            realTargetIds shouldBe listOf(leftTester.id, reportedTester.id)
+        }
+
+        "제재가 걸린 신고는 제재 종류와 상태, 피신고자 회원 상태를 함께 보여 준다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            reportAsDummy(dummy, tester)
+            val report = reportsBy(dummy).single()
+            sanctionRepository.save(
+                SanctionFixture.create(
+                    tester.id,
+                    origin = SanctionOrigin.REPORTED,
+                    level = SanctionLevel.PERMANENT_BAN,
+                    startsAt = LocalDateTime.now().minusMinutes(1),
+                    memberReportId = report.id,
+                ),
+            )
+            memberRepository.save(tester.apply { ban() })
+
+            val row = reportSection().reports.single()
+
+            row.sanctionResult shouldBe "영구 차단 · 적용 중"
+            row.reportedMemberStatus shouldBe MemberStatus.BANNED
         }
 
         "실회원이 없으면 기본 신고자를 대상 맨 뒤에 둬 자기 신고가 기본값이 되지 않는다" {

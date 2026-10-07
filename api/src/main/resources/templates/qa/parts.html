@@ -45,6 +45,13 @@
     <span class="badge matching" th:case="*">대기</span>
 </th:block>
 
+<th:block th:fragment="reportStatus(status)" th:switch="${status.name()}">
+    <span class="badge matching" th:case="'RECEIVED'">검토 대기</span>
+    <span class="badge cat" th:case="'ACTIONED'">제재 적용</span>
+    <span class="badge warn" th:case="'REJECTED_ABUSIVE'">허위 신고로 기각</span>
+    <span class="badge off" th:case="*" th:text="${status.description}">기각</span>
+</th:block>
+
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
     <span class="badge matching" th:case="'SCHEDULED'">열리기 전</span>
     <span class="badge on" th:case="'ACTIVE'">진행 중</span>

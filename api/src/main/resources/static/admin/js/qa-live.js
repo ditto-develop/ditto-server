@@ -63,14 +63,15 @@
         if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
     }
 
-    // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽 영역에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
+    // 알림 슬롯의 주인. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 폼을 담은 영역([data-qa-alert-scope], 신고)이다.
+    const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
+
+    // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
     // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
-    function showInlineAlerts(submittedRegionId) {
+    function showInlineAlerts(submittedScopeId) {
         const alerts = [...(document.getElementById('qa-alerts')?.children ?? [])];
-        document.querySelectorAll('[data-qa-live]').forEach((region) => {
-            const slot = region.querySelector('[data-qa-inline-alerts]');
-            if (!slot) return;
-            if (region.id !== submittedRegionId) {
+        document.querySelectorAll('[data-qa-inline-alerts]').forEach((slot) => {
+            if (slot.closest(ALERT_SCOPE)?.id !== submittedScopeId) {
                 slot.replaceChildren();
                 return;
             }
@@ -141,11 +142,20 @@
         }
     }
 
-    // 확인 창에 고른 선택지(일괄 평가의 재매칭 의사)를 함께 보여 실수로 누른 것을 알아차리게 한다.
-    function withChosenOption(form, message) {
-        const select = form.dataset.confirmChoice ? form.elements[form.dataset.confirmChoice] : null;
-        const chosen = select?.selectedOptions?.[0]?.text;
-        return message && chosen ? `${message}\n${chosen}` : message;
+    function chosenTextOf(form, name) {
+        const field = form.elements[name];
+        if (!field) return null;
+        if (field.tagName === 'SELECT') return field.selectedOptions?.[0]?.text ?? null;
+        return field.value ? `${field.dataset.confirmPrefix ?? ''}${field.value}` : null;
+    }
+
+    // 확인 창에 고른 값(일괄 평가의 재매칭 의사, 신고자와 대상)을 함께 보여 실수로 누른 것을 알아차리게 한다.
+    // data-confirm-choice 는 칸 이름을 공백으로 나열하고, 'a|b' 는 a 가 비었을 때 b 를 쓴다.
+    function withChosenOptions(form, message) {
+        const chosen = (form.dataset.confirmChoice ?? '').split(' ').filter(Boolean)
+            .map((alternatives) => alternatives.split('|').map((name) => chosenTextOf(form, name)).find(Boolean))
+            .filter(Boolean);
+        return message && chosen.length > 0 ? `${message}\n${chosen.join(' → ')}` : message;
     }
 
     function setButtonsDisabled(form, disabled) {
@@ -180,12 +190,13 @@
         }
         event.preventDefault();
         const submitter = event.submitter;
-        const confirmMessage = withChosenOption(form, submitter?.dataset.confirm || form.dataset.confirm);
+        const confirmMessage = withChosenOptions(form, submitter?.dataset.confirm || form.dataset.confirm);
         if (confirmMessage && !window.confirm(confirmMessage)) return;
 
         const body = new FormData(form, submitter);
         const action = submitter?.hasAttribute('formaction') ? submitter.formAction : form.action;
         const submittedRegion = form.closest('[data-qa-live]');
+        const submittedScope = form.closest(ALERT_SCOPE);
         submitting = true;
         setButtonsDisabled(form, true);
         try {
@@ -204,7 +215,7 @@
             const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);
             swapLiveRegions(doc, submittedRegion);
-            showInlineAlerts(submittedRegion?.id);
+            showInlineAlerts(submittedScope?.id);
             clearComposerIfSent(form, submitter, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
