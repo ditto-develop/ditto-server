@@ -2,11 +2,11 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.dummy.DummyMarker
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
-import java.time.LocalDateTime
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -16,20 +16,19 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class QaDummies(
     private val memberRepository: MemberRepository,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
     fun findIds(): Set<Long> =
         memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX)
             .map { it.id }
             .toSet()
 
-    fun principalOf(memberId: Long): MemberPrincipal = MemberPrincipal(findDummy(memberId).id)
-
-    /** 앱 인증 필터처럼 탈퇴·영구 차단·정지 중인 더미는 거부한다. 제재받은 더미가 다시 움직이는 흐름에서 쓴다. */
-    fun activePrincipalOf(memberId: Long, now: LocalDateTime): MemberPrincipal {
+    /** 앱 컨트롤러를 직접 부르면 인증 필터를 거치지 않아, 필터처럼 탈퇴·영구 차단·정지 중인 더미를 여기서 거부한다. */
+    fun principalOf(memberId: Long): MemberPrincipal {
         val dummy = findDummy(memberId)
         if (dummy.isLeft()) throw WarnException(ErrorCode.MEMBER_LEFT)
         if (dummy.isBanned()) throw WarnException(ErrorCode.MEMBER_BANNED)
-        if (dummy.isSuspendedAt(now)) throw WarnException(ErrorCode.MEMBER_SUSPENDED)
+        if (dummy.isSuspendedAt(serverTimeProvider.now())) throw WarnException(ErrorCode.MEMBER_SUSPENDED)
         return MemberPrincipal(dummy.id)
     }
 

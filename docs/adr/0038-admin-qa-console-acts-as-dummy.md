@@ -19,6 +19,7 @@
 어드민 QA 콘솔(`/admin/qa/**`)은 **앱이 부르는 API 컨트롤러 메서드를 더미의 `MemberPrincipal`로 그대로 호출한다.** STOMP 전송은 `ChatStompController.sendMessage`에 앱 연결과 같은 모양의 `Authentication`을 넘긴다.
 
 - 대상은 더미(`dummy-` 닉네임)만이다(`QaDummies.principalOf`). `NicknamePolicy`가 `-`를 허용하지 않아 실회원은 이 접두어를 가질 수 없다.
+- 컨트롤러를 직접 부르면 `JwtAuthenticationFilter`를 거치지 않으므로, 필터가 막는 탈퇴·영구 차단·정지 중인 더미는 `principalOf`가 같은 오류 코드로 거부한다. 신고로 제재받은 더미가 콘솔에서만 계속 움직여 앱에서는 생길 수 없는 데이터를 만들지 않게 하려는 것이다.
 - 앱이 받는 거부(`WarnException`)는 삼키지 않고 코드와 함께 화면에 보여준다. QA 중에는 그 거부 자체가 확인할 대상이다.
 - 조회는 앱 API를 쓰지 않고 저장소를 직접 읽는다. 어드민은 방 멤버가 아니고, 나간 사람의 커서까지 한 화면에 보여야 한다. 투표 집계만은 규칙(활성 멤버 기준)을 다시 만들지 않으려고 `ChatVoteService.getVotes`를 방 멤버 한 명의 눈으로 부른다.
 - 더미를 지울 때 더미가 낀 채팅방·1:1 매칭·그룹은 통째로, 그것을 가리키는 실회원 알림·평가·재매칭까지 지운다(`DummyDataCleaner`). QA로 만든 방은 일회용이고, 외래키가 없어 회원만 지우면 나머지 행이 사라진 회원을 가리킨 채 남는다. 알림이 무엇을 가리키는지는 `NotificationType.target`으로 판단한다.

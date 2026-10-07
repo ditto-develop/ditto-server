@@ -5,6 +5,7 @@ import com.ditto.api.admin.qa.dto.QaRoomSummary
 import com.ditto.api.admin.qa.dto.QaRoomView
 import com.ditto.api.admin.qa.dto.QaVote
 import com.ditto.api.support.IntegrationTest
+import com.ditto.common.exception.ErrorCode
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
@@ -223,6 +224,27 @@ class AdminQaRoomWebTest(
                     .param("content", "안녕하세요")
                     .asAdmin(),
             ).andExpect(flash().attribute("error", containsString("(코드 7005)")))
+
+            messagesIn(room) shouldHaveSize 0
+        }
+
+        "정지 중인 더미로는 앱처럼 보내지 않는다" {
+            val dummy = memberRepository.save(
+                MemberFixture.create(
+                    nickname = "dummy-female-aaaa",
+                    email = "suspended@ditto.pics",
+                    status = MemberStatus.SUSPENDED,
+                    suspendedUntil = LocalDateTime.now().plusDays(14),
+                ),
+            )
+            val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))
+
+            mockMvc.perform(
+                post("/admin/qa/rooms/{id}/messages", room.id)
+                    .param("dummyId", dummy.id.toString())
+                    .param("content", "안녕하세요")
+                    .asAdmin(),
+            ).andExpect(flash().attribute("error", containsString("(코드 ${ErrorCode.MEMBER_SUSPENDED.code})")))
 
             messagesIn(room) shouldHaveSize 0
         }

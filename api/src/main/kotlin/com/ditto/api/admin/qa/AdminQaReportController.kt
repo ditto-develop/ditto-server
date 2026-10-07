@@ -1,7 +1,6 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.qa.dto.QaReportForm
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.userreport.controller.UserReportController
 import com.ditto.api.userreport.dto.CreateUserReportRequest
 import com.ditto.common.exception.ErrorCode
@@ -19,7 +18,6 @@ class AdminQaReportController(
     private val qaMemberLabels: QaMemberLabels,
     private val userReportController: UserReportController,
     private val validator: Validator,
-    private val serverTimeProvider: ServerTimeProvider,
 ) {
     @PostMapping("/admin/qa/reports")
     fun reportAsDummy(@ModelAttribute form: QaReportForm, redirectAttributes: RedirectAttributes): String {
@@ -52,8 +50,7 @@ class AdminQaReportController(
 
     private fun reportWithRetryHint(request: CreateUserReportRequest, dummyId: Long): String? =
         runRejectable {
-            val dummy = qaDummies.activePrincipalOf(dummyId, serverTimeProvider.now())
-            userReportController.createUserReport(request, dummy)
+            userReportController.createUserReport(request, qaDummies.principalOf(dummyId))
         }.fold(
             onSuccess = { response -> response.data?.let { "신고 #${it.id}" } },
             onFailure = { rejection -> throw (rejection as WarnException).withRetryHint() },
