@@ -279,8 +279,6 @@ class Member(
     fun isActive(): Boolean = status == MemberStatus.ACTIVE
     fun isAdmin(): Boolean = role == MemberRole.ADMIN
     fun isBanned(): Boolean = status == MemberStatus.BANNED
-    fun isRestricted(): Boolean = status == MemberStatus.SUSPENDED || status == MemberStatus.BANNED
-
     /**
      * 주어진 시각 기준 이용 정지 중인지. 해제 예정일이 지났으면 정지로 보지 않는다
      * — status 원복은 배치·로그인 시점에 일어난다 (lazy 만료, ADR 0009).
@@ -296,10 +294,13 @@ class Member(
         this.role = role
     }
 
-    /** 기간 이용 정지. 영구 차단(BANNED)은 정지로 낮출 수 없다. */
+    /** 기간 이용 정지. ACTIVE·SUSPENDED에서만 전이하며, 영구 차단(BANNED)은 정지로 낮출 수 없다. */
     fun suspendUntil(until: LocalDateTime) {
         if (status == MemberStatus.BANNED) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "영구 차단 중인 회원은 정지할 수 없습니다. 차단을 먼저 해제하세요.")
+        }
+        if (status != MemberStatus.ACTIVE && status != MemberStatus.SUSPENDED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "탈퇴했거나 가입을 마치지 않은 회원은 정지할 수 없습니다.")
         }
         status = MemberStatus.SUSPENDED
         suspendedUntil = until
@@ -319,14 +320,16 @@ class Member(
 
     /**
      * 제재를 해제하거나 지운 뒤, 남은 제재 중 지금 유효한 가장 무거운 것으로 상태를 맞춘다. 경고는 상태와 무관하다.
-     * 제재가 줄어든 뒤에만 부르므로 정지·차단 중이 아니면 그대로 둔다.
+     * 제재가 줄어든 뒤에만 부르므로 정지·차단 중이 아니면 그대로 두고, 정지↔차단 전이 검사 없이 결과 상태를 바로 넣는다.
+     * 같은 수위가 여럿이면 가장 늦게 끝나는 제재를 따른다.
      */
-    fun alignStatusWith(sanctions: List<Sanction>, now: LocalDateTime) {
-        if (!isRestricted()) return
+    fun alignStatusWith(remainingSanctions: List<Sanction>, now: LocalDateTime) {
+        require(remainingSanctions.all { it.memberId == id }) { "회원 #$id 의 제재만 넘겨야 합니다." }
+        if (status != MemberStatus.SUSPENDED && status != MemberStatus.BANNED) return
 
-        val heaviest = sanctions
-            .filter { it.memberId == id && it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
-            .maxByOrNull { it.level }
+        val heaviest = remainingSanctions
+            .filter { it.isEffectiveAt(now) && it.level != SanctionLevel.WARNING }
+            .maxWithOrNull(compareBy<Sanction> { it.level }.thenBy { it.endsAt ?: LocalDateTime.MAX })
         when (heaviest?.level) {
             SanctionLevel.PERMANENT_BAN -> {
                 status = MemberStatus.BANNED
