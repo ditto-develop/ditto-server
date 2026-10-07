@@ -332,7 +332,7 @@ class MatchmakingServiceTest(
                 summary.rowCounts.savedCount shouldBe 4
                 summary.matches.map { it.memberIds } shouldBe listOf(members.toSet())
 
-                // 풀이 3명이면 정원도 3명이라 그룹은 하나뿐이다
+                // 3명이면 ⌈3 / 6⌉ = 1이라 그룹은 하나뿐이다
                 val rooms = groupMatchRepository.findByQuizSetId(quizSetId)
                 rooms shouldHaveSize 1
                 rooms.first().score shouldBe 100.0

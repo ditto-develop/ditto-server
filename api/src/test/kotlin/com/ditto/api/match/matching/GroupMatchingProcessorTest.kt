@@ -87,8 +87,8 @@ class GroupMatchingProcessorTest : FreeSpec(
                 processor.match(pool(13)).map { it.memberIds.size }.sorted() shouldBe listOf(4, 4, 5)
             }
 
-            "참여자가 많아도 정원이 줄지 않는다" {
-                processor.match(pool(30)).map { it.memberIds.size } shouldBe List(5) { 6 }
+            "참여자가 30명을 넘어도 6명 그룹으로 묶인다" {
+                processor.match(pool(30)).map { it.memberIds.size }.sorted() shouldBe listOf(6, 6, 6, 6, 6)
                 processor.match(pool(31)).map { it.memberIds.size }.sorted() shouldBe listOf(5, 5, 5, 5, 5, 6)
             }
 
