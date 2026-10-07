@@ -13,7 +13,7 @@ import kotlin.random.Random
  * 거기만 속한 사람이 매칭을 못 받기 때문이다. 그래서 1:1의 상위 비율 선발·1인 노출 제한을 쓰지 않는다.
  *
  * 우선순위는 **① 매칭 못 받는 사람 최소화 → ② 그룹 점수**다.
- * 1. 그룹 수를 정원([GroupSizePolicy])으로 시작해 `⌈N / 정원⌉`개로 잡고 인원을 균등하게 나눈다(7명 → 4+3).
+ * 1. 그룹 수를 `⌈N / 6⌉`개([GroupSizePolicy.MAX_SIZE] = 6)로 잡고 인원을 균등하게 나눠 그룹별 정원을 정한다(7명 → 4+3).
  * 2. 차단 때문에 전원을 담지 못하면 그룹 수를 늘려 더 작게 나눈다(6명 + 차단 1건 → 3+3). 최소 [GroupSizePolicy.MIN_SIZE]명.
  * 3. 그래도 못 담은 사람만 빠진다(4명 + 차단 1건 → 3명 그룹 하나 — 4명으로는 3+3을 못 만든다).
  * 4. 배정이 끝나면 그룹 간 1:1 교환으로 점수를 올린다([improveBySwaps]).
@@ -50,7 +50,7 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
      */
     private fun bestPartition(participants: List<MatchParticipant>, scores: PairScores): Partition {
         val poolSize = participants.size
-        val fewestGroups = ceilDiv(poolSize, GroupSizePolicy.decide(poolSize))
+        val fewestGroups = ceilDiv(poolSize, GroupSizePolicy.MAX_SIZE)
         val mostGroups = poolSize / GroupSizePolicy.MIN_SIZE
 
         var best: Partition? = null

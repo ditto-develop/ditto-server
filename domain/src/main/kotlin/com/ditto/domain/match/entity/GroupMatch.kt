@@ -66,7 +66,7 @@ class GroupMatch private constructor(
     }
 
     companion object {
-        /** 그룹이 성사되는 최소 수락 인원. 그룹 정원의 하한이기도 하다(`GroupSizePolicy.MIN_SIZE`). */
+        /** 그룹이 성사되는 최소 수락 인원. 그룹 인원의 하한이기도 하다(`GroupSizePolicy.MIN_SIZE`). */
         const val ACTIVATION_THRESHOLD = 3
 
         /**

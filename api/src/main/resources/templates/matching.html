@@ -24,11 +24,12 @@
                 </p>
                 <p class="muted" th:if="${regeneration.matches.isEmpty()}">만들어진 매칭이 없습니다. 매칭 대상이 모자라거나 조건이 맞는 조합이 없습니다.</p>
                 <table class="tbl" th:unless="${regeneration.matches.isEmpty()}">
-                    <thead><tr><th>#</th><th>회원 ID</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
+                    <thead><tr><th>#</th><th>회원 ID</th><th>인원</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
                     <tbody>
                     <tr th:each="match, stat : ${regeneration.matches}">
                         <td class="num" th:text="${stat.count}">1</td>
                         <td th:text="${#strings.listJoin(#lists.sort(#lists.toList(match.memberIds)), ', ')}">1, 2</td>
+                        <td class="num" th:text="${match.memberIds.size()}">2</td>
                         <td class="num" th:text="${match.score}">100.0</td>
                         <td class="num"
                             th:text="${match.matchedQuestionCount != null} ? ${match.matchedQuestionCount} + ' / ' + ${match.totalQuestionCount} : '-'">-</td>

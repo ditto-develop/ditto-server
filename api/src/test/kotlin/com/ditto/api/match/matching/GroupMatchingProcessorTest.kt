@@ -81,15 +81,19 @@ class GroupMatchingProcessorTest : FreeSpec(
                 }
             }
 
-            "인원은 정원 안에서 균등하게 나뉜다" {
+            "인원은 정원 6명 안에서 균등하게 나뉜다" {
                 processor.match(pool(7)).map { it.memberIds.size }.sorted() shouldBe listOf(3, 4)
-                processor.match(pool(11)).map { it.memberIds.size }.sorted() shouldBe listOf(3, 4, 4)
-                // 30명의 정원은 4명 — 8개 그룹으로 4명 6개 + 3명 2개
-                processor.match(pool(30)).map { it.memberIds.size }.sorted() shouldBe listOf(3, 3, 4, 4, 4, 4, 4, 4)
+                processor.match(pool(11)).map { it.memberIds.size }.sorted() shouldBe listOf(5, 6)
+                processor.match(pool(13)).map { it.memberIds.size }.sorted() shouldBe listOf(4, 4, 5)
+            }
+
+            "참여자가 30명을 넘어도 6명 그룹으로 묶인다" {
+                processor.match(pool(30)).map { it.memberIds.size }.sorted() shouldBe listOf(6, 6, 6, 6, 6)
+                processor.match(pool(31)).map { it.memberIds.size }.sorted() shouldBe listOf(5, 5, 5, 5, 5, 6)
             }
 
             "답이 비슷한 사람끼리 묶인다" {
-                // 10명 → 정원 5명 × 2. 1~5는 모두 같은 답, 6~10은 모두 다른 같은 답이다.
+                // 10명 → 5명 × 2. 1~5는 모두 같은 답, 6~10은 모두 다른 같은 답이다.
                 val sameA = mapOf(101L to 1L, 102L to 1L, 103L to 1L)
                 val sameB = mapOf(101L to 2L, 102L to 2L, 103L to 2L)
                 val participants = (1L..5L).map { participant(it, sameA) } + (6L..10L).map { participant(it, sameB) }
