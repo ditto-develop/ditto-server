@@ -25,7 +25,7 @@ class MemberSanctionTest : FreeSpec(
                 member.suspendedUntil shouldBe until
             }
 
-            "영구 차단 회원은 정지로 낮출 수 없다" {
+            "영구 차단 회원은 정지로 낮출 수 없고, 차단을 먼저 풀라고 알린다" {
                 val member = MemberFixture.create(status = MemberStatus.BANNED)
 
                 val exception = shouldThrow<WarnException> {
@@ -33,6 +33,7 @@ class MemberSanctionTest : FreeSpec(
                 }
 
                 exception.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+                exception.message shouldBe "영구 차단 중인 회원은 정지할 수 없습니다. 차단을 먼저 해제하세요."
             }
         }
 
@@ -44,6 +45,16 @@ class MemberSanctionTest : FreeSpec(
 
                 member.status shouldBe MemberStatus.BANNED
                 member.suspendedUntil.shouldBeNull()
+            }
+
+            "이미 영구 차단된 회원은 다시 차단할 수 없다" {
+                val member = MemberFixture.create(status = MemberStatus.BANNED)
+
+                val exception = shouldThrow<WarnException> {
+                    member.ban()
+                }
+
+                exception.message shouldBe "이미 영구 차단된 회원입니다."
             }
 
             "가입 미완료(PENDING) 회원은 차단할 수 없다" {

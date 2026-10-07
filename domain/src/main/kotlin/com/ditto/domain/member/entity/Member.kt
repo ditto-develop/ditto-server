@@ -299,7 +299,7 @@ class Member(
     /** 기간 이용 정지. 영구 차단(BANNED)은 정지로 낮출 수 없다. */
     fun suspendUntil(until: LocalDateTime) {
         if (status == MemberStatus.BANNED) {
-            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "영구 차단 중인 회원은 정지할 수 없습니다. 차단을 먼저 해제하세요.")
         }
         status = MemberStatus.SUSPENDED
         suspendedUntil = until
@@ -307,6 +307,9 @@ class Member(
 
     /** 영구 차단. ACTIVE·SUSPENDED에서만 전이하며, 해제는 [reinstate](어드민 직권)로만 가능하다. */
     fun ban() {
+        if (status == MemberStatus.BANNED) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 영구 차단된 회원입니다.")
+        }
         if (status != MemberStatus.ACTIVE && status != MemberStatus.SUSPENDED) {
             throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION)
         }
