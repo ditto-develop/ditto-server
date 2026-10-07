@@ -246,7 +246,7 @@ class AdminDummyCleanupTest(
             memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().status shouldBe MemberStatus.ACTIVE
             summary.reportCount shouldBe 1
             summary.sanctionCount shouldBe 1
-            summary.toResultMessage() shouldContain "더미 신고로 걸린 제재를 지운 실회원: 테스터(#${tester.id}) 정상."
+            summary.toResultMessage() shouldContain "더미 신고로 걸린 제재를 지운 실회원: 테스터(#${tester.id}) 정상(앱에서 다시 로그인)."
         }
 
         "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {
@@ -263,13 +263,14 @@ class AdminDummyCleanupTest(
             )
             banByDummyReport(tester, saveMember("dummy-female-aaaa"))
 
-            adminDummyService.deleteAllDummies()
+            val summary = adminDummyService.deleteAllDummies()
 
             sanctionRepository.findAll().map { it.id } shouldBe listOf(manualSuspension.id)
             memberRepository.findByIdOrNull(tester.id).shouldNotBeNull().let {
                 it.status shouldBe MemberStatus.SUSPENDED
                 it.suspendedUntil shouldBe manualSuspension.endsAt
             }
+            summary.toResultMessage() shouldContain "테스터(#${tester.id}) 이용 정지 중(남은 제재가 있어 제재 관리에서 해제)"
         }
     }
 })
