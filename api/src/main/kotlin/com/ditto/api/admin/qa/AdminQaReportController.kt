@@ -50,7 +50,7 @@ class AdminQaReportController(
 
     private fun reportWithRetryHint(request: CreateUserReportRequest, dummyId: Long): String? =
         runRejectable {
-            userReportController.createUserReport(request, qaDummies.principalOf(dummyId))
+            userReportController.createUserReport(request, qaDummies.requireActiveDummyPrincipal(dummyId))
         }.fold(
             onSuccess = { response -> response.data?.let { "신고 #${it.id}" } },
             onFailure = { rejection -> throw (rejection as WarnException).withRetryHint() },

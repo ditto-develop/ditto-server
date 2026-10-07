@@ -23,17 +23,26 @@ class QaDummies(
             .map { it.id }
             .toSet()
 
-    /** 앱 컨트롤러를 직접 부르면 인증 필터를 거치지 않아, 필터처럼 탈퇴·영구 차단·정지 중인 더미를 여기서 거부한다. */
-    fun principalOf(memberId: Long): MemberPrincipal {
-        val dummy = findDummy(memberId)
-        if (dummy.isLeft()) throw WarnException(ErrorCode.MEMBER_LEFT)
-        if (dummy.isBanned()) throw WarnException(ErrorCode.MEMBER_BANNED)
-        if (dummy.isSuspendedAt(serverTimeProvider.now())) throw WarnException(ErrorCode.MEMBER_SUSPENDED)
+    /**
+     * 앱 컨트롤러를 직접 부르면 인증 필터를 거치지 않아, 필터처럼 탈퇴·영구 차단·정지 중인 더미를 여기서 거부한다.
+     * JwtAuthenticationFilter 와 같은 순서·오류 코드로 유지한다. 더미는 가입을 마친 채 만들어져 PENDING 검사는 없다.
+     */
+    fun requireActiveDummyPrincipal(memberId: Long): MemberPrincipal {
+        val dummy = requireDummy(memberId)
+        if (dummy.isLeft()) throw WarnException(ErrorCode.MEMBER_LEFT, "이 더미는 탈퇴해 앱처럼 움직일 수 없습니다.")
+        if (dummy.isBanned()) throw dummy.restrictedRejection(ErrorCode.MEMBER_BANNED, "영구 차단")
+        if (dummy.isSuspendedAt(serverTimeProvider.now())) {
+            throw dummy.restrictedRejection(ErrorCode.MEMBER_SUSPENDED, "이용 정지")
+        }
         return MemberPrincipal(dummy.id)
     }
 
-    private fun findDummy(memberId: Long): Member {
-        val member = memberRepository.findByIdOrNull(memberId) ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId")
+    private fun Member.restrictedRejection(errorCode: ErrorCode, sanctionName: String) =
+        WarnException(errorCode, "이 더미($nickname)는 $sanctionName 중이라 앱처럼 움직일 수 없습니다. 제재 관리에서 해제하세요.")
+
+    private fun requireDummy(memberId: Long): Member {
+        val member = memberRepository.findByIdOrNull(memberId)
+            ?: throw WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId")
         if (!DummyMarker.isDummy(member.nickname)) {
             throw WarnException(ErrorCode.FORBIDDEN, "더미 회원만 대신 움직일 수 있습니다.")
         }

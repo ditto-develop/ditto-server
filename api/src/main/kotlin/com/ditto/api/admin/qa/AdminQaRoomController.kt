@@ -91,7 +91,7 @@ class AdminQaRoomController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "방 #$roomId 나가기") {
-            chatController.leave(qaDummies.principalOf(dummyId), roomId)
+            chatController.leave(qaDummies.requireActiveDummyPrincipal(dummyId), roomId)
         }
         return QaRoutes.room(roomId)
     }
@@ -103,7 +103,7 @@ class AdminQaRoomController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "방 #$roomId 채팅 종료") {
-            chatController.end(qaDummies.principalOf(dummyId), roomId)
+            chatController.end(qaDummies.requireActiveDummyPrincipal(dummyId), roomId)
         }
         return QaRoutes.room(roomId)
     }
@@ -111,10 +111,10 @@ class AdminQaRoomController(
     private fun readLatest(dummyId: Long, roomId: Long) {
         val latestMessageId = adminQaRoomService.findLatestMessageId(roomId)
             ?: throw WarnException(ErrorCode.BAD_REQUEST, "읽을 메시지가 없습니다.")
-        chatController.read(qaDummies.principalOf(dummyId), roomId, ChatReadRequest(latestMessageId))
+        chatController.read(qaDummies.requireActiveDummyPrincipal(dummyId), roomId, ChatReadRequest(latestMessageId))
     }
 
     /** STOMP 핸들러는 세션 principal 을 받으므로 앱 연결과 같은 모양으로 만든다. */
     private fun authenticationOf(dummyId: Long): Authentication =
-        UsernamePasswordAuthenticationToken(qaDummies.principalOf(dummyId), null, emptyList())
+        UsernamePasswordAuthenticationToken(qaDummies.requireActiveDummyPrincipal(dummyId), null, emptyList())
 }

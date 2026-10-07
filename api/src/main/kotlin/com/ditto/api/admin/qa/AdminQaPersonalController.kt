@@ -25,7 +25,7 @@ class AdminQaPersonalController(
         val receiver = qaMemberLabels.one(receiverId)
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "${receiver.label}에게 1:1 신청") {
             personalMatchController.requestMatch(
-                qaDummies.principalOf(dummyId),
+                qaDummies.requireActiveDummyPrincipal(dummyId),
                 PersonalMatchRequest(receiverId = receiverId, quizSetId = quizSetId),
             )
         }
@@ -39,7 +39,7 @@ class AdminQaPersonalController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "1:1 신청 #$matchId 수락") {
-            personalMatchController.acceptMatch(qaDummies.principalOf(dummyId), matchId)
+            personalMatchController.acceptMatch(qaDummies.requireActiveDummyPrincipal(dummyId), matchId)
         }
         return QaRoutes.PERSONAL_SECTION
     }
@@ -51,7 +51,7 @@ class AdminQaPersonalController(
         redirectAttributes: RedirectAttributes,
     ): String {
         redirectAttributes.flashDummyAction(qaMemberLabels.one(dummyId), "1:1 신청 #$matchId 거절") {
-            personalMatchController.rejectMatch(qaDummies.principalOf(dummyId), matchId)
+            personalMatchController.rejectMatch(qaDummies.requireActiveDummyPrincipal(dummyId), matchId)
         }
         return QaRoutes.PERSONAL_SECTION
     }
