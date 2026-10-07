@@ -73,6 +73,7 @@
             <div class="card">
                 <h2>
                     신고자: <span th:text="${report.reporter.nickname}">닉네임</span>
+                    <span class="badge cat" th:if="${report.reporter.qaDummy}" title="QA 콘솔에서 더미로 낸 신고입니다">QA 더미</span>
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reporter.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted">

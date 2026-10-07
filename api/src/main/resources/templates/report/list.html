@@ -43,7 +43,10 @@
                             <span th:text="${#strings.listJoin(r.reasonDescriptions, ', ')}">사유</span>
                             <span class="badge warn" th:if="${r.isSevere}">심각 사유</span>
                         </td>
-                        <td th:text="${r.reporterNickname}">신고자</td>
+                        <td>
+                            <span th:text="${r.reporterNickname}">신고자</span>
+                            <span class="badge cat" th:if="${r.reportedByQaDummy}" title="QA 콘솔에서 더미로 낸 신고입니다">QA 더미</span>
+                        </td>
                         <td th:text="${r.reportedNickname}">피신고자</td>
                         <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>
                         <td>

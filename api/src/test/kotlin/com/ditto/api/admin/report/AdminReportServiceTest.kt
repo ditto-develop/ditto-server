@@ -60,6 +60,19 @@ class AdminReportServiceTest(
 
             rows[0].overdue shouldBe false
         }
+
+        "더미가 낸 신고는 QA 신고로 표시한다" {
+            val dummy = saveActiveMember("dummy-female-aaaa")
+            val reported = saveActiveMember("피신고자")
+            val report = memberReportRepository.save(
+                MemberReportFixture.create(reporterId = dummy.id, reportedMemberId = reported.id),
+            )
+
+            val rows = adminReportService.listReports(MemberReportStatus.RECEIVED, report.createdAt.plusHours(3))
+
+            rows.single().isReportedByQaDummy shouldBe true
+            adminReportService.getReportDetail(report.id, report.createdAt).reporter.isQaDummy shouldBe true
+        }
     }
 
     "신고 상세" - {
