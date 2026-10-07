@@ -16,8 +16,8 @@
 - 누적 제재(`SanctionRepository.countStrikes`)는 `origin = FALSE_REPORT`(허위 신고자 제재)와 `status = LIFTED`(어드민이 해제한 제재, 오처리 정정용)를 세지 않는다. 어드민 화면의 차수 = 이 값 + 1 (참고값일 뿐, 최종 제재 종류는 어드민이 정한다).
 - 제재 기간(`AdminSanctionService.sanctionPeriod`): WARNING = 확정 시점 기준 차주 월요일 00:00부터 7일(일요일 23:59:59까지 차단과 동일 — endsAt은 exclusive 비교, 확정 주 잔여 참여 허용), SUSPENSION = 즉시부터 14일, PERMANENT_BAN = 종료 없음.
 - WARNING(1차)은 `Member.status`·세션을 바꾸지 않는다 — 퀴즈 참여만 sanction 구간으로 차단.
-- 어드민이 해제(lift)하거나 QA 더미 정리로 더미 신고에서 나온 제재를 지운 뒤에는 남은 제재 가운데 지금 적용 중인(ACTIVE이고 기간 안) 것 중 가장 무거운 제재로 `Member.status`를 재계산한다 (경고는 상태와 무관).
-- 적용과 재계산은 회원 행을 잠그고(`MemberRepository.findWithLockById`) 상태를 바꾼다. 동시에 돌 때 낡은 상태를 덮어쓰지 않게 하려는 것이다.
+- 어드민이 해제(lift)하거나 QA 더미 정리로 더미 신고에서 나온 제재를 지운 뒤에는 남은 제재 중 지금 적용 중인(ACTIVE이고 기간 안) 가장 무거운 제재로 `Member.status`를 재계산한다 (경고는 상태와 무관).
+- 적용과 재계산은 회원 행을 잠그고(`MemberRepository.findWithLockById`) 상태를 바꾼다. 재계산은 남은 제재도 잠금 읽기(`findAllWithLockByMemberIdAndStatus`)로 본다. 해제·정리 트랜잭션은 잠금 전에 비잠금 읽기가 있어, 잠그지 않으면 대기 중 커밋된 제재를 못 보기 때문이다(ADR 0011 규칙 7). 같은 수위가 여럿이면 가장 늦게 끝나는 제재를 따른다.
 - `creator_name`은 처리자 표시명 스냅샷 — 어드민 계정이 삭제돼도 감사 기록이 남는다.
 
 ## 상태 전이

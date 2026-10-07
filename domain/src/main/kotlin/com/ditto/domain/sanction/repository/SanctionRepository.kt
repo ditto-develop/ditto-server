@@ -4,11 +4,14 @@ import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.entity.SanctionOrigin
 import com.ditto.domain.sanction.entity.SanctionStatus
+import jakarta.persistence.LockModeType
 import java.time.LocalDateTime
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 interface SanctionRepository : JpaRepository<Sanction, Long> {
@@ -19,6 +22,14 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
     ): List<Sanction>
 
     fun findAllByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
+
+    /**
+     * 회원 상태 재계산용. 잠금을 기다리기 전에 비잠금 읽기가 있던 트랜잭션은 잠그지 않고 읽으면
+     * 대기 중 커밋된 제재를 못 본다(ADR 0011 규칙 7). MANDATORY 인 이유는 규칙 6 과 같다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findAllWithLockByMemberIdAndStatus(memberId: Long, status: SanctionStatus): List<Sanction>
 
     fun findByMemberReportIdIn(memberReportIds: Collection<Long>): List<Sanction>
 
