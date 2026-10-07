@@ -41,6 +41,11 @@
         alerts.appendChild(alert);
     }
 
+    function showSubmitError(message, submittedAlertScope) {
+        showError(message);
+        showInlineAlerts(submittedAlertScope?.id);
+    }
+
     // 같은 이름의 칸이 폼마다 반복되는 영역(평가)은 폼 id 로 짝을 찾는다. id 가 없는 폼은 select 만 이름으로 찾는다.
     function replacementOf(field, next) {
         const formId = field.form?.id;
@@ -80,9 +85,13 @@
     }
 
     // 손대는 중인 영역(평가)은 갈아 끼우면 열린 선택지가 닫히고 커서가 사라지니 건너뛴다.
+    // 제출 뒤 포커스가 돌아간 버튼은 손대는 중이 아니다. 그것까지 막으면 실패한 제출 뒤 영역이 계속 옛 화면으로 남는다.
     function isBeingEdited(region) {
         if (region.dataset.editing === 'true') return true;
-        return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
+        const active = document.activeElement;
+        return region.hasAttribute('data-qa-hold-while-editing')
+            && region.contains(active)
+            && active.matches('input, select, textarea');
     }
 
     // 체크를 고르던 영역(투표)과 손대는 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
@@ -240,13 +249,13 @@
         try {
             const response = await fetch(action, { method: 'POST', body, credentials: 'same-origin' });
             if (isLoggedOut(response)) {
-                showError('세션이 끝나 요청이 처리되지 않았습니다. 다시 로그인하세요.');
+                showSubmitError('세션이 끝나 요청이 처리되지 않았습니다. 다시 로그인하세요.', submittedAlertScope);
                 return;
             }
             const doc = parse(await response.text());
             // CSRF 거부(403)나 서버 오류 JSON 처럼 화면이 아닌 응답은 결과를 알 수 없다.
             if (!response.ok || doc.getElementById('qa-alerts') === null) {
-                showError(`요청이 처리됐는지 확인하지 못했습니다(${response.status}). 새로고침해서 확인하세요.`);
+                showSubmitError(`요청이 처리됐는지 확인하지 못했습니다(${response.status}). 새로고침해서 확인하세요.`, submittedAlertScope);
                 return;
             }
             // 갈아 끼우면 노드가 응답 문서에서 빠져나오므로 오류 여부는 그 전에 본다.
@@ -258,7 +267,7 @@
             resetFieldsAfterSuccess(form, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
-            showError('네트워크 오류로 요청 결과를 확인하지 못했습니다. 새로고침해서 확인하세요.');
+            showSubmitError('네트워크 오류로 요청 결과를 확인하지 못했습니다. 새로고침해서 확인하세요.', submittedAlertScope);
         } finally {
             submitGeneration += 1;
             submitting = false;
