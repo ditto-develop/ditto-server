@@ -174,6 +174,22 @@ class AdminQaReportWebTest(
             reportsBy(dummy).size shouldBe 1
         }
 
+        "영구 차단된 더미로는 앱처럼 신고할 수 없다" {
+            val tester = saveMember("테스터")
+            val bannedDummy = memberRepository.save(
+                MemberFixture.create(
+                    nickname = "dummy-female-aaaa",
+                    email = "banned@ditto.pics",
+                    status = MemberStatus.BANNED,
+                ),
+            )
+
+            reportAsDummy(bannedDummy, tester)
+                .andExpect(flash().attribute("error", containsString("(코드 ${ErrorCode.MEMBER_BANNED.code})")))
+
+            reportsBy(bannedDummy).shouldBeEmpty()
+        }
+
         "더미가 아닌 회원으로는 신고할 수 없다" {
             val tester = saveMember("테스터")
             val realMember = saveMember("실회원")

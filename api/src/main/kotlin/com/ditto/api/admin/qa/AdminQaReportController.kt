@@ -1,6 +1,7 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.admin.qa.dto.QaReportForm
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.userreport.controller.UserReportController
 import com.ditto.api.userreport.dto.CreateUserReportRequest
 import com.ditto.common.exception.ErrorCode
@@ -18,6 +19,7 @@ class AdminQaReportController(
     private val qaMemberLabels: QaMemberLabels,
     private val userReportController: UserReportController,
     private val validator: Validator,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
     @PostMapping("/admin/qa/reports")
     fun reportAsDummy(@ModelAttribute form: QaReportForm, redirectAttributes: RedirectAttributes): String {
@@ -33,7 +35,10 @@ class AdminQaReportController(
         val actionLabel = "${members.of(request.reportedMemberId).label} 신고"
         redirectAttributes.flashDummyActionWithResult(members.of(dummyId), actionLabel) {
             validateLikeApp(request)
-            val response = userReportController.createUserReport(request, qaDummies.principalOf(dummyId))
+            val response = userReportController.createUserReport(
+                request,
+                qaDummies.activePrincipalOf(dummyId, serverTimeProvider.now()),
+            )
             response.data?.let { "신고 #${it.id}" }
         }
         return QaRoutes.REPORT_SECTION
