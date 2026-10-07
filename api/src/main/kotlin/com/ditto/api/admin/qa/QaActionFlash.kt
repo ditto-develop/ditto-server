@@ -37,6 +37,7 @@ internal fun RedirectAttributes.flashEachDummyAction(
 
 /**
  * 더미마다 따로 실행한다. 앞 더미가 거부돼도 나머지는 계속한다.
+ * 제재 중인 더미는 앱처럼 움직일 수 없어 건너뛰고, 다음 단계가 막힐 수 있으니 실패처럼 눈에 띄게 알린다.
  * block 이 돌려준 결과(재매칭 성사 등)는 종류별 건수로 묶어 메시지 뒤에 붙인다.
  */
 internal fun RedirectAttributes.flashEachDummyActionWithResults(
@@ -49,18 +50,29 @@ internal fun RedirectAttributes.flashEachDummyActionWithResults(
         return
     }
 
-    val attempts = dummies.map { dummy -> dummy to runRejectable { block(dummy) } }
+    val (restrictedDummies, actingDummies) = dummies.partition { it.isRestricted }
+    val attempts = actingDummies.map { dummy -> dummy to runRejectable { block(dummy) } }
     val resultSummary = summarize(attempts.flatMap { (_, attempt) -> attempt.getOrDefault(emptyList()) })
     val rejections = attempts.mapNotNull { (dummy, attempt) ->
         (attempt.exceptionOrNull() as WarnException?)?.let { "${dummy.label} ${it.toDisplayText()}" }
     }
-    if (rejections.isEmpty()) {
+    if (rejections.isEmpty() && restrictedDummies.isEmpty()) {
         flashSuccess("$action (${dummies.size}명)", resultSummary)
         return
     }
-    val succeededCount = dummies.size - rejections.size
-    val failureText = "$action: ${succeededCount}명 성공, ${rejections.size}명 실패. ${rejections.joinToString(", ")}"
+    val succeededCount = actingDummies.size - rejections.size
+    val failureText = listOfNotNull(
+        "$action: ${succeededCount}명 성공",
+        rejections.takeIf { it.isNotEmpty() }?.let { "${it.size}명 실패. ${it.joinToString(", ")}" },
+        skippedTextOf(restrictedDummies),
+    ).joinToString(", ")
     flashRejection(listOfNotNull(failureText, resultSummary).joinToString(" · "))
+}
+
+private fun skippedTextOf(restrictedDummies: List<QaMember>): String? {
+    if (restrictedDummies.isEmpty()) return null
+    val dummies = restrictedDummies.joinToString(", ") { it.labelWithRestriction }
+    return "${restrictedDummies.size}명 제재 중이라 건너뜀($dummies). 제재 관리에서 해제하세요"
 }
 
 /** 앱의 거부(WarnException)만 결과로 담는다. 그 밖의 예외는 서버 오류라 그대로 던진다. */

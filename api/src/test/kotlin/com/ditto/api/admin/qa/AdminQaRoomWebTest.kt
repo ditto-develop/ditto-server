@@ -291,6 +291,29 @@ class AdminQaRoomWebTest(
             lastReadMessageIdOf(room, tester) shouldBe null
         }
 
+        "모두 읽기는 정지 중인 더미를 건너뛰고 해제 방법을 알린다" {
+            val activeDummy = saveMember("dummy-female-aaaa")
+            val suspendedDummy = memberRepository.save(
+                MemberFixture.create(
+                    nickname = "dummy-male-bbbb",
+                    email = "suspended-reader@ditto.pics",
+                    status = MemberStatus.SUSPENDED,
+                    suspendedUntil = LocalDateTime.now().plusDays(14),
+                ),
+            )
+            val tester = saveMember("테스터")
+            val room = saveRoom(ChatRoomFixture.group(), listOf(activeDummy, suspendedDummy, tester))
+            val latest = saveMessage(room, tester)
+
+            mockMvc.perform(post("/admin/qa/rooms/{id}/read-all-dummies", room.id).asAdmin())
+                .andExpect(flash().attribute("error", containsString("1명 성공")))
+                .andExpect(flash().attribute("error", containsString("1명 제재 중이라 건너뜀(${suspendedDummy.nickname}(#")))
+                .andExpect(flash().attribute("error", containsString("이용 정지 ~")))
+
+            lastReadMessageIdOf(room, activeDummy) shouldBe latest.id
+            lastReadMessageIdOf(room, suspendedDummy) shouldBe null
+        }
+
         "읽을 메시지가 없으면 알려준다" {
             val dummy = saveMember("dummy-female-aaaa")
             val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("테스터"), dummy))

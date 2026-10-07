@@ -26,12 +26,21 @@ class QaConsoleView(
             ).distinctBy { it.id }
 }
 
+/** restriction 은 앱을 쓸 수 없는 이유(정지·영구 차단·탈퇴). 콘솔도 그 회원으로는 움직이지 못한다. */
 class QaMember(
     val id: Long,
     val nickname: String,
+    val restriction: String? = null,
 ) {
     /** 결과 메시지용. 화면의 닉네임과 로그의 id 를 함께 대조할 수 있게 한다. */
     val label: String = "$nickname(#$id)"
+
+    val isRestricted: Boolean = restriction != null
+
+    /** 배지를 달 수 없는 select 보기용. */
+    val nicknameWithRestriction: String = if (restriction == null) nickname else "$nickname ($restriction)"
+
+    val labelWithRestriction: String = if (restriction == null) label else "$label ($restriction)"
 }
 
 class QaPersonalSection(

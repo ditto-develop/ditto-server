@@ -45,6 +45,11 @@
     <span class="badge matching" th:case="*">대기</span>
 </th:block>
 
+<th:block th:fragment="restriction(member)"><th:block th:if="${member.restricted}">
+    <span class="badge warn" th:text="${member.restriction}">이용 정지 ~10/21 14:00</span>
+    <a class="qa-restriction-link" target="_blank" th:href="@{/admin/members/{id}/sanctions(id=${member.id})}">제재 관리<span aria-hidden="true"> ↗</span></a>
+</th:block></th:block>
+
 <th:block th:fragment="reportStatus(status)" th:switch="${status.name()}">
     <span class="badge matching" th:case="'RECEIVED'">검토 대기</span>
     <span class="badge cat" th:case="'ACTIONED'">제재 적용</span>

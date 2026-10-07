@@ -85,7 +85,7 @@
                                 <span id="qa-composer-dummies" class="qa-composer-dummies" data-qa-live>
                                     <select name="dummyId" aria-label="보낼 더미">
                                         <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
-                                                th:text="${dummy.nickname}">dummy</option>
+                                                th:text="${dummy.nicknameWithRestriction}">dummy</option>
                                     </select>
                                 </span>
                                 <input type="text" name="content" placeholder="더미로 보낼 메시지 (Enter로 전송)"
@@ -109,6 +109,7 @@
                              th:classappend="${roomMember.hasLeft} ? 'left'">
                             <div>
                                 <b th:text="${roomMember.member.nickname}">홍길동</b>
+                                <span th:replace="~{qa/parts :: restriction(${roomMember.member})}"></span>
                                 <span class="badge cat" th:unless="${roomMember.dummy}">실회원</span>
                                 <span class="badge off" th:if="${roomMember.hasLeft}">나감</span>
                                 <div class="muted"
@@ -152,7 +153,7 @@
                                   th:action="@{/admin/qa/rooms/{id}/votes(id=${room.roomId})}">
                                 <select name="dummyId" class="qa-select" aria-label="투표를 만들 더미">
                                     <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
-                                            th:text="${dummy.nickname}">dummy</option>
+                                            th:text="${dummy.nicknameWithRestriction}">dummy</option>
                                 </select>
                                 <label class="check qa-check"><input type="checkbox" name="allowMultiple" value="true"/> 복수 선택</label>
                                 <button class="btn sm qa-wide" type="submit">샘플 투표 만들기</button>
@@ -171,7 +172,7 @@
                                 <th:block th:replace="~{qa/parts :: voteOptions('시간', 'timeIds', ${vote.timeOptions}, ${vote.allowMultiple})}"></th:block>
                                 <select name="dummyId" class="qa-select" aria-label="투표할 더미">
                                     <option th:each="dummy : ${room.activeDummies}" th:value="${dummy.id}"
-                                            th:text="${dummy.nickname}">dummy</option>
+                                            th:text="${dummy.nicknameWithRestriction}">dummy</option>
                                 </select>
                                 <div class="btn-row qa-vote-actions">
                                     <button class="btn sm" type="submit">이 더미로 투표</button>
@@ -212,6 +213,7 @@
                     <div class="qa-review" th:each="review : ${reviews}">
                         <div class="qa-review-head">
                             <b th:text="${review.author.nickname}">dummy</b>
+                            <span th:replace="~{qa/parts :: restriction(${review.author})}"></span>
                             <span class="muted" th:text="|평가 #${review.reviewId} · ${review.answeredCount}/${review.targets.size()}명 냄|">평가 #1 · 0/3명 냄</span>
                         </div>
                         <table class="tbl">

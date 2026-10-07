@@ -44,7 +44,7 @@ class QaDummyReports(
         )
         val realMemberIds = collectRealMemberIds(console, reports, dummyIds.toSet())
         val members = qaMemberLabels.load(dummyIds + realMemberIds + reports.map { it.reportedMemberId })
-        val dummies = dummyIds.map(members::of)
+        val dummies = dummyIds.map(members::of).sortedBy { it.isRestricted }
 
         return QaReportSection(
             dummies = dummies,

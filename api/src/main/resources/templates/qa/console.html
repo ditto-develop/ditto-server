@@ -144,7 +144,8 @@
                     <tbody>
                     <tr th:each="request : ${console.personal.receivedRequests}">
                         <td th:text="${request.requester.nickname}">홍길동</td>
-                        <td th:text="${request.dummy.nickname}">dummy-female-3fa1</td>
+                        <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
+                            <span th:replace="~{qa/parts :: restriction(${request.dummy})}"></span></td>
                         <td th:text="${request.quizSetTitle}">퀴즈셋</td>
                         <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
                         <td class="actions">
@@ -172,7 +173,8 @@
                     <thead><tr><th>보낸 더미</th><th>받은 회원</th><th>퀴즈셋</th><th>상태</th><th>신청 시각</th></tr></thead>
                     <tbody>
                     <tr th:each="request : ${console.personal.sentRequests}">
-                        <td th:text="${request.dummy.nickname}">dummy-female-3fa1</td>
+                        <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
+                            <span th:replace="~{qa/parts :: restriction(${request.dummy})}"></span></td>
                         <td th:text="${request.receiver.nickname}">홍길동</td>
                         <td th:text="${request.quizSetTitle}">퀴즈셋</td>
                         <td th:switch="${request.status.name()}">
@@ -198,7 +200,8 @@
                     <thead><tr><th>보내는 더미</th><th>받을 회원</th><th>퀴즈셋</th><th></th></tr></thead>
                     <tbody>
                     <tr th:each="option : ${console.personal.requestOptions}">
-                        <td th:text="${option.dummy.nickname}">dummy-female-3fa1</td>
+                        <td><span th:text="${option.dummy.nickname}">dummy-female-3fa1</span>
+                            <span th:replace="~{qa/parts :: restriction(${option.dummy})}"></span></td>
                         <td th:text="${option.receiver.nickname}">홍길동</td>
                         <td th:text="${option.quizSetTitle}">퀴즈셋</td>
                         <td class="actions">
@@ -248,6 +251,7 @@
                                 <a class="member-search-link" th:href="@{/admin/members/{id}/quizzes(id=${groupMember.member.id})}"
                                    th:text="${groupMember.member.nickname}" title="회원별 퀴즈 현황">홍길동</a>
                                 <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
+                                <span th:replace="~{qa/parts :: restriction(${groupMember.member})}"></span>
                             </td>
                             <td th:switch="${groupMember.status.name()}">
                                 <span class="badge on" th:case="'ACCEPTED'">수락</span>
@@ -286,7 +290,7 @@
                             <label for="qa-report-dummy">신고하는 더미</label>
                             <select id="qa-report-dummy" name="dummyId">
                                 <option th:each="dummy : ${reportSection.dummies}" th:value="${dummy.id}"
-                                        th:text="${dummy.label}">dummy-female-aaaa(#1)</option>
+                                        th:text="${dummy.labelWithRestriction}">dummy-female-aaaa(#1)</option>
                             </select>
                         </div>
                         <div class="field qa-report-target-field">
@@ -346,7 +350,10 @@
                             <tbody>
                             <tr th:each="row : ${reportSection.reports}">
                                 <td th:text="|#${row.reportId}|">#7</td>
-                                <td th:text="${row.reporter.label}">dummy(#1)</td>
+                                <td>
+                                    <span th:text="${row.reporter.label}">dummy(#1)</span>
+                                    <span th:replace="~{qa/parts :: restriction(${row.reporter})}"></span>
+                                </td>
                                 <td>
                                     <span th:text="${row.reportedMember.label}">테스터(#12)</span>
                                     <span th:replace="~{member/parts :: memberStatusBadge(${row.reportedMemberStatus})}"></span>
