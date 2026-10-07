@@ -38,15 +38,22 @@ class MemberSanctionTest : FreeSpec(
         }
 
         "suspendUntil 은 탈퇴·가입 미완료 회원을 거부한다" - {
-            listOf(MemberStatus.LEFT, MemberStatus.PENDING).forEach { status ->
-                "$status 회원은 정지할 수 없다" {
-                    val member = MemberFixture.create(status = status)
+            "탈퇴한 회원은 정지하지 않고 다른 처리를 안내한다" {
+                val member = MemberFixture.create(status = MemberStatus.LEFT)
 
-                    val exception = shouldThrow<WarnException> { member.suspendUntil(until) }
+                val exception = shouldThrow<WarnException> { member.suspendUntil(until) }
 
-                    exception.message shouldBe "탈퇴했거나 가입을 마치지 않은 회원은 정지할 수 없습니다."
-                    member.status shouldBe status
-                }
+                exception.message shouldBe "탈퇴한 회원은 정지할 수 없습니다. 경고나 기각으로 처리하세요."
+                member.status shouldBe MemberStatus.LEFT
+            }
+
+            "가입을 마치지 않은 회원은 정지할 수 없다" {
+                val member = MemberFixture.create(status = MemberStatus.PENDING)
+
+                val exception = shouldThrow<WarnException> { member.suspendUntil(until) }
+
+                exception.message shouldBe "가입을 마치지 않은 회원은 정지할 수 없습니다."
+                member.status shouldBe MemberStatus.PENDING
             }
         }
 
@@ -149,12 +156,12 @@ class MemberSanctionTest : FreeSpec(
 
             "같은 정지가 여럿이면 가장 늦게 끝나는 정지로 맞춘다" {
                 val member = MemberFixture.create(id = 1L, status = MemberStatus.BANNED)
-                val earlier = sanctionOf(member, SanctionLevel.SUSPENSION, startsAt = now.minusDays(5))
-                val later = sanctionOf(member, SanctionLevel.SUSPENSION, startsAt = now.minusDays(1))
+                val endsSooner = SanctionFixture.create(memberId = member.id, startsAt = now, endsAt = now.plusDays(9))
+                val endsLater = SanctionFixture.create(memberId = member.id, startsAt = now, endsAt = now.plusDays(13))
 
-                member.alignStatusWith(listOf(earlier, later), now)
+                member.alignStatusWith(listOf(endsLater, endsSooner), now)
 
-                member.suspendedUntil shouldBe later.endsAt
+                member.suspendedUntil shouldBe endsLater.endsAt
             }
 
             "다른 회원의 제재를 넘기면 호출 오류로 본다" {
@@ -169,6 +176,7 @@ class MemberSanctionTest : FreeSpec(
                 val warning = sanctionOf(member, SanctionLevel.WARNING)
                 val expiredSuspension = SanctionFixture.create(
                     memberId = member.id,
+                    level = SanctionLevel.SUSPENSION,
                     startsAt = now.minusDays(30),
                     endsAt = now.minusDays(1),
                 )
