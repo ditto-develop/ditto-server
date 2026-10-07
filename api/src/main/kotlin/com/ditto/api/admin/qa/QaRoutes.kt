@@ -6,6 +6,7 @@ object QaRoutes {
     const val PERSONAL_SECTION = "redirect:$CONSOLE_PATH#personal"
     const val GROUP_SECTION = "redirect:$CONSOLE_PATH#group"
     const val ROOMS_SECTION = "redirect:$CONSOLE_PATH#rooms"
+    const val REPORT_SECTION = "redirect:$CONSOLE_PATH#report"
 
     fun room(roomId: Long): String = "redirect:$CONSOLE_PATH/rooms/$roomId"
 

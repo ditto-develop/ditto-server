@@ -447,6 +447,10 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
 .content.qa-console-page { max-width: 1320px; }
+.qa-report-form .field-row .field { flex: 1; }
+.qa-report-options { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.qa-report-options .check input { width: auto; margin: 0; }
+.qa-report-title { margin: 20px 0 10px; font-size: 14px; }
 
 /* 시각 바로가기 타임라인. 위치(--pos, --start, --width)는 이번 주 안의 백분율이다. */
 .qa-week { flex-basis: 100%; container: qa-week / inline-size; --lane-height: 64px; --stem-gap: 14px; }

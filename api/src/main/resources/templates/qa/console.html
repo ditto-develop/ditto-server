@@ -89,6 +89,8 @@
                         한꺼번에 낼 때는 기본으로 실회원(테스트 계정)에게만 재매칭을 원합니다.</li>
                     <li>그룹 평가에서 테스트 계정과 더미가 서로 재매칭을 원하면 성사되고, 1분 안에 아래 채팅방 목록에 '재매칭' 방이 생기며 성사 알림도 함께 옵니다.
                         재매칭 방은 성사된 뒤 돌아오는 금요일 00:00에 열립니다. 테스트 계정과 더미의 평가를 모두 낸 뒤 위 [채팅방 열린 직후]나 재매칭 방 화면의 [옮기기]를 누르면 1분 안에 열립니다.</li>
+                    <li>신고는 맨 아래 '더미로 신고하기'에서 더미가 테스트 계정을 신고합니다. <a th:href="@{/admin/reports}">신고 검토</a>에서 조치하면
+                        테스트 계정이 앱에서 신고 사유가 붙은 제재를 확인할 수 있습니다.</li>
                     <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. [+1시간]·[+1일]로 조금씩 넘길 수 있고,
                         금요일 00:00(그룹 응답 마감)이나 다음 주 월요일 00:00(채팅 마감)을 넘기면 되돌릴 수 없어 확인을 받습니다.
                         QA를 마치면 [시간 조정 끄기]를 누르세요.</li>
@@ -267,6 +269,81 @@
                 </div>
             </section>
 
+
+            <section class="card qa-report" id="report" th:with="report=${report}">
+                <h2>더미로 신고하기 <span class="muted">앱 신고 API로 더미가 신고합니다. 이미지 첨부는 빠집니다.</span></h2>
+                <p class="muted" th:if="${report.dummies.isEmpty()}">더미가 없습니다. 더미를 만들면 여기서 신고할 수 있습니다.</p>
+                <form class="qa-report-form" method="post" th:unless="${report.dummies.isEmpty()}"
+                      th:action="@{/admin/qa/reports}">
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="qa-report-dummy">신고하는 더미</label>
+                            <select id="qa-report-dummy" name="dummyId">
+                                <option th:each="dummy : ${report.dummies}" th:value="${dummy.id}"
+                                        th:text="${dummy.label}">dummy-female-aaaa(#1)</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="qa-report-target">신고받는 회원</label>
+                            <select id="qa-report-target" name="reportedMemberId">
+                                <option th:each="target : ${report.targets}" th:value="${target.member.id}"
+                                        th:text="${target.dummy} ? |${target.member.label} · 더미| : ${target.member.label}">테스터(#12)</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="qa-report-typed">또는 회원 ID</label>
+                            <input type="number" id="qa-report-typed" name="typedMemberId" min="1" placeholder="목록에 없을 때"/>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>신고 위치</label>
+                        <div class="qa-report-options">
+                            <label class="check" th:each="source, stat : ${report.sources}">
+                                <input type="radio" name="source" th:value="${source.code}" th:checked="${stat.first}"/>
+                                <span th:text="${source.description}">프로필 화면</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>사유 (여러 개 선택)</label>
+                        <div class="qa-report-options">
+                            <label class="check" th:each="reason, stat : ${report.reasons}">
+                                <input type="checkbox" name="reasons" th:value="${reason.code}" th:checked="${stat.first}"/>
+                                <span th:text="${reason.description}">부적절한 행동</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="qa-report-detail">상세 설명 (기타를 고르면 필수)</label>
+                        <input type="text" id="qa-report-detail" name="detail" maxlength="500" placeholder="최대 500자"/>
+                    </div>
+                    <div class="btn-row">
+                        <label class="check"><input type="checkbox" name="block" value="true"/> 이 사용자 차단하기</label>
+                        <button class="btn" type="submit">더미로 신고</button>
+                    </div>
+                </form>
+
+                <th:block th:unless="${report.reports.isEmpty()}">
+                    <h3 class="qa-report-title">더미가 낸 신고 <span class="muted" th:text="|최근 ${report.recentLimit}건|">최근 20건</span></h3>
+                    <table class="tbl">
+                        <thead><tr><th>신고</th><th>신고한 더미</th><th>신고받은 회원</th><th>사유</th><th>상태</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="row : ${report.reports}">
+                            <td th:text="|#${row.reportId}|">#7</td>
+                            <td th:text="${row.reporter.label}">dummy(#1)</td>
+                            <td th:text="${row.reported.label}">테스터(#12)</td>
+                            <td th:text="${#strings.listJoin(row.reasonDescriptions, ', ')}">부적절한 행동</td>
+                            <td><span class="badge" th:classappend="${row.waiting} ? 'matching' : 'off'"
+                                      th:text="${row.status.description}">검토 대기</span></td>
+                            <td class="actions">
+                                <a class="btn secondary sm" th:href="@{/admin/reports/{id}(id=${row.reportId})}"
+                                   th:text="${row.waiting} ? '검토하기' : '보기'">검토하기</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </th:block>
+            </section>
         </main>
     </div>
 </div>
