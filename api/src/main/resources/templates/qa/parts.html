@@ -45,15 +45,20 @@
     <span class="badge matching" th:case="*">대기</span>
 </th:block>
 
+<th:block th:fragment="restrictionBadge(member)">
+    <span class="badge warn" th:if="${member.restricted}" th:text="${member.restriction}">이용 정지 ~10/21 14:00</span>
+</th:block>
+
 <th:block th:fragment="restriction(member)"><th:block th:if="${member.restricted}">
     <span class="badge warn" th:text="${member.restriction}">이용 정지 ~10/21 14:00</span>
-    <a class="qa-restriction-link" target="_blank" th:href="@{/admin/members/{id}/sanctions(id=${member.id})}">제재 관리<span aria-hidden="true"> ↗</span></a>
+    <a class="qa-restriction-link" target="_blank" th:href="@{/admin/members/{id}/sanctions(id=${member.id})}">제재 관리<span
+            aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a>
 </th:block></th:block>
 
 <th:block th:fragment="reportStatus(status)" th:switch="${status.name()}">
-    <span class="badge matching" th:case="'RECEIVED'">검토 대기</span>
-    <span class="badge cat" th:case="'ACTIONED'">제재 적용</span>
-    <span class="badge warn" th:case="'REJECTED_ABUSIVE'">허위 신고로 기각</span>
+    <span class="badge matching" th:case="'RECEIVED'" th:text="${status.description}">검토 대기</span>
+    <span class="badge cat" th:case="'ACTIONED'" th:text="${status.description}">제재 적용</span>
+    <span class="badge warn" th:case="'REJECTED_ABUSIVE'" th:text="${status.description}">허위 신고로 기각</span>
     <span class="badge off" th:case="*" th:text="${status.description}">기각</span>
 </th:block>
 

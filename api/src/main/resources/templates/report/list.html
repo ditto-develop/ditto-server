@@ -45,7 +45,7 @@
                         </td>
                         <td>
                             <span th:text="${r.reporterNickname}">신고자</span>
-                            <span class="badge cat" th:if="${r.reportedByQaDummy}" title="QA 콘솔에서 더미로 낸 신고입니다">QA 더미</span>
+                            <span class="badge off" th:if="${r.reportedByQaDummy}">QA 더미</span>
                         </td>
                         <td th:text="${r.reportedNickname}">피신고자</td>
                         <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>

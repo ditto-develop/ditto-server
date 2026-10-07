@@ -89,15 +89,16 @@
                         한꺼번에 낼 때는 기본으로 실회원(테스트 계정)에게만 재매칭을 원합니다.</li>
                     <li>그룹 평가에서 테스트 계정과 더미가 서로 재매칭을 원하면 성사되고, 1분 안에 아래 채팅방 목록에 '재매칭' 방이 생기며 성사 알림도 함께 옵니다.
                         재매칭 방은 성사된 뒤 돌아오는 금요일 00:00에 열립니다. 테스트 계정과 더미의 평가를 모두 낸 뒤 위 [채팅방 열린 직후]나 재매칭 방 화면의 [옮기기]를 누르면 1분 안에 열립니다.</li>
-                    <li>신고는 맨 아래 <a href="#report">'더미로 신고하기' ↓</a> 칸에서 더미가 테스트 계정을 신고하고,
-                        <a th:href="@{/admin/reports}" target="_blank">신고 검토 ↗</a>에서 처리합니다. 처리 결과와 제재 상태는 그 칸의 표에 나옵니다.
-                        이용 정지·영구 차단은 바로 앱 사용이 막힙니다. 경고는 제재 알림만 바로 오고, 앱의 제재 표시와 퀴즈 차단은 다음 주 월요일 00:00부터라
-                        채팅 QA를 끝낸 뒤 [채팅 마감 직후]로 옮겨 확인합니다.
-                        풀려면 표의 [제재 관리]에서 해제한 뒤 앱에서 다시 로그인합니다. 경고도 풀지 않으면 다음 주 퀴즈를 풀 수 없고,
-                        영구 차단한 회원을 정지로 바꾸려면 차단부터 해제합니다.</li>
+                    <li>신고는 맨 아래 <a href="#report">'더미로 신고하기'<span aria-hidden="true"> ↓</span></a> 칸에서 더미가 테스트 계정을 신고하고,
+                        <a th:href="@{/admin/reports}" target="_blank">신고 검토<span aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a>에서 처리합니다. 처리 결과와 제재 상태는 그 칸의 표에 나옵니다.
+                        더미가 제재받으면 앱처럼 콘솔에서도 그 더미로 움직일 수 없으니, 더미를 신고 대상으로 고를 때는 주의하세요.</li>
+                    <li>이용 정지·영구 차단은 바로 앱 사용이 막힙니다. 경고는 제재 알림만 바로 오고, 앱의 제재 표시와 퀴즈 차단은 다음 주 월요일 00:00부터라
+                        채팅 QA를 끝낸 뒤 [채팅 마감 직후]로 옮겨 확인합니다. 풀려면 표의 [제재 관리]에서 해제합니다.
+                        정지·차단을 풀었다면 앱에서 다시 로그인하고, 경고는 풀지 않으면 다음 주 퀴즈를 풀 수 없습니다.
+                        더미 정리로도 더미 신고에서 나온 제재가 함께 풀립니다.</li>
                     <li>옮긴 시각은 흐르지 않고 그 자리에 멈춰 있습니다. [+1시간]·[+1일]로 조금씩 넘길 수 있고,
                         금요일 00:00(그룹 응답 마감)이나 다음 주 월요일 00:00(채팅 마감)을 넘기면 되돌릴 수 없어 확인을 받습니다.
-                        QA를 마치면 [시간 조정 끄기]를 누르세요.</li>
+                        QA를 마치면 [시간 조정 끄기]를 누르세요. 옮긴 시각에 건 제재는 끄기 전에 해제하거나 더미 정리로 지우세요.</li>
                     <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 생성</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
                         더미가 낀 방·매칭을 지우면 같은 방 실회원의 메시지·알림도 함께 지워집니다.</li>
                 </ol>
@@ -281,10 +282,10 @@
                 <h2>신고 · 더미로 신고하기</h2>
                 <p class="muted qa-report-desc">더미 계정으로 앱과 똑같이 신고합니다. 사진은 첨부할 수 없고, 낸 신고는 더미를 모두 지우기 전에는 지울 수 없습니다.
                     검토 대기 중인 신고가 있으면 같은 상대를 다시 신고할 수 없습니다.</p>
-                <div data-qa-inline-alerts></div>
                 <p class="muted" th:unless="${reportSection.hasDummies}">더미가 없습니다. <a th:href="@{/admin/dummy}">더미를 만든 뒤</a> 새로고침하면 여기서 신고할 수 있습니다.</p>
                 <form class="qa-report-form" method="post" data-qa-async th:if="${reportSection.hasDummies}" th:action="@{/admin/qa/reports}"
-                      data-confirm-choice="dummyId typedMemberId|listedMemberId">
+                      data-confirm="더미로 이 회원을 신고할까요?" data-confirm-choice="dummyId typedMemberId|listedMemberId"
+                      data-confirm-flags="block" data-reset-on-success="block typedMemberId detail">
                     <div class="field-row">
                         <div class="field">
                             <label for="qa-report-dummy">신고하는 더미</label>
@@ -296,17 +297,23 @@
                         <div class="field qa-report-target-field">
                             <label for="qa-report-target">신고할 회원</label>
                             <div class="qa-report-target">
-                                <select id="qa-report-target" name="listedMemberId">
+                                <select id="qa-report-target" name="listedMemberId" aria-describedby="qa-report-target-hint">
+                                    <option value="" th:unless="${reportSection.hasRealTargets}">회원 ID를 직접 넣으세요</option>
                                     <option th:each="target : ${reportSection.targets}" th:value="${target.member.id}"
                                             th:text="${target.optionLabel}">테스터(#12)</option>
                                 </select>
-                                <span class="muted">또는</span>
-                                <input type="number" name="typedMemberId" min="1" placeholder="회원 ID" aria-label="회원 ID 직접 입력"
-                                       aria-describedby="qa-report-target-hint" data-confirm-prefix="직접 넣은 회원 #"/>
+                                <span class="qa-report-typed">
+                                    <span class="muted">또는</span>
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="typedMemberId" placeholder="회원 ID"
+                                           aria-label="회원 ID 직접 입력" aria-describedby="qa-report-target-hint"
+                                           data-confirm-prefix="직접 넣은 회원 #" data-confirm-unlisted-in="listedMemberId"
+                                           data-confirm-unlisted="목록에 없는 회원입니다. 테스트 계정 ID가 맞는지 확인하세요."/>
+                                </span>
                             </div>
+                            <p class="qa-report-warning" th:unless="${reportSection.hasRealTargets}">
+                                콘솔에 나온 실회원이 없습니다. 테스트 계정 ID를 직접 넣으세요.</p>
                             <p class="muted qa-report-hint" id="qa-report-target-hint">
-                                <th:block th:unless="${reportSection.hasRealTargets}">콘솔에 나온 실회원이 없어 더미만 보입니다. 테스트 계정 ID를 직접 넣으세요. </th:block>
-                                회원 ID를 넣으면 목록보다 우선합니다. ID는 <a th:href="@{/admin/members}" target="_blank">회원 관리 ↗</a>에서 확인하고,
+                                회원 ID를 넣으면 목록보다 우선합니다. ID는 <a th:href="@{/admin/members}" target="_blank">회원 관리<span aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a>에서 확인하고,
                                 목록에 없는 회원은 새로고침하면 보입니다.</p>
                         </div>
                     </div>
@@ -334,19 +341,20 @@
                                   th:placeholder="|최대 ${reportSection.detailMaxLength}자|" placeholder="최대 500자"></textarea>
                     </div>
                     <div class="dummy-options qa-report-block">
-                        <label class="check"><input type="checkbox" name="block" value="true"/>
-                            <span>더미가 이 회원도 차단 <span class="muted">(서로 매칭에서 빠지고 프로필·소개노트도 못 봅니다. 더미를 지워야 풀립니다)</span></span></label>
+                        <label class="check"><input type="checkbox" name="block" value="true" data-confirm-label="회원 차단도 함께 겁니다."/>
+                            <span>회원 차단도 함께 <span class="muted">(서로 매칭에서 빠지고 프로필·소개노트도 못 봅니다. 더미를 지워야 풀립니다)</span></span></label>
                     </div>
-                    <button class="btn" type="submit"
-                            data-confirm="더미로 이 회원을 신고합니다. 신고는 더미를 모두 지울 때까지 남습니다. 신고할까요?">더미로 신고</button>
+                    <div data-qa-inline-alerts role="status"></div>
+                    <button class="btn" type="submit">더미로 신고</button>
                 </form>
 
-                <div class="qa-report-list" id="report-list" data-qa-live>
-                    <h3 class="qa-report-title">더미가 낸 신고 <span class="muted" th:text="|최근 ${reportSection.recentReportLimit}건까지|">최근 20건까지</span></h3>
+                <div class="qa-report-list" id="report-list" data-qa-live th:if="${reportSection.hasDummies}">
+                    <h3 class="qa-report-title">더미가 낸 신고 <span class="count" th:text="${reportSection.reports.size()}">0</span>
+                        <span class="muted" th:text="|최근 ${reportSection.recentReportLimit}건까지|">최근 20건까지</span></h3>
                     <p class="muted" th:if="${reportSection.reports.isEmpty()}">아직 더미가 낸 신고가 없습니다.</p>
                     <div class="qa-report-table" th:unless="${reportSection.reports.isEmpty()}">
                         <table class="tbl">
-                            <thead><tr><th>#</th><th>신고자(더미)</th><th>피신고자</th><th>사유</th><th>처리</th><th></th></tr></thead>
+                            <thead><tr><th>#</th><th>신고자(더미)</th><th>피신고자(지금 상태)</th><th>사유</th><th>처리</th><th></th></tr></thead>
                             <tbody>
                             <tr th:each="row : ${reportSection.reports}">
                                 <td th:text="|#${row.reportId}|">#7</td>
@@ -356,19 +364,19 @@
                                 </td>
                                 <td>
                                     <span th:text="${row.reportedMember.label}">테스터(#12)</span>
-                                    <span th:replace="~{member/parts :: memberStatusBadge(${row.reportedMemberStatus})}"></span>
+                                    <span th:replace="~{qa/parts :: restrictionBadge(${row.reportedMember})}"></span>
                                 </td>
                                 <td th:text="${#strings.listJoin(row.reasonDescriptions, ', ')}">부적절한 행동</td>
                                 <td>
-                                    <span th:replace="~{qa/parts :: reportStatus(${row.status})}"></span>
-                                    <div class="muted qa-report-sanction" th:if="${row.sanctionResult != null}"
-                                         th:text="${row.sanctionResult}">2주 이용 정지 · 적용 중</div>
+                                    <span th:replace="~{qa/parts :: reportStatus(${row.reportStatus})}"></span>
+                                    <div class="muted qa-report-sanction" th:if="${row.sanctionSummaryText != null}"
+                                         th:text="${row.sanctionSummaryText}">2주 이용 정지 · 적용 중</div>
                                 </td>
                                 <td class="actions">
-                                    <a class="btn secondary sm" target="_blank" th:href="@{/admin/reports/{id}(id=${row.reportId})}"
-                                       th:text="${row.awaitingReview} ? '검토 ↗' : '보기 ↗'">검토 ↗</a>
+                                    <a class="btn sm" target="_blank" th:classappend="${row.awaitingReview} ? '' : 'secondary'"
+                                       th:href="@{/admin/reports/{id}(id=${row.reportId})}"><span th:text="${row.awaitingReview} ? '검토' : '보기'">검토</span><span aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a>
                                     <a class="btn secondary sm" target="_blank"
-                                       th:href="@{/admin/members/{id}/sanctions(id=${row.reportedMember.id})}">제재 관리 ↗</a>
+                                       th:href="@{/admin/members/{id}/sanctions(id=${row.reportedMember.id})}">제재 관리<span aria-hidden="true"> ↗</span><span class="sr-only">(새 탭)</span></a>
                                 </td>
                             </tr>
                             </tbody>

@@ -216,25 +216,29 @@ class AdminQaReportWebTest(
     }
 
     "신고 카드 화면" - {
-        "더미가 있던 방의 실회원을 맨 앞에 두고, 더미가 낸 신고를 보여 준다" {
+        "더미가 있던 방의 실회원을 맨 앞에 둔다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             val room = chatRoomRepository.save(ChatRoomFixture.personal())
             chatRoomMemberRepository.saveAll(
                 listOf(tester, dummy).map { ChatRoomMemberFixture.create(room.id, it.id) },
             )
+
+            reportSection().targets.first().member.id shouldBe tester.id
+        }
+
+        "더미가 낸 신고를 검토 대기로 보여 준다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
             reportAsDummy(dummy, tester)
 
-            val section = reportSection()
-
-            section.targets.first().member.id shouldBe tester.id
-            section.reports.single().let {
+            reportSection().reports.single().let {
                 it.reportedMember.id shouldBe tester.id
                 it.isAwaitingReview shouldBe true
             }
         }
 
-        "방을 나간 테스트 계정과 이미 신고한 회원도 대상에 둔다" {
+        "방을 나간 테스트 계정, 이미 신고한 회원 순으로 대상에 둔다" {
             val leftTester = saveMember("나간테스터")
             val reportedTester = saveMember("신고된테스터")
             val dummy = saveMember("dummy-female-aaaa")
@@ -252,7 +256,7 @@ class AdminQaReportWebTest(
             realTargetIds shouldBe listOf(leftTester.id, reportedTester.id)
         }
 
-        "제재가 걸린 신고는 제재 종류와 상태, 피신고자 회원 상태를 함께 보여 준다" {
+        "제재가 걸린 신고는 제재 종류와 상태, 피신고자의 지금 제재를 함께 보여 준다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             reportAsDummy(dummy, tester)
@@ -270,8 +274,8 @@ class AdminQaReportWebTest(
 
             val row = reportSection().reports.single()
 
-            row.sanctionResult shouldBe "영구 차단 · 적용 중"
-            row.reportedMemberStatus shouldBe MemberStatus.BANNED
+            row.sanctionSummaryText shouldBe "영구 차단 · 적용 중"
+            row.reportedMember.restriction shouldBe "영구 차단"
         }
 
         "실회원이 없으면 기본 신고자를 대상 맨 뒤에 둬 자기 신고가 기본값이 되지 않는다" {

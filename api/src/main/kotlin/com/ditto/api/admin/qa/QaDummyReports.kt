@@ -1,17 +1,15 @@
 package com.ditto.api.admin.qa
 
-import com.ditto.api.admin.qa.dto.QaConsoleView
 import com.ditto.api.admin.qa.dto.QaMember
 import com.ditto.api.admin.qa.dto.QaReportRow
 import com.ditto.api.admin.qa.dto.QaReportSection
 import com.ditto.api.admin.qa.dto.QaReportTarget
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
-import com.ditto.domain.member.entity.MemberStatus
-import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.sanction.entity.Sanction
+import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.entity.SanctionStatus
 import com.ditto.domain.sanction.repository.SanctionRepository
 import java.time.LocalDateTime
@@ -27,14 +25,12 @@ import org.springframework.transaction.annotation.Transactional
 class QaDummyReports(
     private val qaDummies: QaDummies,
     private val qaMemberLabels: QaMemberLabels,
-    private val memberRepository: MemberRepository,
     private val memberReportRepository: MemberReportRepository,
     private val sanctionRepository: SanctionRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
-    /** 화면은 첫 더미를 기본 신고자로 고른다. id 순으로 둬 기본값이 매번 같게 한다. */
-    fun composeSection(console: QaConsoleView): QaReportSection {
+    fun composeSection(realMembersInRequestsAndGroups: List<QaMember>): QaReportSection {
         val dummyIds = qaDummies.findIds().sorted()
         if (dummyIds.isEmpty()) return QaReportSection.EMPTY
 
@@ -42,8 +38,8 @@ class QaDummyReports(
             dummyIds,
             Limit.of(QaReportSection.RECENT_REPORT_LIMIT),
         )
-        val realMemberIds = collectRealMemberIds(console, reports, dummyIds.toSet())
-        val members = qaMemberLabels.load(dummyIds + realMemberIds + reports.map { it.reportedMemberId })
+        val realMemberIds = collectRealMemberIds(realMembersInRequestsAndGroups, reports, dummyIds.toSet())
+        val members = qaMemberLabels.load(dummyIds + realMemberIds)
         val dummies = dummyIds.map(members::of).sortedBy { it.isRestricted }
 
         return QaReportSection(
@@ -58,15 +54,15 @@ class QaDummyReports(
      * 더미와 같은 방에 있던 회원(최근 방 먼저), 신청·초대에 나온 회원, 더미가 이미 신고한 회원 순이다.
      */
     private fun collectRealMemberIds(
-        console: QaConsoleView,
+        realMembersInRequestsAndGroups: List<QaMember>,
         reports: List<MemberReport>,
         dummyIds: Set<Long>,
-    ): List<Long> =
-        (
-            findMemberIdsSharingRoomsWith(dummyIds) +
-                console.realMembersInRequestsAndGroups.map { it.id } +
-                reports.map { it.reportedMemberId }
-            ).distinct().filterNot { it in dummyIds }
+    ): List<Long> {
+        val candidateIds = findMemberIdsSharingRoomsWith(dummyIds) +
+            realMembersInRequestsAndGroups.map { it.id } +
+            reports.map { it.reportedMemberId }
+        return candidateIds.distinct().filterNot { it in dummyIds }
+    }
 
     private fun findMemberIdsSharingRoomsWith(dummyIds: Set<Long>): List<Long> {
         val roomIds = chatRoomMemberRepository.findByMemberIdIn(dummyIds).map { it.roomId }.toSet()
@@ -74,7 +70,10 @@ class QaDummyReports(
         return chatRoomMemberRepository.findByRoomIdIn(roomIds).sortedByDescending { it.roomId }.map { it.memberId }
     }
 
-    /** 실회원이 없으면 첫 대상이 기본 신고자와 같아 자기 신고로 거부되니, 기본 신고자를 맨 뒤로 보낸다. */
+    /**
+     * 화면은 첫 더미를 기본 신고자로 고른다(제재 중이 아닌 더미 먼저, id 순).
+     * 실회원이 없으면 첫 대상이 기본 신고자와 같아 자기 신고로 거부되니, 기본 신고자를 맨 뒤로 보낸다.
+     */
     private fun composeTargets(realMembers: List<QaMember>, dummies: List<QaMember>): List<QaReportTarget> {
         val dummiesWithDefaultReporterLast = dummies.drop(1) + dummies.take(1)
         return realMembers.map { QaReportTarget(it, isDummy = false) } +
@@ -83,34 +82,29 @@ class QaDummyReports(
 
     private fun composeRows(reports: List<MemberReport>, members: QaMembers): List<QaReportRow> {
         val now = serverTimeProvider.now()
-        val statusByMemberId = memberRepository.findAllById(reports.map { it.reportedMemberId }.distinct())
-            .associate { it.id to it.status }
         val sanctionByReportId = sanctionRepository.findByMemberReportIdIn(reports.map { it.id })
             .associateBy { it.memberReportId }
         return reports.map { report ->
-            report.toRow(members, statusByMemberId[report.reportedMemberId], sanctionByReportId[report.id], now)
+            QaReportRow(
+                reportId = report.id,
+                reporter = members.of(report.reporterId),
+                reportedMember = members.of(report.reportedMemberId),
+                reasonDescriptions = report.reasons.sorted().map { it.description },
+                reportStatus = report.status,
+                sanctionSummaryText = sanctionByReportId[report.id]?.let { summarizeSanction(it, now) },
+            )
         }
     }
 
-    private fun MemberReport.toRow(
-        members: QaMembers,
-        reportedMemberStatus: MemberStatus?,
-        sanction: Sanction?,
-        now: LocalDateTime,
-    ) = QaReportRow(
-        reportId = id,
-        reporter = members.of(reporterId),
-        reportedMember = members.of(reportedMemberId),
-        reportedMemberStatus = reportedMemberStatus,
-        reasonDescriptions = reasons.sorted().map { it.description },
-        status = status,
-        sanctionResult = sanction?.let { describeSanction(it, now) },
-    )
-
-    /** 신고 상태는 처리 결과만 말하니, 제재가 지금 어떤지(시작 전·적용 중·해제)를 함께 보여 준다. */
-    private fun describeSanction(sanction: Sanction, now: LocalDateTime): String {
+    /**
+     * 신고 상태는 처리 결과만 말하니, 제재가 지금 어떤지를 함께 보여 준다.
+     * 만료는 배치·로그인 때 반영돼 기간이 지나도 ACTIVE 로 남을 수 있다. 시작 전인 제재는 다음 주부터 걸리는 경고뿐이다.
+     */
+    private fun summarizeSanction(sanction: Sanction, now: LocalDateTime): String {
         val state = when {
-            sanction.status == SanctionStatus.ACTIVE && sanction.startsAt > now ->
+            sanction.status != SanctionStatus.ACTIVE -> sanction.status.description
+            !sanction.isEffectiveAt(now) -> "기간 지남"
+            sanction.level == SanctionLevel.WARNING && sanction.startsAt > now ->
                 "${SANCTION_START_FORMATTER.format(sanction.startsAt)}부터"
             else -> sanction.status.description
         }

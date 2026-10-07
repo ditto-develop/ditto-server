@@ -251,6 +251,7 @@ class AdminDummyCleanupTest(
 
         "더미와 무관한 직접 제재가 남아 있으면 그 정지 기간으로 맞춘다" {
             val tester = saveMember("테스터")
+            // 저장 후 다시 읽은 정지 종료 시각과 그대로 비교하려고 DB 가 담는 초 단위로 맞춘다.
             val startsAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).minusDays(1)
             val manualSuspension = sanctionRepository.save(
                 SanctionFixture.create(

@@ -5,6 +5,8 @@
     const NEAR_BOTTOM_PX = 40;
     const LOGIN_PATH = '/admin/login';
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
+    // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
+    const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
 
     // 제출이 끝날 때마다 올린다. 그 전에 출발한 폴링 응답은 낡은 화면이라 버린다.
     let submitGeneration = 0;
@@ -62,9 +64,6 @@
         const nextSlot = next.querySelector('[data-qa-inline-alerts]');
         if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
     }
-
-    // 알림 슬롯의 주인. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 폼을 담은 영역([data-qa-alert-scope], 신고)이다.
-    const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
 
     // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
     // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
@@ -142,6 +141,17 @@
         }
     }
 
+    function namesIn(value) {
+        return (value ?? '').split(' ').filter(Boolean);
+    }
+
+    // 직접 넣은 값이 함께 있는 목록에 없으면(다른 회원 ID 를 잘못 친 경우 등) 확인 창에서 한 번 더 알린다.
+    function unlistedWarningOf(form, field) {
+        const list = form.elements[field.dataset.confirmUnlistedIn ?? ''];
+        if (!list || [...list.options].some((option) => option.value === field.value)) return null;
+        return field.dataset.confirmUnlisted ?? null;
+    }
+
     function chosenTextOf(form, name) {
         const field = form.elements[name];
         if (!field) return null;
@@ -149,13 +159,34 @@
         return field.value ? `${field.dataset.confirmPrefix ?? ''}${field.value}` : null;
     }
 
-    // 확인 창에 고른 값(일괄 평가의 재매칭 의사, 신고자와 대상)을 함께 보여 실수로 누른 것을 알아차리게 한다.
-    // data-confirm-choice 는 칸 이름을 공백으로 나열하고, 'a|b' 는 a 가 비었을 때 b 를 쓴다.
+    // 'typedMemberId|listedMemberId' 처럼 앞 칸이 비었으면 다음 칸을 쓴다.
+    function firstChosenTextOf(form, alternatives) {
+        return alternatives.split('|').map((name) => chosenTextOf(form, name)).find(Boolean) ?? null;
+    }
+
+    // 확인 창에 고른 값(일괄 평가의 재매칭 의사, 신고자와 대상)과 체크한 선택(data-confirm-flags)을 함께 보여
+    // 실수로 누른 것을 알아차리게 한다.
     function withChosenOptions(form, message) {
-        const chosen = (form.dataset.confirmChoice ?? '').split(' ').filter(Boolean)
-            .map((alternatives) => alternatives.split('|').map((name) => chosenTextOf(form, name)).find(Boolean))
-            .filter(Boolean);
-        return message && chosen.length > 0 ? `${message}\n${chosen.join(' → ')}` : message;
+        if (!message) return message;
+        const chosen = namesIn(form.dataset.confirmChoice).map((names) => firstChosenTextOf(form, names)).filter(Boolean);
+        const filledFields = [...form.elements].filter((field) => field.dataset?.confirmUnlistedIn && field.value);
+        const warnings = filledFields.map((field) => unlistedWarningOf(form, field)).filter(Boolean);
+        const flags = namesIn(form.dataset.confirmFlags)
+            .map((name) => form.elements[name])
+            .filter((field) => field?.checked)
+            .map((field) => field.dataset.confirmLabel);
+        return [message, chosen.join(' → '), ...flags, ...warnings].filter(Boolean).join('\n');
+    }
+
+    // 성공한 뒤 다음 신고에 그대로 실리면 안 되는 칸(차단·직접 넣은 ID·상세)을 비운다. 거부되면 고쳐 다시 내게 남긴다.
+    function resetFieldsAfterSuccess(form, failed) {
+        if (failed) return;
+        namesIn(form.dataset.resetOnSuccess).forEach((name) => {
+            const field = form.elements[name];
+            if (!field) return;
+            if (field.type === 'checkbox') field.checked = false;
+            else field.value = '';
+        });
     }
 
     function setButtonsDisabled(form, disabled) {
@@ -195,8 +226,8 @@
 
         const body = new FormData(form, submitter);
         const action = submitter?.hasAttribute('formaction') ? submitter.formAction : form.action;
-        const submittedRegion = form.closest('[data-qa-live]');
-        const submittedScope = form.closest(ALERT_SCOPE);
+        const submittedLiveRegion = form.closest('[data-qa-live]');
+        const submittedAlertScope = form.closest(ALERT_SCOPE);
         submitting = true;
         setButtonsDisabled(form, true);
         try {
@@ -214,9 +245,10 @@
             // 갈아 끼우면 노드가 응답 문서에서 빠져나오므로 오류 여부는 그 전에 본다.
             const failed = doc.querySelector('#qa-alerts .alert.error') !== null;
             swapAlerts(doc);
-            swapLiveRegions(doc, submittedRegion);
-            showInlineAlerts(submittedScope?.id);
+            swapLiveRegions(doc, submittedLiveRegion);
+            showInlineAlerts(submittedAlertScope?.id);
             clearComposerIfSent(form, submitter, failed);
+            resetFieldsAfterSuccess(form, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
             showError('네트워크 오류로 요청 결과를 확인하지 못했습니다. 새로고침해서 확인하세요.');
@@ -224,6 +256,8 @@
             submitGeneration += 1;
             submitting = false;
             setButtonsDisabled(form, false);
+            // 잠근 버튼에서 포커스가 빠져 키보드로 쓰던 사람이 처음부터 다시 탭하지 않게 되돌린다.
+            if (document.activeElement === document.body && submitter?.isConnected) submitter.focus();
         }
     });
 

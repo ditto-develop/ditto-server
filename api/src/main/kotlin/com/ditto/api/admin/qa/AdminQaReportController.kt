@@ -21,7 +21,8 @@ class AdminQaReportController(
 ) {
     @PostMapping("/admin/qa/reports")
     fun reportAsDummy(@ModelAttribute form: QaReportForm, redirectAttributes: RedirectAttributes): String {
-        val dummyId = form.dummyId ?: return redirectAttributes.rejectMissingSelection("신고하는 더미를 골라야 신고할 수 있습니다.")
+        val dummyId = form.dummyId
+            ?: return redirectAttributes.rejectMissingSelection("신고하는 더미를 골라야 신고할 수 있습니다.")
         val request = form.toRequestOrNull()
             ?: return redirectAttributes.rejectMissingSelection("신고할 회원을 고르거나 회원 ID를 넣어야 신고할 수 있습니다.")
 
@@ -31,7 +32,7 @@ class AdminQaReportController(
             "${members.of(request.reportedMemberId).label} 신고",
         ) {
             validateLikeApp(request)
-            reportWithRetryHint(request, dummyId)
+            createReportAsDummy(request, dummyId)
         }
         return QaRoutes.REPORT_SECTION
     }
@@ -48,15 +49,14 @@ class AdminQaReportController(
         throw WarnException(ErrorCode.BAD_REQUEST, messages.joinToString(" "))
     }
 
-    private fun reportWithRetryHint(request: CreateUserReportRequest, dummyId: Long): String? =
-        runRejectable {
+    private fun createReportAsDummy(request: CreateUserReportRequest, dummyId: Long): String? {
+        val response = runCatching {
             userReportController.createUserReport(request, qaDummies.requireActiveDummyPrincipal(dummyId))
-        }.fold(
-            onSuccess = { response -> response.data?.let { "신고 #${it.id}" } },
-            onFailure = { rejection -> throw (rejection as WarnException).withRetryHint() },
-        )
+        }.getOrElse { throw if (it is WarnException) it.withDuplicateReportHint() else it }
+        return response.data?.let { "신고 #${it.id}" }
+    }
 
-    private fun WarnException.withRetryHint(): WarnException {
+    private fun WarnException.withDuplicateReportHint(): WarnException {
         if (errorCode != ErrorCode.DUPLICATE_REPORT) return this
         return WarnException(errorCode, "$message 검토를 끝내거나 다른 더미로 신고하세요.")
     }

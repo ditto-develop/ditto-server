@@ -1,6 +1,5 @@
 package com.ditto.api.admin.qa.dto
 
-import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportSource
@@ -34,17 +33,16 @@ class QaReportTarget(
     val member: QaMember,
     val isDummy: Boolean,
 ) {
-    val optionLabel: String = if (isDummy) "${member.label} · 더미" else member.label
+    val optionLabel: String = if (isDummy) "${member.labelWithRestriction} · 더미" else member.labelWithRestriction
 }
 
 class QaReportRow(
     val reportId: Long,
     val reporter: QaMember,
     val reportedMember: QaMember,
-    val reportedMemberStatus: MemberStatus?,
     val reasonDescriptions: List<String>,
-    val status: MemberReportStatus,
-    val sanctionResult: String?,
+    val reportStatus: MemberReportStatus,
+    val sanctionSummaryText: String?,
 ) {
-    val isAwaitingReview: Boolean = status == MemberReportStatus.RECEIVED
+    val isAwaitingReview: Boolean = reportStatus == MemberReportStatus.RECEIVED
 }
