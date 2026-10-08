@@ -30,7 +30,7 @@
                 <p class="muted" th:if="${!view.rows.isEmpty() and view.participatedCount == 0}" style="margin:0 0 12px">
                     이 회원은 참여한 퀴즈셋이 없습니다.
                 </p>
-                <div class="member-quiz-table" th:unless="${view.rows.isEmpty()}">
+                <div class="member-quiz-table tbl-scroll" th:unless="${view.rows.isEmpty()}">
                     <table class="tbl">
                         <thead>
                         <tr><th>주차</th><th>퀴즈셋</th><th>진행</th><th>매칭</th></tr>

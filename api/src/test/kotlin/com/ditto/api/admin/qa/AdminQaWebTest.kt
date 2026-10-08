@@ -186,7 +186,8 @@ class AdminQaWebTest(
                     .param("receiverId", tester.id.toString())
                     .param("quizSetId", quizSet.id.toString())
                     .asAdmin(),
-            ).andExpect(flash().attributeExists("message"))
+            ).andExpect(redirectedUrl("/admin/qa#personal-sent"))
+                .andExpect(flash().attributeExists("message"))
 
             val sent = personalMatchRepository.findByRequesterIdAndQuizSetId(dummy.id, quizSet.id).single()
             sent.receiverId() shouldBe tester.id

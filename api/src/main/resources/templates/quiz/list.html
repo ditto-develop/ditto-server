@@ -18,28 +18,30 @@
 
             <div class="card">
                 <p class="muted" th:if="${quizSets.isEmpty()}">등록된 퀴즈셋이 없습니다.</p>
-                <table class="tbl" th:unless="${quizSets.isEmpty()}">
-                    <thead>
-                    <tr>
-                        <th>주차</th><th>카테고리</th><th>제목</th><th>매칭</th><th>기간</th><th>상태</th><th></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="qs : ${quizSets}">
-                        <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
-                        <td><span class="badge cat" th:text="${qs.category}">cat</span></td>
-                        <td th:text="${qs.title}">title</td>
-                        <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
-                        <td class="num"
-                            th:text="${#temporals.format(qs.startDate, 'MM.dd')} + ' ~ ' + ${#temporals.format(qs.endDate, 'MM.dd')}">-</td>
-                        <td>
-                            <span class="badge on" th:if="${qs.isActive}">활성</span>
-                            <span class="badge off" th:unless="${qs.isActive}">비활성</span>
-                        </td>
-                        <td><a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}">관리</a></td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${quizSets.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr>
+                            <th>주차</th><th>카테고리</th><th>제목</th><th>매칭</th><th>기간</th><th>상태</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="qs : ${quizSets}">
+                            <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
+                            <td><span class="badge cat" th:text="${qs.category}">cat</span></td>
+                            <td th:text="${qs.title}">title</td>
+                            <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
+                            <td class="num"
+                                th:text="${#temporals.format(qs.startDate, 'MM.dd')} + ' ~ ' + ${#temporals.format(qs.endDate, 'MM.dd')}">-</td>
+                            <td>
+                                <span class="badge on" th:if="${qs.isActive}">활성</span>
+                                <span class="badge off" th:unless="${qs.isActive}">비활성</span>
+                            </td>
+                            <td class="actions"><a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}">관리</a></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>

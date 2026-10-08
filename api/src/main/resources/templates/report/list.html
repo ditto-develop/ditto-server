@@ -24,40 +24,42 @@
             <div class="card">
                 <h2>목록 <span class="badge cat" th:text="${reports.size()} + '건'">0건</span></h2>
                 <p class="muted" th:if="${reports.isEmpty()}">이 상태의 신고가 없습니다.</p>
-                <table class="tbl" th:unless="${reports.isEmpty()}">
-                    <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>사유</th>
-                        <th>신고자</th>
-                        <th>피신고자</th>
-                        <th>접수</th>
-                        <th>경과</th>
-                        <th></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="r : ${reports}">
-                        <td th:text="${r.id}">1</td>
-                        <td>
-                            <span th:text="${#strings.listJoin(r.reasonDescriptions, ', ')}">사유</span>
-                            <span class="badge warn" th:if="${r.isSevere}">심각 사유</span>
-                        </td>
-                        <td>
-                            <span th:text="${r.reporterNickname}">신고자</span>
-                            <span class="badge off" th:if="${r.reportedByQaDummy}">QA 더미</span>
-                        </td>
-                        <td th:text="${r.reportedNickname}">피신고자</td>
-                        <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>
-                        <td>
-                            <span th:text="${r.elapsedText}"
-                                  th:classappend="${r.overdue} ? 'overdue'">경과</span>
-                            <span class="badge warn" th:if="${r.overdue}">24시간 지남</span>
-                        </td>
-                        <td><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}" th:text="${r.received} ? '검토' : '보기'">검토</a></td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${reports.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>사유</th>
+                            <th>신고자</th>
+                            <th>피신고자</th>
+                            <th>접수</th>
+                            <th>경과</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="r : ${reports}">
+                            <td th:text="${r.id}">1</td>
+                            <td>
+                                <span th:text="${#strings.listJoin(r.reasonDescriptions, ', ')}">사유</span>
+                                <span class="badge warn" th:if="${r.isSevere}">심각 사유</span>
+                            </td>
+                            <td>
+                                <span th:text="${r.reporterNickname}">신고자</span>
+                                <span class="badge off" th:if="${r.reportedByQaDummy}">QA 더미</span>
+                            </td>
+                            <td th:text="${r.reportedNickname}">피신고자</td>
+                            <td th:text="${#temporals.format(r.createdAt, 'MM-dd HH:mm')}">접수</td>
+                            <td>
+                                <span th:text="${r.elapsedText}"
+                                      th:classappend="${r.overdue} ? 'overdue'">경과</span>
+                                <span class="badge warn" th:if="${r.overdue}">24시간 지남</span>
+                            </td>
+                            <td class="actions"><a class="btn sm" th:href="@{/admin/reports/{id}(id=${r.id})}" th:text="${r.received} ? '검토' : '보기'">검토</a></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
