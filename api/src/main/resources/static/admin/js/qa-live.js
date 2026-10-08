@@ -7,6 +7,8 @@
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
     // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
     const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
+    // 폰 폭에서 가로로 미는 표 상자. 그룹처럼 늘고 줄 수 있는 상자는 data-scroll-key 로 짝을 찾는다.
+    const TABLE_SCROLL_BOX = '.tbl-scroll';
 
     // 제출이 끝날 때마다 올린다. 그 전에 출발한 폴링 응답은 낡은 화면이라 버린다.
     let submitGeneration = 0;
@@ -65,20 +67,6 @@
         if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
     }
 
-    // 폰 폭에서 표를 옆으로 밀어 둔 위치가 갱신마다 처음으로 돌아가지 않게 한다.
-    // 붙이기 전의 요소는 스크롤 값을 받지 않아서 갈아 끼운 뒤에 되돌린다.
-    const TABLE_SCROLL_BOX = '.tbl-scroll, .qa-report-table';
-
-    function tableScrollLeftsOf(region) {
-        return [...region.querySelectorAll(TABLE_SCROLL_BOX)].map((box) => box.scrollLeft);
-    }
-
-    function restoreTableScrollLefts(region, scrollLefts) {
-        region.querySelectorAll(TABLE_SCROLL_BOX).forEach((box, index) => {
-            box.scrollLeft = scrollLefts[index] ?? 0;
-        });
-    }
-
     // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
     // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
     function showInlineAlerts(submittedScopeId) {
@@ -93,10 +81,37 @@
         });
     }
 
+    // 일반 폼 제출 뒤 돌아온 섹션(#personal 등)에도 결과 알림을 띄운다. 주소를 손으로 고친 깨진 해시는 무시한다.
+    function showInlineAlertsOfHashSection() {
+        if (!location.hash || !document.querySelector('#qa-alerts .alert')) return;
+        try {
+            showInlineAlerts(decodeURIComponent(location.hash.slice(1)));
+        } catch (ignored) {
+            // 자동 갱신은 계속 돌아야 한다.
+        }
+    }
+
     // 손대는 중인 영역(평가)은 갈아 끼우면 열린 선택지가 닫히고 커서가 사라지니 건너뛴다.
     function isBeingEdited(region) {
         if (region.dataset.editing === 'true') return true;
         return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
+    }
+
+    function scrollKeyOf(box, index) {
+        return box.dataset.scrollKey ?? `#${index}`;
+    }
+
+    // 표를 옆으로 밀어 둔 위치가 갱신마다 처음으로 돌아가지 않게 한다.
+    function tableScrollLeftsOf(region) {
+        const boxes = [...region.querySelectorAll(TABLE_SCROLL_BOX)];
+        return new Map(boxes.map((box, index) => [scrollKeyOf(box, index), box.scrollLeft]));
+    }
+
+    // 붙이기 전의 요소는 스크롤 값을 받지 않아서 갈아 끼운 뒤에 되돌린다.
+    function restoreTableScrollLefts(region, scrollLefts) {
+        region.querySelectorAll(TABLE_SCROLL_BOX).forEach((box, index) => {
+            box.scrollLeft = scrollLefts.get(scrollKeyOf(box, index)) ?? 0;
+        });
     }
 
     // 체크를 고르던 영역(투표)과 손대는 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
@@ -285,10 +300,7 @@
     });
 
     showLiveState(LIVE_TEXT, true);
-    // 일반 폼은 제출 뒤 그 섹션(#personal 등)으로 돌아오는데 결과 알림은 맨 위에 떠서 보이지 않는다.
-    if (location.hash && document.querySelector('#qa-alerts .alert')) {
-        showInlineAlerts(decodeURIComponent(location.hash.slice(1)));
-    }
+    showInlineAlertsOfHashSection();
     scrollTimelineToBottom();
     window.setInterval(refresh, POLL_INTERVAL_MS);
 })();

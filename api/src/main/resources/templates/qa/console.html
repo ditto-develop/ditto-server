@@ -176,6 +176,7 @@
             <section class="card" id="personal-sent" data-qa-live>
                 <h2>1:1 · 더미가 보낸 신청
                     <span class="count" th:text="${console.personal.sentRequests.size()}">0</span></h2>
+                <div data-qa-inline-alerts role="status"></div>
                 <p class="muted" th:if="${console.personal.sentRequests.isEmpty()}">
                     이번 주에 더미가 보낸 신청이 없습니다. 아래에서 더미가 신청을 보내면 상대의 응답 상태가 여기에 나타납니다.</p>
                 <div class="tbl-scroll" th:unless="${console.personal.sentRequests.isEmpty()}">
@@ -258,7 +259,7 @@
                                 대기 중인 더미 모두 수락</button>
                         </form>
                     </div>
-                    <div class="tbl-scroll">
+                    <div class="tbl-scroll" th:attr="data-scroll-key=|group-${group.groupMatchId}|">
                         <table class="tbl">
                             <tbody>
                             <tr th:each="groupMember : ${group.members}">
@@ -373,7 +374,7 @@
                     <h3 class="qa-report-title">더미가 낸 신고 <span class="count" th:text="${reportSection.reportCountText}">0</span>
                         <span class="muted" th:text="|최근 ${reportSection.recentReportLimit}건까지|">최근 20건까지</span></h3>
                     <p class="muted" th:if="${reportSection.reports.isEmpty()}">아직 더미가 낸 신고가 없습니다.</p>
-                    <div class="qa-report-table" th:unless="${reportSection.reports.isEmpty()}">
+                    <div class="qa-report-table tbl-scroll" th:unless="${reportSection.reports.isEmpty()}">
                         <table class="tbl">
                             <thead><tr><th>#</th><th>신고자 (더미)</th><th>피신고자 (지금 상태)</th><th>사유</th><th>처리</th><th></th></tr></thead>
                             <tbody>

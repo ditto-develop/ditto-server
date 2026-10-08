@@ -29,7 +29,7 @@ class AdminQaPersonalController(
                 PersonalMatchRequest(receiverId = receiverId, quizSetId = quizSetId),
             )
         }
-        return QaRoutes.PERSONAL_SECTION
+        return QaRoutes.PERSONAL_SENT_SECTION
     }
 
     @PostMapping("/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/accept")

@@ -450,7 +450,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
 .content.qa-console-page { max-width: 1320px; }
-#rooms, #personal, #group, #report { scroll-margin-top: 80px; }
+#rooms, #personal, #personal-sent, #group, #report { scroll-margin-top: 80px; }
 .qa-sanction-link { font-size: 12px; }
 .qa-report-desc { margin: -8px 0 16px; }
 .qa-report-form { max-width: 860px; }
@@ -822,11 +822,14 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .page-desc { margin-bottom: 16px; }
     .card { padding: 16px; }
 
-    /* iOS Safari 는 16px 보다 작은 입력칸에 포커스가 가면 화면을 확대한다. */
-    :is(.layout, .login-wrap) :is(input, select, textarea), .qhead input.qtext { font-size: 16px; }
+    /* 상단바가 고정이 아니라 앵커 위 여백을 줄인다. */
+    #rooms, #personal, #personal-sent, #group, #report, #qa-reviews, [data-qa-inline-alerts] { scroll-margin-top: 16px; }
 
-    /* 표는 상자 안에서 가로로 밀고, 버튼 열은 오른쪽에 붙여 둔다. */
-    /* 밀 수 있는 쪽 가장자리에 그림자가 생긴다. 끝까지 밀면 덮개가 따라와 그림자를 가린다. */
+    /* iOS Safari 는 16px 보다 작은 입력칸에 포커스가 가면 화면을 확대한다. */
+    :is(.layout, .login-wrap) :is(input, select, textarea), .qhead input.qtext, .cbox input[type="text"] { font-size: 16px; }
+
+    /* 표는 상자 안에서 가로로 민다. 밀 수 있는 쪽 가장자리에 그림자가 보이고,
+       끝에 닿으면 내용과 함께 움직이는 배경색 그라데이션이 그 그림자를 덮는다. */
     .tbl-scroll {
         overflow-x: auto;
         background:
@@ -835,8 +838,11 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
             radial-gradient(farthest-side at 0 50%, rgba(20, 23, 40, 0.16), transparent) left / 12px 100% no-repeat scroll,
             radial-gradient(farthest-side at 100% 50%, rgba(20, 23, 40, 0.16), transparent) right / 12px 100% no-repeat scroll;
     }
-    .tbl-scroll table.tbl { word-break: keep-all; }
+    /* collapse 면 붙여 둔 칸의 배경이 행 구분선을 덮는다. */
+    .tbl-scroll table.tbl { word-break: keep-all; border-collapse: separate; border-spacing: 0; }
     .tbl-scroll table.tbl th { white-space: nowrap; }
+    /* 버튼 열은 머리 칸까지 오른쪽에 붙여 둔다. */
+    .tbl-scroll table.tbl:has(td.actions) th:last-child,
     .tbl-scroll table.tbl td.actions {
         position: sticky;
         right: 0;

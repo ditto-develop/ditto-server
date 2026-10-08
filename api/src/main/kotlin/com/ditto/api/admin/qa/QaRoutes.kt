@@ -4,6 +4,7 @@ package com.ditto.api.admin.qa
 object QaRoutes {
     const val CONSOLE_PATH = "/admin/qa"
     const val PERSONAL_SECTION = "redirect:$CONSOLE_PATH#personal"
+    const val PERSONAL_SENT_SECTION = "redirect:$CONSOLE_PATH#personal-sent"
     const val GROUP_SECTION = "redirect:$CONSOLE_PATH#group"
     const val ROOMS_SECTION = "redirect:$CONSOLE_PATH#rooms"
     const val REPORT_SECTION = "redirect:$CONSOLE_PATH#report"

@@ -60,7 +60,7 @@
                             </td>
                             <td th:text="${s.creatorName}">처리자</td>
                             <td th:text="${s.note ?: '-'}">메모</td>
-                            <td>
+                            <td class="actions">
                                 <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form">
                                     <input type="hidden" name="memberId" th:value="${view.memberId}"/>
                                     <button class="btn secondary sm" type="submit">해제</button>
