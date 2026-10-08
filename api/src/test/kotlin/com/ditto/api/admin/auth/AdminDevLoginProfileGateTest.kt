@@ -11,7 +11,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import javax.sql.DataSource
 
@@ -46,7 +46,7 @@ class AdminDevLoginProfileGateTest(
             val session = result.request.session as MockHttpSession
             mockMvc.perform(get("/admin").session(session))
                 .andExpect(status().is3xxRedirection)
-                .andExpect(redirectedUrlPattern("**/admin/login"))
+                .andExpect(redirectedUrl("/admin/login"))
         }
     }
 })
