@@ -5,15 +5,19 @@
     const NEAR_BOTTOM_PX = 40;
     const LOGIN_PATH = '/admin/login';
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
-    // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
-    const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
     // 폰 폭에서 가로로 미는 표 상자. 그룹처럼 늘고 줄 수 있는 상자는 data-scroll-key 로 짝을 찾는다.
     const TABLE_SCROLL_BOX = '.tbl-scroll';
+    // 표를 민 뒤 이 시간 동안은 그 영역을 갈아 끼우지 않는다. 관성 스크롤이 끝나기를 기다린다.
+    const TABLE_TOUCH_HOLD_MS = 1500;
+    // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
+    const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
 
     // 제출이 끝날 때마다 올린다. 그 전에 출발한 폴링 응답은 낡은 화면이라 버린다.
     let submitGeneration = 0;
     let submitting = false;
     let polling = false;
+    let touchedTableRegion = null;
+    let tableTouchedAt = 0;
 
     const timeline = () => document.getElementById('qa-timeline');
 
@@ -77,8 +81,27 @@
                 return;
             }
             slot.replaceChildren(...alerts.map((alert) => alert.cloneNode(true)));
+            addCloseButtons(slot);
             slot.scrollIntoView({ block: 'nearest' });
         });
+    }
+
+    // 다음 제출 전까지 남는 지난 결과는 직접 닫을 수 있게 한다.
+    function addCloseButtons(slot) {
+        slot.querySelectorAll('.alert').forEach((alert) => {
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'alert-close';
+            close.setAttribute('aria-label', '알림 닫기');
+            close.textContent = '×';
+            alert.prepend(close);
+        });
+    }
+
+    // 뒤로 가기로 캐시에서 되살아난 화면에는 지난 결과 알림이 그대로 남아 있다.
+    function clearAlerts() {
+        document.querySelectorAll('#qa-alerts .alert').forEach((alert) => alert.remove());
+        document.querySelectorAll('[data-qa-inline-alerts]').forEach((slot) => slot.replaceChildren());
     }
 
     // 일반 폼 제출 뒤 돌아온 섹션(#personal 등)에도 결과 알림을 띄운다. 주소를 손으로 고친 깨진 해시는 무시한다.
@@ -95,6 +118,18 @@
     function isBeingEdited(region) {
         if (region.dataset.editing === 'true') return true;
         return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
+    }
+
+    function rememberTableTouch(event) {
+        const box = event.target.closest?.(TABLE_SCROLL_BOX);
+        if (!box) return;
+        touchedTableRegion = box.closest('[data-qa-live]');
+        tableTouchedAt = Date.now();
+    }
+
+    // 표를 손가락으로 미는 중에 갈아 끼우면 관성 스크롤이 끊기고 누르던 버튼이 사라진다.
+    function isTableBeingScrolled(region) {
+        return region === touchedTableRegion && Date.now() - tableTouchedAt < TABLE_TOUCH_HOLD_MS;
     }
 
     function scrollKeyOf(box, index) {
@@ -120,7 +155,7 @@
         const current = timeline();
         const stickToBottom = !current || isNearBottom(current);
         document.querySelectorAll('[data-qa-live]').forEach((region) => {
-            if (isBeingEdited(region) && region !== submittedRegion) return;
+            if ((isBeingEdited(region) || isTableBeingScrolled(region)) && region !== submittedRegion) return;
             const next = doc.getElementById(region.id);
             if (!next) return;
             keepFieldValues(region, next);
@@ -237,6 +272,18 @@
         form.elements.content.value = '';
         form.elements.content.focus();
     }
+
+    // 요소 스크롤은 버블링되지 않아 캡처 단계에서 받는다.
+    document.addEventListener('scroll', rememberTableTouch, true);
+    document.addEventListener('pointerdown', rememberTableTouch);
+
+    document.addEventListener('click', (event) => {
+        event.target.closest('.alert-close')?.closest('.alert')?.remove();
+    });
+
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) clearAlerts();
+    });
 
     // 체크를 모두 풀면 고르던 것이 없으니 다시 갱신한다.
     document.addEventListener('change', (event) => {

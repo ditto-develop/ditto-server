@@ -629,6 +629,7 @@ table.tbl td.actions a + a, table.tbl td.actions a + form { margin-left: 6px; }
 .qa-group-head > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .qa-group table.tbl td { padding: 8px 6px; }
 .alert a { text-decoration: underline; }
+.alert-close { float: right; margin: -6px -10px 0 8px; padding: 4px 10px; border: none; background: none; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
 table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-room-source { font-size: 12px; margin-top: 2px; }
 
