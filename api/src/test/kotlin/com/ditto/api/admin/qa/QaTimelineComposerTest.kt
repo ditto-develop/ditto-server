@@ -86,7 +86,10 @@ class QaTimelineComposerTest : FreeSpec({
     }
 
     "날짜 눈금은 월요일부터 하루씩 놓는다" {
-        compose(at(1, 12)).days.first().label shouldBe "10/05(월)"
+        val monday = compose(at(1, 12)).days.first()
+
+        monday.date shouldBe "10/05"
+        monday.dayOfWeek shouldBe "월"
     }
 
     "확인 창" - {

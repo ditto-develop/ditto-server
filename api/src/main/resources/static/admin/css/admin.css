@@ -588,6 +588,11 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     .qa-week-shortcut { position: static; transform: none; }
     .qa-week-stem, .qa-week-dot { display: none; }
 }
+/* 하루 칸이 "10/05(월)"보다 좁으면 요일을 날짜 아래로 내린다. */
+@container qa-week (max-width: 480px) {
+    .qa-week-track { margin-top: 44px; }
+    .qa-week-weekday { display: block; }
+}
 .qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
 .qa-guide summary { cursor: pointer; font-weight: 700; }

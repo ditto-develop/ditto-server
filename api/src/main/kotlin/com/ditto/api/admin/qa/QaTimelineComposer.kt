@@ -23,7 +23,8 @@ object QaTimelineComposer {
     private const val MIN_LABEL_GAP_PERCENT = 18.0
     private const val DAYS_IN_WEEK = 7
     private val WEEK_MINUTES = Duration.ofDays(DAYS_IN_WEEK.toLong()).toMinutes().toDouble()
-    private val DAY_LABEL_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd(E)", Locale.KOREAN)
+    private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd")
+    private val DAY_OF_WEEK_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("E", Locale.KOREAN)
 
     fun compose(week: OperationWeek, now: LocalDateTime, leadHours: QaChatReminderLeadHours): QaTimeline =
         QaTimeline(
@@ -36,7 +37,8 @@ object QaTimelineComposer {
 
     private fun composeDays(week: OperationWeek): List<QaTimelineDay> =
         (0 until DAYS_IN_WEEK).map { day ->
-            QaTimelineDay(DAY_LABEL_FORMATTER.format(week.startedOn.plusDays(day.toLong())), dayPercent(day))
+            val date = week.startedOn.plusDays(day.toLong())
+            QaTimelineDay(DATE_FORMATTER.format(date), DAY_OF_WEEK_FORMATTER.format(date), dayPercent(day))
         }
 
     /** 앱의 요일별 기간은 주 안에서 이어져 있어 기간별로 묶으면 구간이 된다. */
