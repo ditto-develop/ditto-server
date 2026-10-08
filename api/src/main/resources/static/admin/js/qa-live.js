@@ -5,9 +5,9 @@
     const NEAR_BOTTOM_PX = 40;
     const LOGIN_PATH = '/admin/login';
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
-    // 폰 폭에서 가로로 미는 표 상자. 그룹처럼 늘고 줄 수 있는 상자는 data-scroll-key 로 짝을 찾는다.
+    // 가로로 미는 표 상자. 그룹처럼 늘고 줄 수 있는 상자는 data-scroll-key 로 짝을 찾는다.
     const TABLE_SCROLL_BOX = '.tbl-scroll';
-    // 표를 민 뒤 이 시간 동안은 그 영역을 갈아 끼우지 않는다. 관성 스크롤이 끝나기를 기다린다.
+    // 표를 만진 뒤 그 영역 갱신을 미루는 시간.
     const TABLE_TOUCH_HOLD_MS = 1500;
     // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
     const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
@@ -71,6 +71,18 @@
         if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
     }
 
+    // 다음 제출 전까지 남는 지난 결과는 직접 닫을 수 있게 한다.
+    function addCloseButtons(slot) {
+        slot.querySelectorAll('.alert').forEach((alert) => {
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'alert-close';
+            closeButton.setAttribute('aria-label', '알림 닫기');
+            closeButton.textContent = '×';
+            alert.prepend(closeButton);
+        });
+    }
+
     // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
     // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
     function showInlineAlerts(submittedScopeId) {
@@ -86,22 +98,15 @@
         });
     }
 
-    // 다음 제출 전까지 남는 지난 결과는 직접 닫을 수 있게 한다.
-    function addCloseButtons(slot) {
-        slot.querySelectorAll('.alert').forEach((alert) => {
-            const close = document.createElement('button');
-            close.type = 'button';
-            close.className = 'alert-close';
-            close.setAttribute('aria-label', '알림 닫기');
-            close.textContent = '×';
-            alert.prepend(close);
-        });
-    }
-
-    // 뒤로 가기로 캐시에서 되살아난 화면에는 지난 결과 알림이 그대로 남아 있다.
     function clearAlerts() {
         document.querySelectorAll('#qa-alerts .alert').forEach((alert) => alert.remove());
         document.querySelectorAll('[data-qa-inline-alerts]').forEach((slot) => slot.replaceChildren());
+    }
+
+    // 일반 폼을 낼 때 잠근 버튼과 멈춘 갱신을 푼다.
+    function unlockSubmittedForms() {
+        submitting = false;
+        document.querySelectorAll('form button:disabled').forEach((button) => { button.disabled = false; });
     }
 
     // 일반 폼 제출 뒤 돌아온 섹션(#personal 등)에도 결과 알림을 띄운다. 주소를 손으로 고친 깨진 해시는 무시한다.
@@ -120,15 +125,19 @@
         return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
     }
 
-    function rememberTableTouch(event) {
+    function markTableTouched(event) {
         const box = event.target.closest?.(TABLE_SCROLL_BOX);
         if (!box) return;
         touchedTableRegion = box.closest('[data-qa-live]');
         tableTouchedAt = Date.now();
     }
 
-    // 표를 손가락으로 미는 중에 갈아 끼우면 관성 스크롤이 끊기고 누르던 버튼이 사라진다.
-    function isTableBeingScrolled(region) {
+    function forgetTableTouch() {
+        touchedTableRegion = null;
+    }
+
+    // 표를 미는 중에 갈아 끼우면 관성 스크롤이 끊기고 누르던 버튼이 사라진다.
+    function isTableRecentlyTouched(region) {
         return region === touchedTableRegion && Date.now() - tableTouchedAt < TABLE_TOUCH_HOLD_MS;
     }
 
@@ -149,13 +158,13 @@
         });
     }
 
-    // 체크를 고르던 영역(투표)과 손대는 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
+    // 체크를 고르던 영역(투표), 손대는 중인 영역(평가), 표를 만지던 영역은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
     // 스크롤을 올려 지난 대화를 보는 중이면 갱신이 바닥으로 끌어내리지 않는다.
     function swapLiveRegions(doc, submittedRegion = null) {
         const current = timeline();
         const stickToBottom = !current || isNearBottom(current);
         document.querySelectorAll('[data-qa-live]').forEach((region) => {
-            if ((isBeingEdited(region) || isTableBeingScrolled(region)) && region !== submittedRegion) return;
+            if ((isBeingEdited(region) || isTableRecentlyTouched(region)) && region !== submittedRegion) return;
             const next = doc.getElementById(region.id);
             if (!next) return;
             keepFieldValues(region, next);
@@ -273,16 +282,20 @@
         form.elements.content.focus();
     }
 
-    // 요소 스크롤은 버블링되지 않아 캡처 단계에서 받는다.
-    document.addEventListener('scroll', rememberTableTouch, true);
-    document.addEventListener('pointerdown', rememberTableTouch);
+    // scroll 이벤트는 갱신이 위치를 되돌릴 때도 나서 사람이 만진 것만 받는다.
+    document.addEventListener('pointerdown', markTableTouched);
+    document.addEventListener('touchmove', markTableTouched, { passive: true });
+    document.addEventListener('wheel', markTableTouched, { passive: true });
 
     document.addEventListener('click', (event) => {
         event.target.closest('.alert-close')?.closest('.alert')?.remove();
     });
 
+    // 뒤로 가기로 캐시에서 되살아난 화면에는 지난 결과 알림과 제출 때 잠근 버튼이 그대로 남아 있다.
     window.addEventListener('pageshow', (event) => {
-        if (event.persisted) clearAlerts();
+        if (!event.persisted) return;
+        clearAlerts();
+        unlockSubmittedForms();
     });
 
     // 체크를 모두 풀면 고르던 것이 없으니 다시 갱신한다.
@@ -298,6 +311,8 @@
     // 버튼마다 다른 엔드포인트(formaction)와 확인 문구(data-confirm)를 둘 수 있다.
     document.addEventListener('submit', async (event) => {
         const form = event.target;
+        // 제출 결과는 표를 만지던 영역에도 바로 보여야 한다.
+        forgetTableTouch();
         // 일반 폼은 곧 페이지가 바뀐다. 그 사이 폴링이 영역을 갈아 끼우면 잠근 버튼이 되살아나고 결과 알림을 가로챌 수 있다.
         // 확인 창에서 취소한 제출(qa-forms.js 가 먼저 막는다)은 그대로 둔다.
         if (!form.matches('form[data-qa-async]')) {

@@ -146,9 +146,16 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
         radial-gradient(farthest-side at 0 50%, rgba(20, 23, 40, 0.16), transparent) left / 12px 100% no-repeat scroll,
         radial-gradient(farthest-side at 100% 50%, rgba(20, 23, 40, 0.16), transparent) right / 12px 100% no-repeat scroll;
 }
-/* collapse 면 붙여 둔 칸의 배경이 행 구분선을 덮는다. */
+/* collapse 면 붙여 둔 버튼 열의 배경이 행 구분선을 덮는다. */
 .tbl-scroll table.tbl { word-break: keep-all; border-collapse: separate; border-spacing: 0; }
 .tbl-scroll table.tbl th { white-space: nowrap; }
+/* 표가 넘쳐도 버튼 열은 머리 칸까지 오른쪽에 붙여 둔다. */
+.tbl-scroll table.tbl:has(td.actions) th:last-child,
+.tbl-scroll table.tbl td.actions {
+    position: sticky;
+    right: 0;
+    background: var(--surface);
+}
 .overdue { color: var(--danger); font-weight: 700; }
 
 /* Buttons */
@@ -218,6 +225,19 @@ h2 .text-link, .muted + .text-link { margin-left: 10px; }
 .alert.success { background: rgba(34, 176, 125, 0.1); color: var(--success); }
 .alert.error { background: rgba(232, 90, 107, 0.1); color: var(--danger); }
 .alert.info { background: rgba(58, 134, 255, 0.1); color: var(--blue); }
+.alert-close {
+    float: right;
+    margin: -6px -10px 0 8px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.alert-close:hover { background: rgba(20, 23, 40, 0.06); }
 
 .muted { color: var(--text-muted); }
 .inline-form { display: inline; }
@@ -487,8 +507,6 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-report-list { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 .qa-report-title { margin: 0 0 10px; font-size: 14px; }
 .qa-report-title .muted { font-size: 12px; font-weight: 400; }
-.qa-report-table { overflow-x: auto; }
-.qa-report-table td { word-break: keep-all; }
 .qa-report-sanction { margin-top: 4px; font-size: 12px; }
 /* 카드 안 결과 알림으로 스크롤할 때 고정 상단바에 가리지 않게 한다. */
 [data-qa-inline-alerts] { scroll-margin-top: 80px; }
@@ -629,7 +647,6 @@ table.tbl td.actions a + a, table.tbl td.actions a + form { margin-left: 6px; }
 .qa-group-head > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .qa-group table.tbl td { padding: 8px 6px; }
 .alert a { text-decoration: underline; }
-.alert-close { float: right; margin: -6px -10px 0 8px; padding: 4px 10px; border: none; background: none; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
 table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .qa-room-source { font-size: 12px; margin-top: 2px; }
 
@@ -810,13 +827,13 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 
 /* 회원별 퀴즈 현황 */
 .member-heading .member-id { color: var(--text-muted); font-weight: 700; }
-.member-quiz-table table.tbl { font-size: 13px; word-break: keep-all; }
+.member-quiz-table table.tbl { font-size: 13px; }
 .member-quiz-table table.tbl td { vertical-align: top; }
 .member-quiz-table .nowrap { white-space: nowrap; }
 .member-quiz-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .member-quiz-table tr.not-participated td { color: var(--text-muted); }
 
-/* 폰·태블릿 세로 폭. 덮어쓰는 규칙이라 파일 끝에 둔다. */
+/* 폰·태블릿 세로 폭. 덮어쓰는 규칙이라 기본 규칙보다 뒤에 둔다. */
 @media (max-width: 960px) {
     .layout { flex-direction: column; }
     .sidebar {
@@ -842,32 +859,30 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     /* iOS Safari 는 16px 보다 작은 입력칸에 포커스가 가면 화면을 확대한다. */
     :is(.layout, .login-wrap) :is(input, select, textarea), .qhead input.qtext, .cbox input[type="text"] { font-size: 16px; }
 
-    /* 버튼 열은 머리 칸까지 오른쪽에 붙여 둔다. */
+    /* 폰에서는 표가 거의 늘 넘쳐서 붙여 둔 버튼 열 경계에 그림자를 둔다. */
     .tbl-scroll table.tbl:has(td.actions) th:last-child,
-    .tbl-scroll table.tbl td.actions {
-        position: sticky;
-        right: 0;
-        background: var(--surface);
-        box-shadow: -4px 0 6px -4px rgba(20, 23, 40, 0.12);
-    }
+    .tbl-scroll table.tbl td.actions { box-shadow: -4px 0 6px -4px rgba(20, 23, 40, 0.12); }
 
     .qa-composer-row { flex-wrap: wrap; }
     .qa-composer-dummies, .qa-composer-row select { width: 100%; }
-    /* 평가 표는 열 너비가 고정이라 칸 안에서 줄어들어야 넘치지 않는다. */
-    .qa-review-form input[name="comment"] { min-width: 0; width: 100%; }
-    .qa-review-form select, .qa-review-bulk select { max-width: 100%; }
 
     /* 손가락으로 누르기 어려운 작은 버튼을 키운다. */
     .btn.sm { padding: 9px 12px; }
     .text-button { padding: 6px 2px; }
     .qnum .arrows button { width: 32px; height: 28px; }
     .cbox .swap { width: 32px; height: 36px; }
+    .alert-close { padding: 9px 12px; margin: -12px -16px -6px 8px; }
 }
 
-/* 폰 폭: 버튼이 여럿인 칸은 세로로 쌓아 붙여 둔 열이 표를 다 가리지 않게 한다. */
+/* 폰 폭. 960px 블록보다 뒤에 둔다. */
 @media (max-width: 480px) {
-    .tbl-scroll table.tbl td.actions { white-space: normal; }
-    .tbl-scroll table.tbl td.actions > :is(form, a) { display: flex; margin: 0; }
-    .tbl-scroll table.tbl td.actions > :is(form, a) + :is(form, a) { margin-top: 6px; }
-    .tbl-scroll table.tbl td.actions .btn { flex: 1; justify-content: center; white-space: nowrap; }
+    /* 버튼이 여럿인 칸은 세로로 쌓아서 붙여 둔 버튼 열이 표를 다 가리지 않게 한다. */
+    .tbl-scroll table.tbl td.actions:has(> * + *) { white-space: normal; }
+    .tbl-scroll table.tbl td.actions:has(> * + *) > :is(form, a) { display: flex; margin: 0; }
+    .tbl-scroll table.tbl td.actions:has(> * + *) > :is(form, a) + :is(form, a) { margin-top: 6px; }
+    .tbl-scroll table.tbl td.actions:has(> * + *) .btn { flex: 1; justify-content: center; white-space: nowrap; }
+
+    /* 평가 표는 열 너비가 고정이라 칸 안에서 줄어들어야 넘치지 않는다. */
+    .qa-review-form input[name="comment"] { min-width: 0; width: 100%; }
+    .qa-review-form select, .qa-review-bulk select { max-width: 100%; }
 }
