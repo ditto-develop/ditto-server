@@ -7,6 +7,8 @@
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
     // 알림 슬롯이 속한 영역. 자동 갱신 영역이거나, 갈아 끼우지 않아 입력이 남는 신고 카드다.
     const ALERT_SCOPE = '[data-qa-live], [data-qa-alert-scope]';
+    // 새로고침하면 쓰던 메시지가 사라지니 자동 갱신으로 확인하게 한다.
+    const CHECK_ON_AUTO_REFRESH = '몇 초 뒤 자동 갱신된 화면에서 반영됐는지 확인하세요.';
 
     // 제출이 끝날 때마다 올린다. 그 전에 출발한 폴링 응답은 낡은 화면이라 버린다.
     let submitGeneration = 0;
@@ -39,6 +41,14 @@
         alert.className = 'alert error';
         alert.textContent = message;
         alerts.appendChild(alert);
+    }
+
+    // 알림 칸이 없는 영역(멤버·투표 등)에서 낸 것이면 맨 위 알림이 보이게 올린다.
+    function showSubmitError(message, submittedAlertScope) {
+        showError(message);
+        showInlineAlerts(submittedAlertScope?.id);
+        if (submittedAlertScope?.querySelector('[data-qa-inline-alerts]')) return;
+        document.getElementById('qa-alerts')?.scrollIntoView({ block: 'nearest' });
     }
 
     // 같은 이름의 칸이 폼마다 반복되는 영역(평가)은 폼 id 로 짝을 찾는다. id 가 없는 폼은 select 만 이름으로 찾는다.
@@ -80,9 +90,13 @@
     }
 
     // 손대는 중인 영역(평가)은 갈아 끼우면 열린 선택지가 닫히고 커서가 사라지니 건너뛴다.
+    // 제출 뒤 포커스가 돌아간 버튼은 손대는 중이 아니다. 그것까지 막으면 실패한 제출 뒤 영역이 계속 옛 화면으로 남는다.
     function isBeingEdited(region) {
         if (region.dataset.editing === 'true') return true;
-        return region.hasAttribute('data-qa-hold-while-editing') && region.contains(document.activeElement);
+        const active = document.activeElement;
+        return region.hasAttribute('data-qa-hold-while-editing')
+            && region.contains(active)
+            && active.matches('input, select, textarea');
     }
 
     // 체크를 고르던 영역(투표)과 손대는 중인 영역(평가)은 건너뛴다. 방금 제출한 폼이 속한 영역만은 결과를 보여야 해서 바꾼다.
@@ -240,13 +254,13 @@
         try {
             const response = await fetch(action, { method: 'POST', body, credentials: 'same-origin' });
             if (isLoggedOut(response)) {
-                showError('세션이 끝나 요청이 처리되지 않았습니다. 다시 로그인하세요.');
+                showSubmitError('세션이 끝나 요청이 처리되지 않았습니다. 다시 로그인하세요.', submittedAlertScope);
                 return;
             }
             const doc = parse(await response.text());
             // CSRF 거부(403)나 서버 오류 JSON 처럼 화면이 아닌 응답은 결과를 알 수 없다.
             if (!response.ok || doc.getElementById('qa-alerts') === null) {
-                showError(`요청이 처리됐는지 확인하지 못했습니다(${response.status}). 새로고침해서 확인하세요.`);
+                showSubmitError(`요청이 처리됐는지 확인하지 못했습니다(${response.status}). ${CHECK_ON_AUTO_REFRESH}`, submittedAlertScope);
                 return;
             }
             // 갈아 끼우면 노드가 응답 문서에서 빠져나오므로 오류 여부는 그 전에 본다.
@@ -258,7 +272,7 @@
             resetFieldsAfterSuccess(form, failed);
             if (form.id === 'qa-composer') scrollTimelineToBottom();
         } catch (ignored) {
-            showError('네트워크 오류로 요청 결과를 확인하지 못했습니다. 새로고침해서 확인하세요.');
+            showSubmitError(`네트워크 오류로 요청 결과를 확인하지 못했습니다. ${CHECK_ON_AUTO_REFRESH}`, submittedAlertScope);
         } finally {
             submitGeneration += 1;
             submitting = false;

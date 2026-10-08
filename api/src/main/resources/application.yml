@@ -18,6 +18,9 @@ spring:
 server:
   port: 8080
   shutdown: graceful
+  tomcat:
+    # TLS 는 로드밸런서에서 끝나서 절대 주소로 만들면 http:// 가 된다. 어드민 비동기 폼의 fetch 가 그 리다이렉트를 따라가다 막힌다.
+    use-relative-redirects: true
 
 springdoc:
   swagger-ui:

@@ -54,7 +54,10 @@ class AdminSecurityConfig {
                 invalidateHttpSession = true
             }
             exceptionHandling {
-                authenticationEntryPoint = LoginUrlAuthenticationEntryPoint("/admin/login")
+                // 기본은 요청 scheme 으로 절대 주소를 만들어 로드밸런서 뒤에서 http:// 가 된다.
+                authenticationEntryPoint = LoginUrlAuthenticationEntryPoint("/admin/login").apply {
+                    setFavorRelativeUris(true)
+                }
             }
         }
         return http.build()
