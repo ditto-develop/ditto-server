@@ -33,24 +33,26 @@
                 <h2>발송 이력</h2>
                 <p class="muted">[전원에게 보내기]를 누르고 화면이 돌아오면 발송도 끝난 것입니다. 그 뒤에도 '발송 중'으로 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
                 <p class="muted" th:if="${notices.isEmpty()}">보낸 공지가 없습니다.</p>
-                <table class="tbl" th:unless="${notices.isEmpty()}">
-                    <thead>
-                    <tr><th>#</th><th>보낸 시각</th><th>제목</th><th>본문</th><th>수신</th><th>발송자</th></tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="n : ${notices}">
-                        <td class="num" th:text="${n.id}">1</td>
-                        <td class="num" th:text="${#temporals.format(n.createdAt, 'yy-MM-dd HH:mm')}">-</td>
-                        <td th:text="${n.title}">title</td>
-                        <td class="muted" th:text="${n.body} ?: '-'">body</td>
-                        <td class="num">
-                            <span class="badge" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
-                            <span th:unless="${n.sending}" th:text="${n.recipientCount} + ' / ' + ${n.targetCount} + '명'">0</span>
-                        </td>
-                        <td th:text="${n.authorName != null} ? (${n.authorName} + (${n.authorEmail != null} ? ' (' + ${n.authorEmail} + ')' : '')) : ('회원 #' + ${n.authorMemberId})">-</td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${notices.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr><th>#</th><th>보낸 시각</th><th>제목</th><th>본문</th><th>수신</th><th>발송자</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="n : ${notices}">
+                            <td class="num" th:text="${n.id}">1</td>
+                            <td class="num" th:text="${#temporals.format(n.createdAt, 'yy-MM-dd HH:mm')}">-</td>
+                            <td th:text="${n.title}">title</td>
+                            <td class="muted" th:text="${n.body} ?: '-'">body</td>
+                            <td class="num">
+                                <span class="badge" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
+                                <span th:unless="${n.sending}" th:text="${n.recipientCount} + ' / ' + ${n.targetCount} + '명'">0</span>
+                            </td>
+                            <td th:text="${n.authorName != null} ? (${n.authorName} + (${n.authorEmail != null} ? ' (' + ${n.authorEmail} + ')' : '')) : ('회원 #' + ${n.authorMemberId})">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>

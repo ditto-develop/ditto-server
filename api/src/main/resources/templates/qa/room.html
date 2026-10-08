@@ -216,63 +216,65 @@
                             <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${review.author})}"></span>
                             <span class="muted" th:text="|평가 #${review.reviewId} · ${review.answeredCount}/${review.targets.size()}명 냄|">평가 #1 · 0/3명 냄</span>
                         </div>
-                        <table class="tbl">
-                            <thead>
-                            <tr>
-                                <th>대상</th>
-                                <th>평가</th>
-                                <th th:if="${review.canRematch}">재매칭</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="target : ${review.targets}">
-                                <td>
-                                    <span th:text="${target.member.nickname}">홍길동</span>
-                                    <span class="badge cat" th:unless="${target.dummy}">실회원</span>
-                                </td>
-                                <td>
-                                    <span th:if="${target.answered}" th:text="${target.answerSummary}">만났어요 · 5점</span>
-                                    <form class="qa-review-form" method="post" data-qa-async th:unless="${target.answered}"
-                                          th:id="|qa-review-form-${review.reviewId}-${target.member.id}|"
-                                          th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/reviews/{reviewId}/targets/{targetId}(dummyId=${review.author.id},roomId=${room.roomId},reviewId=${review.reviewId},targetId=${target.member.id})}">
-                                        <select name="meetingStatus" aria-label="만남 상태">
-                                            <option th:each="meetingStatus : ${meetingStatuses}" th:value="${meetingStatus.name()}"
-                                                    th:text="${meetingStatus.description}">만났어요</option>
-                                        </select>
-                                        <select name="rating" aria-label="별점">
-                                            <option th:each="score : ${#numbers.sequence(5, 1, -1)}" th:value="${score}"
-                                                    th:text="|${score}점|">5점</option>
-                                        </select>
-                                        <input type="text" name="comment" maxlength="50" placeholder="코멘트(선택)" aria-label="코멘트"/>
-                                        <select name="wantsOneToOneRematch" th:if="${review.canRematch}" aria-label="재매칭 의사">
-                                            <option value="true">재매칭 원함</option>
-                                            <option value="false" th:selected="${target.dummy}">재매칭 원하지 않음</option>
-                                        </select>
-                                        <button class="btn sm" type="submit">평가 내기</button>
-                                    </form>
-                                </td>
-                                <td class="qa-rematch-cell" th:if="${review.canRematch}" th:with="pair=${target.rematch}">
-                                    <span class="muted" th:if="${pair == null}">재매칭 쌍 없음</span>
-                                    <th:block th:if="${pair != null}">
-                                        <div>
-                                            <th:block th:replace="~{qa/parts :: rematchStatus(${pair})}"></th:block>
-                                            <span class="muted" th:text="|#${pair.rematchId}|">#1</span>
-                                        </div>
-                                        <div class="muted" th:if="${pair.cancelledByMemberLeave}">한쪽이 탈퇴해 더는 성사되지 않습니다.</div>
-                                        <div class="muted" th:unless="${pair.cancelledByMemberLeave}">
-                                            더미 <th:block th:replace="~{qa/parts :: rematchWants(${pair.authorWants})}"></th:block>
-                                            · 상대 <th:block th:replace="~{qa/parts :: rematchWants(${pair.counterpartWants})}"></th:block>
-                                        </div>
-                                        <div class="muted" th:if="${pair.matched and pair.room == null}">1분 안에 재매칭 방이 생깁니다.</div>
-                                        <div th:if="${pair.room != null}">
-                                            <a class="text-link" th:href="@{/admin/qa/rooms/{id}(id=${pair.room.roomId})}"
-                                               th:text="|방 #${pair.room.roomId} · ${@qaTime.of(pair.room.opensAt)}에 열림|">방 #9 · 10/16(금) 00:00에 열림</a>
-                                        </div>
-                                    </th:block>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead>
+                                <tr>
+                                    <th>대상</th>
+                                    <th>평가</th>
+                                    <th th:if="${review.canRematch}">재매칭</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="target : ${review.targets}">
+                                    <td>
+                                        <span th:text="${target.member.nickname}">홍길동</span>
+                                        <span class="badge cat" th:unless="${target.dummy}">실회원</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${target.answered}" th:text="${target.answerSummary}">만났어요 · 5점</span>
+                                        <form class="qa-review-form" method="post" data-qa-async th:unless="${target.answered}"
+                                              th:id="|qa-review-form-${review.reviewId}-${target.member.id}|"
+                                              th:action="@{/admin/qa/dummies/{dummyId}/rooms/{roomId}/reviews/{reviewId}/targets/{targetId}(dummyId=${review.author.id},roomId=${room.roomId},reviewId=${review.reviewId},targetId=${target.member.id})}">
+                                            <select name="meetingStatus" aria-label="만남 상태">
+                                                <option th:each="meetingStatus : ${meetingStatuses}" th:value="${meetingStatus.name()}"
+                                                        th:text="${meetingStatus.description}">만났어요</option>
+                                            </select>
+                                            <select name="rating" aria-label="별점">
+                                                <option th:each="score : ${#numbers.sequence(5, 1, -1)}" th:value="${score}"
+                                                        th:text="|${score}점|">5점</option>
+                                            </select>
+                                            <input type="text" name="comment" maxlength="50" placeholder="코멘트(선택)" aria-label="코멘트"/>
+                                            <select name="wantsOneToOneRematch" th:if="${review.canRematch}" aria-label="재매칭 의사">
+                                                <option value="true">재매칭 원함</option>
+                                                <option value="false" th:selected="${target.dummy}">재매칭 원하지 않음</option>
+                                            </select>
+                                            <button class="btn sm" type="submit">평가 내기</button>
+                                        </form>
+                                    </td>
+                                    <td class="qa-rematch-cell" th:if="${review.canRematch}" th:with="pair=${target.rematch}">
+                                        <span class="muted" th:if="${pair == null}">재매칭 쌍 없음</span>
+                                        <th:block th:if="${pair != null}">
+                                            <div>
+                                                <th:block th:replace="~{qa/parts :: rematchStatus(${pair})}"></th:block>
+                                                <span class="muted" th:text="|#${pair.rematchId}|">#1</span>
+                                            </div>
+                                            <div class="muted" th:if="${pair.cancelledByMemberLeave}">한쪽이 탈퇴해 더는 성사되지 않습니다.</div>
+                                            <div class="muted" th:unless="${pair.cancelledByMemberLeave}">
+                                                더미 <th:block th:replace="~{qa/parts :: rematchWants(${pair.authorWants})}"></th:block>
+                                                · 상대 <th:block th:replace="~{qa/parts :: rematchWants(${pair.counterpartWants})}"></th:block>
+                                            </div>
+                                            <div class="muted" th:if="${pair.matched and pair.room == null}">1분 안에 재매칭 방이 생깁니다.</div>
+                                            <div th:if="${pair.room != null}">
+                                                <a class="text-link" th:href="@{/admin/qa/rooms/{id}(id=${pair.room.roomId})}"
+                                                   th:text="|방 #${pair.room.roomId} · ${@qaTime.of(pair.room.opensAt)}에 열림|">방 #9 · 10/16(금) 00:00에 열림</a>
+                                            </div>
+                                        </th:block>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
             </div>

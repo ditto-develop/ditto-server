@@ -65,6 +65,20 @@
         if (slot && nextSlot) nextSlot.replaceChildren(...slot.childNodes);
     }
 
+    // 폰 폭에서 표를 옆으로 밀어 둔 위치가 갱신마다 처음으로 돌아가지 않게 한다.
+    // 붙이기 전의 요소는 스크롤 값을 받지 않아서 갈아 끼운 뒤에 되돌린다.
+    const TABLE_SCROLL_BOX = '.tbl-scroll, .qa-report-table';
+
+    function tableScrollLeftsOf(region) {
+        return [...region.querySelectorAll(TABLE_SCROLL_BOX)].map((box) => box.scrollLeft);
+    }
+
+    function restoreTableScrollLefts(region, scrollLefts) {
+        region.querySelectorAll(TABLE_SCROLL_BOX).forEach((box, index) => {
+            box.scrollLeft = scrollLefts[index] ?? 0;
+        });
+    }
+
     // 결과 알림은 맨 위에 뜨는데, 화면 아래쪽에서 낸 것이면 보이지 않으니 그 영역 안에도 띄운다.
     // 다른 영역에서 낸 뒤에는 지난 결과가 남지 않게 비운다. 영역은 이미 갈아 끼워져 id 로 다시 찾는다.
     function showInlineAlerts(submittedScopeId) {
@@ -96,7 +110,9 @@
             if (!next) return;
             keepFieldValues(region, next);
             keepInlineAlerts(region, next);
+            const scrollLefts = tableScrollLeftsOf(region);
             region.replaceWith(next);
+            restoreTableScrollLefts(next, scrollLefts);
         });
         if (stickToBottom) scrollTimelineToBottom();
     }

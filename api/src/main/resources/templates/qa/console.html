@@ -110,31 +110,33 @@
                 <h2>채팅방 <span class="count" th:text="${rooms.size()}">0</span></h2>
                 <p class="muted" th:if="${rooms.isEmpty()}">
                     더미가 들어 있는 방이 없습니다. 1:1이나 그룹이 성사되면 여기에 나타납니다.</p>
-                <table class="tbl" th:unless="${rooms.isEmpty()}">
-                    <thead><tr><th>방</th><th>상태</th><th>실회원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
-                    <tbody>
-                    <tr th:each="summary : ${rooms}" th:classappend="${summary.ended} ? 'qa-row-ended'">
-                        <td>
-                            <b th:text="|#${summary.roomId}|">#88</b>
-                            <th:block th:replace="~{qa/parts :: roomType(${summary.sourceType})}"></th:block>
-                            <div class="muted qa-room-source" th:if="${summary.sourceLabel != null}"
-                                 th:text="${summary.sourceLabel}">그룹 #31 · 주말 취향 그룹</div>
-                        </td>
-                        <td><th:block th:replace="~{qa/parts :: roomStatus(${summary.status})}"></th:block></td>
-                        <td>
-                            <b th:text="${summary.realMembers.isEmpty()} ? '없음' : ${#strings.listJoin(summary.realMembers.![nickname], ', ')}">준표</b>
-                            <span class="muted" th:text="|+ 더미 ${summary.dummyCount}|">+ 더미 3</span>
-                        </td>
-                        <td class="num"
-                            th:text="|${@qaTime.of(summary.opensAt)} ~ ${@qaTime.of(summary.expiresAt)}|">-</td>
-                        <td class="num"
-                            th:text="${summary.lastMessageAt != null} ? ${#temporals.format(summary.lastMessageAt, 'MM/dd HH:mm')} : '-'">-</td>
-                        <td class="actions">
-                            <a class="btn sm" th:href="@{/admin/qa/rooms/{id}(id=${summary.roomId})}">열기</a>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${rooms.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>방</th><th>상태</th><th>실회원</th><th>기간</th><th>마지막 메시지</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="summary : ${rooms}" th:classappend="${summary.ended} ? 'qa-row-ended'">
+                            <td>
+                                <b th:text="|#${summary.roomId}|">#88</b>
+                                <th:block th:replace="~{qa/parts :: roomType(${summary.sourceType})}"></th:block>
+                                <div class="muted qa-room-source" th:if="${summary.sourceLabel != null}"
+                                     th:text="${summary.sourceLabel}">그룹 #31 · 주말 취향 그룹</div>
+                            </td>
+                            <td><th:block th:replace="~{qa/parts :: roomStatus(${summary.status})}"></th:block></td>
+                            <td>
+                                <b th:text="${summary.realMembers.isEmpty()} ? '없음' : ${#strings.listJoin(summary.realMembers.![nickname], ', ')}">준표</b>
+                                <span class="muted" th:text="|+ 더미 ${summary.dummyCount}|">+ 더미 3</span>
+                            </td>
+                            <td class="num"
+                                th:text="|${@qaTime.of(summary.opensAt)} ~ ${@qaTime.of(summary.expiresAt)}|">-</td>
+                            <td class="num"
+                                th:text="${summary.lastMessageAt != null} ? ${#temporals.format(summary.lastMessageAt, 'MM/dd HH:mm')} : '-'">-</td>
+                            <td class="actions">
+                                <a class="btn sm" th:href="@{/admin/qa/rooms/{id}(id=${summary.roomId})}">열기</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="card" id="personal" data-qa-live>
@@ -142,29 +144,31 @@
                     <span class="count" th:text="${console.personal.receivedRequests.size()}">0</span></h2>
                 <p class="muted" th:if="${console.personal.receivedRequests.isEmpty()}">
                     대기 중인 신청이 없습니다. 앱에서 더미에게 신청을 보내면 여기에 나타납니다.</p>
-                <table class="tbl" th:unless="${console.personal.receivedRequests.isEmpty()}">
-                    <thead><tr><th>신청한 회원</th><th>받은 더미</th><th>퀴즈셋</th><th>신청 시각</th><th></th></tr></thead>
-                    <tbody>
-                    <tr th:each="request : ${console.personal.receivedRequests}">
-                        <td th:text="${request.requester.nickname}">홍길동</td>
-                        <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
-                            <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${request.dummy})}"></span></td>
-                        <td th:text="${request.quizSetTitle}">퀴즈셋</td>
-                        <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
-                        <td class="actions">
-                            <form class="inline-form" method="post"
-                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/accept(dummyId=${request.dummy.id},matchId=${request.matchId})}">
-                                <button class="btn sm" type="submit">수락</button>
-                            </form>
-                            <form class="inline-form" method="post"
-                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/reject(dummyId=${request.dummy.id},matchId=${request.matchId})}">
-                                <button class="btn secondary sm" type="submit"
-                                        data-confirm="이 신청을 거절합니다. 되돌릴 수 없습니다.">거절</button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${console.personal.receivedRequests.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>신청한 회원</th><th>받은 더미</th><th>퀴즈셋</th><th>신청 시각</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="request : ${console.personal.receivedRequests}">
+                            <td th:text="${request.requester.nickname}">홍길동</td>
+                            <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
+                                <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${request.dummy})}"></span></td>
+                            <td th:text="${request.quizSetTitle}">퀴즈셋</td>
+                            <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
+                            <td class="actions">
+                                <form class="inline-form" method="post"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/accept(dummyId=${request.dummy.id},matchId=${request.matchId})}">
+                                    <button class="btn sm" type="submit">수락</button>
+                                </form>
+                                <form class="inline-form" method="post"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/personal-matches/{matchId}/reject(dummyId=${request.dummy.id},matchId=${request.matchId})}">
+                                    <button class="btn secondary sm" type="submit"
+                                            data-confirm="이 신청을 거절합니다. 되돌릴 수 없습니다.">거절</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="card" id="personal-sent" data-qa-live>
@@ -172,25 +176,27 @@
                     <span class="count" th:text="${console.personal.sentRequests.size()}">0</span></h2>
                 <p class="muted" th:if="${console.personal.sentRequests.isEmpty()}">
                     이번 주에 더미가 보낸 신청이 없습니다. 아래에서 더미가 신청을 보내면 상대의 응답 상태가 여기에 나타납니다.</p>
-                <table class="tbl" th:unless="${console.personal.sentRequests.isEmpty()}">
-                    <thead><tr><th>보낸 더미</th><th>받은 회원</th><th>퀴즈셋</th><th>상태</th><th>신청 시각</th></tr></thead>
-                    <tbody>
-                    <tr th:each="request : ${console.personal.sentRequests}">
-                        <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
-                            <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${request.dummy})}"></span></td>
-                        <td th:text="${request.receiver.nickname}">홍길동</td>
-                        <td th:text="${request.quizSetTitle}">퀴즈셋</td>
-                        <td th:switch="${request.status.name()}">
-                            <span class="badge matching" th:case="'PENDING'">대기</span>
-                            <span class="badge on" th:case="'ACCEPTED'">수락됨</span>
-                            <span class="badge off" th:case="'REJECTED'">거절됨</span>
-                            <span class="badge off" th:case="'CANCELLED'">취소됨 (다른 신청 성사)</span>
-                            <span class="badge off" th:case="*" th:text="${request.status}">상태</span>
-                        </td>
-                        <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${console.personal.sentRequests.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>보낸 더미</th><th>받은 회원</th><th>퀴즈셋</th><th>상태</th><th>신청 시각</th></tr></thead>
+                        <tbody>
+                        <tr th:each="request : ${console.personal.sentRequests}">
+                            <td><span th:text="${request.dummy.nickname}">dummy-female-3fa1</span>
+                                <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${request.dummy})}"></span></td>
+                            <td th:text="${request.receiver.nickname}">홍길동</td>
+                            <td th:text="${request.quizSetTitle}">퀴즈셋</td>
+                            <td th:switch="${request.status.name()}">
+                                <span class="badge matching" th:case="'PENDING'">대기</span>
+                                <span class="badge on" th:case="'ACCEPTED'">수락됨</span>
+                                <span class="badge off" th:case="'REJECTED'">거절됨</span>
+                                <span class="badge off" th:case="'CANCELLED'">취소됨 (다른 신청 성사)</span>
+                                <span class="badge off" th:case="*" th:text="${request.status}">상태</span>
+                            </td>
+                            <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="card" id="personal-options" data-qa-live>
@@ -199,25 +205,27 @@
                 <p class="muted" th:if="${console.personal.requestOptions.isEmpty()}">
                     보낼 수 있는 신청이 없습니다. 이번 주 1:1 퀴즈셋으로 더미를 만들고 매칭을 재생성하면,
                     더미의 후보인 실회원이 여기에 나타납니다.</p>
-                <table class="tbl" th:unless="${console.personal.requestOptions.isEmpty()}">
-                    <thead><tr><th>보내는 더미</th><th>받을 회원</th><th>퀴즈셋</th><th></th></tr></thead>
-                    <tbody>
-                    <tr th:each="option : ${console.personal.requestOptions}">
-                        <td><span th:text="${option.dummy.nickname}">dummy-female-3fa1</span>
-                            <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${option.dummy})}"></span></td>
-                        <td th:text="${option.receiver.nickname}">홍길동</td>
-                        <td th:text="${option.quizSetTitle}">퀴즈셋</td>
-                        <td class="actions">
-                            <form class="inline-form" method="post"
-                                  th:action="@{/admin/qa/dummies/{dummyId}/personal-matches(dummyId=${option.dummy.id})}">
-                                <input type="hidden" name="receiverId" th:value="${option.receiver.id}"/>
-                                <input type="hidden" name="quizSetId" th:value="${option.quizSetId}"/>
-                                <button class="btn sm" type="submit">신청 보내기</button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${console.personal.requestOptions.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>보내는 더미</th><th>받을 회원</th><th>퀴즈셋</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="option : ${console.personal.requestOptions}">
+                            <td><span th:text="${option.dummy.nickname}">dummy-female-3fa1</span>
+                                <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${option.dummy})}"></span></td>
+                            <td th:text="${option.receiver.nickname}">홍길동</td>
+                            <td th:text="${option.quizSetTitle}">퀴즈셋</td>
+                            <td class="actions">
+                                <form class="inline-form" method="post"
+                                      th:action="@{/admin/qa/dummies/{dummyId}/personal-matches(dummyId=${option.dummy.id})}">
+                                    <input type="hidden" name="receiverId" th:value="${option.receiver.id}"/>
+                                    <input type="hidden" name="quizSetId" th:value="${option.quizSetId}"/>
+                                    <button class="btn sm" type="submit">신청 보내기</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="card" id="group" data-qa-live>
@@ -247,36 +255,38 @@
                                 대기 중인 더미 모두 수락</button>
                         </form>
                     </div>
-                    <table class="tbl">
-                        <tbody>
-                        <tr th:each="groupMember : ${group.members}">
-                            <td>
-                                <a class="member-search-link" th:href="@{/admin/members/{id}/quizzes(id=${groupMember.member.id})}"
-                                   th:text="${groupMember.member.nickname}" title="회원별 퀴즈 현황">홍길동</a>
-                                <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
-                                <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${groupMember.member})}"></span>
-                            </td>
-                            <td th:switch="${groupMember.status.name()}">
-                                <span class="badge on" th:case="'ACCEPTED'">수락</span>
-                                <span class="badge matching" th:case="'PENDING'">대기</span>
-                                <span class="badge off" th:case="*">거절</span>
-                            </td>
-                            <td class="actions">
-                                <th:block th:if="${groupMember.dummy and groupMember.pending}">
-                                    <form class="inline-form" method="post"
-                                          th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/accept(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
-                                        <button class="btn secondary sm" type="submit">수락</button>
-                                    </form>
-                                    <form class="inline-form" method="post"
-                                          th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/decline(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
-                                        <button class="btn secondary sm" type="submit"
-                                                data-confirm="이 그룹 초대를 거절합니다. 되돌릴 수 없습니다.">거절</button>
-                                    </form>
-                                </th:block>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                    <div class="tbl-scroll">
+                        <table class="tbl">
+                            <tbody>
+                            <tr th:each="groupMember : ${group.members}">
+                                <td>
+                                    <a class="member-search-link" th:href="@{/admin/members/{id}/quizzes(id=${groupMember.member.id})}"
+                                       th:text="${groupMember.member.nickname}" title="회원별 퀴즈 현황">홍길동</a>
+                                    <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
+                                    <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${groupMember.member})}"></span>
+                                </td>
+                                <td th:switch="${groupMember.status.name()}">
+                                    <span class="badge on" th:case="'ACCEPTED'">수락</span>
+                                    <span class="badge matching" th:case="'PENDING'">대기</span>
+                                    <span class="badge off" th:case="*">거절</span>
+                                </td>
+                                <td class="actions">
+                                    <th:block th:if="${groupMember.dummy and groupMember.pending}">
+                                        <form class="inline-form" method="post"
+                                              th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/accept(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
+                                            <button class="btn secondary sm" type="submit">수락</button>
+                                        </form>
+                                        <form class="inline-form" method="post"
+                                              th:action="@{/admin/qa/dummies/{dummyId}/group-matches/{groupMatchId}/decline(dummyId=${groupMember.member.id},groupMatchId=${group.groupMatchId})}">
+                                            <button class="btn secondary sm" type="submit"
+                                                    data-confirm="이 그룹 초대를 거절합니다. 되돌릴 수 없습니다.">거절</button>
+                                        </form>
+                                    </th:block>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 

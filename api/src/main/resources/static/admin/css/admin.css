@@ -100,7 +100,9 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
     margin-bottom: 16px;
 }
 .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
-.grid { display: grid; gap: 16px; }
+.grid { display: grid; gap: 16px; margin-bottom: 16px; }
+/* 그리드 간격과 카드 아래 여백이 겹쳐 두 배로 벌어지지 않게 한다. */
+.grid > .card { margin-bottom: 0; }
 .grid.cols-2 { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .grid.cols-3 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
@@ -588,10 +590,11 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     .qa-week-shortcut { position: static; transform: none; }
     .qa-week-stem, .qa-week-dot { display: none; }
 }
-/* 하루 칸이 "10/05(월)"보다 좁으면 요일을 날짜 아래로 내린다. */
+/* 하루 칸이 "10/05(월)"보다 좁으면 요일을 날짜 아래로 내리고, 두 줄이 들어가게 막대를 내린다. */
 @container qa-week (max-width: 480px) {
     .qa-week-track { margin-top: 44px; }
     .qa-week-weekday { display: block; }
+    .qa-week-period { padding-left: 6px; }
 }
 .qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
@@ -799,8 +802,8 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .member-quiz-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .member-quiz-table tr.not-participated td { color: var(--text-muted); }
 
-/* 폰 폭: 사이드바를 위쪽 메뉴로 올리고 여백을 줄인다. 표는 가로로 밀어 본다. */
-@media (max-width: 768px) {
+/* 폰·태블릿 세로 폭. 덮어쓰는 규칙이라 파일 맨 끝에 둔다. */
+@media (max-width: 960px) {
     .layout { flex-direction: column; }
     .sidebar {
         width: auto;
@@ -813,14 +816,40 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .nav a { padding: 6px 10px; gap: 6px; font-size: 13px; white-space: nowrap; }
     .nav a .ico { width: auto; }
 
-    .topbar { height: 52px; padding: 0 16px; }
+    .topbar { height: 52px; padding: 0 16px; position: static; }
     .content { padding: 16px; }
     h1.page-title { font-size: 19px; }
     .page-desc { margin-bottom: 16px; }
     .card { padding: 16px; }
 
-    table.tbl { display: block; overflow-x: auto; word-break: keep-all; }
-    table.tbl th { white-space: nowrap; }
-    /* 이미 스크롤 상자 안에 있는 표는 그대로 둔다. */
-    .participant-table table.tbl, .qa-report-table table.tbl { display: table; overflow: visible; }
+    /* iOS Safari 는 16px 보다 작은 입력칸에 포커스가 가면 화면을 확대한다. */
+    :is(.layout, .login-wrap) :is(input, select, textarea), .qhead input.qtext { font-size: 16px; }
+
+    /* 표는 상자 안에서 가로로 밀고, 버튼 열은 오른쪽에 붙여 둔다. */
+    /* 밀 수 있는 쪽 가장자리에 그림자가 생긴다. 끝까지 밀면 덮개가 따라와 그림자를 가린다. */
+    .tbl-scroll {
+        overflow-x: auto;
+        background:
+            linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
+            linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
+            radial-gradient(farthest-side at 0 50%, rgba(20, 23, 40, 0.16), transparent) left / 12px 100% no-repeat scroll,
+            radial-gradient(farthest-side at 100% 50%, rgba(20, 23, 40, 0.16), transparent) right / 12px 100% no-repeat scroll;
+    }
+    .tbl-scroll table.tbl { word-break: keep-all; }
+    .tbl-scroll table.tbl th { white-space: nowrap; }
+    .tbl-scroll table.tbl td.actions {
+        position: sticky;
+        right: 0;
+        background: var(--surface);
+        box-shadow: -4px 0 6px -4px rgba(20, 23, 40, 0.12);
+    }
+
+    .qa-composer-row { flex-wrap: wrap; }
+    .qa-composer-dummies, .qa-composer-row select { width: 100%; }
+
+    /* 손가락으로 누르기 어려운 작은 버튼을 키운다. */
+    .btn.sm { padding: 9px 12px; }
+    .text-button { padding: 6px 2px; }
+    .qnum .arrows button { width: 32px; height: 28px; }
+    .cbox .swap { width: 32px; height: 36px; }
 }

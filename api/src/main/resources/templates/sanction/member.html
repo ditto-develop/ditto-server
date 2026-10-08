@@ -43,31 +43,33 @@
             <div class="card">
                 <h2>제재 이력 <span class="badge cat" th:text="${view.sanctions.size()} + '건'">0건</span></h2>
                 <p class="muted" th:if="${view.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
-                <table class="tbl" th:unless="${view.sanctions.isEmpty()}">
-                    <thead>
-                    <tr><th>#</th><th>제재 종류</th><th>제재 근거</th><th>상태</th><th>기간</th><th>처리자</th><th>메모</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="s : ${view.sanctions}">
-                        <td th:text="${s.id}">1</td>
-                        <td th:text="${s.levelDescription}">제재 종류</td>
-                        <td th:text="${s.originDescription}">제재 근거</td>
-                        <td th:text="${s.statusDescription}">상태</td>
-                        <td>
-                            <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd HH:mm')}">시작</span> ~
-                            <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd HH:mm')} : '영구'">끝</span>
-                        </td>
-                        <td th:text="${s.creatorName}">처리자</td>
-                        <td th:text="${s.note ?: '-'}">메모</td>
-                        <td>
-                            <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form">
-                                <input type="hidden" name="memberId" th:value="${view.memberId}"/>
-                                <button class="btn secondary sm" type="submit">해제</button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${view.sanctions.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr><th>#</th><th>제재 종류</th><th>제재 근거</th><th>상태</th><th>기간</th><th>처리자</th><th>메모</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="s : ${view.sanctions}">
+                            <td th:text="${s.id}">1</td>
+                            <td th:text="${s.levelDescription}">제재 종류</td>
+                            <td th:text="${s.originDescription}">제재 근거</td>
+                            <td th:text="${s.statusDescription}">상태</td>
+                            <td>
+                                <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd HH:mm')}">시작</span> ~
+                                <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd HH:mm')} : '영구'">끝</span>
+                            </td>
+                            <td th:text="${s.creatorName}">처리자</td>
+                            <td th:text="${s.note ?: '-'}">메모</td>
+                            <td>
+                                <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form">
+                                    <input type="hidden" name="memberId" th:value="${view.memberId}"/>
+                                    <button class="btn secondary sm" type="submit">해제</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>

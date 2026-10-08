@@ -49,24 +49,26 @@
                     <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${report.reported.memberId})}">제재 관리</a>
                 </h2>
                 <p class="muted" th:if="${report.reported.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
-                <table class="tbl" th:unless="${report.reported.sanctions.isEmpty()}">
-                    <thead>
-                    <tr><th>제재 종류</th><th>제재 근거</th><th>상태</th><th>기간</th><th>처리자</th><th>메모</th></tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="s : ${report.reported.sanctions}">
-                        <td th:text="${s.levelDescription}">제재 종류</td>
-                        <td th:text="${s.originDescription}">제재 근거</td>
-                        <td th:text="${s.statusDescription}">상태</td>
-                        <td>
-                            <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd')}">시작</span> ~
-                            <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd')} : '영구'">끝</span>
-                        </td>
-                        <td th:text="${s.creatorName}">처리자</td>
-                        <td th:text="${s.note ?: '-'}">메모</td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${report.reported.sanctions.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr><th>제재 종류</th><th>제재 근거</th><th>상태</th><th>기간</th><th>처리자</th><th>메모</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="s : ${report.reported.sanctions}">
+                            <td th:text="${s.levelDescription}">제재 종류</td>
+                            <td th:text="${s.originDescription}">제재 근거</td>
+                            <td th:text="${s.statusDescription}">상태</td>
+                            <td>
+                                <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd')}">시작</span> ~
+                                <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd')} : '영구'">끝</span>
+                            </td>
+                            <td th:text="${s.creatorName}">처리자</td>
+                            <td th:text="${s.note ?: '-'}">메모</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- 신고자 -->

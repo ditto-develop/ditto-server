@@ -23,19 +23,21 @@
                     (이 요약은 새로 고치면 사라집니다)
                 </p>
                 <p class="muted" th:if="${regeneration.matches.isEmpty()}">만들어진 매칭이 없습니다. 매칭 대상이 모자라거나 조건이 맞는 조합이 없습니다.</p>
-                <table class="tbl" th:unless="${regeneration.matches.isEmpty()}">
-                    <thead><tr><th>#</th><th>회원 ID</th><th>인원</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
-                    <tbody>
-                    <tr th:each="match, stat : ${regeneration.matches}">
-                        <td class="num" th:text="${stat.count}">1</td>
-                        <td th:text="${#strings.listJoin(#lists.sort(#lists.toList(match.memberIds)), ', ')}">1, 2</td>
-                        <td class="num" th:text="${match.memberIds.size()}">2</td>
-                        <td class="num" th:text="${match.score}">100.0</td>
-                        <td class="num"
-                            th:text="${match.matchedQuestionCount != null} ? ${match.matchedQuestionCount} + ' / ' + ${match.totalQuestionCount} : '-'">-</td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${regeneration.matches.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>#</th><th>회원 ID</th><th>인원</th><th>점수</th><th>일치/전체 문항</th></tr></thead>
+                        <tbody>
+                        <tr th:each="match, stat : ${regeneration.matches}">
+                            <td class="num" th:text="${stat.count}">1</td>
+                            <td th:text="${#strings.listJoin(#lists.sort(#lists.toList(match.memberIds)), ', ')}">1, 2</td>
+                            <td class="num" th:text="${match.memberIds.size()}">2</td>
+                            <td class="num" th:text="${match.score}">100.0</td>
+                            <td class="num"
+                                th:text="${match.matchedQuestionCount != null} ? ${match.matchedQuestionCount} + ' / ' + ${match.totalQuestionCount} : '-'">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="card">
@@ -50,26 +52,28 @@
             <div class="card">
                 <h2>퀴즈셋별 매칭 재생성</h2>
                 <p class="muted" th:if="${quizSets.isEmpty()}">퀴즈셋이 없습니다.</p>
-                <table class="tbl" th:unless="${quizSets.isEmpty()}">
-                    <thead><tr><th>주차</th><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>
-                    <tbody>
-                    <tr th:each="qs : ${quizSets}">
-                        <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
-                        <td><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
-                        <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
-                        <td>
-                            <span class="badge on" th:if="${qs.isActive}">활성</span>
-                            <span class="badge off" th:unless="${qs.isActive}">비활성</span>
-                        </td>
-                        <td class="actions">
-                            <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post">
-                                <button class="btn secondary sm" type="submit">매칭 재생성</button>
-                            </form>
-                            <a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}/participants(id=${qs.id})}">참여 현황</a>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div class="tbl-scroll" th:unless="${quizSets.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>주차</th><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="qs : ${quizSets}">
+                            <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
+                            <td><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
+                            <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
+                            <td>
+                                <span class="badge on" th:if="${qs.isActive}">활성</span>
+                                <span class="badge off" th:unless="${qs.isActive}">비활성</span>
+                            </td>
+                            <td class="actions">
+                                <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post">
+                                    <button class="btn secondary sm" type="submit">매칭 재생성</button>
+                                </form>
+                                <a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}/participants(id=${qs.id})}">참여 현황</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
