@@ -44,8 +44,8 @@
                               th:style="|--start: ${period.startPercent}; --width: ${period.widthPercent}|"
                               th:text="${period.label}">퀴즈(월~수)</span>
                         <span class="qa-week-day" th:each="day : ${timeline.days}"
-                              th:style="|--start: ${day.startPercent}|"><span th:text="${day.date}">10/05</span><span
-                                class="qa-week-weekday" th:text="|(${day.dayOfWeek})|">(월)</span></span>
+                              th:style="|--start: ${day.startPercent}|"><span th:text="${day.dateLabel}">10/05</span><span
+                                class="qa-week-weekday" th:text="|(${day.dayOfWeekLabel})|">(월)</span></span>
                         <span class="qa-week-dot" th:each="shortcut : ${timeline.shortcuts}"
                               th:classappend="${shortcut.past} ? 'past'" th:style="|--pos: ${shortcut.positionPercent}|"></span>
                         <span class="qa-week-now" th:style="|--pos: ${timeline.nowPercent}|"

@@ -14,8 +14,8 @@ class QaTimeline(
 }
 
 class QaTimelineDay(
-    val date: String,
-    val dayOfWeek: String,
+    val dateLabel: String,
+    val dayOfWeekLabel: String,
     val startPercent: Double,
 )
 
