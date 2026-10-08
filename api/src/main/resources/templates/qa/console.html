@@ -108,6 +108,7 @@
 
             <section class="card" id="rooms" data-qa-live>
                 <h2>채팅방 <span class="count" th:text="${rooms.size()}">0</span></h2>
+                <div data-qa-inline-alerts role="status"></div>
                 <p class="muted" th:if="${rooms.isEmpty()}">
                     더미가 들어 있는 방이 없습니다. 1:1이나 그룹이 성사되면 여기에 나타납니다.</p>
                 <div class="tbl-scroll" th:unless="${rooms.isEmpty()}">
@@ -142,6 +143,7 @@
             <section class="card" id="personal" data-qa-live>
                 <h2>1:1 · 더미가 받은 신청
                     <span class="count" th:text="${console.personal.receivedRequests.size()}">0</span></h2>
+                <div data-qa-inline-alerts role="status"></div>
                 <p class="muted" th:if="${console.personal.receivedRequests.isEmpty()}">
                     대기 중인 신청이 없습니다. 앱에서 더미에게 신청을 보내면 여기에 나타납니다.</p>
                 <div class="tbl-scroll" th:unless="${console.personal.receivedRequests.isEmpty()}">
@@ -231,6 +233,7 @@
             <section class="card" id="group" data-qa-live>
                 <h2>그룹 · 초대 응답
                     <span class="count" th:text="${console.group.groups.size()}">0</span></h2>
+                <div data-qa-inline-alerts role="status"></div>
                 <div class="alert info" th:if="${console.group.responseClosed and console.group.hasPendingInvitation}">
                     <th:block th:text="|이번 주 그룹 응답 마감(${@qaTime.of(console.group.responseDeadline)})이 지나 남은 초대에 응답할 수 없습니다(코드 ${console.group.closedErrorCode}).|">
                         이번 주 그룹 응답 마감이 지나 남은 초대에 응답할 수 없습니다.</th:block>

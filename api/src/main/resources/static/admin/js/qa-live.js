@@ -285,6 +285,10 @@
     });
 
     showLiveState(LIVE_TEXT, true);
+    // 일반 폼은 제출 뒤 그 섹션(#personal 등)으로 돌아오는데 결과 알림은 맨 위에 떠서 보이지 않는다.
+    if (location.hash && document.querySelector('#qa-alerts .alert')) {
+        showInlineAlerts(decodeURIComponent(location.hash.slice(1)));
+    }
     scrollTimelineToBottom();
     window.setInterval(refresh, POLL_INTERVAL_MS);
 })();

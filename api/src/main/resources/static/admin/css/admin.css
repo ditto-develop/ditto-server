@@ -450,7 +450,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
 .content.qa-console-page { max-width: 1320px; }
-#report { scroll-margin-top: 80px; }
+#rooms, #personal, #group, #report { scroll-margin-top: 80px; }
 .qa-sanction-link { font-size: 12px; }
 .qa-report-desc { margin: -8px 0 16px; }
 .qa-report-form { max-width: 860px; }
