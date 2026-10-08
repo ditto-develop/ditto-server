@@ -136,6 +136,19 @@ table.tbl th, table.tbl td { text-align: left; padding: 12px 10px; border-bottom
 table.tbl th { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
 table.tbl tr:last-child td { border-bottom: none; }
 table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
+/* 표는 상자 안에서 가로로 민다. 밀 수 있는 쪽 가장자리에 그림자가 보이고,
+   끝에 닿으면 내용과 함께 움직이는 배경색 그라데이션이 그 그림자를 덮는다. */
+.tbl-scroll {
+    overflow-x: auto;
+    background:
+        linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
+        linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(20, 23, 40, 0.16), transparent) left / 12px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(20, 23, 40, 0.16), transparent) right / 12px 100% no-repeat scroll;
+}
+/* collapse 면 붙여 둔 칸의 배경이 행 구분선을 덮는다. */
+.tbl-scroll table.tbl { word-break: keep-all; border-collapse: separate; border-spacing: 0; }
+.tbl-scroll table.tbl th { white-space: nowrap; }
 .overdue { color: var(--danger); font-weight: 700; }
 
 /* Buttons */
@@ -802,7 +815,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .member-quiz-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .member-quiz-table tr.not-participated td { color: var(--text-muted); }
 
-/* 폰·태블릿 세로 폭. 덮어쓰는 규칙이라 파일 맨 끝에 둔다. */
+/* 폰·태블릿 세로 폭. 덮어쓰는 규칙이라 파일 끝에 둔다. */
 @media (max-width: 960px) {
     .layout { flex-direction: column; }
     .sidebar {
@@ -828,19 +841,6 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     /* iOS Safari 는 16px 보다 작은 입력칸에 포커스가 가면 화면을 확대한다. */
     :is(.layout, .login-wrap) :is(input, select, textarea), .qhead input.qtext, .cbox input[type="text"] { font-size: 16px; }
 
-    /* 표는 상자 안에서 가로로 민다. 밀 수 있는 쪽 가장자리에 그림자가 보이고,
-       끝에 닿으면 내용과 함께 움직이는 배경색 그라데이션이 그 그림자를 덮는다. */
-    .tbl-scroll {
-        overflow-x: auto;
-        background:
-            linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
-            linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
-            radial-gradient(farthest-side at 0 50%, rgba(20, 23, 40, 0.16), transparent) left / 12px 100% no-repeat scroll,
-            radial-gradient(farthest-side at 100% 50%, rgba(20, 23, 40, 0.16), transparent) right / 12px 100% no-repeat scroll;
-    }
-    /* collapse 면 붙여 둔 칸의 배경이 행 구분선을 덮는다. */
-    .tbl-scroll table.tbl { word-break: keep-all; border-collapse: separate; border-spacing: 0; }
-    .tbl-scroll table.tbl th { white-space: nowrap; }
     /* 버튼 열은 머리 칸까지 오른쪽에 붙여 둔다. */
     .tbl-scroll table.tbl:has(td.actions) th:last-child,
     .tbl-scroll table.tbl td.actions {
@@ -852,10 +852,21 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 
     .qa-composer-row { flex-wrap: wrap; }
     .qa-composer-dummies, .qa-composer-row select { width: 100%; }
+    /* 평가 표는 열 너비가 고정이라 칸 안에서 줄어들어야 넘치지 않는다. */
+    .qa-review-form input[name="comment"] { min-width: 0; width: 100%; }
+    .qa-review-form select, .qa-review-bulk select { max-width: 100%; }
 
     /* 손가락으로 누르기 어려운 작은 버튼을 키운다. */
     .btn.sm { padding: 9px 12px; }
     .text-button { padding: 6px 2px; }
     .qnum .arrows button { width: 32px; height: 28px; }
     .cbox .swap { width: 32px; height: 36px; }
+}
+
+/* 폰 폭: 버튼이 여럿인 칸은 세로로 쌓아 붙여 둔 열이 표를 다 가리지 않게 한다. */
+@media (max-width: 480px) {
+    .tbl-scroll table.tbl td.actions { white-space: normal; }
+    .tbl-scroll table.tbl td.actions > :is(form, a) { display: flex; margin: 0; }
+    .tbl-scroll table.tbl td.actions > :is(form, a) + :is(form, a) { margin-top: 6px; }
+    .tbl-scroll table.tbl td.actions .btn { flex: 1; justify-content: center; white-space: nowrap; }
 }
