@@ -101,7 +101,7 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 }
 .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
 .grid { display: grid; gap: 16px; }
-.grid.cols-2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.grid.cols-2 { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .grid.cols-3 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
 .stat { display: flex; flex-direction: column; gap: 6px; }
@@ -793,3 +793,29 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 .member-quiz-table .nowrap { white-space: nowrap; }
 .member-quiz-table .num { color: var(--text-sub); font-variant-numeric: tabular-nums; margin-left: 4px; }
 .member-quiz-table tr.not-participated td { color: var(--text-muted); }
+
+/* 폰 폭: 사이드바를 위쪽 메뉴로 올리고 여백을 줄인다. 표는 가로로 밀어 본다. */
+@media (max-width: 768px) {
+    .layout { flex-direction: column; }
+    .sidebar {
+        width: auto;
+        height: auto;
+        position: static;
+        padding: 12px;
+    }
+    .sidebar .brand { padding: 0 4px 10px; font-size: 17px; }
+    .nav { flex-direction: row; flex-wrap: wrap; }
+    .nav a { padding: 6px 10px; gap: 6px; font-size: 13px; white-space: nowrap; }
+    .nav a .ico { width: auto; }
+
+    .topbar { height: 52px; padding: 0 16px; }
+    .content { padding: 16px; }
+    h1.page-title { font-size: 19px; }
+    .page-desc { margin-bottom: 16px; }
+    .card { padding: 16px; }
+
+    table.tbl { display: block; overflow-x: auto; word-break: keep-all; }
+    table.tbl th { white-space: nowrap; }
+    /* 이미 스크롤 상자 안에 있는 표는 그대로 둔다. */
+    .participant-table table.tbl, .qa-report-table table.tbl { display: table; overflow: visible; }
+}
