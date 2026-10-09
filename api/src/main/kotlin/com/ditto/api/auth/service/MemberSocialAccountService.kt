@@ -52,6 +52,7 @@ class MemberSocialAccountService(
                 birthDate = birthDate,
             )
             restoreIfWithinRetention(member)
+            cancelDeferredLeave(member)
             return member
         }
 
@@ -90,6 +91,13 @@ class MemberSocialAccountService(
         }
         log.info { "탈퇴 회원(id=${member.id}) 복구 (leftAt=${member.leftAt})" }
         member.restore()
+    }
+
+    // 애플 연결 해제로 미뤄 둔 탈퇴가 있어도 다시 로그인했다면 계속 쓰겠다는 뜻으로 본다.
+    private fun cancelDeferredLeave(member: Member) {
+        if (!member.isLeaveDeferred()) return
+        log.info { "탈퇴 대기 회원(id=${member.id})의 재로그인으로 대기를 푼다 (reason=${member.deferredLeaveReason})" }
+        member.cancelDeferredLeave()
     }
 
     /**
