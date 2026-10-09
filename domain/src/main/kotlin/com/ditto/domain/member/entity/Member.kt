@@ -121,6 +121,10 @@ class Member(
     @Comment("탈퇴 사유 자유 입력 (선택, 최대 100자)")
     @Column(name = "leave_reason_detail", nullable = true, length = 100)
     var leaveReasonDetail: String? = null,
+
+    @Comment("미뤄 둔 탈퇴 사유 code (대기 중이 아니면 NULL)")
+    @Column(name = "deferred_leave_reason", nullable = true, length = 50)
+    var deferredLeaveReason: String? = null,
 ) : BaseEntity() {
 
     fun activate() {
@@ -193,6 +197,21 @@ class Member(
         leftAt = now
         leaveReason = reason
         leaveReasonDetail = reasonDetail
+        deferredLeaveReason = null
+    }
+
+    fun isLeaveDeferred(): Boolean = deferredLeaveReason != null
+
+    // 진행 중인 매칭·채팅이 있어 지금 탈퇴시킬 수 없을 때 쓴다. 진행이 끝나면 스케줄러가 이 사유로 탈퇴시킨다.
+    fun deferLeave(reason: String) {
+        if (status == MemberStatus.LEFT) {
+            throw WarnException(ErrorCode.INVALID_STATUS_TRANSITION, "이미 탈퇴한 회원입니다.")
+        }
+        deferredLeaveReason = reason
+    }
+
+    fun cancelDeferredLeave() {
+        deferredLeaveReason = null
     }
 
     /**
