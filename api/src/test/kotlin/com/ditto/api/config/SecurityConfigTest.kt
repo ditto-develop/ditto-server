@@ -148,6 +148,29 @@ class SecurityConfigTest : RestDocsTest() {
                 .andExpect(status().isFound)
                 .andExpect(header().exists("Location"))
         }
+
+        @Test
+        @DisplayName("애플 서버 간 알림 엔드포인트는 API Key 없이 접근할 수 있다")
+        fun appleServerNotificationWithoutApiKey() {
+            mockMvc.perform(
+                post("/api/v1/users/social-login/apple/notifications")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"payload":"not-a-notification"}"""),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.error.code").value("1005"))
+        }
+
+        @Test
+        @DisplayName("알림 경로를 열어도 애플 네이티브 로그인은 여전히 API Key가 필요하다")
+        fun appleNativeLoginStillNeedsApiKey() {
+            mockMvc.perform(
+                post("/api/v1/users/social-login/apple/native")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"identityToken":"apple-identity-token"}"""),
+            )
+                .andExpect(status().isUnauthorized)
+        }
     }
 
     @Nested

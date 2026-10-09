@@ -60,6 +60,8 @@ class SecurityConfig(
 
     /**
      * 인증 불필요 (permitAll) — X-API-Key·JWT 없이 접근 가능한 공개 엔드포인트
+     *
+     * 애플 서버 간 알림은 애플 서버가 직접 호출해 헤더를 실을 수 없다. 대신 payload 의 애플 서명을 검증한다.
      */
     @Bean
     @Order(3)
@@ -68,6 +70,7 @@ class SecurityConfig(
             .securityMatcher(
                 "/api/v1/users/social-login/*",
                 "/api/v1/users/social-login/*/callback",
+                "/api/v1/users/social-login/apple/notifications",
             )
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }
