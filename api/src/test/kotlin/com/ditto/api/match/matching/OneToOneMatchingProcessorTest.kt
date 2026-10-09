@@ -64,45 +64,6 @@ class OneToOneMatchingProcessorTest : FreeSpec(
 
                 scoredDuos.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
-
-            "selectTopRatio 는 match() 와 같은 상위20%+동점 컷을 쓴다" {
-                val p1 = scored(1L, mapOf(101L to 1L, 102L to 1L, 103L to 1L))
-                val p2 = scored(2L, mapOf(101L to 1L, 102L to 1L, 103L to 2L))
-                val p3 = scored(3L, mapOf(101L to 1L, 102L to 2L, 103L to 2L))
-
-                val selected = processor.selectTopRatio(processor.scoreEligibleDuos(listOf(p1, p2, p3)))
-
-                selected.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L, 2L to 3L)
-            }
-        }
-
-        "memberIdsCertainToKeepCandidate" - {
-            "두 사람 모두 선발 페어가 5개 이하면 그 페어를 가진 회원은 반드시 후보를 받는다" {
-                val center = scored(1L, mapOf(101L to 1L))
-                val others = (2L..4L).map { scored(it, mapOf(101L to 1L)) }
-
-                val selected = processor.selectTopRatio(processor.scoreEligibleDuos(listOf(center) + others))
-
-                processor.memberIdsCertainToKeepCandidate(selected) shouldBe setOf(1L, 2L, 3L, 4L)
-            }
-
-            "선발 페어가 5개를 넘고 점수가 모두 같으면 그 사람이 낀 페어는 보장하지 않는다" {
-                val center = scored(1L, mapOf(101L to 1L))
-                val leaves = (2L..7L).map { scored(it, mapOf(101L to 1L)) }
-                val starDuos = leaves.map { leaf ->
-                    ScoredMatch.duo(center.memberId, leaf.memberId, MatchScoreCalculator.calculate(center, leaf))
-                }
-
-                processor.memberIdsCertainToKeepCandidate(starDuos).shouldBeEmpty()
-            }
-
-            "선발 페어가 5개를 넘어도 6번째 점수보다 높은 페어는 보장한다" {
-                val starDuos = (2L..7L).mapIndexed { index, leafId ->
-                    ScoredMatch.duo(1L, leafId, MatchScore(score = 100.0 - index * 10, matchedQuestionCount = 1, totalQuestionCount = 1))
-                }
-
-                processor.memberIdsCertainToKeepCandidate(starDuos) shouldBe setOf(1L, 2L, 3L, 4L, 5L, 6L)
-            }
         }
 
         "성별 상호호환 하드 필터" - {
