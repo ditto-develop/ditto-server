@@ -35,6 +35,7 @@
 - [0037 — 그룹 평가·재매칭 명단에 나간 사람을 포함한다](0037-group-review-roster-includes-leavers.md)
 - [0038 — 어드민 QA 콘솔은 앱 API 컨트롤러를 더미 principal 로 그대로 호출한다](0038-admin-qa-console-acts-as-dummy.md)
 - [0039 — 운영 데이터를 지우는 어드민 QA 도구는 환경변수 스위치 뒤에 둔다](0039-admin-qa-tools-env-switch.md)
+- [0040 — 애플 서버 간 알림을 탈퇴로 반영하고, 앱 안 탈퇴 때 애플 토큰을 폐기한다](0040-apple-server-notifications-and-token-revoke.md)
 
 ## 언제 ADR을 쓰는가
 

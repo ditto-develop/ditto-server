@@ -26,6 +26,7 @@
 - 탈퇴는 소프트 삭제다 — 데이터를 지우지 않고 LEFT로 전이하며, 완전 삭제는 30일 경과 후 배치가 한다 ([ADR 0016](../adr/0016-member-leave-soft-delete-and-restore.md)). 단 세션(refresh token)과 푸시 토큰(`member_device`)은 탈퇴 시점에 바로 지운다 — 탈퇴한 폰에 푸시가 가면 안 되고, 탈퇴 뒤에는 앱이 해제 API를 부를 수 없다.
 - 제재 중에도 탈퇴할 수 있다. 소프트 삭제가 제재 이력과 `SocialAccount`를 보존하므로 차단 우회가 되지 않는다.
 - 진행 중인 매칭(PENDING/ACCEPTED)·끝나지 않은 채팅방·**성사됐는데 방이 아직 없는 재매칭**·**응답 마감 전 성사 전 그룹에 수락해 둔 상태**가 있으면 탈퇴할 수 없다(`LeaveProgressChecker`). 상대가 기다리는 상태를 남기지 않는다. 그룹은 다른 사람의 수락으로 언제든 성사되고 성사는 수락자 전원으로 방을 만들어서, 막지 않으면 탈퇴자가 그룹 채팅방 멤버가 된다. 마감(금 00:00)이 지나 미성사로 끝난 그룹은 더 성사되지 않으므로 막지 않는다.
+- **애플 계정 삭제·연결 해제 알림은 탈퇴로 반영하되, 진행 중이면 미룬다**(`deferred_leave_reason`). 위의 진행 중 검사는 그대로 두고, 걸리면 세션만 끊고 사유를 남긴다. 스케줄러(`DeferredLeaveScheduler`, 매시 30분)가 회원 행을 잠근 뒤 진행이 끝났는지 다시 보고 그 사유로 탈퇴시킨다. 대기 중 재로그인하면 대기를 푼다. 탈퇴하면 대기 값은 비워진다. [ADR 0040](../adr/0040-apple-server-notifications-and-token-revoke.md)
 - 탈퇴는 **미성사 재매칭 쌍을 취소한다**(`CANCELLED(MEMBER_LEFT)`). 그대로 두면 남은 한쪽의 제출로 성사돼 탈퇴자와의 채팅방이 열린다. 상세는 [rematch 도메인](rematch.md).
 - TODO: 역할(Role) 부여 규칙.
 
@@ -40,6 +41,7 @@ ACTIVE|SUSPENDED|BANNED → LEFT      (leave — 탈퇴, 소프트 삭제)
 LEFT → ACTIVE                       (restore — 30일 내 재가입 시 복구)
 ```
 
+- 탈퇴 대기(`deferred_leave_reason`)는 status 가 아니라 별도 값이다. 대기 중에도 상태는 그대로이고, 스케줄러가 LEFT 로 바꾸거나 재로그인이 대기를 푼다.
 - 1차 제재(경고)는 status를 바꾸지 않는다 — 퀴즈 참여만 sanction 조회로 차단.
 - SUSPENDED의 만료 판정은 lazy(요청 시 `suspended_until` 경과 확인), status 원복은 매칭 배치·로그인 시. 배경: 신고·제재 계획 참조.
 - 제재 상태의 이력·차수 SSOT는 `sanction` 도메인, `Member.status`는 매 요청 집행용 반영값.
