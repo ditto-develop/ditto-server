@@ -108,7 +108,7 @@ class MatchmakingServiceTest(
 
                 val summary = matchmakingService.generateMatchingCandidates(quizSetId)
 
-                // 요약은 어드민 화면과 REST 응답에 그대로 실린다. 처음 만드는 거라 지운 행은 없고 페어마다 2행씩 저장한다.
+                // 처음 만드는 거라 지운 행은 없고 페어마다 2행씩 저장한다.
                 summary.participantCount shouldBe 3
                 summary.matches.map { it.memberIds } shouldContainExactlyInAnyOrder
                     listOf(setOf(a, b), setOf(a, c), setOf(b, c))

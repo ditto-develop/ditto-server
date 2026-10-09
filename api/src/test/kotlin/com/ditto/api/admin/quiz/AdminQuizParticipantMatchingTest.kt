@@ -150,7 +150,7 @@ class AdminQuizParticipantMatchingTest(
             matching.of(onlySameGender).missReason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
         }
 
-        "매칭 전이면 자격 상대가 있는 참여자는 매칭 전으로 표시한다" {
+        "자격 상대가 있어도 매칭을 돌리기 전이면 매칭 전으로 표시한다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val male = saveMember("남")
             val female = saveMember("여", gender = Gender.FEMALE)
