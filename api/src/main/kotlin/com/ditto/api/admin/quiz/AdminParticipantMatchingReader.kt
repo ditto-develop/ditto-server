@@ -1,7 +1,6 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.GroupCandidate
-import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
@@ -93,11 +92,11 @@ class AdminParticipantMatchingReader(
             return ParticipantMatching(groupCandidates = groupCandidates)
         }
         val member = context.source.membersById[progress.memberId]
-        val prePoolMiss = PrePoolMiss.of(progress, member, context.generatedAt)
-        if (prePoolMiss != null) return ParticipantMatching(miss = prePoolMiss)
+        val prePoolMissReason = PrePoolMiss.of(progress, member, context.generatedAt)
+        if (prePoolMissReason != null) return ParticipantMatching(missReason = prePoolMissReason)
 
-        if (context.generatedAt == null) return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_GENERATED))
-        return ParticipantMatching(miss = MatchMiss(MatchMissReason.NOT_ASSIGNED_TO_GROUP))
+        if (context.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)
+        return ParticipantMatching(missReason = MatchMissReason.NOT_ASSIGNED_TO_GROUP)
     }
 
     private fun acceptedMemberIdsOf(personalMatches: List<PersonalMatch>): Set<Long> =

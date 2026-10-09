@@ -1,6 +1,7 @@
 package com.ditto.api.admin
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.admin.match.OneToOneCandidateCounts
 import com.ditto.api.match.matching.MatchScore
 import com.ditto.api.match.matching.ScoredMatch
 import com.ditto.api.match.service.CandidateGenerationSummary
@@ -42,6 +43,7 @@ import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import org.hamcrest.CoreMatchers.containsString
@@ -915,12 +917,12 @@ class AdminWebTest {
 
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
-            .andExpect(flash().attributeExists("message", "regeneration"))
-            .andExpect(flash().attributeCount(2))
+            .andExpect(flash().attributeExists("message", "regeneration", "candidateCounts"))
+            .andExpect(flash().attributeCount(3))
     }
 
     @Test
-    @DisplayName("매칭 화면은 재생성 결과 flash 가 있으면 매칭 대상·행 수·매칭 표를 그린다")
+    @DisplayName("매칭 화면은 재생성 결과 flash 가 있으면 매칭 대상·행 수·후보 수·매칭 표를 그린다")
     fun matchingPageRendersRegenerationSummary() {
         val summary = CandidateGenerationSummary(
             quizSetId = 7L,
@@ -930,9 +932,14 @@ class AdminWebTest {
             matches = listOf(ScoredMatch.duo(12L, 5L, MatchScore(score = 100.0, matchedQuestionCount = 2, totalQuestionCount = 2))),
         )
 
-        mockMvc.perform(get("/admin/matching").with(authentication(admin())).flashAttr("regeneration", summary))
+        mockMvc.perform(
+            get("/admin/matching").with(authentication(admin()))
+                .flashAttr("regeneration", summary)
+                .flashAttr("candidateCounts", OneToOneCandidateCounts.of(summary).shouldNotBeNull()),
+        )
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("재생성 결과")))
+            .andExpect(content().string(containsString("후보 0명인 회원 <b>1</b>명")))
             .andExpect(content().string(containsString("<span class=\"badge cat\">1:1</span>")))
             .andExpect(content().string(containsString("매칭 대상 <b>3</b>명")))
             .andExpect(content().string(containsString("5, 12")))

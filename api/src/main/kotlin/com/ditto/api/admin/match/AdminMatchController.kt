@@ -59,6 +59,9 @@ class AdminMatchController(
                         "퀴즈셋 #$id 매칭 후보를 재생성했습니다.",
                     )
                     redirectAttributes.addFlashAttribute("regeneration", summary)
+                    OneToOneCandidateCounts.of(summary)?.let {
+                        redirectAttributes.addFlashAttribute("candidateCounts", it)
+                    }
                 },
                 onFailure = { exception ->
                     if (exception !is WarnException) throw exception
