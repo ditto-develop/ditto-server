@@ -17,9 +17,11 @@ interface NativeSocialAuthenticator {
  * @property token 카카오는 액세스 토큰, 애플은 ID 토큰(JWT).
  * @property rawNonce 애플 전용(선택) — 앱이 만든 원본 nonce. 주면 ID 토큰의 `nonce` 클레임과 대조해 재생 공격을 막는다.
  * @property name 애플 전용(선택) — 애플은 **최초 인가 1회만** 이름을 클라이언트에 주므로, 그때 앱이 받아 함께 보낸다.
+ * @property authorizationCode 애플 전용(선택). 탈퇴 때 폐기할 애플 refresh token 을 받으려고 교환한다.
  */
 data class NativeSocialCredential(
     val token: String,
     val rawNonce: String? = null,
     val name: String? = null,
+    val authorizationCode: String? = null,
 )

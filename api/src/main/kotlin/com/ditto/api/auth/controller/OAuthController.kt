@@ -58,8 +58,7 @@ class OAuthController(
      * 애플 웹 로그인 콜백. 애플은 `scope`(name·email)를 요청하면 **`response_mode=form_post`** 로만 답하므로
      * 카카오와 달리 **POST** 로 들어온다. 폼에는 `code`·`id_token`·`state`·`user` 가 실린다.
      *
-     * 인가 코드는 쓰지 않는다 — 함께 온 `id_token` 을 검증하면 인증이 끝나고, 코드 교환에만 필요한
-     * 클라이언트 시크릿(.p8 키)을 들이지 않아도 된다.
+     * 인증은 함께 온 `id_token` 검증으로 끝난다. 인가 코드는 탈퇴 때 폐기할 애플 refresh token 을 받는 데만 쓴다.
      *
      * 응답은 카카오 콜백과 같은 계약이다: FE 콜백 URL 로 302 + refreshToken 은 HttpOnly 쿠키.
      */
@@ -70,6 +69,7 @@ class OAuthController(
     )
     fun appleCallback(
         @RequestParam("id_token") idToken: String,
+        @RequestParam(required = false) code: String?,
         @RequestParam(required = false) user: String?,
         response: HttpServletResponse,
     ): ResponseEntity<Unit> {
@@ -79,6 +79,7 @@ class OAuthController(
                 token = idToken,
                 // 이름은 ID 토큰이 아니라 user 폼 필드에 최초 1회만 실려 온다.
                 name = appleUserFieldReader.readName(user),
+                authorizationCode = code,
             ),
         )
         loginResult.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
@@ -129,6 +130,7 @@ class OAuthController(
                 token = request.identityToken,
                 rawNonce = request.rawNonce,
                 name = request.name,
+                authorizationCode = request.authorizationCode,
             ),
         )
         result.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }

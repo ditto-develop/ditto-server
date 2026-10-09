@@ -20,7 +20,7 @@ import java.security.MessageDigest
  * 4. `exp` — 만료 여부(jjwt 가 파싱 단계에서 확인)
  * 5. `nonce` — 앱이 원본 nonce 를 함께 보냈을 때만. 애플에는 SHA-256 해시를 넘기므로 같은 방식으로 비교한다.
  *
- * 인가 코드 교환은 하지 않으므로 클라이언트 시크릿(.p8 키로 서명한 JWT)이 필요 없다.
+ * 인가 코드 교환은 여기서 하지 않는다. 탈퇴 때 폐기할 토큰을 받는 교환은 AppleTokenClient 가 따로 한다.
  */
 class AppleIdTokenVerifier(
     private val properties: AppleOAuthProperties,
@@ -29,7 +29,7 @@ class AppleIdTokenVerifier(
     fun verify(idToken: String, rawNonce: String? = null): AppleIdTokenPayload {
         val claims = parseClaims(idToken)
 
-        verifyAudience(claims)
+        val clientId = requireMatchedClientId(claims)
         verifyNonce(claims, rawNonce)
 
         val subject = claims.subject
@@ -40,6 +40,7 @@ class AppleIdTokenVerifier(
 
         return AppleIdTokenPayload(
             subject = subject,
+            clientId = clientId,
             email = claims["email"] as? String,
             isPrivateEmail = claims["is_private_email"].toBooleanClaim(),
         )
@@ -58,7 +59,7 @@ class AppleIdTokenVerifier(
      * `aud`는 여러 값일 수 있어 jjwt 의 `requireAudience` 대신 직접 대조한다 —
      * 앱(번들 ID)과 웹(Services ID)이 같은 애플 앱을 공유할 수 있기 때문이다.
      */
-    private fun verifyAudience(claims: Claims) {
+    private fun requireMatchedClientId(claims: Claims): String {
         // 설정이 비어 있으면 모든 토큰이 조용히 거부된다 — 클라이언트 잘못처럼 보이지만 서버 설정 문제다.
         if (properties.clientIds.isEmpty()) {
             log.error { "애플 clientIds 설정이 비어 있다 — ditto.oauth.apple.client-ids 를 주입해야 한다." }
@@ -66,7 +67,7 @@ class AppleIdTokenVerifier(
         }
 
         val audiences = claims.audience.orEmpty()
-        if (properties.clientIds.none { it in audiences }) {
+        return properties.clientIds.firstOrNull { it in audiences } ?: run {
             log.warn { "애플 ID 토큰의 aud 불일치: $audiences" }
             throw WarnException(ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN)
         }
@@ -112,11 +113,13 @@ class AppleIdTokenVerifier(
  * 검증을 통과한 애플 ID 토큰에서 읽은 값.
  *
  * @property subject 애플이 부여한 사용자 식별자. 앱(팀) 단위로 안정적이라 소셜 계정 키로 쓴다.
+ * @property clientId 토큰을 받은 우리 client_id. 앱은 번들 ID, 웹은 Services ID 이고 인가 코드 교환·토큰 폐기에 같은 값을 쓴다.
  * @property email 없을 수 있다. 사용자가 가리기를 택하면 애플의 릴레이 주소(`@privaterelay.appleid.com`)가 온다.
  * @property isPrivateEmail 릴레이 주소 여부.
  */
 data class AppleIdTokenPayload(
     val subject: String,
+    val clientId: String,
     val email: String?,
     val isPrivateEmail: Boolean,
 )

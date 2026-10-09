@@ -27,4 +27,10 @@ data class AppleNativeLoginRequest(
      */
     @field:Size(max = 50)
     val name: String? = null,
+
+    /**
+     * `ASAuthorizationAppleIDCredential.authorizationCode` (선택). 서버가 애플 refresh token 으로 바꿔 두었다가
+     * 탈퇴 때 폐기한다. 5분 안에 한 번만 쓸 수 있어 로그인 요청에 바로 실어 보낸다. 없어도 로그인은 된다.
+     */
+    val authorizationCode: String? = null,
 )

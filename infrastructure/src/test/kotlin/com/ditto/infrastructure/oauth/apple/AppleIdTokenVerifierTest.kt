@@ -120,7 +120,19 @@ class AppleIdTokenVerifierTest : FreeSpec(
                     clientIds = listOf("pics.ditto.web", bundleId),
                 )
 
-                verifier.verify(idToken()).subject shouldBe "001234.apple-subject.0000"
+                val payload = verifier.verify(idToken())
+
+                payload.subject shouldBe "001234.apple-subject.0000"
+                payload.clientId shouldBe bundleId
+            }
+
+            "웹 Services ID 로 받은 토큰은 그 client_id 를 돌려준다" {
+                val verifier = verifier(
+                    AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)),
+                    clientIds = listOf(bundleId, "pics.ditto.web"),
+                )
+
+                verifier.verify(idToken(audience = "pics.ditto.web")).clientId shouldBe "pics.ditto.web"
             }
         }
 

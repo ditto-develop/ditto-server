@@ -20,9 +20,11 @@ class AppleNativeFakeAuthenticator : NativeSocialAuthenticator {
         name = credential.name,
         phoneNumber = null,
         gender = null,
+        clientId = FAKE_CLIENT_ID,
     )
 
     companion object {
         const val FAKE_SUBJECT = "001234.fake-apple-subject.0000"
+        const val FAKE_CLIENT_ID = "pics.ditto.app"
     }
 }

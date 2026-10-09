@@ -3,7 +3,11 @@ package com.ditto.api.auth
 import com.ditto.api.auth.dto.AppleNativeLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginRequest
 import com.ditto.api.support.RestDocsTest
+import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
+import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
+import com.ditto.infrastructure.oauth.apple.AppleTokenFakeClient
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -13,6 +17,7 @@ import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post
@@ -27,6 +32,15 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
 
 class OAuthControllerTest : RestDocsTest() {
+
+    @Autowired
+    lateinit var socialAccountRepository: SocialAccountRepository
+
+    private fun appleSocialAccount(): SocialAccount =
+        socialAccountRepository.findByProviderAndProviderUserId(
+            SocialProvider.APPLE,
+            AppleNativeFakeAuthenticator.FAKE_SUBJECT,
+        ) ?: error("애플 소셜 계정이 없다")
 
     companion object {
         private val PROVIDER_DESCRIPTION =
@@ -241,7 +255,9 @@ class OAuthControllerTest : RestDocsTest() {
                                     "프론트 콜백 URL 로 302, accessToken·signupRequired 는 쿼리, refreshToken 은 HttpOnly 쿠키.",
                             )
                             .formParameters(
-                                parameterWithName("code").description("인가 코드 (서버는 쓰지 않는다)").optional(),
+                                parameterWithName("code")
+                                    .description("인가 코드. 탈퇴 때 폐기할 애플 토큰을 받는 데 쓴다")
+                                    .optional(),
                                 parameterWithName("id_token").description("애플이 서명한 ID 토큰(JWT). 인증의 근거"),
                                 parameterWithName("user")
                                     .description("최초 인가 1회만 오는 JSON — 이름·이메일. 재로그인 때는 없다")
@@ -254,6 +270,8 @@ class OAuthControllerTest : RestDocsTest() {
 
         // 최초 인가에서만 오는 이름을 저장한다.
         memberRepository.findAll().first().name shouldBe "김철수"
+        appleSocialAccount().providerRefreshToken shouldBe
+            "${AppleTokenFakeClient.FAKE_REFRESH_TOKEN_PREFIX}apple-authorization-code"
     }
 
     @Test
@@ -278,6 +296,7 @@ class OAuthControllerTest : RestDocsTest() {
             identityToken = "apple-identity-token",
             rawNonce = "client-generated-nonce",
             name = "김철수",
+            authorizationCode = "apple-authorization-code",
         )
 
         mockMvc.perform(
@@ -315,6 +334,12 @@ class OAuthControllerTest : RestDocsTest() {
                                 fieldWithPath("name")
                                     .description("사용자 이름 (선택). 애플이 최초 인가 1회만 주므로 그때만 채워 보낸다")
                                     .optional(),
+                                fieldWithPath("authorizationCode")
+                                    .description(
+                                        "애플 SDK가 준 인가 코드 (선택, 권장). 서버가 애플 토큰으로 바꿔 두었다가 탈퇴 때 폐기한다. " +
+                                            "5분 안에 한 번만 쓸 수 있어 로그인 요청에 바로 싣는다",
+                                    )
+                                    .optional(),
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
@@ -332,6 +357,25 @@ class OAuthControllerTest : RestDocsTest() {
                     ),
                 ),
             )
+
+        val account = appleSocialAccount()
+        account.providerRefreshToken shouldBe "${AppleTokenFakeClient.FAKE_REFRESH_TOKEN_PREFIX}apple-authorization-code"
+        account.providerClientId shouldBe AppleNativeFakeAuthenticator.FAKE_CLIENT_ID
+    }
+
+    @Test
+    @DisplayName("애플 네이티브 로그인에 인가 코드가 없으면 애플 토큰 없이 로그인한다")
+    fun appleNativeLoginWithoutAuthorizationCode() {
+        mockMvc.perform(
+            post("/api/v1/users/social-login/apple/native")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(AppleNativeLoginRequest("apple-identity-token"))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+
+        appleSocialAccount().providerRefreshToken shouldBe null
     }
 
     @Test

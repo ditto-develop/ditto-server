@@ -3,6 +3,7 @@ package com.ditto.api.auth.facade
 import com.ditto.api.auth.dto.NativeSocialLoginResponse
 import com.ditto.api.auth.dto.NativeSocialLoginResult
 import com.ditto.api.auth.dto.OAuthLoginResult
+import com.ditto.api.auth.service.AppleRefreshTokenService
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
@@ -24,6 +25,7 @@ class OAuthFacade(
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val appleRefreshTokenService: AppleRefreshTokenService,
 ) {
     fun getAuthorizationUrl(provider: SocialProvider): String = oAuthService.getAuthorizationUrl(provider)
 
@@ -46,9 +48,7 @@ class OAuthFacade(
     fun loginWithIdToken(
         provider: SocialProvider,
         credential: NativeSocialCredential,
-    ): OAuthLoginResult = redirectLoginResult(
-        findOrCreateMember(provider, oAuthService.authenticateNative(provider, credential)),
-    )
+    ): OAuthLoginResult = redirectLoginResult(authenticateAndFindMember(provider, credential))
 
     private fun redirectLoginResult(member: Member): OAuthLoginResult {
         // 제재 회원은 토큰을 발급하지 않고 콜백으로 제재 사실만 전달한다. (해제일 경과한 정지는 통과)
@@ -70,8 +70,7 @@ class OAuthFacade(
         provider: SocialProvider,
         credential: NativeSocialCredential,
     ): NativeSocialLoginResult {
-        val userInfo = oAuthService.authenticateNative(provider, credential)
-        val member = findOrCreateMember(provider, userInfo)
+        val member = authenticateAndFindMember(provider, credential)
 
         blockingSanctionOf(member)?.let { sanctionCode ->
             return NativeSocialLoginResult(
@@ -96,6 +95,16 @@ class OAuthFacade(
             ),
             refreshToken = tokens.refreshToken,
         )
+    }
+
+    private fun authenticateAndFindMember(
+        provider: SocialProvider,
+        credential: NativeSocialCredential,
+    ): Member {
+        val userInfo = oAuthService.authenticateNative(provider, credential)
+        val member = findOrCreateMember(provider, userInfo)
+        credential.authorizationCode?.let { appleRefreshTokenService.exchangeAndStore(userInfo, it) }
+        return member
     }
 
     private fun findOrCreateMember(

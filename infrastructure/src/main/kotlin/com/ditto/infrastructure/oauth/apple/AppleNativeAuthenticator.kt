@@ -29,6 +29,7 @@ class AppleNativeAuthenticator(
             name = credential.name,
             phoneNumber = null,
             gender = null,
+            clientId = payload.clientId,
         )
     }
 }

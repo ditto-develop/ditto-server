@@ -1,6 +1,7 @@
 package com.ditto.api.auth
 
 import com.ditto.api.auth.facade.OAuthFacade
+import com.ditto.api.auth.service.AppleRefreshTokenService
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
@@ -41,6 +42,7 @@ class OAuthFacadeTest(
     private val serverTimeProvider: ServerTimeProvider,
     private val sanctionExpiryService: SanctionExpiryService,
     private val frontProperties: FrontProperties,
+    private val appleRefreshTokenService: AppleRefreshTokenService,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -69,6 +71,7 @@ class OAuthFacadeTest(
                     authService = authService,
                     serverTimeProvider = serverTimeProvider,
                     sanctionExpiryService = sanctionExpiryService,
+                    appleRefreshTokenService = appleRefreshTokenService,
                 )
 
                 val exception = shouldThrow<ErrorException> {
