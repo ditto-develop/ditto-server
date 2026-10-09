@@ -12,7 +12,7 @@
 - 1:1 후보 풀 자격(점수화 전 하드 필터, `isValidPair`): 성별 상호 선호(`QuizProgress.preferredGender`, 기본 `OPPOSITE`)와 나이차 ≤10 — 둘 다 대칭 조건이라 점수화 **전**에 걸러 살아남는 페어가 항상 대칭이게 한다.
 - **성별·나이 미상 회원은 풀에서 빼지 않는다.** `MatchParticipant.gender·age`가 nullable 이고, 그 조건을 쓰는 1:1만 자격 미달로 거른다. 그룹은 두 조건을 쓰지 않으므로 미상 회원도 그대로 후보가 된다.
 - 점수: 퀴즈 답변 일치율(`MatchScoreCalculator`).
-- 1:1 선발: 회원마다 자격 페어를 점수 높은 순으로 5개 고르고, 둘 중 한 명이라도 고른 페어는 남긴다(`TopPicksSelector`, [ADR 0040](../adr/0040-one-to-one-top-picks-per-member.md)). 점수로 따로 거르지 않는다. 자격 상대가 있으면 누구나 후보를 받고(5명 이상이면 최소 5명), 여러 사람이 고른 회원은 5명을 넘게 받는다.
+- 1:1 선발: 회원마다 자격 페어를 점수 높은 순으로 5개 고르고, 둘 중 한 명이라도 고른 페어는 남긴다(`TopPicksSelector`, [ADR 0040](../adr/0040-one-to-one-top-picks-per-member.md)). 점수로 따로 거르지 않는다. 자격 상대가 있으면 누구나 후보를 받고(자격 상대가 5명 이상이면 최소 5명), 여러 사람이 고른 회원은 5명을 넘게 받는다.
 - 동점 처리: 회원별 후보를 shuffle 후 점수 desc로 stable 정렬 — 점수가 다르면 결정적, 동점만 무작위(특정 회원이 체계적으로 유리해지는 것 방지). comparator 내부 random 금지(shuffle로 분리).
 - 1:1 유니크: `PersonalMatch`는 `memberId1`=min/`memberId2`=max로 정규화 + `requesterId` 별도 보존. UK(`member_id_1`, `member_id_2`, `quiz_set_id`)로 방향 무관 중복 금지. 방향은 `receiverId()`/`counterpartOf()` 헬퍼로 복원.
 - **1:1은 한 사람이 퀴즈셋당 하나만 성사된다**(#235). 신청·수락 모두 둘 중 누가 이번 퀴즈셋에서 이미 `ACCEPTED`면 막는다. 내가 성사됐으면 `ALREADY_MATCHED`(5003), 상대가 성사됐으면 `COUNTERPART_ALREADY_MATCHED`(5010). 신청이 만들어지지 않으므로 신청 알림도 없다. 성사되면 두 사람이 그 퀴즈셋에서 주고받은 남은 `PENDING`은 `CANCELLED`가 된다(그룹 자동 거절과 같은 이유, 알림 없음). 같은 사람이 낀 신청·수락은 두 회원의 `member` 행을 id 순서로 잠근 뒤 판단해 줄을 세운다. 잠금이 트랜잭션의 첫 조회여야 해서, 수락은 `PersonalMatchFacade`가 두 회원 id를 먼저 읽고 `acceptMatch`가 그 id로 잠금부터 시작한다([ADR 0035](../adr/0035-personal-match-member-row-lock.md)). 매칭 행은 회원 잠금 뒤에만 쓴다. 순서가 바뀌면 정리 UPDATE와 엇갈려 교착이 된다.
@@ -39,8 +39,9 @@
 - **후보 생성은 퀴즈셋마다 자기 트랜잭션**이다 — `generateMatchingCandidates`(`@Transactional`)를 배치(`MatchingBatchFacade.runScheduledMatching`)가 **트랜잭션 없이** 프록시로 부른다. facade 나 그 호출자에 `@Transactional`을 붙이면 격리가 깨진다. 배치는 셋을 돌며 실패는 경고 로그만 남기고 계속한다([ADR 0027](../adr/0027-matching-batch-per-quiz-set-transaction.md)). 후보가 없는 셋만 고르지만(anti-join) 대상 선정 직후 어드민 재생성·수락이 끼어들면 위 예외를 만날 수 있고, 그때 다른 셋의 후보까지 롤백되면 안 된다. 실패한 셋은 다음 배치가 다시 집고(마감 2주 안, `MatchingBatchFacade.RETRY_WINDOW_DAYS` — 후보 0건으로 끝난 셋이 영원히 재계산되지 않게), 반환하는 ID(알림 대상)는 성공한 셋만이다.
 - **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
 - **어드민 참여 현황(`/admin/quiz-sets/{id}/participants`)의 "후보가 없는 이유"는 지금 DB 상태로 다시 계산한 값이다.** 매칭 이력을 따로 저장하지 않기 때문이다. 배치와 같은 풀(`MatchmakingService.loadMatchingPoolParticipants`)과 자격 판단(`OneToOneMatchingProcessor.scoreEligibleDuos`)을 쓰고, 단계 순서는 `OneToOneMissFinder` 한 곳에서 정한다.
-  - 완주 시각이 저장된 후보보다 늦으면 "매칭 뒤 퀴즈 완료"로 따로 표시하고, 다시 계산하는 풀에서도 뺀다. 섞이면 매칭 때는 없던 짝이 생겨 원래 참여자의 이유가 바뀐다(매칭 뒤에 만든 더미가 흔한 경우).
-  - 자격 상대가 있으면 매칭이 반드시 후보를 주므로 선발을 다시 돌리지 않는다. 자격 상대가 있는데 저장된 후보가 없으면 매칭 전이면 "매칭 전", 아니면 "지금 다시 매칭하면 후보가 됨"이다.
+  - 완주 시각이 저장된 후보보다 늦으면 "매칭 뒤 퀴즈 완료"로 따로 표시하고, 다시 계산하는 풀에서도 뺀다. 그 사람들이 섞이면 매칭 때 없던 짝이 생겨서 원래 참여자의 이유가 달라진다(매칭 뒤에 만든 더미가 흔한 경우).
+  - 자격 상대가 있으면 매칭이 반드시 후보를 주므로 선발을 다시 돌리지 않는다. 자격 상대가 있는데 저장된 후보가 없을 때, 아직 매칭을 돌리지 않았으면 "매칭 전", 돌렸으면 "지금 다시 매칭하면 후보가 됨"으로 표시한다.
+  - 규칙을 바꾸기 전(ADR 0040 이전)에 만든 후보가 남은 셋에서는 컷으로 빠졌던 회원도 "지금 다시 매칭하면 후보가 됨"으로 보인다. 상태가 아니라 규칙이 바뀐 것이라, 실회원 셋은 안내대로 재생성하지 않는다.
   - 제외 정책에 걸린 이유는 회원 상태와 이 퀴즈셋의 성사 기록으로 확인한다. 생성 뒤에 성사·정지된 변화는 지금 상태로 반영된다.
 - `group_match_decline` 테이블은 남아 있으나 코드가 쓰지 않는다 — 거절은 `InvitationStatus.DECLINED`로 그룹별로 남는다.
 
