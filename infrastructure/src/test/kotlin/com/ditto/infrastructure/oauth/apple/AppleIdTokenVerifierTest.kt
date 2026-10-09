@@ -7,16 +7,11 @@ import io.jsonwebtoken.Jwts
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
 import io.mockk.verify
 import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.time.Duration
-import java.util.Base64
 import java.util.Date
 
 /**
@@ -28,19 +23,8 @@ class AppleIdTokenVerifierTest : FreeSpec(
     {
         val bundleId = "pics.ditto.app"
         val keyId = "test-key-id"
-        val keyPair: KeyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val otherKeyPair: KeyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-
-        // JWKS 는 애플이 주는 형식 그대로 손으로 만든다 (Jwk 객체의 toString 은 JSON 이 아니다).
-        fun jwksJson(id: String, pair: KeyPair): String {
-            val publicKey = pair.public as RSAPublicKey
-            fun encode(value: java.math.BigInteger): String {
-                val bytes = value.toByteArray().dropWhile { it == 0.toByte() }.toByteArray()
-                return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-            }
-            return """{"keys":[{"kty":"RSA","kid":"$id","use":"sig","alg":"RS256",""" +
-                """"n":"${encode(publicKey.modulus)}","e":"${encode(publicKey.publicExponent)}"}]}"""
-        }
+        val keyPair: KeyPair = AppleJwksFixture.newKeyPair()
+        val otherKeyPair: KeyPair = AppleJwksFixture.newKeyPair()
 
         fun idToken(
             subject: String = "001234.apple-subject.0000",
@@ -78,19 +62,13 @@ class AppleIdTokenVerifierTest : FreeSpec(
             )
         }
 
-        fun senderReturning(vararg responses: String): AppleJwksSender {
-            val sender = mockk<AppleJwksSender>()
-            every { sender.getKeys() } returnsMany responses.toList()
-            return sender
-        }
-
         fun sha256Hex(value: String): String =
             MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
                 .joinToString("") { "%02x".format(it) }
 
         "정상 토큰" - {
             "서명·발급자·aud 가 맞으면 sub 와 이메일을 읽는다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 val payload = verifier.verify(idToken())
 
@@ -100,7 +78,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "이메일 제공에 동의하지 않으면 이메일이 null 이다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 val payload = verifier.verify(idToken(email = null))
 
@@ -108,7 +86,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "is_private_email 이 boolean 으로 와도 읽는다 (애플은 문자열로 주기도 한다)" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
                 val token = Jwts.builder()
                     .header().keyId(keyId).and()
                     .issuer(AppleOAuthProperties.ISSUER)
@@ -123,7 +101,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "is_private_email 클레임이 아예 없으면 false 로 본다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
                 val token = Jwts.builder()
                     .header().keyId(keyId).and()
                     .issuer(AppleOAuthProperties.ISSUER)
@@ -138,7 +116,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
             "aud 를 여러 개 허용하면 그중 하나만 맞아도 통과한다 (앱·웹이 한 애플 앱을 공유)" {
                 val verifier = verifier(
-                    senderReturning(jwksJson(keyId, keyPair)),
+                    AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)),
                     clientIds = listOf("pics.ditto.web", bundleId),
                 )
 
@@ -148,7 +126,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
         "거부해야 하는 토큰" - {
             "다른 키로 서명했으면 거부한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 val exception = shouldThrow<WarnException> {
                     verifier.verify(idToken(signWith = otherKeyPair))
@@ -157,7 +135,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "발급자가 애플이 아니면 거부한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 shouldThrow<WarnException> {
                     verifier.verify(idToken(issuer = "https://evil.example.com"))
@@ -165,7 +143,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "aud 가 우리 앱이 아니면 거부한다 (다른 앱에서 발급된 토큰)" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 val exception = shouldThrow<WarnException> {
                     verifier.verify(idToken(audience = "com.other.app"))
@@ -174,7 +152,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "만료된 토큰은 거부한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 shouldThrow<WarnException> {
                     verifier.verify(idToken(expiresAt = Date(System.currentTimeMillis() - 60_000)))
@@ -182,7 +160,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "sub 가 없으면 거부한다 — 소셜 계정 키가 없는 토큰이다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
                 val token = Jwts.builder()
                     .header().keyId(keyId).and()
                     .issuer(AppleOAuthProperties.ISSUER)
@@ -196,14 +174,14 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "clientIds 설정이 비어 있으면 서버 오류로 알린다 — 조용히 전부 거부되면 안 된다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)), clientIds = emptyList())
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)), clientIds = emptyList())
 
                 val exception = shouldThrow<ErrorException> { verifier.verify(idToken()) }
                 exception.errorCode shouldBe ErrorCode.INTERNAL_ERROR
             }
 
             "JWT 형식이 아니면 거부한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 shouldThrow<WarnException> { verifier.verify("not-a-jwt") }
             }
@@ -211,7 +189,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
         "nonce" - {
             "원본 nonce 를 주면 해시가 일치할 때만 통과한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
                 val rawNonce = "client-generated-nonce"
 
                 val payload = verifier.verify(idToken(nonce = sha256Hex(rawNonce)), rawNonce = rawNonce)
@@ -220,7 +198,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "원본 nonce 와 토큰의 nonce 가 다르면 거부한다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 shouldThrow<WarnException> {
                     verifier.verify(idToken(nonce = sha256Hex("다른-nonce")), rawNonce = "client-generated-nonce")
@@ -228,7 +206,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "원본 nonce 를 주지 않으면 nonce 검증을 건너뛴다" {
-                val verifier = verifier(senderReturning(jwksJson(keyId, keyPair)))
+                val verifier = verifier(AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair)))
 
                 verifier.verify(idToken(nonce = sha256Hex("무엇이든"))).subject shouldBe "001234.apple-subject.0000"
             }
@@ -236,7 +214,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
         "공개키 캐시" - {
             "캐시가 살아 있으면 JWKS 를 다시 받지 않는다" {
-                val sender = senderReturning(jwksJson(keyId, keyPair))
+                val sender = AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair))
                 val verifier = verifier(sender)
 
                 verifier.verify(idToken())
@@ -247,9 +225,9 @@ class AppleIdTokenVerifierTest : FreeSpec(
 
             "캐시에 없는 kid 가 오면 키 교체로 보고 한 번 다시 받아온다" {
                 val rotatedKeyId = "rotated-key-id"
-                val sender = senderReturning(
-                    jwksJson(keyId, keyPair),
-                    jwksJson(rotatedKeyId, otherKeyPair),
+                val sender = AppleJwksFixture.senderReturning(
+                    AppleJwksFixture.jwksJson(keyId, keyPair),
+                    AppleJwksFixture.jwksJson(rotatedKeyId, otherKeyPair),
                 )
                 val verifier = verifier(sender)
 
@@ -262,7 +240,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "다시 받아와도 없는 kid 면 거부한다" {
-                val sender = senderReturning(jwksJson(keyId, keyPair), jwksJson(keyId, keyPair))
+                val sender = AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair), AppleJwksFixture.jwksJson(keyId, keyPair))
                 val verifier = verifier(sender)
 
                 shouldThrow<WarnException> {
@@ -271,7 +249,7 @@ class AppleIdTokenVerifierTest : FreeSpec(
             }
 
             "캐시 시간이 지나면 다시 받아온다" {
-                val sender = senderReturning(jwksJson(keyId, keyPair), jwksJson(keyId, keyPair))
+                val sender = AppleJwksFixture.senderReturning(AppleJwksFixture.jwksJson(keyId, keyPair), AppleJwksFixture.jwksJson(keyId, keyPair))
                 val verifier = verifier(sender, cacheTtl = Duration.ZERO)
 
                 verifier.verify(idToken())

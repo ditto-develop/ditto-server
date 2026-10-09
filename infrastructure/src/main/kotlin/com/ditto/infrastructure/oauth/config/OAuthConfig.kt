@@ -12,6 +12,9 @@ import com.ditto.infrastructure.oauth.apple.AppleJwksSender
 import com.ditto.infrastructure.oauth.apple.AppleNativeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleOAuthProperties
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationFakeVerifier
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationJwsVerifier
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationVerifier
 import com.ditto.infrastructure.oauth.apple.AppleSignedTokenParser
 import com.ditto.infrastructure.oauth.apple.AppleWebAuthorizationUrlProvider
 import com.ditto.infrastructure.oauth.kakao.KakaoNativeAuthenticator
@@ -70,6 +73,9 @@ class OAuthConfig {
                 SocialProvider.APPLE to AppleNativeFakeAuthenticator(),
             ),
         )
+
+        @Bean
+        fun appleServerNotificationVerifier(): AppleServerNotificationVerifier = AppleServerNotificationFakeVerifier()
     }
 
     @Profile("prod")
@@ -122,6 +128,12 @@ class OAuthConfig {
             properties: AppleOAuthProperties,
             signedTokenParser: AppleSignedTokenParser,
         ): AppleIdTokenVerifier = AppleIdTokenVerifier(properties, signedTokenParser)
+
+        @Bean
+        fun appleServerNotificationVerifier(
+            properties: AppleOAuthProperties,
+            signedTokenParser: AppleSignedTokenParser,
+        ): AppleServerNotificationVerifier = AppleServerNotificationJwsVerifier(properties, signedTokenParser)
 
         @Bean
         fun appleSignedTokenParser(
