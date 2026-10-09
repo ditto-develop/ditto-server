@@ -24,16 +24,17 @@ class OneToOneMatchingProcessorTest : FreeSpec(
             MatchParticipant(id, mapOf(101L to 1L, 102L to 1L), gender = gender, age = age, preferredGender = preferredGender)
 
         "match() 종단 동작" - {
-            "점수화 → 상위20%+동점 → 5명 제한 전체 파이프라인이 동작한다" {
+            "점수가 낮은 페어도 회원별 상위 5명에 들면 후보가 된다" {
                 val p1 = scored(1L, mapOf(101L to 1L, 102L to 1L, 103L to 1L))
                 val p2 = scored(2L, mapOf(101L to 1L, 102L to 1L, 103L to 2L)) // 1 과 2개 일치
                 val p3 = scored(3L, mapOf(101L to 1L, 102L to 2L, 103L to 2L)) // 1 과 1개, 2 와 2개 일치
 
-                // 점수(3문항): (1,2)=66.7, (1,3)=33.3, (2,3)=66.7 → 상위20%+동점으로 66.7 두 쌍 선발
+                // 점수(3문항): (1,2)=66.7, (1,3)=33.3, (2,3)=66.7
                 val result = processor.match(listOf(p1, p2, p3))
 
                 result.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(
                     1L to 2L,
+                    1L to 3L,
                     2L to 3L,
                 )
             }
