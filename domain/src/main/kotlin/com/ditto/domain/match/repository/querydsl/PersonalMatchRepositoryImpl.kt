@@ -65,21 +65,6 @@ class PersonalMatchRepositoryImpl(
         )
         .fetch()
 
-    override fun existsByMemberIdAndStatusIn(
-        memberId: Long,
-        statuses: Collection<PersonalMatchStatus>,
-    ): Boolean {
-        if (statuses.isEmpty()) return false
-        return queryFactory
-            .selectOne()
-            .from(personalMatch)
-            .where(
-                personalMatch.memberId1.eq(memberId).or(personalMatch.memberId2.eq(memberId)),
-                personalMatch.status.`in`(statuses),
-            )
-            .fetchFirst() != null
-    }
-
     override fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean =
         queryFactory
             .selectOne()

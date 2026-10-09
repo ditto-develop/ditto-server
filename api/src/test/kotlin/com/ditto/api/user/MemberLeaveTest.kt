@@ -16,6 +16,7 @@ import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
@@ -50,6 +51,7 @@ import org.springframework.transaction.support.TransactionTemplate
 
 private val SUBMITTED_AT = LocalDateTime.of(2026, 3, 9, 10, 0)
 private val GROUP_WEEK_MONDAY = LocalDateTime.of(2026, 4, 6, 0, 0)
+private val PERSONAL_WEEK_MONDAY = LocalDateTime.of(2026, 4, 13, 0, 0)
 private val GROUP_RESPONSE_DEADLINE = LocalDateTime.of(2026, 4, 10, 0, 0)
 
 /**
@@ -106,6 +108,25 @@ class MemberLeaveTest(
             invitation.accept()
         }
         groupMatchMemberRepository.save(invitation)
+    }
+
+    fun savePersonalMatch(
+        requesterId: Long,
+        receiverId: Long,
+        status: PersonalMatchStatus,
+        weekMonday: LocalDateTime = PERSONAL_WEEK_MONDAY,
+    ): PersonalMatch {
+        val quizSet = quizSetRepository.save(
+            QuizSetFixture.create(startDate = weekMonday, endDate = weekMonday.plusDays(3).minusSeconds(1)),
+        )
+        return personalMatchRepository.save(
+            PersonalMatchFixture.create(
+                requesterId = requesterId,
+                receiverId = receiverId,
+                quizSetId = quizSet.id,
+                status = status,
+            ),
+        )
     }
 
     fun saveMatchedRematch(memberId: Long, counterpartId: Long): Rematch {
@@ -236,21 +257,44 @@ class MemberLeaveTest(
     }
 
     "진행 중인 매칭·채팅이 있으면 탈퇴가 제한된다" - {
-        "수락된 매칭이 있으면 거부한다" {
-            val member = saveActive("매칭중회원")
-            val partner = saveActive("매칭상대")
-            personalMatchRepository.save(
-                PersonalMatchFixture.create(
-                    requesterId = member.id,
-                    receiverId = partner.id,
-                    status = PersonalMatchStatus.ACCEPTED,
-                ),
-            )
+        "이번 주에 응답을 기다리는 1:1 신청이 있으면 보낸 쪽도 받은 쪽도 거부한다" {
+            val requester = saveActive("신청보낸회원")
+            val receiver = saveActive("신청받은회원")
+            savePersonalMatch(requester.id, receiver.id, PersonalMatchStatus.PENDING)
+            overrideServerTime(PERSONAL_WEEK_MONDAY.plusDays(1))
 
-            val exception = shouldThrow<WarnException> {
-                userService.leaveUser(member.id, member.id, LeaveRequest())
+            listOf(requester, receiver).forEach { member ->
+                shouldThrow<WarnException> {
+                    userService.leaveUser(member.id, member.id, LeaveRequest())
+                }.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
             }
-            exception.errorCode shouldBe ErrorCode.CANNOT_LEAVE_WHILE_IN_PROGRESS
+        }
+
+        "지난 주에 응답 없이 남은 1:1 신청은 막지 않는다" {
+            val member = saveActive("지난주신청회원")
+            val partner = saveActive("응답안한상대")
+            savePersonalMatch(member.id, partner.id, PersonalMatchStatus.PENDING)
+            overrideServerTime(PERSONAL_WEEK_MONDAY.plusWeeks(1))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
+        }
+
+        "1:1이 성사됐어도 그 방이 끝났으면 탈퇴할 수 있다" {
+            val member = saveActive("성사끝난회원")
+            val partner = saveActive("성사끝난상대")
+            val match = savePersonalMatch(member.id, partner.id, PersonalMatchStatus.ACCEPTED)
+            val room = ChatRoomFixture.personal(sourceId = match.id).apply {
+                expire(ChatRoomFixture.DEFAULT_NOW.plusDays(3))
+            }
+            chatRoomRepository.save(room)
+            chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
+            overrideServerTime(PERSONAL_WEEK_MONDAY.plusDays(1))
+
+            userService.leaveUser(member.id, member.id, LeaveRequest())
+
+            memberRepository.findById(member.id).orElseThrow().status shouldBe MemberStatus.LEFT
         }
 
         // 방은 스케줄러가 만들어 성사와 예약 사이에 한 주기가 빈다. 그 사이 탈퇴하면 방이 없어

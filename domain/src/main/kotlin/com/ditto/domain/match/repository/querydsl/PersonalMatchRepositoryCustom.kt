@@ -29,12 +29,6 @@ interface PersonalMatchRepositoryCustom {
         memberIds: Collection<Long>,
     ): List<PersonalMatch>
 
-    /**
-     * 해당 회원이 낀 매칭 중 주어진 상태가 하나라도 있는지 (퀴즈셋 무관, 방향 무관) — 탈퇴 가드에 쓴다.
-     * 페어가 (memberId1, memberId2)로 정규화돼 있어 양쪽 컬럼을 모두 본다.
-     */
-    fun existsByMemberIdAndStatusIn(memberId: Long, statuses: Collection<PersonalMatchStatus>): Boolean
-
     // 수락·거절은 이번 주 퀴즈셋만 받아서 지난 주 대기 신청은 응답할 수 없다. 탈퇴 검사가 그 주 것만 본다.
     fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
 }
