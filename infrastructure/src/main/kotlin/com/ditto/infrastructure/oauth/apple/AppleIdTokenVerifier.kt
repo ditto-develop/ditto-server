@@ -19,8 +19,6 @@ import java.security.MessageDigest
  * 3. `aud` — 설정한 클라이언트 ID(네이티브는 앱 번들 ID) 중 하나와 일치
  * 4. `exp` — 만료 여부(jjwt 가 파싱 단계에서 확인)
  * 5. `nonce` — 앱이 원본 nonce 를 함께 보냈을 때만. 애플에는 SHA-256 해시를 넘기므로 같은 방식으로 비교한다.
- *
- * 인가 코드 교환은 여기서 하지 않는다. 탈퇴 때 폐기할 토큰을 받는 교환은 AppleTokenClient 가 따로 한다.
  */
 class AppleIdTokenVerifier(
     private val properties: AppleOAuthProperties,
@@ -113,7 +111,7 @@ class AppleIdTokenVerifier(
  * 검증을 통과한 애플 ID 토큰에서 읽은 값.
  *
  * @property subject 애플이 부여한 사용자 식별자. 앱(팀) 단위로 안정적이라 소셜 계정 키로 쓴다.
- * @property clientId 토큰을 받은 우리 client_id. 앱은 번들 ID, 웹은 Services ID 이고 인가 코드 교환·토큰 폐기에 같은 값을 쓴다.
+ * @property clientId aud 와 맞은 우리 client_id.
  * @property email 없을 수 있다. 사용자가 가리기를 택하면 애플의 릴레이 주소(`@privaterelay.appleid.com`)가 온다.
  * @property isPrivateEmail 릴레이 주소 여부.
  */

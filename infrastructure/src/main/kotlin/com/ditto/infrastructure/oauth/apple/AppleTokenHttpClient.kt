@@ -11,7 +11,7 @@ class AppleTokenHttpClient(
     private val authSender: AppleAuthSender,
 ) : AppleTokenClient {
 
-    override fun exchangeCode(code: String, clientId: String, redirectUri: String?): String? {
+    override fun exchangeCodeForRefreshToken(code: String, clientId: String, redirectUri: String?): String? {
         if (!properties.canSignClientSecret()) {
             log.warn { "애플 client_secret 설정이 없어 인가 코드 교환을 건너뛴다." }
             return null

@@ -16,7 +16,7 @@ class AppleServerNotificationFakeVerifier : AppleServerNotificationVerifier {
 
         return AppleServerNotification(
             type = AppleServerNotificationType.of(eventType),
-            eventType = eventType,
+            rawEventType = eventType,
             subject = subject,
         )
     }

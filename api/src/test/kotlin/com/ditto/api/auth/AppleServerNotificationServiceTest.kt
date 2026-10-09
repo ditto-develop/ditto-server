@@ -40,8 +40,8 @@ class AppleServerNotificationServiceTest(
         return member
     }
 
-    fun notification(type: AppleServerNotificationType, eventType: String, subject: String) =
-        AppleServerNotification(type = type, eventType = eventType, subject = subject)
+    fun notification(type: AppleServerNotificationType, rawEventType: String, subject: String) =
+        AppleServerNotification(type = type, rawEventType = rawEventType, subject = subject)
 
     fun accountDeleted(subject: String) =
         notification(AppleServerNotificationType.ACCOUNT_DELETED, "account-delete", subject)

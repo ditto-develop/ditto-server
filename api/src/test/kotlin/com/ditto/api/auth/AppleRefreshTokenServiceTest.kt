@@ -37,12 +37,12 @@ class AppleRefreshTokenServiceTest : FreeSpec(
 
         "애플이 교환을 거절해도 예외 없이 넘어가고 아무것도 저장하지 않는다" {
             val tokenClient = mockk<AppleTokenClient>()
-            every { tokenClient.exchangeCode(any(), any(), any()) } throws
+            every { tokenClient.exchangeCodeForRefreshToken(any(), any(), any()) } throws
                 HttpClientErrorException(HttpStatus.BAD_REQUEST, "invalid_grant")
             val repository = mockk<SocialAccountRepository>(relaxed = true)
 
             AppleRefreshTokenService(tokenClient, repository, properties)
-                .exchangeAndStore(userInfo(clientId = "pics.ditto.app"), "expired-code")
+                .storeRefreshTokenFromCode(userInfo(clientId = "pics.ditto.app"), "expired-code")
 
             verify(exactly = 0) { repository.save(any()) }
         }
@@ -50,7 +50,7 @@ class AppleRefreshTokenServiceTest : FreeSpec(
         "웹 Services ID 로 받은 코드는 redirect_uri 를 붙여 교환하고 받은 client_id 와 함께 저장한다" {
             val tokenClient = mockk<AppleTokenClient>()
             every {
-                tokenClient.exchangeCode("web-code", "pics.ditto.web", properties.webRedirectUri)
+                tokenClient.exchangeCodeForRefreshToken("web-code", "pics.ditto.web", properties.webRedirectUri)
             } returns "apple-refresh"
             val account = appleAccount()
             val repository = mockk<SocialAccountRepository>()
@@ -58,7 +58,7 @@ class AppleRefreshTokenServiceTest : FreeSpec(
             every { repository.save(account) } returns account
 
             AppleRefreshTokenService(tokenClient, repository, properties)
-                .exchangeAndStore(userInfo(clientId = "pics.ditto.web"), "web-code")
+                .storeRefreshTokenFromCode(userInfo(clientId = "pics.ditto.web"), "web-code")
 
             account.providerRefreshToken shouldBe "apple-refresh"
             account.providerClientId shouldBe "pics.ditto.web"
@@ -66,15 +66,15 @@ class AppleRefreshTokenServiceTest : FreeSpec(
 
         "앱 번들 ID 로 받은 코드는 redirect_uri 없이 교환한다" {
             val tokenClient = mockk<AppleTokenClient>()
-            every { tokenClient.exchangeCode("app-code", "pics.ditto.app", null) } returns "apple-refresh"
+            every { tokenClient.exchangeCodeForRefreshToken("app-code", "pics.ditto.app", null) } returns "apple-refresh"
             val repository = mockk<SocialAccountRepository>(relaxed = true)
             every { repository.findByProviderAndProviderUserId(SocialProvider.APPLE, "apple-sub") } returns appleAccount()
             every { repository.save(any<SocialAccount>()) } returnsArgument 0
 
             AppleRefreshTokenService(tokenClient, repository, properties)
-                .exchangeAndStore(userInfo(clientId = "pics.ditto.app"), "app-code")
+                .storeRefreshTokenFromCode(userInfo(clientId = "pics.ditto.app"), "app-code")
 
-            verify(exactly = 1) { tokenClient.exchangeCode("app-code", "pics.ditto.app", null) }
+            verify(exactly = 1) { tokenClient.exchangeCodeForRefreshToken("app-code", "pics.ditto.app", null) }
         }
 
         "탈퇴 때 애플이 폐기를 거절해도 예외 없이 넘어가고 토큰을 남긴다" {
@@ -111,12 +111,12 @@ class AppleRefreshTokenServiceTest : FreeSpec(
 
         "교환한 토큰 저장이 실패해도 로그인을 막지 않는다" {
             val tokenClient = mockk<AppleTokenClient>()
-            every { tokenClient.exchangeCode(any(), any(), any()) } returns "apple-refresh"
+            every { tokenClient.exchangeCodeForRefreshToken(any(), any(), any()) } returns "apple-refresh"
             val repository = mockk<SocialAccountRepository>()
             every { repository.findByProviderAndProviderUserId(any(), any()) } throws IllegalStateException("db down")
 
             AppleRefreshTokenService(tokenClient, repository, properties)
-                .exchangeAndStore(userInfo(clientId = "pics.ditto.app"), "app-code")
+                .storeRefreshTokenFromCode(userInfo(clientId = "pics.ditto.app"), "app-code")
         }
 
         "client_id 를 모르면 교환하지 않는다" {
@@ -124,9 +124,9 @@ class AppleRefreshTokenServiceTest : FreeSpec(
             val repository = mockk<SocialAccountRepository>(relaxed = true)
 
             AppleRefreshTokenService(tokenClient, repository, properties)
-                .exchangeAndStore(userInfo(clientId = null), "code")
+                .storeRefreshTokenFromCode(userInfo(clientId = null), "code")
 
-            verify(exactly = 0) { tokenClient.exchangeCode(any(), any(), any()) }
+            verify(exactly = 0) { tokenClient.exchangeCodeForRefreshToken(any(), any(), any()) }
         }
     },
 )

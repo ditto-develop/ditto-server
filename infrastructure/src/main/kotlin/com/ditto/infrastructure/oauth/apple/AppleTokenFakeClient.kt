@@ -7,7 +7,7 @@ class AppleTokenFakeClient : AppleTokenClient {
 
     val revokedTokens: MutableList<String> = CopyOnWriteArrayList()
 
-    override fun exchangeCode(code: String, clientId: String, redirectUri: String?): String =
+    override fun exchangeCodeForRefreshToken(code: String, clientId: String, redirectUri: String?): String =
         "$FAKE_REFRESH_TOKEN_PREFIX$code"
 
     override fun revoke(refreshToken: String, clientId: String): Boolean {

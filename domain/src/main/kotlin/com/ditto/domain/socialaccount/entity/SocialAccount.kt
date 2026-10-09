@@ -43,7 +43,7 @@ class SocialAccount private constructor(
     val providerUserId: String,
 ) : BaseEntity() {
 
-    // 탈퇴 때 제공자 토큰을 폐기하려고 둔다. 지금은 애플만 채운다.
+    // 지금은 애플만 채운다.
     @Comment("제공자 refresh token (탈퇴 시 폐기용, 없으면 NULL)")
     @Column(name = "provider_refresh_token", nullable = true, length = 512)
     var providerRefreshToken: String? = null

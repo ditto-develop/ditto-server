@@ -18,7 +18,7 @@ class UserLeaveFacade(
 
     fun leave(id: Long, memberId: Long, request: LeaveRequest): LeaveResponse {
         val response = userService.leaveUser(id, memberId, request)
-        appleRefreshTokenService.revokeFor(id)
+        appleRefreshTokenService.revokeFor(memberId)
         return response
     }
 }

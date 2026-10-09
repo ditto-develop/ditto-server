@@ -20,7 +20,7 @@ class AppleRefreshTokenService(
 ) {
 
     // 교환·저장에 실패해도 로그인은 진행한다. 그 회원은 다음 로그인 때 다시 받는다.
-    fun exchangeAndStore(userInfo: OAuthUserInfo, authorizationCode: String) {
+    fun storeRefreshTokenFromCode(userInfo: OAuthUserInfo, authorizationCode: String) {
         runCatching { exchangeCodeAndStoreToken(userInfo, authorizationCode) }
             .onFailure { log.warn { "애플 인가 코드 교환 실패, 토큰 없이 로그인을 진행한다: ${it.message}" } }
     }
@@ -33,7 +33,7 @@ class AppleRefreshTokenService(
 
     private fun exchangeCodeAndStoreToken(userInfo: OAuthUserInfo, authorizationCode: String) {
         val clientId = userInfo.clientId ?: return
-        val refreshToken = appleTokenClient.exchangeCode(authorizationCode, clientId, redirectUriFor(clientId))
+        val refreshToken = appleTokenClient.exchangeCodeForRefreshToken(authorizationCode, clientId, redirectUriFor(clientId))
             ?: return
         val account = socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.APPLE, userInfo.id)
             ?: return

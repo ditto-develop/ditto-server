@@ -48,7 +48,12 @@ class OAuthFacade(
     fun loginWithIdToken(
         provider: SocialProvider,
         credential: NativeSocialCredential,
-    ): OAuthLoginResult = redirectLoginResult(authenticateAndFindMember(provider, credential))
+    ): OAuthLoginResult {
+        val userInfo = oAuthService.authenticateNative(provider, credential)
+        val member = findOrCreateMember(provider, userInfo)
+        storeAppleRefreshToken(provider, userInfo, credential)
+        return redirectLoginResult(member)
+    }
 
     private fun redirectLoginResult(member: Member): OAuthLoginResult {
         // 제재 회원은 토큰을 발급하지 않고 콜백으로 제재 사실만 전달한다. (해제일 경과한 정지는 통과)
@@ -70,7 +75,9 @@ class OAuthFacade(
         provider: SocialProvider,
         credential: NativeSocialCredential,
     ): NativeSocialLoginResult {
-        val member = authenticateAndFindMember(provider, credential)
+        val userInfo = oAuthService.authenticateNative(provider, credential)
+        val member = findOrCreateMember(provider, userInfo)
+        storeAppleRefreshToken(provider, userInfo, credential)
 
         blockingSanctionOf(member)?.let { sanctionCode ->
             return NativeSocialLoginResult(
@@ -97,14 +104,15 @@ class OAuthFacade(
         )
     }
 
-    private fun authenticateAndFindMember(
+    // 회원을 찾거나 만든 트랜잭션이 끝난 뒤에 부른다. 애플 호출이 회원 트랜잭션을 붙잡지 않게 하기 위해서다.
+    private fun storeAppleRefreshToken(
         provider: SocialProvider,
+        userInfo: OAuthUserInfo,
         credential: NativeSocialCredential,
-    ): Member {
-        val userInfo = oAuthService.authenticateNative(provider, credential)
-        val member = findOrCreateMember(provider, userInfo)
-        credential.authorizationCode?.let { appleRefreshTokenService.exchangeAndStore(userInfo, it) }
-        return member
+    ) {
+        if (provider != SocialProvider.APPLE) return
+        val authorizationCode = credential.authorizationCode ?: return
+        appleRefreshTokenService.storeRefreshTokenFromCode(userInfo, authorizationCode)
     }
 
     private fun findOrCreateMember(

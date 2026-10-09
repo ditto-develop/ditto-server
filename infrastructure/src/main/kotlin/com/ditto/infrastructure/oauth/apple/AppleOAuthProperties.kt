@@ -36,10 +36,13 @@ data class AppleOAuthProperties(
 ) {
     fun canSignClientSecret(): Boolean = teamId.isNotBlank() && keyId.isNotBlank() && privateKey.isNotBlank()
 
+    private val maskedPrivateKey: String
+        get() = if (privateKey.isBlank()) "" else "****"
+
     // 로그에 비밀키가 찍히지 않게 data class 의 toString 을 덮는다.
     override fun toString(): String =
         "AppleOAuthProperties(clientIds=$clientIds, webClientId=$webClientId, teamId=$teamId, keyId=$keyId, " +
-            "privateKey=${if (privateKey.isBlank()) "" else "****"})"
+            "privateKey=$maskedPrivateKey)"
 
     companion object {
         /** 애플이 발급한 ID 토큰의 발급자. 고정값이라 설정으로 빼지 않는다. */

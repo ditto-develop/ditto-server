@@ -12,10 +12,7 @@ import io.jsonwebtoken.JwtException
 import java.time.Duration
 import java.time.Instant
 
-/**
- * 애플 서버 간 알림의 payload(JWS)를 검증하고 이벤트를 꺼낸다.
- * 이 엔드포인트에는 API Key 도 JWT 도 없어서 애플 서명 검증이 곧 인증이다.
- */
+/** 애플 서버 간 알림의 payload(JWS)를 검증하고 이벤트를 꺼낸다. */
 class AppleServerNotificationJwsVerifier(
     private val properties: AppleOAuthProperties,
     private val signedTokenParser: AppleSignedTokenParser,
@@ -36,18 +33,16 @@ class AppleServerNotificationJwsVerifier(
 
         return AppleServerNotification(
             type = AppleServerNotificationType.of(eventType),
-            eventType = eventType,
+            rawEventType = eventType,
             subject = subject,
         )
     }
 
-    private fun parseClaims(payload: String): Claims {
-        try {
-            return signedTokenParser.parse(payload)
-        } catch (e: JwtException) {
-            throw invalidNotification("서명 검증 실패: ${e.message}")
+    private fun parseClaims(payload: String): Claims =
+        runCatching { signedTokenParser.parse(payload) }.getOrElse { exception ->
+            if (exception !is JwtException) throw exception
+            throw invalidNotification("서명 검증 실패: ${exception.message}")
         }
-    }
 
     private fun validateAudience(claims: Claims) {
         if (properties.clientIds.isEmpty()) {

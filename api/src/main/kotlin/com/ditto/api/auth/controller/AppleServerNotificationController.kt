@@ -9,10 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
-/**
- * 애플 개발자 포털에 등록하는 서버 간 알림 엔드포인트. 애플은 API Key 도 JWT 도 보내지 않는다.
- * payload 에 애플 사용자 식별자와 이메일이 들어 있어 인자를 로그로 남기는 @Loggable 을 붙이지 않는다.
- */
+/** payload 에 애플 사용자 식별자와 이메일이 들어 있어 인자를 로그로 남기는 @Loggable 을 붙이지 않는다. */
 @RestController
 class AppleServerNotificationController(
     private val appleServerNotificationVerifier: AppleServerNotificationVerifier,

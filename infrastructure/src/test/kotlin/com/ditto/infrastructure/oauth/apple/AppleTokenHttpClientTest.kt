@@ -24,7 +24,7 @@ class AppleTokenHttpClientTest : FreeSpec(
                 every { sender.getToken(capture(params)) } returns AppleTokenResponse(refreshToken = "apple-refresh")
 
                 val refreshToken = AppleTokenHttpClient(configured, secretGenerator, sender)
-                    .exchangeCode(code = "auth-code", clientId = "pics.ditto.app")
+                    .exchangeCodeForRefreshToken(code = "auth-code", clientId = "pics.ditto.app")
 
                 refreshToken shouldBe "apple-refresh"
                 params.captured.getFirst("grant_type") shouldBe "authorization_code"
@@ -39,7 +39,7 @@ class AppleTokenHttpClientTest : FreeSpec(
                 val params = slot<MultiValueMap<String, String>>()
                 every { sender.getToken(capture(params)) } returns AppleTokenResponse(refreshToken = "apple-refresh")
 
-                AppleTokenHttpClient(configured, secretGenerator, sender).exchangeCode(
+                AppleTokenHttpClient(configured, secretGenerator, sender).exchangeCodeForRefreshToken(
                     code = "web-code",
                     clientId = "pics.ditto.web",
                     redirectUri = "https://api.ditto.pics/api/v1/users/social-login/APPLE/callback",
@@ -53,7 +53,7 @@ class AppleTokenHttpClientTest : FreeSpec(
                 val sender = mockk<AppleAuthSender>()
 
                 val refreshToken = AppleTokenHttpClient(AppleOAuthProperties(), secretGenerator, sender)
-                    .exchangeCode(code = "auth-code", clientId = "pics.ditto.app")
+                    .exchangeCodeForRefreshToken(code = "auth-code", clientId = "pics.ditto.app")
 
                 refreshToken.shouldBeNull()
                 verify(exactly = 0) { sender.getToken(any()) }

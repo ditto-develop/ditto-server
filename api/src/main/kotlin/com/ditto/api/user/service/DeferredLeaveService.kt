@@ -23,7 +23,6 @@ class DeferredLeaveService(
         // 잠근 뒤 다시 본다. 그 사이 재로그인으로 대기가 풀렸을 수 있다.
         val member = memberRepository.findWithLockById(memberId) ?: return false
         val reason = member.deferredLeaveReason ?: return false
-        if (member.isLeft()) return false
         if (leaveProgressChecker.hasInProgress(member.id, serverTimeProvider.now())) return false
 
         memberLeaveProcessor.leave(member, reason = reason)

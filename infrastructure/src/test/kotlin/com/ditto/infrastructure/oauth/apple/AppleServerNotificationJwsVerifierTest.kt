@@ -60,7 +60,7 @@ class AppleServerNotificationJwsVerifierTest : FreeSpec(
                 val notification = verifier().verify(payload())
 
                 notification.type shouldBe AppleServerNotificationType.CONSENT_REVOKED
-                notification.eventType shouldBe "consent-revoked"
+                notification.rawEventType shouldBe "consent-revoked"
                 notification.subject shouldBe subject
             }
 
@@ -77,7 +77,7 @@ class AppleServerNotificationJwsVerifierTest : FreeSpec(
                 val notification = verifier().verify(payload(events = eventsJson(type = "new-event")))
 
                 notification.type shouldBe AppleServerNotificationType.UNKNOWN
-                notification.eventType shouldBe "new-event"
+                notification.rawEventType shouldBe "new-event"
             }
 
             "events 가 문자열이 아니라 객체로 와도 읽는다" {

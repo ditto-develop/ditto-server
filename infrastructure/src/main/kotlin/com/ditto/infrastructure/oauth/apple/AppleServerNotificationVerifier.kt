@@ -5,10 +5,9 @@ interface AppleServerNotificationVerifier {
     fun verify(payload: String): AppleServerNotification
 }
 
-/** eventType 은 애플이 보낸 원문이다. 모르는 타입이 와도 로그에 남길 수 있게 둔다. */
 data class AppleServerNotification(
     val type: AppleServerNotificationType,
-    val eventType: String,
+    val rawEventType: String,
     val subject: String,
 )
 
