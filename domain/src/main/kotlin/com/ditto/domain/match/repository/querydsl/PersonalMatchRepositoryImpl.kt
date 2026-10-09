@@ -3,8 +3,10 @@ package com.ditto.domain.match.repository.querydsl
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
+import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 @Transactional(readOnly = true)
 class PersonalMatchRepositoryImpl(
@@ -63,18 +65,15 @@ class PersonalMatchRepositoryImpl(
         )
         .fetch()
 
-    override fun existsByMemberIdAndStatusIn(
-        memberId: Long,
-        statuses: Collection<PersonalMatchStatus>,
-    ): Boolean {
-        if (statuses.isEmpty()) return false
-        return queryFactory
+    override fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean =
+        queryFactory
             .selectOne()
             .from(personalMatch)
+            .join(quizSet).on(personalMatch.quizSetId.eq(quizSet.id))
             .where(
                 personalMatch.memberId1.eq(memberId).or(personalMatch.memberId2.eq(memberId)),
-                personalMatch.status.`in`(statuses),
+                personalMatch.status.eq(PersonalMatchStatus.PENDING),
+                quizSet.weekStartedOn.eq(weekStartedOn),
             )
             .fetchFirst() != null
-    }
 }

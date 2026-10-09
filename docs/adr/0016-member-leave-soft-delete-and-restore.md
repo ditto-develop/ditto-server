@@ -29,6 +29,8 @@
 
 **진행 중 가드를 추가한다.** 진행 중인 매칭(`PENDING`/`ACCEPTED`)이나 끝나지 않은 채팅방(`SCHEDULED`/`ACTIVE`)이 있으면 `CANNOT_LEAVE_WHILE_IN_PROGRESS`로 거부한다.
 
+> 이후 변경: 1:1 매칭은 이번 주 `PENDING`만 본다. 성사(`ACCEPTED`)는 함께 만든 1:1 방이 끝나기 전까지 채팅방 조건으로 막는다(#298). 지금 규칙은 `docs/domains/member.md`.
+
 **LEFT는 인증 게이트에서 막는다.** `JwtAuthenticationFilter`와 `AuthService.refresh` 양쪽에 넣는다 — refresh는 필터를 지나지 않으므로 한쪽만으로는 우회된다(제재 게이트와 같은 구조).
 
 ## Consequences
