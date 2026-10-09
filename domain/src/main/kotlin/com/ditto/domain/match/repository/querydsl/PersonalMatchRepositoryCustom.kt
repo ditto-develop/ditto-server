@@ -2,6 +2,7 @@ package com.ditto.domain.match.repository.querydsl
 
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import java.time.LocalDate
 
 interface PersonalMatchRepositoryCustom {
 
@@ -33,4 +34,7 @@ interface PersonalMatchRepositoryCustom {
      * 페어가 (memberId1, memberId2)로 정규화돼 있어 양쪽 컬럼을 모두 본다.
      */
     fun existsByMemberIdAndStatusIn(memberId: Long, statuses: Collection<PersonalMatchStatus>): Boolean
+
+    // 수락·거절은 이번 주 퀴즈셋만 받아서 지난 주 대기 신청은 응답할 수 없다. 탈퇴 검사가 그 주 것만 본다.
+    fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
 }
