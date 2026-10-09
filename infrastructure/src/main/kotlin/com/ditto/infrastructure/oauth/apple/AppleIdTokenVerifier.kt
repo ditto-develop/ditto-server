@@ -5,16 +5,8 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.jsonwebtoken.Claims
-import io.jsonwebtoken.Header
 import io.jsonwebtoken.JwtException
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.Locator
-import io.jsonwebtoken.security.Jwk
-import io.jsonwebtoken.security.Jwks
-import java.security.Key
 import java.security.MessageDigest
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * 애플 ID 토큰(JWT) 검증기.
@@ -22,8 +14,7 @@ import java.util.concurrent.atomic.AtomicReference
  * 애플 네이티브 로그인에는 사용자 정보 API가 없다 — 앱이 건네준 ID 토큰의 **서명과 클레임이 곧 인증**이다.
  * 그래서 아래를 모두 확인하며, 하나라도 어긋나면 클라이언트가 보낸 값의 문제이므로 4xx로 돌려준다.
  *
- * 1. 서명 — 애플 JWKS([AppleJwksSender])의 공개키로 검증한다. 애플은 키를 주기적으로 교체하므로
- *    캐시에 없는 `kid`가 오면 한 번 다시 받아온다(교체 직후의 정상 요청을 실패로 만들지 않기 위해).
+ * 1. 서명 — 애플 JWKS 공개키로 검증한다.
  * 2. `iss` — `https://appleid.apple.com`
  * 3. `aud` — 설정한 클라이언트 ID(네이티브는 앱 번들 ID) 중 하나와 일치
  * 4. `exp` — 만료 여부(jjwt 가 파싱 단계에서 확인)
@@ -33,10 +24,8 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class AppleIdTokenVerifier(
     private val properties: AppleOAuthProperties,
-    private val jwksSender: AppleJwksSender,
+    private val signedTokenParser: AppleSignedTokenParser,
 ) {
-    private val cachedKeys = AtomicReference<CachedJwks?>(null)
-
     fun verify(idToken: String, rawNonce: String? = null): AppleIdTokenPayload {
         val claims = parseClaims(idToken)
 
@@ -58,40 +47,11 @@ class AppleIdTokenVerifier(
 
     private fun parseClaims(idToken: String): Claims {
         try {
-            return parseWith(refresh = false, idToken = idToken)
-        } catch (e: UnknownKeyIdException) {
-            // 애플이 서명 키를 교체한 직후다. 캐시를 버리고 한 번만 다시 시도한다.
-            log.info { "애플 JWKS 캐시에 없는 kid(${e.keyId}) — 공개키를 다시 받아온다." }
-            return retryAfterRefresh(idToken)
+            return signedTokenParser.parse(idToken)
         } catch (e: JwtException) {
             // 서명 불일치·만료·발급자 불일치 등 — 전부 클라이언트가 보낸 토큰의 문제다.
             throw invalidToken(e)
         }
-    }
-
-    private fun retryAfterRefresh(idToken: String): Claims {
-        try {
-            return parseWith(refresh = true, idToken = idToken)
-        } catch (e: JwtException) {
-            throw invalidToken(e)
-        }
-    }
-
-    private fun parseWith(refresh: Boolean, idToken: String): Claims {
-        val keys = if (refresh) fetchKeys() else keys()
-        return Jwts.parser()
-            .keyLocator(
-                object : Locator<Key> {
-                    override fun locate(header: Header): Key {
-                        val keyId = header["kid"] as? String
-                        return keys[keyId] ?: throw UnknownKeyIdException(keyId)
-                    }
-                },
-            )
-            .requireIssuer(AppleOAuthProperties.ISSUER)
-            .build()
-            .parseSignedClaims(idToken)
-            .payload
     }
 
     /**
@@ -126,26 +86,6 @@ class AppleIdTokenVerifier(
         }
     }
 
-    private fun keys(): Map<String, Key> {
-        val cached = cachedKeys.get()
-        if (cached != null && cached.expiresAt.isAfter(Instant.now())) {
-            return cached.keys
-        }
-        return fetchKeys()
-    }
-
-    private fun fetchKeys(): Map<String, Key> {
-        // JwkSet 은 JSON 객체(Map)이자 키 목록(Iterable)이라 `.keys`·`mapNotNull` 이 양쪽으로 해석된다.
-        // Iterable 로 타입을 못박아 키 목록 쪽으로 고정한다.
-        val jwkSet: Iterable<Jwk<*>> = Jwks.setParser().build().parse(jwksSender.getKeys())
-        val keys = jwkSet
-            .mapNotNull { jwk -> jwk.id?.let { keyId -> keyId to jwk.toKey() } }
-            .toMap()
-
-        cachedKeys.set(CachedJwks(keys = keys, expiresAt = Instant.now().plus(properties.jwksCacheTtl)))
-        return keys
-    }
-
     private fun invalidToken(cause: Exception): WarnException {
         log.warn { "애플 ID 토큰 검증 실패: ${cause.message}" }
         return WarnException(ErrorCode.INVALID_SOCIAL_ACCESS_TOKEN)
@@ -162,13 +102,6 @@ class AppleIdTokenVerifier(
         MessageDigest.getInstance("SHA-256")
             .digest(value.toByteArray())
             .joinToString("") { "%02x".format(it) }
-
-    private class UnknownKeyIdException(val keyId: String?) : JwtException("알 수 없는 kid: $keyId")
-
-    private data class CachedJwks(
-        val keys: Map<String, Key>,
-        val expiresAt: Instant,
-    )
 
     companion object {
         private val log = KotlinLogging.logger {}

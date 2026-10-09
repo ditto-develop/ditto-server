@@ -70,10 +70,13 @@ class AppleIdTokenVerifierTest : FreeSpec(
             sender: AppleJwksSender,
             clientIds: List<String> = listOf(bundleId),
             cacheTtl: Duration = Duration.ofHours(6),
-        ) = AppleIdTokenVerifier(
-            properties = AppleOAuthProperties(clientIds = clientIds, jwksCacheTtl = cacheTtl),
-            jwksSender = sender,
-        )
+        ): AppleIdTokenVerifier {
+            val properties = AppleOAuthProperties(clientIds = clientIds, jwksCacheTtl = cacheTtl)
+            return AppleIdTokenVerifier(
+                properties = properties,
+                signedTokenParser = AppleSignedTokenParser(properties, sender),
+            )
+        }
 
         fun senderReturning(vararg responses: String): AppleJwksSender {
             val sender = mockk<AppleJwksSender>()

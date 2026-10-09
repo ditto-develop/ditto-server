@@ -12,6 +12,7 @@ import com.ditto.infrastructure.oauth.apple.AppleJwksSender
 import com.ditto.infrastructure.oauth.apple.AppleNativeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleOAuthProperties
+import com.ditto.infrastructure.oauth.apple.AppleSignedTokenParser
 import com.ditto.infrastructure.oauth.apple.AppleWebAuthorizationUrlProvider
 import com.ditto.infrastructure.oauth.kakao.KakaoNativeAuthenticator
 import com.ditto.infrastructure.oauth.kakao.KakaoApiSender
@@ -119,8 +120,14 @@ class OAuthConfig {
         @Bean
         fun appleIdTokenVerifier(
             properties: AppleOAuthProperties,
+            signedTokenParser: AppleSignedTokenParser,
+        ): AppleIdTokenVerifier = AppleIdTokenVerifier(properties, signedTokenParser)
+
+        @Bean
+        fun appleSignedTokenParser(
+            properties: AppleOAuthProperties,
             jwksSender: AppleJwksSender,
-        ): AppleIdTokenVerifier = AppleIdTokenVerifier(properties, jwksSender)
+        ): AppleSignedTokenParser = AppleSignedTokenParser(properties, jwksSender)
 
         @Bean
         fun appleJwksSender(properties: AppleOAuthProperties): AppleJwksSender {
