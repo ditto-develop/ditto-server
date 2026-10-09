@@ -34,11 +34,12 @@ class MemberSocialAccountService(
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
         if (existingAccount != null) {
-            val member = memberRepository.findById(existingAccount.memberId).orElseThrow {
+            // 잠그고 읽는다. 미룬 탈퇴 스케줄러나 애플 알림이 같은 회원을 탈퇴시키는 중이면 그 결과를 덮어쓰지 않게 기다린다.
+            val member = memberRepository.findWithLockById(existingAccount.memberId) ?: run {
                 log.error {
                     "SocialAccount(id=${existingAccount.id})에 연결된 Member(id=${existingAccount.memberId})가 존재하지 않습니다."
                 }
-                ErrorException(ErrorCode.INTERNAL_ERROR)
+                throw ErrorException(ErrorCode.INTERNAL_ERROR)
             }
             if (member.hasEmailChanged(email)) {
                 log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }

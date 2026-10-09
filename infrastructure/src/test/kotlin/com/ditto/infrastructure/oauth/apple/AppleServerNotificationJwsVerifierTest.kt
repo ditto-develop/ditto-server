@@ -33,7 +33,7 @@ class AppleServerNotificationJwsVerifierTest : FreeSpec(
             }
 
         fun payload(
-            events: String? = eventsJson(),
+            events: Any? = eventsJson(),
             audience: String = bundleId,
             issuer: String = AppleOAuthProperties.ISSUER,
             issuedAt: Instant? = Instant.now(),
@@ -78,6 +78,15 @@ class AppleServerNotificationJwsVerifierTest : FreeSpec(
 
                 notification.type shouldBe AppleServerNotificationType.UNKNOWN
                 notification.eventType shouldBe "new-event"
+            }
+
+            "events 가 문자열이 아니라 객체로 와도 읽는다" {
+                val events = mapOf("type" to "email-disabled", "sub" to subject)
+
+                val notification = verifier().verify(payload(events = events))
+
+                notification.type shouldBe AppleServerNotificationType.EMAIL_DISABLED
+                notification.subject shouldBe subject
             }
 
             "aud 가 허용 목록 중 하나와 맞으면 통과한다" {

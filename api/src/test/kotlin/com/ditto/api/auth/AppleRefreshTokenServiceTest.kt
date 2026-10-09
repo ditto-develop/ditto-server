@@ -102,6 +102,23 @@ class AppleRefreshTokenServiceTest : FreeSpec(
             account.providerRefreshToken shouldBe "apple-refresh"
         }
 
+        "탈퇴 뒤 소셜 계정 조회가 실패해도 예외를 밖으로 던지지 않는다" {
+            val repository = mockk<SocialAccountRepository>()
+            every { repository.findByMemberId(1L) } throws IllegalStateException("db down")
+
+            AppleRefreshTokenService(mockk(), repository, properties).revokeFor(1L)
+        }
+
+        "교환한 토큰 저장이 실패해도 로그인을 막지 않는다" {
+            val tokenClient = mockk<AppleTokenClient>()
+            every { tokenClient.exchangeCode(any(), any(), any()) } returns "apple-refresh"
+            val repository = mockk<SocialAccountRepository>()
+            every { repository.findByProviderAndProviderUserId(any(), any()) } throws IllegalStateException("db down")
+
+            AppleRefreshTokenService(tokenClient, repository, properties)
+                .exchangeAndStore(userInfo(clientId = "pics.ditto.app"), "app-code")
+        }
+
         "client_id 를 모르면 교환하지 않는다" {
             val tokenClient = mockk<AppleTokenClient>()
             val repository = mockk<SocialAccountRepository>(relaxed = true)

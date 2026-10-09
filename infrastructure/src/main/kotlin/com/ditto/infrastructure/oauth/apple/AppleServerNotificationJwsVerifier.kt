@@ -4,6 +4,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.common.serialization.ObjectMapperFactory
+import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.jsonwebtoken.Claims
@@ -69,13 +70,16 @@ class AppleServerNotificationJwsVerifier(
         }
     }
 
-    // 애플은 events 를 JSON 문자열로 보낸다.
+    // 애플 예시는 JSON 문자열로 보내지만 객체로 오는 경우도 받는다. 못 읽으면 모든 알림을 잃는다.
     private fun readEvents(claims: Claims): AppleNotificationEvents {
-        val events = claims[EVENTS_CLAIM] as? String
-            ?: throw invalidNotification("events 클레임이 문자열이 아니다.")
-
-        return runCatching { eventsMapper.readValue<AppleNotificationEvents>(events) }
-            .getOrElse { throw invalidNotification("events 클레임을 읽을 수 없다.") }
+        val events = claims[EVENTS_CLAIM]
+        return runCatching {
+            when (events) {
+                is String -> eventsMapper.readValue<AppleNotificationEvents>(events)
+                is Map<*, *> -> eventsMapper.convertValue<AppleNotificationEvents>(events)
+                else -> null
+            }
+        }.getOrNull() ?: throw invalidNotification("events 클레임을 읽을 수 없다.")
     }
 
     private fun invalidNotification(reason: String): WarnException {
