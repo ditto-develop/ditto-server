@@ -14,8 +14,6 @@ object TopPicksSelector {
         picksPerMember: Int,
         random: Random = Random.Default,
     ): List<ScoredMatch> {
-        if (matches.isEmpty()) return matches
-
         val matchesByMemberId = buildMap<Long, MutableList<ScoredMatch>> {
             matches.forEach { match ->
                 match.memberIds.forEach { memberId -> getOrPut(memberId) { mutableListOf() }.add(match) }

@@ -77,8 +77,8 @@ class MemberMatchingReader(
         requests: List<PersonalMatch>,
         generatedAt: LocalDateTime?,
     ): MatchMissReason {
-        val prePoolMiss = PrePoolMiss.of(progress, member, generatedAt)
-        if (prePoolMiss != null) return prePoolMiss
+        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+        if (prePoolMissReason != null) return prePoolMissReason
 
         return when {
             !member.isActive() -> MatchMissReason.EXCLUDED_INACTIVE
@@ -113,8 +113,8 @@ class MemberMatchingReader(
 
     // 참여 현황(AdminParticipantMatchingReader.groupMatchingOf)과 같은 규칙이다. 한쪽을 고치면 같이 고친다.
     private fun groupMissOf(member: Member, progress: QuizProgress, generatedAt: LocalDateTime?): MatchMissReason {
-        val prePoolMiss = PrePoolMiss.of(progress, member, generatedAt)
-        if (prePoolMiss != null) return prePoolMiss
+        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+        if (prePoolMissReason != null) return prePoolMissReason
         if (generatedAt == null) return MatchMissReason.NOT_GENERATED
         return MatchMissReason.NOT_ASSIGNED_TO_GROUP
     }

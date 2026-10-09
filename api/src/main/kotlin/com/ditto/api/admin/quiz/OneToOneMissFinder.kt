@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 
 /**
  * 1:1 후보가 없는 참여자가 어느 단계에서 빠졌는지 지금 DB 상태로 다시 계산한다. 단계 순서는 이 클래스 한 곳에서 정한다.
- * 풀은 배치와 같은 계산에서 매칭 뒤에 완주한 사람을 뺀다. 섞이면 매칭 때는 없던 짝이 생겨 원래 참여자의 이유가 바뀐다.
+ * 풀은 배치와 같은 방식으로 만들되 매칭 뒤에 완주한 사람은 뺀다. 그 사람들이 섞이면 매칭 때 없던 짝이 생겨서 원래 참여자의 이유가 달라진다.
  */
 @Component
 class OneToOneMissFinder(
@@ -22,18 +22,18 @@ class OneToOneMissFinder(
         val prePoolMissByMemberId = buildMap {
             withoutCandidate.forEach { progress ->
                 val member = input.source.membersById[progress.memberId]
-                val missReason = PrePoolMiss.of(progress, member, input.generatedAt)
-                if (missReason != null) put(progress.memberId, missReason)
+                val prePoolMissReason = PrePoolMiss.of(progress, member, input.generatedAt)
+                if (prePoolMissReason != null) put(progress.memberId, prePoolMissReason)
             }
         }
         val poolEntrantIds = withoutCandidate.map { it.memberId }.toSet() - prePoolMissByMemberId.keys
         if (poolEntrantIds.isEmpty()) return prePoolMissByMemberId
 
-        val funnel = OneToOneFunnel(loadPoolAtGeneration(input), oneToOneMatchingProcessor)
+        val eligiblePairLookup = EligiblePairLookup(loadPoolAtGeneration(input), oneToOneMatchingProcessor)
         val poolMissByMemberId = poolEntrantIds.associateWith { memberId ->
-            val participant = funnel.participantOf(memberId)
+            val participant = eligiblePairLookup.participantOf(memberId)
                 ?: return@associateWith exclusionMissOf(input.source.membersById.getValue(memberId), input)
-            funnel.missOf(participant, isGenerated = input.generatedAt != null)
+            eligiblePairLookup.missOf(participant, isGenerated = input.generatedAt != null)
         }
         return prePoolMissByMemberId + poolMissByMemberId
     }
@@ -54,7 +54,7 @@ class OneToOneMissFinder(
         else -> MatchMissReason.EXCLUDED_OTHER
     }
 
-    private class OneToOneFunnel(pool: List<MatchParticipant>, processor: OneToOneMatchingProcessor) {
+    private class EligiblePairLookup(pool: List<MatchParticipant>, processor: OneToOneMatchingProcessor) {
         private val poolById: Map<Long, MatchParticipant> = pool.associateBy { it.memberId }
         private val memberIdsWithEligiblePair: Set<Long> =
             processor.scoreEligibleDuos(pool).flatMap { it.memberIds }.toSet()

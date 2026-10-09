@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 import kotlin.math.abs
 
 /**
- * 성별 선호가 서로 맞고 나이 차가 10살 이내이며 차단 관계가 아닌 페어만 점수를 매긴 뒤, 회원마다 상위 5명을 고른다.
+ * 성별 선호가 서로 맞고 나이 차가 제한 이내이며 차단 관계가 아닌 페어만 점수를 매긴 뒤, 회원마다 상위 몇 명을 고른다.
  * 점수가 낮다고 따로 걸러내지 않아서 자격 있는 상대가 있으면 누구나 후보를 받는다.
  */
 @Component
