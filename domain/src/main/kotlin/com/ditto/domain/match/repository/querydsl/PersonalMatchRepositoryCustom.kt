@@ -29,6 +29,5 @@ interface PersonalMatchRepositoryCustom {
         memberIds: Collection<Long>,
     ): List<PersonalMatch>
 
-    // 수락·거절은 이번 주 퀴즈셋만 받아서 지난 주 대기 신청은 응답할 수 없다. 탈퇴 검사가 그 주 것만 본다.
     fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
 }

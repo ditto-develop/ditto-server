@@ -9,6 +9,10 @@ import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import javax.sql.DataSource
 
+private const val REQUESTER_ID = 10L
+private const val RECEIVER_ID = 20L
+private const val OUTSIDER_ID = 99L
+
 class PersonalMatchPendingInWeekQueryTest(
     private val personalMatchRepository: PersonalMatchRepository,
     private val quizSetRepository: QuizSetRepository,
@@ -25,10 +29,14 @@ class PersonalMatchPendingInWeekQueryTest(
             ),
         ).id
 
-    fun saveMatch(quizSetId: Long, receiverId: Long = 20L, status: PersonalMatchStatus = PersonalMatchStatus.PENDING) {
+    fun saveMatch(
+        quizSetId: Long,
+        receiverId: Long = RECEIVER_ID,
+        status: PersonalMatchStatus = PersonalMatchStatus.PENDING,
+    ) {
         personalMatchRepository.save(
             PersonalMatchFixture.create(
-                requesterId = 10L,
+                requesterId = REQUESTER_ID,
                 receiverId = receiverId,
                 quizSetId = quizSetId,
                 status = status,
@@ -39,27 +47,27 @@ class PersonalMatchPendingInWeekQueryTest(
     "이번 주 대기 신청은 보낸 쪽과 받은 쪽 모두에서 찾는다" {
         saveMatch(saveQuizSet())
 
-        personalMatchRepository.existsPendingOfMemberInWeek(10L, thisWeekStartedOn) shouldBe true
-        personalMatchRepository.existsPendingOfMemberInWeek(20L, thisWeekStartedOn) shouldBe true
+        personalMatchRepository.existsPendingOfMemberInWeek(REQUESTER_ID, thisWeekStartedOn) shouldBe true
+        personalMatchRepository.existsPendingOfMemberInWeek(RECEIVER_ID, thisWeekStartedOn) shouldBe true
     }
 
     "지난 주 대기 신청은 찾지 않는다" {
         saveMatch(saveQuizSet(weekStartedOn = thisWeekStartedOn.minusWeeks(1)))
 
-        personalMatchRepository.existsPendingOfMemberInWeek(10L, thisWeekStartedOn) shouldBe false
+        personalMatchRepository.existsPendingOfMemberInWeek(REQUESTER_ID, thisWeekStartedOn) shouldBe false
     }
 
     "이번 주라도 대기가 아닌 신청은 찾지 않는다" {
         val quizSetId = saveQuizSet()
-        saveMatch(quizSetId, receiverId = 20L, status = PersonalMatchStatus.ACCEPTED)
+        saveMatch(quizSetId, receiverId = RECEIVER_ID, status = PersonalMatchStatus.ACCEPTED)
         saveMatch(quizSetId, receiverId = 30L, status = PersonalMatchStatus.REJECTED)
 
-        personalMatchRepository.existsPendingOfMemberInWeek(10L, thisWeekStartedOn) shouldBe false
+        personalMatchRepository.existsPendingOfMemberInWeek(REQUESTER_ID, thisWeekStartedOn) shouldBe false
     }
 
-    "신청에 끼지 않은 회원은 찾지 않는다" {
+    "신청에 끼지 않은 회원이면 거짓이다" {
         saveMatch(saveQuizSet())
 
-        personalMatchRepository.existsPendingOfMemberInWeek(99L, thisWeekStartedOn) shouldBe false
+        personalMatchRepository.existsPendingOfMemberInWeek(OUTSIDER_ID, thisWeekStartedOn) shouldBe false
     }
 })
