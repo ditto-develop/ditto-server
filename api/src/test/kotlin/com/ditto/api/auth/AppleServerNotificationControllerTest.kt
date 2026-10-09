@@ -59,7 +59,10 @@ class AppleServerNotificationControllerTest : RestDocsTest() {
                                 "애플이 계정 상태 변경을 알려 주는 엔드포인트다. FE가 호출하는 API가 아니며 API Key 없이 열려 있다. " +
                                     "payload 는 애플이 서명한 JWS 이고 서버가 애플 공개키로 검증한다. " +
                                     "account-delete 와 consent-revoked 는 탈퇴로 처리하고, 진행 중인 매칭·채팅이 있으면 " +
-                                    "세션만 끊고 탈퇴를 미룬다. email-disabled·email-enabled 는 기록만 한다.",
+                                    "세션만 끊고 탈퇴를 미룬다(이미 받은 access token 은 만료까지 유효). " +
+                                    "email-disabled·email-enabled 는 기록만 한다. " +
+                                    "local·test 프로필은 서명 없이 `이벤트타입:sub` 문자열을 받는다(예시 값). " +
+                                    "로컬 페이크 애플 로그인의 sub 는 `001234.fake-apple-subject.0000` 이다.",
                             )
                             .requestFields(
                                 fieldWithPath("payload").description("애플이 서명한 JWS"),

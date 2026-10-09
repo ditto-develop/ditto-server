@@ -40,12 +40,19 @@ class AppleRefreshTokenService(
 
         account.storeProviderToken(refreshToken = refreshToken, clientId = clientId)
         socialAccountRepository.save(account)
+        log.info { "애플 토큰 저장: memberId=${account.memberId}" }
     }
 
     private fun revokeStoredToken(memberId: Long) {
         val account = socialAccountRepository.findByMemberId(memberId) ?: return
-        val refreshToken = account.providerRefreshToken ?: return
-        val clientId = account.providerClientId ?: return
+        if (account.provider != SocialProvider.APPLE) return
+        val refreshToken = account.providerRefreshToken
+        val clientId = account.providerClientId
+        if (refreshToken == null || clientId == null) {
+            // 배포 전 가입하고 다시 로그인하지 않았거나 로그인 때 교환에 실패한 회원이다.
+            log.info { "폐기할 애플 토큰이 없다: memberId=$memberId" }
+            return
+        }
         if (!appleTokenClient.revoke(refreshToken, clientId)) return
 
         account.clearProviderToken()

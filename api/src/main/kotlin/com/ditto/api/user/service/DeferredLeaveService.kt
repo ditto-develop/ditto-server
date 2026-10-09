@@ -2,6 +2,7 @@ package com.ditto.api.user.service
 
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.repository.MemberRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -26,6 +27,11 @@ class DeferredLeaveService(
         if (leaveProgressChecker.hasInProgress(member.id, serverTimeProvider.now())) return false
 
         memberLeaveProcessor.leave(member, reason = reason)
+        log.info { "미뤄 둔 탈퇴 처리: memberId=${member.id}, reason=$reason" }
         return true
+    }
+
+    companion object {
+        private val log = KotlinLogging.logger {}
     }
 }
