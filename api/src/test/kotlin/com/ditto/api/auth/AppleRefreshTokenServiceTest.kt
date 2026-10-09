@@ -77,6 +77,31 @@ class AppleRefreshTokenServiceTest : FreeSpec(
             verify(exactly = 1) { tokenClient.exchangeCode("app-code", "pics.ditto.app", null) }
         }
 
+        "탈퇴 때 애플이 폐기를 거절해도 예외 없이 넘어가고 토큰을 남긴다" {
+            val account = appleAccount().apply { storeProviderToken("apple-refresh", "pics.ditto.app") }
+            val tokenClient = mockk<AppleTokenClient>()
+            every { tokenClient.revoke(any(), any()) } throws HttpClientErrorException(HttpStatus.BAD_REQUEST, "invalid")
+            val repository = mockk<SocialAccountRepository>(relaxed = true)
+            every { repository.findByMemberId(1L) } returns account
+
+            AppleRefreshTokenService(tokenClient, repository, properties).revokeFor(1L)
+
+            account.providerRefreshToken shouldBe "apple-refresh"
+            verify(exactly = 0) { repository.save(any()) }
+        }
+
+        "비밀값이 없어 폐기를 건너뛰면 토큰을 남긴다" {
+            val account = appleAccount().apply { storeProviderToken("apple-refresh", "pics.ditto.app") }
+            val tokenClient = mockk<AppleTokenClient>()
+            every { tokenClient.revoke("apple-refresh", "pics.ditto.app") } returns false
+            val repository = mockk<SocialAccountRepository>(relaxed = true)
+            every { repository.findByMemberId(1L) } returns account
+
+            AppleRefreshTokenService(tokenClient, repository, properties).revokeFor(1L)
+
+            account.providerRefreshToken shouldBe "apple-refresh"
+        }
+
         "client_id 를 모르면 교환하지 않는다" {
             val tokenClient = mockk<AppleTokenClient>()
             val repository = mockk<SocialAccountRepository>(relaxed = true)

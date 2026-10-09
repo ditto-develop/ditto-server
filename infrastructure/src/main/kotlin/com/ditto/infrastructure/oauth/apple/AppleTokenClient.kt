@@ -9,5 +9,6 @@ interface AppleTokenClient {
     /** 교환한 refresh token 을 돌려준다. 비밀값이 없어 교환을 건너뛰면 null 이다. */
     fun exchangeCode(code: String, clientId: String, redirectUri: String? = null): String?
 
-    fun revoke(refreshToken: String, clientId: String)
+    /** 실제로 폐기했으면 true. 비밀값이 없어 건너뛰면 false 다. */
+    fun revoke(refreshToken: String, clientId: String): Boolean
 }

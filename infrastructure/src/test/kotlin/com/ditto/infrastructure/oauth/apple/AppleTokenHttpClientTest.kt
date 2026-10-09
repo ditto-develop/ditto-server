@@ -66,8 +66,10 @@ class AppleTokenHttpClientTest : FreeSpec(
                 val params = slot<MultiValueMap<String, String>>()
                 every { sender.revoke(capture(params)) } just runs
 
-                AppleTokenHttpClient(configured, secretGenerator, sender)
+                val revoked = AppleTokenHttpClient(configured, secretGenerator, sender)
                     .revoke(refreshToken = "apple-refresh", clientId = "pics.ditto.web")
+
+                revoked shouldBe true
 
                 params.captured.getFirst("token") shouldBe "apple-refresh"
                 params.captured.getFirst("token_type_hint") shouldBe "refresh_token"
@@ -78,8 +80,10 @@ class AppleTokenHttpClientTest : FreeSpec(
             "비밀값이 없으면 애플을 부르지 않는다" {
                 val sender = mockk<AppleAuthSender>()
 
-                AppleTokenHttpClient(AppleOAuthProperties(), secretGenerator, sender)
+                val revoked = AppleTokenHttpClient(AppleOAuthProperties(), secretGenerator, sender)
                     .revoke(refreshToken = "apple-refresh", clientId = "pics.ditto.app")
+
+                revoked shouldBe false
 
                 verify(exactly = 0) { sender.revoke(any()) }
             }

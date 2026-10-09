@@ -76,6 +76,17 @@ class AppleServerNotificationServiceTest(
             left.status shouldBe MemberStatus.LEFT
             left.leaveReason shouldBe AppleServerNotificationService.LEAVE_REASON_CONSENT_REVOKED
         }
+
+        "애플 쪽에서 이미 끊겼으니 저장해 둔 애플 토큰을 지운다" {
+            val member = saveAppleMember("토큰있는애플회원", "apple-sub-token")
+            val account = socialAccountRepository.findByMemberId(member.id) ?: error("소셜 계정 없음")
+            account.storeProviderToken(refreshToken = "apple-refresh", clientId = "pics.ditto.app")
+            socialAccountRepository.save(account)
+
+            appleServerNotificationService.handle(accountDeleted("apple-sub-token"))
+
+            socialAccountRepository.findByMemberId(member.id)?.providerRefreshToken.shouldBeNull()
+        }
     }
 
     "진행 중인 매칭이 있으면 탈퇴를 미루고 세션만 끊는다" {

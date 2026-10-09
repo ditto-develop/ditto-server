@@ -3,7 +3,6 @@ package com.ditto.api.auth.service
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.user.service.LeaveProgressChecker
 import com.ditto.api.user.service.MemberLeaveProcessor
-import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.entity.SocialProvider
@@ -44,11 +43,15 @@ class AppleServerNotificationService(
     }
 
     private fun leaveOrDefer(notification: AppleServerNotification, reason: String) {
-        val member = findAppleMember(notification.subject)
-        if (member == null) {
+        val account = socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.APPLE, notification.subject)
+        val member = account?.let { memberRepository.findWithLockById(it.memberId) }
+        if (account == null || member == null) {
             log.info { "애플 서버 알림(${notification.eventType}) 대상 회원이 없다." }
             return
         }
+        // 애플 쪽에서 이미 끊겨 저장해 둔 애플 토큰은 더 쓸 수 없다.
+        account.clearProviderToken()
+
         if (member.isLeft()) {
             log.info { "애플 서버 알림(${notification.eventType}): 이미 탈퇴한 회원이다. memberId=${member.id}" }
             return
@@ -63,12 +66,6 @@ class AppleServerNotificationService(
 
         memberLeaveProcessor.leave(member, reason = reason)
         log.info { "애플 서버 알림(${notification.eventType}): 탈퇴 처리했다. memberId=${member.id}" }
-    }
-
-    private fun findAppleMember(subject: String): Member? {
-        val account = socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.APPLE, subject)
-            ?: return null
-        return memberRepository.findWithLockById(account.memberId)
     }
 
     companion object {

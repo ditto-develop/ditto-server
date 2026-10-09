@@ -35,6 +35,22 @@ class AppleRefreshTokenService(
         socialAccountRepository.save(account)
     }
 
+    // 탈퇴가 커밋된 뒤에 부른다. 실패해도 탈퇴는 그대로 두고, 실제로 폐기했을 때만 저장된 토큰을 지운다.
+    fun revokeFor(memberId: Long) {
+        val account = socialAccountRepository.findByMemberId(memberId) ?: return
+        val refreshToken = account.providerRefreshToken ?: return
+        val clientId = account.providerClientId ?: return
+
+        val revoked = runCatching { appleTokenClient.revoke(refreshToken, clientId) }
+            .onFailure { log.warn { "애플 토큰 폐기 실패, 탈퇴는 그대로 진행한다: memberId=$memberId, ${it.message}" } }
+            .getOrDefault(false)
+        if (!revoked) return
+
+        account.clearProviderToken()
+        socialAccountRepository.save(account)
+        log.info { "애플 토큰 폐기 완료: memberId=$memberId" }
+    }
+
     // 웹(Services ID)에서 받은 코드는 인가 요청 때 쓴 redirect_uri 를 함께 보내야 교환된다.
     private fun redirectUriFor(clientId: String): String? =
         appleOAuthProperties.webRedirectUri.takeIf { clientId == appleOAuthProperties.webClientId }

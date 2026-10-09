@@ -25,10 +25,10 @@ class AppleTokenHttpClient(
         return authSender.getToken(params).refreshToken
     }
 
-    override fun revoke(refreshToken: String, clientId: String) {
+    override fun revoke(refreshToken: String, clientId: String): Boolean {
         if (!properties.canSignClientSecret()) {
             log.warn { "애플 client_secret 설정이 없어 토큰 폐기를 건너뛴다." }
-            return
+            return false
         }
 
         val params = clientParams(clientId).apply {
@@ -36,6 +36,7 @@ class AppleTokenHttpClient(
             add("token_type_hint", "refresh_token")
         }
         authSender.revoke(params)
+        return true
     }
 
     private fun clientParams(clientId: String): MultiValueMap<String, String> =
