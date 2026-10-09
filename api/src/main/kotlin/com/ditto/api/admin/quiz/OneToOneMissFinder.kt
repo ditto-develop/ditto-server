@@ -4,7 +4,6 @@ import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.match.matching.MatchParticipant
 import com.ditto.api.match.matching.OneToOneMatchingProcessor
-import com.ditto.api.match.matching.ScoredMatch
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.domain.member.entity.Member
 import org.springframework.stereotype.Component
@@ -12,8 +11,7 @@ import java.time.LocalDateTime
 
 /**
  * 1:1 후보가 없는 참여자가 어느 단계에서 빠졌는지 지금 DB 상태로 다시 계산한다. 단계 순서는 이 클래스 한 곳에서 정한다.
- * 풀은 배치와 같은 계산에서 매칭 뒤에 완주한 사람을 뺀다. 그 사람들이 섞이면 컷 점수가 바뀌어 원래 참여자의 이유가 흔들린다.
- * 무작위가 끼는 1인 제한은 다시 돌리지 않는다.
+ * 풀은 배치와 같은 계산에서 매칭 뒤에 완주한 사람을 뺀다. 섞이면 매칭 때는 없던 짝이 생겨 원래 참여자의 이유가 바뀐다.
  */
 @Component
 class OneToOneMissFinder(
@@ -58,25 +56,18 @@ class OneToOneMissFinder(
 
     private class OneToOneFunnel(pool: List<MatchParticipant>, processor: OneToOneMatchingProcessor) {
         private val poolById: Map<Long, MatchParticipant> = pool.associateBy { it.memberId }
-        private val eligibleDuos: List<ScoredMatch> = processor.scoreEligibleDuos(pool)
-        private val selectedDuos: List<ScoredMatch> = processor.selectTopRatio(eligibleDuos)
-        private val bestEligibleScoreByMemberId: Map<Long, Double> = bestScoreByMemberId(eligibleDuos)
-        private val selectedMemberIds: Set<Long> = selectedDuos.flatMap { it.memberIds }.toSet()
-        private val certainMemberIds: Set<Long> = processor.memberIdsCertainToKeepCandidate(selectedDuos)
-        private val cutoffScore: Double? = selectedDuos.minOfOrNull { it.score }
+        private val memberIdsWithEligiblePair: Set<Long> =
+            processor.scoreEligibleDuos(pool).flatMap { it.memberIds }.toSet()
 
         fun participantOf(memberId: Long): MatchParticipant? = poolById[memberId]
 
+        // 자격 상대가 있으면 매칭이 반드시 후보를 준다. 그런데도 없으면 매칭 전이거나 매칭 뒤에 상태가 바뀐 것이다.
         fun missOf(participant: MatchParticipant, isGenerated: Boolean): MatchMiss {
-            val memberId = participant.memberId
-            val bestScore = bestEligibleScoreByMemberId[memberId]
-                ?: return MatchMiss(noEligiblePairReasonOf(participant))
-            if (memberId !in selectedMemberIds) {
-                return MatchMiss(MatchMissReason.CUT_BY_TOP_RATIO, bestScore = bestScore, cutoffScore = cutoffScore)
+            if (participant.memberId !in memberIdsWithEligiblePair) {
+                return MatchMiss(noEligiblePairReasonOf(participant))
             }
             if (!isGenerated) return MatchMiss(MatchMissReason.NOT_GENERATED)
-            if (memberId in certainMemberIds) return MatchMiss(MatchMissReason.STATE_CHANGED_AFTER_GENERATION)
-            return MatchMiss(MatchMissReason.CUT_BY_HARD_LIMIT)
+            return MatchMiss(MatchMissReason.STATE_CHANGED_AFTER_GENERATION)
         }
 
         private fun noEligiblePairReasonOf(participant: MatchParticipant): MatchMissReason =
@@ -84,15 +75,6 @@ class OneToOneMissFinder(
                 MatchMissReason.UNKNOWN_GENDER_OR_AGE
             } else {
                 MatchMissReason.NO_ELIGIBLE_PAIR
-            }
-
-        private fun bestScoreByMemberId(duos: List<ScoredMatch>): Map<Long, Double> =
-            buildMap {
-                duos.forEach { duo ->
-                    duo.memberIds.forEach { memberId ->
-                        merge(memberId, duo.score) { current, other -> maxOf(current, other) }
-                    }
-                }
             }
     }
 }

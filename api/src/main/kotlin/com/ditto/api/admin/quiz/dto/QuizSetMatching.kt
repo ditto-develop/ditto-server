@@ -8,7 +8,6 @@ import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import java.time.LocalDateTime
-import java.util.Locale
 
 /** 퀴즈셋에 저장된 매칭 후보와, 후보가 없는 참여자의 이유. [generatedAt]은 저장된 후보 중 가장 이른 생성 시각이다. */
 class QuizSetMatching(
@@ -181,19 +180,7 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
     }
 }
 
-// bestScore·cutoffScore는 점수 상위 비율에 못 들었을 때만 채운다.
-class MatchMiss(
-    val reason: MatchMissReason,
-    val bestScore: Double? = null,
-    val cutoffScore: Double? = null,
-) {
-    val scoreGap: String? = scoreGapOf(bestScore, cutoffScore)
-
-    private fun scoreGapOf(bestScore: Double?, cutoffScore: Double?): String? {
-        if (bestScore == null || cutoffScore == null) return null
-        return "최고 %.1f점, 기준 %.1f점".format(Locale.ROOT, bestScore, cutoffScore)
-    }
-}
+class MatchMiss(val reason: MatchMissReason)
 
 /** 이유를 얼마나 드러낼지. 예상된 결과는 흐리게, 테스터가 조치해야 하는 것은 노란 배지로 띄운다. */
 enum class MissEmphasis(val cssClass: String) {
@@ -229,8 +216,6 @@ enum class MatchMissReason(
         "성별 선호가 맞고 나이 차 ${OneToOneMatchingProcessor.MAX_AGE_GAP}살 이내이며 서로 차단하지 않은 상대 추가",
         MissEmphasis.NORMAL,
     ),
-    CUT_BY_TOP_RATIO("점수 상위 비율에 못 듦", "답을 다른 참여자와 더 맞추기", MissEmphasis.NORMAL),
-    CUT_BY_HARD_LIMIT("1명당 후보 수 한도에 밀림(정상)", null, MissEmphasis.NORMAL),
     STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "'매칭 실행'에서 재생성", MissEmphasis.ACTION_NEEDED),
     NOT_ASSIGNED_TO_GROUP("그룹 배정 안 됨(인원이 남거나 차단, 정상)", null, MissEmphasis.NORMAL),
 

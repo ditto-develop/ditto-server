@@ -30,7 +30,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
 
@@ -151,22 +150,7 @@ class AdminQuizParticipantMatchingTest(
             matching.of(onlySameGender).miss?.reason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
         }
 
-        "짝 자격은 있지만 상위 20% 컷을 못 넘으면 최고 점수와 컷을 함께 보여 준다" {
-            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
-            val topMale = saveMember("상위남")
-            val topFemale = saveMember("상위여", gender = Gender.FEMALE)
-            val lowFemale = saveMember("하위여", gender = Gender.FEMALE)
-            saveCompleted(topMale, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
-            saveCompleted(topFemale, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
-            saveCompleted(lowFemale, quizSetId, mapOf(firstQuizId to 2L, secondQuizId to 2L))
-
-            val miss = adminQuizParticipantService.getParticipants(quizSetId).matching.of(lowFemale).miss.shouldNotBeNull()
-
-            miss.reason shouldBe MatchMissReason.CUT_BY_TOP_RATIO
-            miss.scoreGap shouldBe "최고 0.0점, 기준 100.0점"
-        }
-
-        "매칭 전이면 컷을 넘은 참여자는 탈락이 아니라 매칭 전으로 표시한다" {
+        "매칭 전이면 자격 상대가 있는 참여자는 매칭 전으로 표시한다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val male = saveMember("남")
             val female = saveMember("여", gender = Gender.FEMALE)
@@ -178,19 +162,7 @@ class AdminQuizParticipantMatchingTest(
             matching.of(male).miss?.reason shouldBe MatchMissReason.NOT_GENERATED
         }
 
-        "선발 페어가 5개를 넘는 상대 쪽에서 밀렸으면 5명 제한 탈락이다" {
-            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
-            val center = saveMember("가운데")
-            val leaves = (1..6).map { saveMember("상대$it", gender = Gender.FEMALE) }
-            (listOf(center) + leaves).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
-            leaves.take(5).forEach { saveCandidatePair(quizSetId, center, it, score = 100.0) }
-
-            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
-
-            matching.of(leaves.last()).miss?.reason shouldBe MatchMissReason.CUT_BY_HARD_LIMIT
-        }
-
-        "5명 제한을 반드시 통과할 짝이 있는데 후보가 없으면 매칭 뒤 상태가 바뀐 것이다" {
+        "자격 상대가 있는데 후보가 없으면 매칭 뒤 상태가 바뀐 것이다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val matchedMale = saveMember("저장남")
             val matchedFemale = saveMember("저장여", gender = Gender.FEMALE)
