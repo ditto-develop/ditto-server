@@ -28,7 +28,7 @@
             <span th:class="${o.response.tone.cssClass}" th:text="${o.response.label}">대기</span>
         </div>
     </div>
-    <th:block th:if="${matching.miss != null}" th:with="reason=${matching.miss.reason}">
+    <th:block th:if="${matching.missReason != null}" th:with="reason=${matching.missReason}">
         <span th:class="${reason.emphasis.cssClass}" th:text="${reason.label}">퀴즈 미완료</span>
         <th:block th:if="${reason.nextAction != null}">
             <div class="muted" th:if="${reason.linksToParticipants}">

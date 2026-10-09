@@ -88,7 +88,7 @@ class AdminMemberQuizServiceTest(
             view.participatedCount shouldBe 1
             view.rows.first().progress.shouldBeNull()
             view.rows.first().matching.shouldBeNull()
-            view.rows.last().matching?.miss?.reason shouldBe MatchMissReason.NOT_COMPLETED
+            view.rows.last().matching?.missReason shouldBe MatchMissReason.NOT_COMPLETED
         }
 
         "없는 회원이면 NOT_FOUND 경고" {
@@ -113,7 +113,7 @@ class AdminMemberQuizServiceTest(
 
             matching?.personalCandidates?.map { it.otherNickname to it.requestState } shouldBe
                 listOf("후보만" to null, "신청보냄" to PersonalRequestState.SENT)
-            matching?.miss.shouldBeNull()
+            matching?.missReason.shouldBeNull()
         }
 
         "셋에 후보가 하나도 없어도 매칭 전으로 단정하지 않고 풀 단계 이유를 계산하지 않는다" {
@@ -121,9 +121,9 @@ class AdminMemberQuizServiceTest(
             val me = saveMember("나")
             saveCompleted(me, quizSetId)
 
-            val miss = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.miss
+            val missReason = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.missReason
 
-            miss?.reason shouldBe MatchMissReason.POOL_REASON_NOT_COMPUTED
+            missReason shouldBe MatchMissReason.POOL_REASON_NOT_COMPUTED
         }
 
         "후보가 만들어졌는데 내 후보가 없으면 풀 단계 이유는 계산하지 않는다" {
@@ -132,9 +132,9 @@ class AdminMemberQuizServiceTest(
             saveCompleted(me, quizSetId)
             saveCandidatePair(quizSetId, saveMember("다른남"), saveMember("다른여", gender = Gender.FEMALE), score = 100.0)
 
-            val miss = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.miss
+            val missReason = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.missReason
 
-            miss?.reason shouldBe MatchMissReason.POOL_REASON_NOT_COMPUTED
+            missReason shouldBe MatchMissReason.POOL_REASON_NOT_COMPUTED
         }
 
         "후보 생성 뒤에 완주했으면 매칭 이후 완주다" {
@@ -145,9 +145,9 @@ class AdminMemberQuizServiceTest(
             val me = saveMember("나")
             saveCompleted(me, quizSetId)
 
-            val miss = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.miss
+            val missReason = adminMemberQuizService.getMemberQuizzes(me).rows.single().matching?.missReason
 
-            miss?.reason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
+            missReason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
         }
 
         "이미 성사됐으면 제외 이유를 받고 성사는 후보 밖 신청으로 보인다" {
@@ -161,7 +161,7 @@ class AdminMemberQuizServiceTest(
 
             val matching = adminMemberQuizService.getMemberQuizzes(matched).rows.single().matching
 
-            matching?.miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
+            matching?.missReason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
             matching?.outsideRequests?.map { it.otherNickname to it.requestState } shouldBe
                 listOf("성사상대" to PersonalRequestState.ACCEPTED)
         }
@@ -171,9 +171,9 @@ class AdminMemberQuizServiceTest(
             val suspended = saveMember("정지", status = MemberStatus.SUSPENDED)
             saveCompleted(suspended, quizSetId)
 
-            val miss = adminMemberQuizService.getMemberQuizzes(suspended).rows.single().matching?.miss
+            val missReason = adminMemberQuizService.getMemberQuizzes(suspended).rows.single().matching?.missReason
 
-            miss?.reason shouldBe MatchMissReason.EXCLUDED_INACTIVE
+            missReason shouldBe MatchMissReason.EXCLUDED_INACTIVE
         }
     }
 
@@ -208,7 +208,7 @@ class AdminMemberQuizServiceTest(
             groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, saveMember("그룹원")))
 
             val missByQuizSetId = adminMemberQuizService.getMemberQuizzes(me).rows
-                .associate { it.quizSet.id to it.matching?.miss?.reason }
+                .associate { it.quizSet.id to it.matching?.missReason }
 
             missByQuizSetId[generatedQuizSetId] shouldBe MatchMissReason.NOT_ASSIGNED_TO_GROUP
             missByQuizSetId[notGeneratedQuizSetId] shouldBe MatchMissReason.NOT_GENERATED

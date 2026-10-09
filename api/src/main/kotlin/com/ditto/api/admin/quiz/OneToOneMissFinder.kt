@@ -1,6 +1,5 @@
 package com.ditto.api.admin.quiz
 
-import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.match.matching.MatchParticipant
 import com.ditto.api.match.matching.OneToOneMatchingProcessor
@@ -18,12 +17,13 @@ class OneToOneMissFinder(
     private val matchmakingService: MatchmakingService,
     private val oneToOneMatchingProcessor: OneToOneMatchingProcessor,
 ) {
-    fun findMisses(input: OneToOneMissInput): Map<Long, MatchMiss> {
+    fun findMisses(input: OneToOneMissInput): Map<Long, MatchMissReason> {
         val withoutCandidate = input.source.progresses.filter { it.memberId !in input.candidateOwnerIds }
         val prePoolMissByMemberId = buildMap {
             withoutCandidate.forEach { progress ->
-                val miss = PrePoolMiss.of(progress, input.source.membersById[progress.memberId], input.generatedAt)
-                if (miss != null) put(progress.memberId, miss)
+                val member = input.source.membersById[progress.memberId]
+                val missReason = PrePoolMiss.of(progress, member, input.generatedAt)
+                if (missReason != null) put(progress.memberId, missReason)
             }
         }
         val poolEntrantIds = withoutCandidate.map { it.memberId }.toSet() - prePoolMissByMemberId.keys
@@ -48,10 +48,10 @@ class OneToOneMissFinder(
     }
 
     // 1:1 제외 정책(OneToOneExclusionPolicy)이 보는 두 조건을 실제 기록으로 확인한다.
-    private fun exclusionMissOf(member: Member, input: OneToOneMissInput): MatchMiss = when {
-        !member.isActive() -> MatchMiss(MatchMissReason.EXCLUDED_INACTIVE)
-        member.id in input.acceptedMemberIds -> MatchMiss(MatchMissReason.EXCLUDED_ALREADY_MATCHED)
-        else -> MatchMiss(MatchMissReason.EXCLUDED_OTHER)
+    private fun exclusionMissOf(member: Member, input: OneToOneMissInput): MatchMissReason = when {
+        !member.isActive() -> MatchMissReason.EXCLUDED_INACTIVE
+        member.id in input.acceptedMemberIds -> MatchMissReason.EXCLUDED_ALREADY_MATCHED
+        else -> MatchMissReason.EXCLUDED_OTHER
     }
 
     private class OneToOneFunnel(pool: List<MatchParticipant>, processor: OneToOneMatchingProcessor) {
@@ -62,12 +62,12 @@ class OneToOneMissFinder(
         fun participantOf(memberId: Long): MatchParticipant? = poolById[memberId]
 
         // 자격 상대가 있으면 매칭이 반드시 후보를 준다. 그런데도 없으면 매칭 전이거나 매칭 뒤에 상태가 바뀐 것이다.
-        fun missOf(participant: MatchParticipant, isGenerated: Boolean): MatchMiss {
+        fun missOf(participant: MatchParticipant, isGenerated: Boolean): MatchMissReason {
             if (participant.memberId !in memberIdsWithEligiblePair) {
-                return MatchMiss(noEligiblePairReasonOf(participant))
+                return noEligiblePairReasonOf(participant)
             }
-            if (!isGenerated) return MatchMiss(MatchMissReason.NOT_GENERATED)
-            return MatchMiss(MatchMissReason.STATE_CHANGED_AFTER_GENERATION)
+            if (!isGenerated) return MatchMissReason.NOT_GENERATED
+            return MatchMissReason.STATE_CHANGED_AFTER_GENERATION
         }
 
         private fun noEligiblePairReasonOf(participant: MatchParticipant): MatchMissReason =

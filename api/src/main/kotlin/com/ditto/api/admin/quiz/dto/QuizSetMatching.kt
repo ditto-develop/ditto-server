@@ -24,7 +24,7 @@ class ParticipantMatching(
     val personalCandidates: List<PersonalCandidate> = emptyList(),
     val outsideRequests: List<OutsideRequest> = emptyList(),
     val groupCandidates: List<GroupCandidate> = emptyList(),
-    val miss: MatchMiss? = null,
+    val missReason: MatchMissReason? = null,
 ) {
     companion object {
         val EMPTY = ParticipantMatching()
@@ -33,7 +33,7 @@ class ParticipantMatching(
         fun ofOneToOne(
             records: OneToOneRecords,
             nicknames: Map<Long, String>,
-            miss: MatchMiss?,
+            missReason: MatchMissReason?,
         ): ParticipantMatching {
             val memberId = records.memberId
             val candidates = records.candidates.sortedByDescending { it.score }
@@ -43,7 +43,7 @@ class ParticipantMatching(
             return ParticipantMatching(
                 personalCandidates = candidates.map { PersonalCandidate.of(it, requestsWithCandidates, nicknames) },
                 outsideRequests = outsideRequests.map { OutsideRequest.of(it, memberId, nicknames) },
-                miss = miss,
+                missReason = missReason,
             )
         }
     }
@@ -179,8 +179,6 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
         }
     }
 }
-
-class MatchMiss(val reason: MatchMissReason)
 
 /** 이유를 얼마나 드러낼지. 예상된 결과는 흐리게, 테스터가 조치해야 하는 것은 노란 배지로 띄운다. */
 enum class MissEmphasis(val cssClass: String) {
