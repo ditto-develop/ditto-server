@@ -15,7 +15,7 @@ data class ReviewLoginRequest(
     @field:Size(max = 100)
     val loginId: String,
 
-    /** BCrypt 는 72바이트까지만 본다. 그보다 길면 대조 자체가 거부된다. */
+    /** BCrypt 는 앞 72바이트만 대조하고 나머지는 무시한다. 길이 제한은 그 근처의 느슨한 상한이다(글자 수 기준). */
     @field:Mask
     @field:NotBlank
     @field:Size(max = 72)

@@ -24,6 +24,11 @@ import java.security.MessageDigest
 class ReviewLoginService(
     private val properties: ReviewLoginProperties,
 ) {
+    /**
+     * 대조 비용은 해시에 적힌 cost 를 따른다. 설정 해시는 cost 10 으로 만든다 — API Key 는 앱에 들어 있어
+     * 사실상 공개라, cost 를 높이면 요청마다 0.5 vCPU 파드의 CPU 를 그만큼 쓰게 된다.
+     * 24자 랜덤 비밀번호면 cost 10 으로 충분하다.
+     */
     private val passwordEncoder = BCryptPasswordEncoder()
 
     fun authenticate(request: ReviewLoginRequest) {
@@ -33,6 +38,7 @@ class ReviewLoginService(
         val idMatches = MessageDigest.isEqual(request.loginId.toByteArray(), properties.loginId.toByteArray())
         val passwordMatches = passwordEncoder.matches(request.password, properties.passwordHash)
         if (!idMatches || !passwordMatches) {
+            // 예외 로그와 겹치지만 어느 값이 틀렸는지는 여기서만 남는다.
             log.warn { "심사용 로그인 실패 (idMatches=$idMatches)" }
             throw WarnException(ErrorCode.INVALID_REVIEW_LOGIN)
         }
