@@ -3,9 +3,11 @@ package com.ditto.api.auth.facade
 import com.ditto.api.auth.dto.NativeSocialLoginResponse
 import com.ditto.api.auth.dto.NativeSocialLoginResult
 import com.ditto.api.auth.dto.OAuthLoginResult
+import com.ditto.api.auth.dto.ReviewLoginRequest
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
+import com.ditto.api.auth.service.ReviewLoginService
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.api.system.ServerTimeProvider
@@ -24,6 +26,7 @@ class OAuthFacade(
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val reviewLoginService: ReviewLoginService,
 ) {
     fun getAuthorizationUrl(provider: SocialProvider): String = oAuthService.getAuthorizationUrl(provider)
 
@@ -71,8 +74,28 @@ class OAuthFacade(
         credential: NativeSocialCredential,
     ): NativeSocialLoginResult {
         val userInfo = oAuthService.authenticateNative(provider, credential)
-        val member = findOrCreateMember(provider, userInfo)
+        return nativeLoginResult(findOrCreateMember(provider, userInfo))
+    }
 
+    /**
+     * App Store 심사용 데모 로그인 — 소셜 인증 대신 ID·비밀번호로 정해 둔 회원 1명만 들여보낸다.
+     *
+     * 인증만 다르고 나머지는 [loginWithNativeToken]과 같다. 정해 둔 소셜 계정으로 회원을 찾으므로
+     * 처음이면 가입 대기 회원이 생기고, 리뷰어가 탈퇴를 눌러 본 뒤 다시 로그인하면 소셜 재로그인처럼 복구된다.
+     */
+    fun loginForReview(request: ReviewLoginRequest): NativeSocialLoginResult {
+        reviewLoginService.authenticate(request)
+        val member = memberSocialAccountService.findOrCreateMember(
+            provider = ReviewLoginService.PROVIDER,
+            providerUserId = ReviewLoginService.PROVIDER_USER_ID,
+            // null 이면 기존 값을 덮지 않는다.
+            email = null,
+            birthDate = null,
+        )
+        return nativeLoginResult(member)
+    }
+
+    private fun nativeLoginResult(member: Member): NativeSocialLoginResult {
         blockingSanctionOf(member)?.let { sanctionCode ->
             return NativeSocialLoginResult(
                 response = NativeSocialLoginResponse(

@@ -2,6 +2,7 @@ package com.ditto.api.auth
 
 import com.ditto.api.auth.dto.AppleNativeLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginRequest
+import com.ditto.api.auth.dto.ReviewLoginRequest
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -376,5 +377,91 @@ class OAuthControllerTest : RestDocsTest() {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("1001"))
+    }
+
+    @Test
+    @DisplayName("심사용 데모 로그인은 ID·비밀번호가 맞으면 네이티브 로그인과 같은 응답으로 토큰을 준다")
+    fun reviewLogin() {
+        // application-test.yml 의 테스트 전용 값
+        val request = ReviewLoginRequest(loginId = "app-review", password = "review-password")
+
+        mockMvc.perform(
+            post("/api/v1/users/review-login")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.accessToken").isNotEmpty)
+            .andExpect(jsonPath("$.data.signupRequired").value(true))
+            .andExpect(jsonPath("$.data.sanctioned").value(false))
+            .andExpect(header().string("Set-Cookie", containsString("refreshToken=")))
+            .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+            .andDo(
+                document(
+                    "oauth-review-login",
+                    preprocessRequest(prettyPrint()),
+                    preprocessResponse(prettyPrint()),
+                    resource(
+                        ResourceSnippetParameters.builder()
+                            .tag("OAuth")
+                            .summary("App Store 심사용 데모 로그인 (앱)")
+                            .description(
+                                "App Store 리뷰어가 소셜 인증 없이 들어올 수 있도록, 서버에 설정된 ID·비밀번호가 맞으면 " +
+                                    "정해 둔 심사 계정 1개로 로그인시킨다. 처음이면 가입 대기 회원이 생겨 signupRequired=true 다. " +
+                                    "응답·refreshToken 쿠키·제재 분기는 네이티브 소셜 로그인과 같다. " +
+                                    "설정이 비어 있거나 값이 틀리면 1005(INVALID_REVIEW_LOGIN)로 거부한다.",
+                            )
+                            .requestFields(
+                                fieldWithPath("loginId").description("심사용 로그인 ID"),
+                                fieldWithPath("password").description("심사용 로그인 비밀번호 (최대 72바이트)"),
+                            )
+                            .responseFields(
+                                fieldWithPath("success").description("성공 여부"),
+                                fieldWithPath("data.accessToken").type(JsonFieldType.STRING).optional()
+                                    .description("우리 서비스 accessToken (제재 회원은 null)"),
+                                fieldWithPath("data.signupRequired").description("회원가입(추가 정보 입력) 필요 여부"),
+                                fieldWithPath("data.sanctioned").description("제재 회원 여부"),
+                                fieldWithPath("data.sanctionCode").type(JsonFieldType.STRING).optional()
+                                    .description("제재 코드 (MEMBER_SUSPENDED | MEMBER_BANNED, 제재가 아니면 null)"),
+                                fieldWithPath("data.suspendedUntil").type(JsonFieldType.STRING).optional()
+                                    .description("정지 해제 예정 일시 (정지만 존재, 그 외 null)"),
+                                fieldWithPath("error").description("에러 정보 (성공 시 null)"),
+                            )
+                            .build(),
+                    ),
+                ),
+            )
+    }
+
+    @Test
+    @DisplayName("심사용 데모 로그인은 비밀번호가 틀리면 토큰 없이 1005로 거부한다")
+    fun reviewLoginWithWrongPassword() {
+        val request = ReviewLoginRequest(loginId = "app-review", password = "wrong-password")
+
+        mockMvc.perform(
+            post("/api/v1/users/review-login")
+                .withApiKey()
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("1005"))
+            .andExpect(header().doesNotExist("Set-Cookie"))
+    }
+
+    @Test
+    @DisplayName("심사용 데모 로그인에 API Key가 없으면 401을 반환한다")
+    fun reviewLoginWithoutApiKey() {
+        val request = ReviewLoginRequest(loginId = "app-review", password = "review-password")
+
+        mockMvc.perform(
+            post("/api/v1/users/review-login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isUnauthorized)
     }
 }

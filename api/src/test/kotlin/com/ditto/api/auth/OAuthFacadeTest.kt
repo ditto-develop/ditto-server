@@ -1,9 +1,11 @@
 package com.ditto.api.auth
 
+import com.ditto.api.auth.dto.ReviewLoginRequest
 import com.ditto.api.auth.facade.OAuthFacade
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
+import com.ditto.api.auth.service.ReviewLoginService
 import com.ditto.api.config.FrontProperties
 import com.ditto.api.config.auth.JwtTokenProvider
 import com.ditto.api.sanction.service.SanctionExpiryService
@@ -11,6 +13,7 @@ import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -40,6 +43,7 @@ class OAuthFacadeTest(
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val reviewLoginService: ReviewLoginService,
     private val frontProperties: FrontProperties,
     dataSource: DataSource,
 ) : IntegrationTest(
@@ -69,6 +73,7 @@ class OAuthFacadeTest(
                     authService = authService,
                     serverTimeProvider = serverTimeProvider,
                     sanctionExpiryService = sanctionExpiryService,
+                    reviewLoginService = reviewLoginService,
                 )
 
                 val exception = shouldThrow<ErrorException> {
@@ -337,6 +342,55 @@ class OAuthFacadeTest(
 
                 memberRepository.count() shouldBe 2
                 socialAccountRepository.count() shouldBe 2
+            }
+        }
+
+        "심사용 데모 로그인" - {
+            // application-test.yml 의 테스트 전용 값
+            val reviewRequest = ReviewLoginRequest(loginId = "app-review", password = "review-password")
+
+            "처음 로그인하면 정해 둔 애플 소셜 계정으로 가입 대기 회원이 생기고 토큰을 받는다" {
+                val result = oAuthFacade.loginForReview(reviewRequest)
+
+                result.response.accessToken shouldNotBe null
+                result.response.signupRequired shouldBe true
+                result.refreshToken shouldNotBe null
+                val account = socialAccountRepository.findAll().single()
+                account.provider shouldBe ReviewLoginService.PROVIDER
+                account.providerUserId shouldBe ReviewLoginService.PROVIDER_USER_ID
+            }
+
+            "가입을 마친 뒤 다시 로그인하면 같은 회원으로 들어간다" {
+                oAuthFacade.loginForReview(reviewRequest)
+                val member = memberRepository.findAll().single()
+                member.activate()
+                memberRepository.save(member)
+
+                val result = oAuthFacade.loginForReview(reviewRequest)
+
+                result.response.signupRequired shouldBe false
+                memberRepository.count() shouldBe 1
+            }
+
+            "탈퇴한 뒤 다시 로그인하면 소셜 재로그인처럼 복구된다" {
+                oAuthFacade.loginForReview(reviewRequest)
+                val member = memberRepository.findAll().single()
+                member.activate()
+                member.leave(reason = null, now = LocalDateTime.now())
+                memberRepository.save(member)
+
+                oAuthFacade.loginForReview(reviewRequest)
+
+                memberRepository.findAll().single().status shouldBe MemberStatus.ACTIVE
+            }
+
+            "비밀번호가 틀리면 회원을 만들지 않고 거부한다" {
+                val exception = shouldThrow<WarnException> {
+                    oAuthFacade.loginForReview(reviewRequest.copy(password = "wrong-password"))
+                }
+
+                exception.errorCode shouldBe ErrorCode.INVALID_REVIEW_LOGIN
+                memberRepository.count() shouldBe 0
             }
         }
     },
