@@ -2,6 +2,10 @@ ditto:
   admin:
     qa-tools:
       enabled: true
+  # 테스트 전용 값. 비밀번호 평문은 review-password 다(테스트 코드에서 쓴다).
+  review-login:
+    login-id: app-review
+    password-hash: "$2y$10$aJjT.0r6y.8GOC2M5AM/NuX.mlc1gYTESaeIBZGGjHW27NCWF717S"
   quiz:
     available-days:
       - MONDAY
