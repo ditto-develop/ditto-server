@@ -29,10 +29,16 @@ class AdminQaRoomController(
 ) {
     @GetMapping("/admin/qa/rooms/{roomId}")
     fun page(@PathVariable roomId: Long, model: Model, redirectAttributes: RedirectAttributes): String {
-        val room = adminQaRoomService.findRoom(roomId)
-        if (room == null) {
-            redirectAttributes.addFlashAttribute("error", "더미가 들어 있는 채팅방만 볼 수 있습니다: #$roomId")
-            return QaRoutes.ROOMS_SECTION
+        val room = when (val lookup = adminQaRoomService.findRoom(roomId)) {
+            is QaRoomLookup.Found -> lookup.view
+            QaRoomLookup.NotFound -> {
+                redirectAttributes.addFlashAttribute("error", "없는 채팅방입니다: #$roomId")
+                return QaRoutes.ROOMS_SECTION
+            }
+            QaRoomLookup.WithoutDummy -> {
+                redirectAttributes.addFlashAttribute("error", "실회원끼리의 채팅방은 콘솔에서 열지 않습니다: #$roomId")
+                return QaRoutes.ROOMS_SECTION
+            }
         }
         model.addAttribute("room", room)
         model.addAttribute("reviews", qaRoomReviews.findDummyReviews(roomId))

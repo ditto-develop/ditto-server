@@ -95,6 +95,12 @@ class AdminQaRoomWebTest(
         return roomView(room).openVote.shouldNotBeNull()
     }
 
+    fun leaveRoom(room: ChatRoom, member: Member) {
+        val membership = chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, member.id).shouldNotBeNull()
+        membership.leave(LocalDateTime.now())
+        chatRoomMemberRepository.save(membership)
+    }
+
     fun lastReadMessageIdOf(room: ChatRoom, member: Member): Long? =
         chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, member.id)?.lastReadMessageId
 
@@ -156,25 +162,22 @@ class AdminQaRoomWebTest(
         "없는 방은 콘솔로 돌려보낸다" {
             mockMvc.perform(get("/admin/qa/rooms/{id}", 999L).with(authentication(admin)))
                 .andExpect(redirectedUrl("/admin/qa#rooms"))
-                .andExpect(flash().attributeExists("error"))
+                .andExpect(flash().attribute("error", containsString("없는 채팅방입니다")))
         }
 
         "실회원끼리의 방은 열지 않고 콘솔로 돌려보낸다" {
-            val sender = saveMember("실회원A")
-            val room = saveRoom(ChatRoomFixture.personal(), listOf(sender, saveMember("실회원B")))
-            saveMessage(room, sender)
+            val room = saveRoom(ChatRoomFixture.personal(), listOf(saveMember("실회원A"), saveMember("실회원B")))
 
             mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
                 .andExpect(redirectedUrl("/admin/qa#rooms"))
-                .andExpect(flash().attributeExists("error"))
+                .andExpect(flash().attribute("error", containsString("실회원끼리의 채팅방은 콘솔에서 열지 않습니다")))
         }
 
         "더미가 나간 방도 볼 수 있다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             val room = saveRoom(ChatRoomFixture.group(), listOf(tester, dummy, saveMember("실회원")))
-            chatRoomMemberRepository.findByRoomId(room.id).first { it.memberId == dummy.id }
-                .also { chatRoomMemberRepository.save(it.apply { leave(LocalDateTime.now()) }) }
+            leaveRoom(room, dummy)
 
             mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
                 .andExpect(status().isOk)
@@ -510,8 +513,7 @@ class AdminQaRoomWebTest(
             val dummy = saveMember("dummy-female-bbbb")
             val room = saveRoom(ChatRoomFixture.group(), listOf(leaver, saveMember("테스터"), dummy))
             createSampleVote(room, dummy)
-            chatRoomMemberRepository.findByRoomIdAndMemberId(room.id, leaver.id).shouldNotBeNull()
-                .let { chatRoomMemberRepository.save(it.apply { leave(LocalDateTime.now()) }) }
+            leaveRoom(room, leaver)
 
             val vote = roomView(room).openVote.shouldNotBeNull()
 
