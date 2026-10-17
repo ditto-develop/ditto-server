@@ -76,11 +76,14 @@ class AdminQaRoomService(
         }
     }
 
-    /** 최근 메시지 [TIMELINE_SIZE]개를 오래된 순서로 준다. 방이 없으면 null. */
-    fun findRoom(roomId: Long): QaRoomView? {
-        val room = chatRoomRepository.findByIdOrNull(roomId) ?: return null
+    /** 최근 메시지 [TIMELINE_SIZE]개를 오래된 순서로 준다. 콘솔 목록과 같이 더미가 들어 있던 방만 연다. */
+    fun findRoom(roomId: Long): QaRoomLookup {
+        val room = chatRoomRepository.findByIdOrNull(roomId) ?: return QaRoomLookup.NotFound
         val dummyIds = qaDummies.findIds()
         val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
+        if (roomMembers.none { it.memberId in dummyIds }) {
+            return QaRoomLookup.WithoutDummy
+        }
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor = null, size = TIMELINE_SIZE)
             .reversed()
         val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }
@@ -88,7 +91,7 @@ class AdminQaRoomService(
         val rows = RoomRows(members, dummyIds)
         val votes = findVotes(room, roomMembers)
 
-        return QaRoomView(
+        val view = QaRoomView(
             now = serverTimeProvider.now(),
             roomId = room.id,
             sourceType = room.sourceType,
@@ -103,6 +106,7 @@ class AdminQaRoomService(
             leaveDissolvesRoom = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft }),
             sourceGroupRoomId = findSourceGroupRoomId(room),
         )
+        return QaRoomLookup.Found(view)
     }
 
     fun findVote(roomId: Long, voteId: Long): QaVote? {

@@ -31,3 +31,5 @@ ditto:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS}
+  chat:
+    content-encryption-key: ${CHAT_CONTENT_ENCRYPTION_KEY}

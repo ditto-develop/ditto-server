@@ -8,3 +8,6 @@ spring:
     hibernate:
       ddl-auto: create-drop
     open-in-view: false
+ditto:
+  chat:
+    content-encryption-key: XmMGOL7lQ6UREHJbqkXd0VTYiSKNbjqC3U/AMTFDX/g=
