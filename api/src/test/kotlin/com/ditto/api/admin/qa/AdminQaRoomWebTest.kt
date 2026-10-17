@@ -158,6 +158,27 @@ class AdminQaRoomWebTest(
                 .andExpect(redirectedUrl("/admin/qa#rooms"))
                 .andExpect(flash().attributeExists("error"))
         }
+
+        "실회원끼리의 방은 열지 않고 콘솔로 돌려보낸다" {
+            val sender = saveMember("실회원A")
+            val room = saveRoom(ChatRoomFixture.personal(), listOf(sender, saveMember("실회원B")))
+            saveMessage(room, sender)
+
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(redirectedUrl("/admin/qa#rooms"))
+                .andExpect(flash().attributeExists("error"))
+        }
+
+        "더미가 나간 방도 볼 수 있다" {
+            val tester = saveMember("테스터")
+            val dummy = saveMember("dummy-female-aaaa")
+            val room = saveRoom(ChatRoomFixture.group(), listOf(tester, dummy, saveMember("실회원")))
+            chatRoomMemberRepository.findByRoomId(room.id).first { it.memberId == dummy.id }
+                .also { chatRoomMemberRepository.save(it.apply { leave(LocalDateTime.now()) }) }
+
+            mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
+                .andExpect(status().isOk)
+        }
     }
 
     "더미로 메시지 보내기" - {

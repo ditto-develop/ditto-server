@@ -199,6 +199,7 @@ class AdminQaReviewWebTest(
             val groupRoom = saveEndedGroupRoom(tester, dummy, saveMember("dummy-male-bbbb"))
             val pair = saveGroupRematch(groupRoom, tester, dummy)
             val rematchRoom = chatRoomRepository.save(ChatRoomFixture.rematch(sourceId = pair.id))
+            chatRoomMemberRepository.saveAll(listOf(tester, dummy).map { ChatRoomMemberFixture.create(rematchRoom.id, it.id) })
 
             (roomPageModel(rematchRoom)["room"] as QaRoomView).sourceGroupRoomId shouldBe groupRoom.id
         }

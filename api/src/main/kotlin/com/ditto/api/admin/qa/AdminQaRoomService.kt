@@ -76,11 +76,17 @@ class AdminQaRoomService(
         }
     }
 
-    /** 최근 메시지 [TIMELINE_SIZE]개를 오래된 순서로 준다. 방이 없으면 null. */
+    /**
+     * 최근 메시지 [TIMELINE_SIZE]개를 오래된 순서로 준다. 방이 없거나 더미가 들어 있던 방이 아니면 null.
+     * 실회원끼리의 대화는 운영자가 볼 수 없게 콘솔 목록과 같은 범위로 막는다.
+     */
     fun findRoom(roomId: Long): QaRoomView? {
         val room = chatRoomRepository.findByIdOrNull(roomId) ?: return null
         val dummyIds = qaDummies.findIds()
         val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
+        if (roomMembers.none { it.memberId in dummyIds }) {
+            return null
+        }
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor = null, size = TIMELINE_SIZE)
             .reversed()
         val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }

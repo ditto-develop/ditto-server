@@ -31,7 +31,7 @@ class AdminQaRoomController(
     fun page(@PathVariable roomId: Long, model: Model, redirectAttributes: RedirectAttributes): String {
         val room = adminQaRoomService.findRoom(roomId)
         if (room == null) {
-            redirectAttributes.addFlashAttribute("error", "없는 채팅방입니다: #$roomId")
+            redirectAttributes.addFlashAttribute("error", "더미가 들어 있는 채팅방만 볼 수 있습니다: #$roomId")
             return QaRoutes.ROOMS_SECTION
         }
         model.addAttribute("room", room)
