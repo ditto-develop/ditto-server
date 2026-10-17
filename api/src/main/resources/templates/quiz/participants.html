@@ -61,6 +61,7 @@
                         <summary>표 읽는 법 · 문항 보기</summary>
                         <p class="muted">프로필 열은 성별 · 나이 · 지역 · 직업, 다음 줄에 성별 선호 · 캐리커처, 마지막 줄에 관심사입니다. 회원 상태는 정상 회원이 아닐 때만 회원 열에 배지로 보여 줍니다.</p>
                         <p class="muted">매칭 열의 상대 회원을 누르면 그 회원 행만 걸러 봅니다.</p>
+                        <p class="muted" th:if="${quizSet.matchingType.name() == 'ONE_TO_ONE'}">1:1 후보는 회원마다 점수 상위 5명을 고르고 한쪽만 골라도 남습니다. 그래서 5명보다 많이 받는 회원도 있습니다.</p>
                         <th:block th:unless="${view.quizzes.isEmpty()}">
                             <ol class="muted">
                                 <li th:each="quiz : ${view.quizzes}" th:text="${quiz.question}">질문</li>

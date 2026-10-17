@@ -5,9 +5,10 @@ import com.ditto.api.user.dto.LeaveRequest
 import com.ditto.api.user.facade.UserLeaveFacade
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.match.PersonalMatchFixture
-import com.ditto.domain.match.entity.PersonalMatchStatus
-import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -27,7 +28,8 @@ class UserLeaveFacadeTest(
     private val userLeaveFacade: UserLeaveFacade,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     appleTokenClient: AppleTokenClient,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
@@ -62,15 +64,9 @@ class UserLeaveFacadeTest(
     }
 
     "탈퇴가 막히면 애플 토큰도 폐기하지 않는다" {
-        val (member, account) = saveAppleMember("매칭중애플회원", refreshToken = "apple-refresh-blocked")
-        val partner = memberRepository.save(Member(nickname = "매칭상대").apply { activate() })
-        personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = member.id,
-                receiverId = partner.id,
-                status = PersonalMatchStatus.ACCEPTED,
-            ),
-        )
+        val (member, account) = saveAppleMember("채팅중애플회원", refreshToken = "apple-refresh-blocked")
+        val room = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = member.id))
+        chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
 
         val exception = shouldThrow<WarnException> {
             userLeaveFacade.leave(member.id, member.id, LeaveRequest(reason = "etc"))

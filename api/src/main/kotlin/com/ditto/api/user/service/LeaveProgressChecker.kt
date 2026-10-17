@@ -2,7 +2,6 @@ package com.ditto.api.user.service
 
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -13,7 +12,8 @@ import org.springframework.stereotype.Component
 /**
  * "진행 중인 매칭이나 채팅이 있으면 탈퇴가 제한됩니다"(피그마 6.2.4)에 걸리는지 본다. 진행 중은 넷이다.
  *
- * - 매칭 `PENDING`·`ACCEPTED` — 수락 대기 중인 요청도 상대가 기다리는 상태다.
+ * - 이번 주 1:1 신청이 응답 대기(`PENDING`)인 상태. 지난 주 신청은 이제 수락·거절할 수 없어서 보지 않는다.
+ *   성사(`ACCEPTED`)는 수락할 때 함께 만든 1:1 방을 아래 방 조건이 잡는다.
  * - 끝나지 않은 방(`SCHEDULED`·`ACTIVE`) — `SCHEDULED`(개방 예정, 재매칭 방)도 상대가 곧 열릴 방을 기다린다.
  * - 성사됐는데 방이 아직 없는 재매칭 — 방은 스케줄러가 만들어 성사와 예약 사이에 한 주기(현재 1분)가
  *   빈다. 그 사이 탈퇴하면 위 방 조건을 빠져나가고, 뒤이은 예약이 탈퇴자와의 방을 만든다.
@@ -30,24 +30,18 @@ class LeaveProgressChecker(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
 ) {
 
-    fun hasInProgress(memberId: Long, now: LocalDateTime): Boolean =
-        personalMatchRepository.existsByMemberIdAndStatusIn(memberId, ONGOING_MATCH_STATUSES) ||
+    fun hasInProgress(memberId: Long, now: LocalDateTime): Boolean {
+        val thisWeek = OperationWeek.containing(now.toLocalDate())
+        return personalMatchRepository.existsPendingOfMemberInWeek(memberId, thisWeek.startedOn) ||
             chatRoomRepository.existsUnendedRoomOfMember(memberId) ||
             rematchRepository.existsMatchedWithoutChatRoomOfMember(memberId) ||
-            isWaitingForGroupFormation(memberId, now)
+            isWaitingForGroupFormation(memberId, thisWeek, now)
+    }
 
-    private fun isWaitingForGroupFormation(memberId: Long, now: LocalDateTime): Boolean {
-        val thisWeek = OperationWeek.containing(now.toLocalDate())
+    private fun isWaitingForGroupFormation(memberId: Long, thisWeek: OperationWeek, now: LocalDateTime): Boolean {
         if (GroupResponseDeadline.hasPassed(thisWeek, now)) {
             return false
         }
         return groupMatchMemberRepository.existsAcceptedInUnformedGroupOfWeek(memberId, thisWeek.startedOn)
-    }
-
-    companion object {
-        private val ONGOING_MATCH_STATUSES = setOf(
-            PersonalMatchStatus.PENDING,
-            PersonalMatchStatus.ACCEPTED,
-        )
     }
 }

@@ -6,15 +6,8 @@ import org.springframework.stereotype.Component
 import kotlin.math.abs
 
 /**
- * 1:1 매칭 프로세스.
- *
- * 매칭 자격(성별·나이) 페어만 점수화(페어별 [MatchScoreCalculator]) → 상위 비율 + 동점 선발([TopRatioSelector])
- * → 1인 제한([HardLimitApplier]) 순으로 실행한다. 각 단계는 순수 컴포넌트로 분리되어 독립 검증된다.
- *
- * 후보 풀을 만드는 이 단계에서 하드 필터를 적용한다 — 자격 미달 페어는 아예 후보가 되지 않는다.
- * - 성별: 서로의 성별 선호(이성/동성)를 모두 충족해야 함.
- * - 나이: 나이차가 [MAX_AGE_GAP] 이내여야 함.
- * 두 조건 모두 대칭이라 살아남는 페어는 항상 대칭이므로 [HardLimitApplier] 의 양방향 원칙도 그대로 보존된다.
+ * 성별 선호가 서로 맞고 나이 차가 제한 이내이며 차단 관계가 아닌 페어만 점수를 매긴 뒤, 회원마다 상위 몇 명을 고른다.
+ * 점수가 낮다고 따로 걸러내지 않아서 자격 있는 상대가 있으면 누구나 후보를 받는다.
  */
 @Component
 class OneToOneMatchingProcessor : MatchingProcessor {
@@ -24,11 +17,10 @@ class OneToOneMatchingProcessor : MatchingProcessor {
     override fun match(participants: List<MatchParticipant>): List<ScoredMatch> {
         if (participants.size < 2) return emptyList()
 
-        val selected = selectTopRatio(scoreEligibleDuos(participants))
-        return HardLimitApplier.apply(selected, HARD_LIMIT)
+        return TopPicksSelector.select(scoreEligibleDuos(participants), PICKS_PER_MEMBER)
     }
 
-    // 아래 두 단계는 결정적이라, 어드민이 후보가 없는 이유를 다시 계산할 때도 그대로 쓴다.
+    // 어드민이 후보가 없는 이유를 다시 계산할 때도 쓴다.
     fun scoreEligibleDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
         participants.flatMapIndexed { index, participant ->
             participants.drop(index + 1).mapNotNull { otherParticipant ->
@@ -41,36 +33,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
             }
         }
 
-    fun selectTopRatio(scoredDuos: List<ScoredMatch>): List<ScoredMatch> =
-        TopRatioSelector.select(scoredDuos, TOP_RATIO)
-
-    /**
-     * 동점 무작위와 상관없이 1인 제한을 반드시 통과하는 페어를 가진 회원. 저장된 후보가 없는데 여기 들면
-     * 매칭 뒤에 상태가 바뀐 것이다. 두 사람 모두에게서 [surelyKeptDuos]에 드는 페어만 반드시 살아남는다.
-     */
-    fun memberIdsCertainToKeepCandidate(selectedDuos: List<ScoredMatch>): Set<Long> {
-        val selectedDuosByMemberId = buildMap<Long, MutableList<ScoredMatch>> {
-            selectedDuos.forEach { duo -> duo.memberIds.forEach { getOrPut(it) { mutableListOf() }.add(duo) } }
-        }
-        val surelyKeptDuosByMemberId = selectedDuosByMemberId.mapValues { (_, duos) -> surelyKeptDuos(duos) }
-        return selectedDuos
-            .filter { duo -> duo.memberIds.all { duo in surelyKeptDuosByMemberId.getValue(it) } }
-            .flatMap { it.memberIds }
-            .toSet()
-    }
-
-    // 제한 이하면 전부 남는다. 넘으면 제한+1 번째 점수보다 엄격히 높은 페어만 섞는 순서와 상관없이 위에 남는다.
-    private fun surelyKeptDuos(duos: List<ScoredMatch>): Set<ScoredMatch> {
-        if (duos.size <= HARD_LIMIT) return duos.toSet()
-
-        val firstDroppableScore = duos.sortedByDescending { it.score }[HARD_LIMIT].score
-        return duos.filter { it.score > firstDroppableScore }.toSet()
-    }
-
-    /**
-     * 매칭 자격: 성별 상호호환 + 나이차 [MAX_AGE_GAP] 이내 + 차단 없음.
-     * 세 조건 모두 대칭이라 양방향 원칙을 깨지 않는다.
-     */
+    // 세 조건 모두 대칭이라 A가 B의 자격 상대면 B도 A의 자격 상대다.
     private fun isValidPair(a: MatchParticipant, b: MatchParticipant): Boolean =
         a.isMutuallyCompatibleWith(b) &&
             isWithinAgeGap(a, b) &&
@@ -84,8 +47,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
     }
 
     companion object {
-        private const val TOP_RATIO = 0.2 // 상위 20% 선발
-        private const val HARD_LIMIT = 5 // 1인 최대 노출 5명
+        private const val PICKS_PER_MEMBER = 5
         const val MAX_AGE_GAP = 10 // 나이차 10 초과 페어 제외
     }
 }

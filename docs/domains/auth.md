@@ -24,8 +24,9 @@
 - **애플 로그인은 앱·웹 둘 다 지원한다.** 앱은 `POST /api/v1/users/social-login/apple/native`, 웹은 인가 URL(`GET .../social-login/APPLE`) → 애플 → **`POST /api/v1/users/social-login/APPLE/callback`**(폼 POST). 웹 콜백이 POST인 이유는 scope 를 요청하려면 `response_mode=form_post` 가 필수이기 때문이고, `response_type=code id_token` 으로 받아 **같은 검증기로 ID 토큰을 검증**한다. 함께 온 `code` 는 인증이 아니라 탈퇴 때 폐기할 애플 토큰을 받는 데만 쓴다(아래 서버 간 알림 항목). 웹은 `client_id` 가 Services ID 다. [ADR 0023](../adr/0023-apple-web-login-form-post-callback.md)
 - **CORS 허용 origin에 `https://appleid.apple.com` 이 있어야 애플 웹 로그인이 된다.** 콜백이 애플 도메인이 보내는 크로스사이트 폼 POST 라 Origin 이 애플 것인데, 목록에 없으면 컨트롤러 전에 403 `Invalid CORS request` 로 끊긴다. 프로덕션 값은 `.aws/task-definition.json` 의 `CORS_ALLOWED_ORIGINS` 라 코드에 안 보이니 지울 때 주의. 와일드카드로 열지 않는 이유는 이 검사가 로그인 CSRF(피해자 브라우저로 공격자 계정에 로그인시키기)를 막고 있기 때문이다. [ADR 0030](../adr/0030-apple-web-callback-cors-exemption.md)
 - 애플 상세: `POST /api/v1/users/social-login/apple/native`. 애플은 사용자 정보 API가 없어 **ID 토큰(JWT) 서명 검증이 곧 인증**이다(JWKS·`iss`·`aud`·`exp`, 앱이 보내면 `nonce`까지). 로그인 인증에는 비밀값이 필요 없고, .p8 키는 아래 토큰 폐기에만 쓴다. 이름은 애플이 최초 1회만 주므로 앱이 요청에 실어 보낸다. 카카오 계정과 잇지 않는다(제공자별 별도 회원). [ADR 0022](../adr/0022-apple-native-login-id-token.md)
-- **애플 서버 간 알림은 `POST /api/v1/users/social-login/apple/notifications` 로 받는다.** 애플 서버가 부르는 경로라 공개 체인(@Order(3))에 있고 payload 의 애플 서명 검증이 곧 인증이다. `account-delete`·`consent-revoked` 는 탈퇴로 반영하고, 진행 중인 매칭·채팅이 있으면 세션만 끊고 탈퇴를 미룬다(규칙은 `member.md`). 이미 탈퇴했거나 회원이 없으면 무시한다(멱등). 응답은 다른 API 와 같이 항상 HTTP 200 이다. [ADR 0040](../adr/0040-apple-server-notifications-and-token-revoke.md)
-- **앱 안 탈퇴는 커밋 뒤 애플 토큰을 폐기한다**(`UserLeaveFacade`). 로그인 때 받은 인가 코드를 교환해 둔 애플 refresh token 을 쓴다(`socialaccount.md`). 폐기가 실패해도 탈퇴는 그대로다. .p8 키·팀 ID·키 ID 가 없으면 교환·폐기를 건너뛴다. [ADR 0040](../adr/0040-apple-server-notifications-and-token-revoke.md)
+- **애플 서버 간 알림은 `POST /api/v1/users/social-login/apple/notifications` 로 받는다.** 애플 서버가 부르는 경로라 공개 체인(@Order(3))에 있고 payload 의 애플 서명 검증이 곧 인증이다. `account-delete`·`consent-revoked` 는 탈퇴로 반영하고, 진행 중인 매칭·채팅이 있으면 세션만 끊고 탈퇴를 미룬다(규칙은 `member.md`). 이미 탈퇴했거나 회원이 없으면 무시한다(멱등). 응답은 다른 API 와 같이 항상 HTTP 200 이다. [ADR 0042](../adr/0042-apple-server-notifications-and-token-revoke.md)
+- **앱 안 탈퇴는 커밋 뒤 애플 토큰을 폐기한다**(`UserLeaveFacade`). 로그인 때 받은 인가 코드를 교환해 둔 애플 refresh token 을 쓴다(`socialaccount.md`). 폐기가 실패해도 탈퇴는 그대로다. .p8 키·팀 ID·키 ID 가 없으면 교환·폐기를 건너뛴다. [ADR 0042](../adr/0042-apple-server-notifications-and-token-revoke.md)
+- **App Store 심사용 데모 로그인이 있다.** `POST /api/v1/users/review-login`(API Key 전용 체인)은 ID·비밀번호가 맞으면 고정 소셜 계정(`APPLE` / `app-store-review`)으로 로그인시키고, 이후는 네이티브 로그인과 같은 경로·응답이다. 비밀번호는 BCrypt 해시(`REVIEW_LOGIN_PASSWORD_HASH`)로만 설정하며(레포 공개), `REVIEW_LOGIN_ID`·해시 중 하나라도 비면 꺼진다. 실패는 모두 `INVALID_REVIEW_LOGIN`(1005). [ADR 0041](../adr/0041-app-store-review-login.md)
 - 제재 로그인 콜백 계약(FE): 제재 회원 로그인 시 토큰 없이 `?sanctioned=true&sanctionCode=MEMBER_SUSPENDED|MEMBER_BANNED&suspendedUntil=<ISO-8601, 정지만>`으로 리다이렉트. (`OAuthService.getSanctionCallbackUrl`)
 - **refresh 토큰 회전에 30초 유예가 있다.** 쓴 토큰은 바로 지우지 않고 만료를 지금+30초로 앞당긴다 — 갱신 중 페이지 이동으로 새 쿠키를 잃거나 두 문서가 같은 쿠키로 동시에 갱신해도 세션이 끊기지 않게. 규칙은 `docs/domains/refreshtoken.md`. [ADR 0034](../adr/0034-refresh-token-rotation-grace.md)
 - **리프레시 토큰이 없으면 `WarnException`(REFRESH_TOKEN_NOT_FOUND, 2001)이다** — 서버 잘못이 아니라 로그아웃·쿠키 삭제·이미 회전된 토큰으로 정상 도달하는 경로다. `ErrorException`이면 스택트레이스가 ERROR로 남아 진짜 장애처럼 보인다. 만료(`REFRESH_TOKEN_EXPIRED`, 2002)도 같은 등급이다.
@@ -52,7 +53,8 @@
 - [0019](../adr/0019-native-social-login-token-exchange.md) 네이티브 소셜 로그인 토큰 교환 — 리다이렉트 유지 + 앱 전용 창구 추가
 - [0021](../adr/0021-kakao-general-app-profile-input.md) 카카오 일반 앱 전제 — 프로필 정보는 온보딩 입력
 - [0034](../adr/0034-refresh-token-rotation-grace.md) refresh 토큰 회전 30초 유예
-- [0040](../adr/0040-apple-server-notifications-and-token-revoke.md) 애플 서버 간 알림을 탈퇴로 반영, 앱 탈퇴 때 애플 토큰 폐기
+- [0041](../adr/0041-app-store-review-login.md) App Store 심사용 데모 로그인 — 고정 소셜 계정 하나, BCrypt 해시 설정
+- [0042](../adr/0042-apple-server-notifications-and-token-revoke.md) 애플 서버 간 알림을 탈퇴로 반영, 앱 탈퇴 때 애플 토큰 폐기
 
 ## 핵심 파일
 - 체인 정의: `api/src/main/kotlin/com/ditto/api/config/SecurityConfig.kt` (Order 1~6, 각 체인 KDoc)

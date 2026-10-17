@@ -30,7 +30,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
 
@@ -98,7 +97,7 @@ class AdminQuizParticipantMatchingTest(
             candidates.map { it.otherNickname } shouldContainExactly listOf("신청받음", "신청보냄")
             candidates.map { it.requestState } shouldContainExactly
                 listOf(PersonalRequestState.RECEIVED, PersonalRequestState.SENT)
-            view.matching.of(me).miss.shouldBeNull()
+            view.matching.of(me).missReason.shouldBeNull()
         }
 
         "풀에 들기 전 단계에서 빠진 참여자는 그 이유를 받는다" {
@@ -117,10 +116,10 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(notCompleted).miss?.reason shouldBe MatchMissReason.NOT_COMPLETED
-            matching.of(suspended).miss?.reason shouldBe MatchMissReason.EXCLUDED_INACTIVE
-            matching.of(alreadyMatched).miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
-            matching.of(99999L).miss?.reason shouldBe MatchMissReason.MEMBER_DELETED
+            matching.of(notCompleted).missReason shouldBe MatchMissReason.NOT_COMPLETED
+            matching.of(suspended).missReason shouldBe MatchMissReason.EXCLUDED_INACTIVE
+            matching.of(alreadyMatched).missReason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
+            matching.of(99999L).missReason shouldBe MatchMissReason.MEMBER_DELETED
         }
 
         "매칭을 돌린 뒤에 완주한 참여자는 재생성이 필요하다고 표시한다" {
@@ -135,7 +134,7 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(late).miss?.reason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
+            matching.of(late).missReason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
         }
 
         "풀 안에서 짝 자격이 없으면 성별·나이 미상과 그 밖의 경우를 나눈다" {
@@ -147,26 +146,11 @@ class AdminQuizParticipantMatchingTest(
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
             matching.isGenerated shouldBe false
-            matching.of(unknownAge).miss?.reason shouldBe MatchMissReason.UNKNOWN_GENDER_OR_AGE
-            matching.of(onlySameGender).miss?.reason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
+            matching.of(unknownAge).missReason shouldBe MatchMissReason.UNKNOWN_GENDER_OR_AGE
+            matching.of(onlySameGender).missReason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
         }
 
-        "짝 자격은 있지만 상위 20% 컷을 못 넘으면 최고 점수와 컷을 함께 보여 준다" {
-            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
-            val topMale = saveMember("상위남")
-            val topFemale = saveMember("상위여", gender = Gender.FEMALE)
-            val lowFemale = saveMember("하위여", gender = Gender.FEMALE)
-            saveCompleted(topMale, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
-            saveCompleted(topFemale, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L))
-            saveCompleted(lowFemale, quizSetId, mapOf(firstQuizId to 2L, secondQuizId to 2L))
-
-            val miss = adminQuizParticipantService.getParticipants(quizSetId).matching.of(lowFemale).miss.shouldNotBeNull()
-
-            miss.reason shouldBe MatchMissReason.CUT_BY_TOP_RATIO
-            miss.scoreGap shouldBe "최고 0.0점, 기준 100.0점"
-        }
-
-        "매칭 전이면 컷을 넘은 참여자는 탈락이 아니라 매칭 전으로 표시한다" {
+        "자격 상대가 있어도 매칭을 돌리기 전이면 매칭 전으로 표시한다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val male = saveMember("남")
             val female = saveMember("여", gender = Gender.FEMALE)
@@ -175,22 +159,10 @@ class AdminQuizParticipantMatchingTest(
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
             matching.isGenerated shouldBe false
-            matching.of(male).miss?.reason shouldBe MatchMissReason.NOT_GENERATED
+            matching.of(male).missReason shouldBe MatchMissReason.NOT_GENERATED
         }
 
-        "선발 페어가 5개를 넘는 상대 쪽에서 밀렸으면 5명 제한 탈락이다" {
-            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
-            val center = saveMember("가운데")
-            val leaves = (1..6).map { saveMember("상대$it", gender = Gender.FEMALE) }
-            (listOf(center) + leaves).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
-            leaves.take(5).forEach { saveCandidatePair(quizSetId, center, it, score = 100.0) }
-
-            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
-
-            matching.of(leaves.last()).miss?.reason shouldBe MatchMissReason.CUT_BY_HARD_LIMIT
-        }
-
-        "5명 제한을 반드시 통과할 짝이 있는데 후보가 없으면 매칭 뒤 상태가 바뀐 것이다" {
+        "자격 상대가 있는데 후보가 없으면 매칭 뒤 상태가 바뀐 것이다" {
             val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
             val matchedMale = saveMember("저장남")
             val matchedFemale = saveMember("저장여", gender = Gender.FEMALE)
@@ -203,7 +175,7 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(changedMale).miss?.reason shouldBe MatchMissReason.STATE_CHANGED_AFTER_GENERATION
+            matching.of(changedMale).missReason shouldBe MatchMissReason.STATE_CHANGED_AFTER_GENERATION
         }
 
         "매칭 뒤에 완주한 사람은 다시 계산하는 풀에 넣지 않는다" {
@@ -221,8 +193,8 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(lonelyMale).miss?.reason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
-            matching.of(lateFemale).miss?.reason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
+            matching.of(lonelyMale).missReason shouldBe MatchMissReason.NO_ELIGIBLE_PAIR
+            matching.of(lateFemale).missReason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
         }
 
         "후보 밖의 신청·성사도 상대와 상태를 보여 주고 성사는 실제 기록으로 확인한다" {
@@ -240,7 +212,7 @@ class AdminQuizParticipantMatchingTest(
                 "성사상대" to PersonalRequestState.ACCEPTED,
                 "거절한사람" to PersonalRequestState.REJECTED,
             )
-            matching.miss?.reason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
+            matching.missReason shouldBe MatchMissReason.EXCLUDED_ALREADY_MATCHED
         }
 
         "진행 기록이 없는 후보 상대도 닉네임을 보여 준다" {
@@ -299,8 +271,8 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
-            matching.of(notCompleted).miss?.reason shouldBe MatchMissReason.NOT_COMPLETED
-            matching.of(99999L).miss?.reason shouldBe MatchMissReason.MEMBER_DELETED
+            matching.of(notCompleted).missReason shouldBe MatchMissReason.NOT_COMPLETED
+            matching.of(99999L).missReason shouldBe MatchMissReason.MEMBER_DELETED
         }
 
         "그룹을 만들기 전이면 완주자는 미배정이 아니라 매칭 전이다" {
@@ -310,7 +282,7 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching.of(member)
 
-            matching.miss?.reason shouldBe MatchMissReason.NOT_GENERATED
+            matching.missReason shouldBe MatchMissReason.NOT_GENERATED
         }
 
         "그룹에 들지 못한 완주자는 미배정으로 표시하고 1:1 후보는 비어 있다" {
@@ -323,7 +295,7 @@ class AdminQuizParticipantMatchingTest(
 
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching.of(leftOver)
 
-            matching.miss?.reason shouldBe MatchMissReason.NOT_ASSIGNED_TO_GROUP
+            matching.missReason shouldBe MatchMissReason.NOT_ASSIGNED_TO_GROUP
             matching.personalCandidates.shouldBeEmpty()
         }
     }

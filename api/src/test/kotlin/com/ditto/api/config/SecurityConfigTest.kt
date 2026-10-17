@@ -158,7 +158,7 @@ class SecurityConfigTest : RestDocsTest() {
                     .content("""{"payload":"not-a-notification"}"""),
             )
                 .andExpect(status().isOk)
-                .andExpect(jsonPath("$.error.code").value("1005"))
+                .andExpect(jsonPath("$.error.code").value("1006"))
         }
 
         @Test

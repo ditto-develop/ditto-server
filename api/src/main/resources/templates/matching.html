@@ -22,6 +22,11 @@
                     저장한 행 <b th:text="${regeneration.rowCounts.savedCount}">0</b></span>
                     (이 요약은 새로 고치면 사라집니다)
                 </p>
+                <p class="muted" th:if="${candidateCounts != null and !regeneration.matches.isEmpty()}">
+                    후보 0명인 회원 <b th:text="${candidateCounts.memberCountWithoutCandidate}">0</b>명 ·
+                    후보를 받은 회원은 <b th:text="${candidateCounts.minCandidateCount}">0</b>~<b th:text="${candidateCounts.maxCandidateCount}">0</b>명씩.
+                    1:1은 회원마다 점수 상위 5명을 고르고 한쪽만 골라도 남아서 5명보다 많이 받는 회원도 있습니다.
+                </p>
                 <p class="muted" th:if="${regeneration.matches.isEmpty()}">만들어진 매칭이 없습니다. 매칭 대상이 모자라거나 조건이 맞는 조합이 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${regeneration.matches.isEmpty()}">
                     <table class="tbl">

@@ -3,6 +3,7 @@
 <body>
 <!-- 참여자 한 명의 매칭 칸. 상대 회원 링크는 그 퀴즈셋 참여 현황 검색으로 간다. -->
 <th:block th:fragment="matchCell(matching, quizSetId, memberId)">
+    <div class="muted" th:unless="${matching.personalCandidates.isEmpty()}" th:text="|후보 ${matching.personalCandidates.size()}명|">후보 3명</div>
     <div class="nowrap" th:each="c : ${matching.personalCandidates}">
         <a class="member-search-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSetId},q=|#${c.otherMemberId}|)}"
            th:text="|${c.otherNickname ?: '삭제된 회원'} (#${c.otherMemberId})|">닉네임 (#2)</a>
@@ -28,9 +29,8 @@
             <span th:class="${o.response.tone.cssClass}" th:text="${o.response.label}">대기</span>
         </div>
     </div>
-    <th:block th:if="${matching.miss != null}" th:with="reason=${matching.miss.reason}">
+    <th:block th:if="${matching.missReason != null}" th:with="reason=${matching.missReason}">
         <span th:class="${reason.emphasis.cssClass}" th:text="${reason.label}">퀴즈 미완료</span>
-        <span class="muted" th:if="${matching.miss.scoreGap != null}" th:text="|(${matching.miss.scoreGap})|">(최고 72.5점, 기준 80.0점)</span>
         <th:block th:if="${reason.nextAction != null}">
             <div class="muted" th:if="${reason.linksToParticipants}">
                 → <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSetId},q=|#${memberId}|)}" th:text="${reason.nextAction}">참여 현황에서 이유 보기</a>

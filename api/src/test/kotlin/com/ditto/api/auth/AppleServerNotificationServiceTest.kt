@@ -3,9 +3,10 @@ package com.ditto.api.auth
 import com.ditto.api.auth.service.AppleServerNotificationService
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.support.IntegrationTest
-import com.ditto.domain.match.PersonalMatchFixture
-import com.ditto.domain.match.entity.PersonalMatchStatus
-import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -28,7 +29,8 @@ class AppleServerNotificationServiceTest(
     private val socialAccountRepository: SocialAccountRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -89,19 +91,13 @@ class AppleServerNotificationServiceTest(
         }
     }
 
-    "진행 중인 매칭이 있으면 탈퇴를 미루고 세션만 끊는다" {
-        val member = saveAppleMember("매칭중애플회원", "apple-sub-matching")
-        val partner = memberRepository.save(Member(nickname = "매칭상대").apply { activate() })
-        personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = member.id,
-                receiverId = partner.id,
-                status = PersonalMatchStatus.ACCEPTED,
-            ),
-        )
+    "끝나지 않은 채팅방이 있으면 탈퇴를 미루고 세션만 끊는다" {
+        val member = saveAppleMember("채팅중애플회원", "apple-sub-chatting")
+        val room = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = member.id))
+        chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = member.id))
         authService.createRefreshToken(member.id)
 
-        appleServerNotificationService.handle(accountDeleted("apple-sub-matching"))
+        appleServerNotificationService.handle(accountDeleted("apple-sub-chatting"))
 
         val deferred = reload(member)
         deferred.status shouldBe MemberStatus.ACTIVE

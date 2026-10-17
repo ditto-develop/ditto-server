@@ -22,7 +22,7 @@
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
             <div class="alert success" th:if="${answersFromMemberId}"
-                 th:text="|회원 #${answersFromMemberId}의 답을 불러왔습니다. 성별은 반대로, 나이는 같게 채웠습니다. 매칭 점수를 낮추려면 몇 문항만 바꾸세요.|">답을 불러왔습니다</div>
+                 th:text="|회원 #${answersFromMemberId}의 답을 불러왔습니다. 성별은 반대로, 나이는 같게 채웠습니다. | + (${isOneToOne} ? |문항을 바꿔 점수를 낮춰도 후보에서 빠지지 않고 순위만 내려갑니다. 후보에서 빼려면 나이 차를 ${maxAgeGap}살보다 크게 하세요.| : '매칭 점수를 낮추려면 몇 문항만 바꾸세요.')">답을 불러왔습니다</div>
 
             <form th:object="${form}" th:action="@{/admin/dummy/single}" method="post"
                   onsubmit="return confirm('운영 서버에서도 실제로 만들어집니다.\n이 값으로 더미를 만들까요?');">
@@ -81,7 +81,7 @@
                     </div>
                     <p class="muted" style="margin:0">캐리커처는 성별에 맞는 그림 중 고른 번호를 씁니다.</p>
                     <p class="muted" style="margin:4px 0 0" th:if="${isOneToOne}"
-                       th:text="|1:1은 실회원처럼 이성끼리, 나이 차가 ${maxAgeGap}살 이내인 회원만 후보가 됩니다.|">1:1 후보 조건</p>
+                       th:text="|1:1은 이성끼리, 나이 차가 ${maxAgeGap}살 이내이고 서로 차단하지 않았으면 점수와 상관없이 후보가 됩니다.|">1:1 후보 조건</p>
                 </div>
 
                 <div class="card">

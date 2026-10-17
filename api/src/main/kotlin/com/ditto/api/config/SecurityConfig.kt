@@ -86,6 +86,9 @@ class SecurityConfig(
      * 소셜 액세스 토큰을 우리 토큰으로 교환하는 것 외에는 아무것도 하지 않는다.
      * 리다이렉트 로그인(@Order(3), permitAll)과 달리 브라우저 리다이렉트가 아니라 앱이 직접 호출하므로
      * API Key를 실을 수 있어 한 단계 조인다.
+     *
+     * App Store 심사용 데모 로그인(review-login)도 같은 이유로 여기 둔다 — 네이티브 로그인처럼 앱이 직접 부르는
+     * 로그인 전 호출이다.
      */
     @Bean
     @Order(4)
@@ -95,6 +98,7 @@ class SecurityConfig(
                 "/api/v1/users/auth/refresh",
                 "/api/v1/users/nickname/**",
                 "/api/v1/users/social-login/*/native",
+                "/api/v1/users/review-login",
             )
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }

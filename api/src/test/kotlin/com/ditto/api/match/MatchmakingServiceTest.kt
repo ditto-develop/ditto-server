@@ -28,6 +28,7 @@ import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -107,21 +108,20 @@ class MatchmakingServiceTest(
 
                 val summary = matchmakingService.generateMatchingCandidates(quizSetId)
 
-                // 요약은 어드민 화면·REST 응답에 그대로 실린다 — 풀 3명, 페어 1건, 처음이라 삭제 0행·양방향 2행 저장
+                // 처음 만드는 거라 지운 행은 없고 페어마다 2행씩 저장한다.
                 summary.participantCount shouldBe 3
-                summary.matches.map { it.memberIds } shouldBe listOf(setOf(a, b))
+                summary.matches.map { it.memberIds } shouldContainExactlyInAnyOrder
+                    listOf(setOf(a, b), setOf(a, c), setOf(b, c))
                 summary.rowCounts.deletedCount shouldBe 0
-                summary.rowCounts.savedCount shouldBe 2
+                summary.rowCounts.savedCount shouldBe 6
 
-                // 상위 20%(+동점) → A-B(100) 만 선발 → (A→B), (B→A) 양방향 2행
-                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId)
-                    .map { it.otherMemberId } shouldBe listOf(b)
-                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(b, quizSetId)
-                    .map { it.otherMemberId } shouldBe listOf(a)
-                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(c, quizSetId) shouldHaveSize 0
+                // 점수가 낮은 C도 후보를 받는다.
+                matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(c, quizSetId)
+                    .map { it.otherMemberId } shouldContainExactlyInAnyOrder listOf(a, b)
 
-                // 일치/전체 문항 수(scoreBreakdown)도 함께 저장된다 — A·B 두 문항 모두 일치
-                val abCandidate = matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId).first()
+                // 일치 문항 수도 같이 저장된다. A와 B는 두 문항 모두 같다.
+                val abCandidate = matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId)
+                    .first { it.otherMemberId == b }
                 abCandidate.matchedQuestionCount shouldBe 2
                 abCandidate.totalQuestionCount shouldBe 2
             }

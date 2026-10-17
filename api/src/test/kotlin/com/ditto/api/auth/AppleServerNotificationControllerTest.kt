@@ -92,7 +92,7 @@ class AppleServerNotificationControllerTest : RestDocsTest() {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.error.code").value("1005"))
+            .andExpect(jsonPath("$.error.code").value("1006"))
     }
 
     companion object {

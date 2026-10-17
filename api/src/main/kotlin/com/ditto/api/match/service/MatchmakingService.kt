@@ -101,8 +101,7 @@ class MatchmakingService(
         logger.info {
             "매칭 후보 생성: quizSetId=${summary.quizSetId} type=${summary.matchingType} " +
                 "참여자=${summary.participantCount}명 삭제=${summary.rowCounts.deletedCount}행 " +
-                "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건 " +
-                summary.matches.joinToString(prefix = "[", postfix = "]") { "${it.memberIds.sorted()}:${it.score}" }
+                "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건"
         }
     }
 

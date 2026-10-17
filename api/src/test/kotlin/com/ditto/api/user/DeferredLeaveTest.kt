@@ -4,10 +4,11 @@ import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.user.scheduler.DeferredLeaveScheduler
 import com.ditto.api.user.service.DeferredLeaveService
-import com.ditto.domain.match.PersonalMatchFixture
-import com.ditto.domain.match.entity.PersonalMatch
-import com.ditto.domain.match.entity.PersonalMatchStatus
-import com.ditto.domain.match.repository.PersonalMatchRepository
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.entity.ChatRoomMember
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -25,7 +26,8 @@ class DeferredLeaveTest(
     private val memberSocialAccountService: MemberSocialAccountService,
     private val memberRepository: MemberRepository,
     private val socialAccountRepository: SocialAccountRepository,
-    private val personalMatchRepository: PersonalMatchRepository,
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -34,27 +36,21 @@ class DeferredLeaveTest(
     fun saveDeferred(nickname: String, reason: String = "APPLE_ACCOUNT_DELETED"): Member =
         memberRepository.save(Member(nickname = nickname).apply { activate() }.apply { deferLeave(reason) })
 
-    fun saveAcceptedMatch(memberId: Long): PersonalMatch {
-        val partner = saveActive("상대-$memberId")
-        return personalMatchRepository.save(
-            PersonalMatchFixture.create(
-                requesterId = memberId,
-                receiverId = partner.id,
-                status = PersonalMatchStatus.ACCEPTED,
-            ),
-        )
+    fun joinUnendedChatRoom(memberId: Long): ChatRoomMember {
+        val room = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = memberId))
+        return chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = memberId))
     }
 
     fun reload(member: Member): Member = memberRepository.findById(member.id).orElseThrow()
 
-    "진행 중인 매칭이 끝나면 미뤄 둔 사유로 탈퇴시킨다" {
+    "진행 중인 채팅방에서 빠지면 미뤄 둔 사유로 탈퇴시킨다" {
         val member = saveDeferred("대기회원")
-        val match = saveAcceptedMatch(member.id)
+        val roomMember = joinUnendedChatRoom(member.id)
 
         deferredLeaveService.leaveIfNothingInProgress(member.id) shouldBe false
         reload(member).status shouldBe MemberStatus.ACTIVE
 
-        personalMatchRepository.delete(match)
+        chatRoomMemberRepository.delete(roomMember)
         deferredLeaveService.leaveIfNothingInProgress(member.id) shouldBe true
 
         val left = reload(member)
@@ -80,13 +76,13 @@ class DeferredLeaveTest(
 
     "스케줄러는 진행이 끝난 회원만 탈퇴시키고 나머지는 계속 기다리게 둔다" {
         val finished = saveDeferred("진행끝난회원")
-        val stillMatching = saveDeferred("아직매칭중회원")
-        saveAcceptedMatch(stillMatching.id)
+        val stillChatting = saveDeferred("아직채팅중회원")
+        joinUnendedChatRoom(stillChatting.id)
 
         deferredLeaveScheduler.leaveDeferredMembers()
 
         reload(finished).status shouldBe MemberStatus.LEFT
-        val waiting = reload(stillMatching)
+        val waiting = reload(stillChatting)
         waiting.status shouldBe MemberStatus.ACTIVE
         waiting.isLeaveDeferred() shouldBe true
     }

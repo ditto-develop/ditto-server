@@ -1,7 +1,6 @@
 package com.ditto.api.admin.quiz
 
 import com.ditto.api.admin.quiz.dto.GroupCandidate
-import com.ditto.api.admin.quiz.dto.MatchMiss
 import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
@@ -62,13 +61,13 @@ class MemberMatchingReader(
             val quizSetId = participation.quizSet.id
             val candidates = candidatesByQuizSetId[quizSetId].orEmpty()
             val requests = requestsByQuizSetId[quizSetId].orEmpty()
-            val miss = if (candidates.isEmpty()) {
+            val missReason = if (candidates.isEmpty()) {
                 oneToOneMissOf(member, participation.progress, requests, generatedAtByQuizSetId[quizSetId])
             } else {
                 null
             }
             val records = OneToOneRecords(member.id, candidates, requests)
-            quizSetId to ParticipantMatching.ofOneToOne(records, nicknames, miss)
+            quizSetId to ParticipantMatching.ofOneToOne(records, nicknames, missReason)
         }
     }
 
@@ -77,17 +76,16 @@ class MemberMatchingReader(
         progress: QuizProgress,
         requests: List<PersonalMatch>,
         generatedAt: LocalDateTime?,
-    ): MatchMiss {
-        val prePoolMiss = PrePoolMiss.of(progress, member, generatedAt)
-        if (prePoolMiss != null) return prePoolMiss
+    ): MatchMissReason {
+        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+        if (prePoolMissReason != null) return prePoolMissReason
 
-        val reason = when {
+        return when {
             !member.isActive() -> MatchMissReason.EXCLUDED_INACTIVE
             requests.any { it.status == PersonalMatchStatus.ACCEPTED } -> MatchMissReason.EXCLUDED_ALREADY_MATCHED
             // 후보가 0건이어도 매칭은 돌았을 수 있어 생성 시각이 없다고 매칭 전으로 보지 않는다.
             else -> MatchMissReason.POOL_REASON_NOT_COMPUTED
         }
-        return MatchMiss(reason)
     }
 
     private fun readGroup(member: Member, participations: List<QuizSetParticipation>): Map<Long, ParticipantMatching> {
@@ -104,21 +102,21 @@ class MemberMatchingReader(
             val groupCandidates = myGroupMatches
                 .filter { it.quizSetId == quizSetId }
                 .map { GroupCandidate.of(it, invitationsByGroupMatchId[it.id].orEmpty(), member.id, nicknames) }
-            val miss = if (groupCandidates.isEmpty()) {
+            val missReason = if (groupCandidates.isEmpty()) {
                 groupMissOf(member, participation.progress, generatedAtByQuizSetId[quizSetId])
             } else {
                 null
             }
-            quizSetId to ParticipantMatching(groupCandidates = groupCandidates, miss = miss)
+            quizSetId to ParticipantMatching(groupCandidates = groupCandidates, missReason = missReason)
         }
     }
 
     // 참여 현황(AdminParticipantMatchingReader.groupMatchingOf)과 같은 규칙이다. 한쪽을 고치면 같이 고친다.
-    private fun groupMissOf(member: Member, progress: QuizProgress, generatedAt: LocalDateTime?): MatchMiss {
-        val prePoolMiss = PrePoolMiss.of(progress, member, generatedAt)
-        if (prePoolMiss != null) return prePoolMiss
-        if (generatedAt == null) return MatchMiss(MatchMissReason.NOT_GENERATED)
-        return MatchMiss(MatchMissReason.NOT_ASSIGNED_TO_GROUP)
+    private fun groupMissOf(member: Member, progress: QuizProgress, generatedAt: LocalDateTime?): MatchMissReason {
+        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+        if (prePoolMissReason != null) return prePoolMissReason
+        if (generatedAt == null) return MatchMissReason.NOT_GENERATED
+        return MatchMissReason.NOT_ASSIGNED_TO_GROUP
     }
 
     private fun findInvitedGroupMatches(member: Member): List<GroupMatch> {

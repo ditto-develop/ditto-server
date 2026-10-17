@@ -180,6 +180,7 @@ class AdminSingleDummyWebTest(
             )
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("회원 #${memberId}의 답을 불러왔습니다")))
+                .andExpect(content().string(containsString("후보에서 빼려면 나이 차를 10살보다 크게 하세요")))
                 .andReturn().modelAndView.shouldNotBeNull().model["form"] as SingleDummyForm
 
             form.gender shouldBe Gender.FEMALE

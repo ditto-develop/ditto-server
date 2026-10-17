@@ -13,7 +13,7 @@
 - `(provider, provider_user_id)` 유니크: 같은 제공자 사용자 1명은 회원 1명에만 연결.
 - `findByMemberId`가 단건 반환 — 회원당 소셜 계정은 1개다. 제공자를 바꿔 로그인하면 연결이 아니라 새 회원이 된다(위 참조).
 
-- `provider_refresh_token`·`provider_client_id` 는 탈퇴 때 제공자 토큰을 폐기하려고 둔다. 지금은 애플만 채우며, 둘은 항상 함께 저장하고 함께 비운다(`storeProviderToken`·`clearProviderToken`). 우리 서비스의 refresh token(`refresh_token` 테이블)과는 다른 토큰이다. 폐기는 토큰을 받은 client_id(앱은 번들 ID, 웹은 Services ID)로 해야 한다. [ADR 0040](../adr/0040-apple-server-notifications-and-token-revoke.md)
+- `provider_refresh_token`·`provider_client_id` 는 탈퇴 때 제공자 토큰을 폐기하려고 둔다. 지금은 애플만 채우며, 둘은 항상 함께 저장하고 함께 비운다(`storeProviderToken`·`clearProviderToken`). 우리 서비스의 refresh token(`refresh_token` 테이블)과는 다른 토큰이다. 폐기는 토큰을 받은 client_id(앱은 번들 ID, 웹은 Services ID)로 해야 한다. [ADR 0042](../adr/0042-apple-server-notifications-and-token-revoke.md)
 
 ## 상태 전이
 - 별도 상태 enum 없음. 한 번 만든 연결(`create`)은 바뀌지 않는다.

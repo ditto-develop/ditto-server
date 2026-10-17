@@ -52,3 +52,7 @@ ditto:
     # 운영 데이터를 지우는 QA 도구(매칭 기록 초기화·강제 삭제). 실제 서비스 시작 전에 끈다.
     qa-tools:
       enabled: ${ADMIN_QA_TOOLS_ENABLED:false}
+  # App Store 심사용 데모 로그인. 둘 중 하나라도 비면 꺼진다. 비밀번호는 BCrypt 해시만 넣는다(레포 공개).
+  review-login:
+    login-id: ${REVIEW_LOGIN_ID:}
+    password-hash: ${REVIEW_LOGIN_PASSWORD_HASH:}

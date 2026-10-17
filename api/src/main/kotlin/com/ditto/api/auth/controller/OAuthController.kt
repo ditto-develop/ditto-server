@@ -3,6 +3,7 @@ package com.ditto.api.auth.controller
 import com.ditto.api.auth.dto.AppleNativeLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginRequest
 import com.ditto.api.auth.dto.NativeSocialLoginResponse
+import com.ditto.api.auth.dto.ReviewLoginRequest
 import com.ditto.api.auth.facade.OAuthFacade
 import com.ditto.api.auth.service.AppleUserFieldReader
 import com.ditto.api.config.auth.RefreshTokenCookieFactory
@@ -133,6 +134,24 @@ class OAuthController(
                 authorizationCode = request.authorizationCode,
             ),
         )
+        result.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
+
+        return ApiResponse.ok(result.response)
+    }
+
+    /**
+     * App Store 심사용 데모 로그인(앱 전용). 리뷰어는 카카오·애플 인증을 대신 통과할 수 없어서,
+     * 설정해 둔 회원 1명만 ID·비밀번호로 들여보낸다. 설정이 비어 있으면 모든 요청을 거부한다.
+     *
+     * 응답은 네이티브 소셜 로그인과 같다 — 앱이 같은 결말 분기를 그대로 쓰게 하기 위해서다.
+     */
+    @Loggable
+    @PostMapping("/api/v1/users/review-login")
+    fun reviewLogin(
+        @Valid @RequestBody request: ReviewLoginRequest,
+        response: HttpServletResponse,
+    ): ApiResponse<NativeSocialLoginResponse> {
+        val result = oAuthFacade.loginForReview(request)
         result.refreshToken?.let { refreshTokenCookieFactory.addTo(response, it) }
 
         return ApiResponse.ok(result.response)
