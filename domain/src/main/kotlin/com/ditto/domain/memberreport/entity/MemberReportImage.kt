@@ -48,10 +48,10 @@ class MemberReportImage private constructor(
             objectKeys: List<String>,
         ): List<MemberReportImage> {
             if (objectKeys.size > MAX_COUNT) {
-                throw WarnException(ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED)
+                throw WarnException(ErrorCode.ATTACHMENT_IMAGE_LIMIT_EXCEEDED)
             }
             if (objectKeys.size != objectKeys.distinct().size) {
-                throw WarnException(ErrorCode.INVALID_REPORT_IMAGE_KEY)
+                throw WarnException(ErrorCode.INVALID_ATTACHMENT_IMAGE_KEY)
             }
             return objectKeys.mapIndexed { index, objectKey ->
                 MemberReportImage(

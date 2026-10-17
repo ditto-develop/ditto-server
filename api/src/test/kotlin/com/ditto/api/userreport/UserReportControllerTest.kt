@@ -1,8 +1,8 @@
 package com.ditto.api.userreport
 
 import com.ditto.api.support.RestDocsTest
+import com.ditto.api.support.image.ImageUploadFileRequest
 import com.ditto.api.userreport.dto.CreateUserReportRequest
-import com.ditto.api.userreport.dto.ImageUploadFileRequest
 import com.ditto.api.userreport.dto.IssueImageUploadUrlsRequest
 import com.ditto.api.userreport.service.UserReportService
 import com.ditto.domain.member.entity.Member

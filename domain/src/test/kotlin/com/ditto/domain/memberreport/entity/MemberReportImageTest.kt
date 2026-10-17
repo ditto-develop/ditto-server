@@ -29,7 +29,7 @@ class MemberReportImageTest : FreeSpec(
                     )
                 }
 
-                exception.errorCode shouldBe ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED
+                exception.errorCode shouldBe ErrorCode.ATTACHMENT_IMAGE_LIMIT_EXCEEDED
             }
 
             "같은 키를 중복 첨부하면 거부한다" {
@@ -40,7 +40,7 @@ class MemberReportImageTest : FreeSpec(
                     )
                 }
 
-                exception.errorCode shouldBe ErrorCode.INVALID_REPORT_IMAGE_KEY
+                exception.errorCode shouldBe ErrorCode.INVALID_ATTACHMENT_IMAGE_KEY
             }
 
             "빈 목록이면 빈 리스트를 반환한다" {

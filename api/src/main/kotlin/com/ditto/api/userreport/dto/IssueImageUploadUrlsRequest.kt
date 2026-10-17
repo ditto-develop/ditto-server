@@ -1,5 +1,6 @@
 package com.ditto.api.userreport.dto
 
+import com.ditto.api.support.image.ImageUploadFileRequest
 import com.ditto.domain.memberreport.entity.MemberReportImage
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty

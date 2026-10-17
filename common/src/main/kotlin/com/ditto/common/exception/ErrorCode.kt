@@ -39,8 +39,9 @@ enum class ErrorCode(
     CANNOT_REPORT_SELF(400, "6001", "자기 자신을 신고할 수 없습니다."),
     DUPLICATE_REPORT(409, "6002", "이미 신고한 사용자입니다."),
     REPORT_ETC_REASON_REQUIRED(400, "6003", "기타 사유는 상세 설명을 입력해야 합니다."),
-    REPORT_IMAGE_LIMIT_EXCEEDED(400, "6004", "이미지 첨부는 최대 3장까지 가능합니다."),
-    INVALID_REPORT_IMAGE_KEY(400, "6005", "유효하지 않은 첨부 이미지입니다."),
+    // 6004·6005는 신고 때 만든 번호지만 의견 첨부 이미지도 같이 쓴다.
+    ATTACHMENT_IMAGE_LIMIT_EXCEEDED(400, "6004", "이미지 첨부는 최대 3장까지 가능합니다."),
+    INVALID_ATTACHMENT_IMAGE_KEY(400, "6005", "유효하지 않은 첨부 이미지입니다."),
     MEMBER_SUSPENDED(403, "6006", "이용이 정지된 계정입니다."),
     MEMBER_BANNED(403, "6007", "영구 차단된 계정입니다."),
     QUIZ_BLOCKED_BY_SANCTION(403, "6008", "제재 중이라 이번 주 퀴즈에 참여할 수 없습니다."),

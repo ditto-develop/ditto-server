@@ -1,4 +1,4 @@
-package com.ditto.api.userreport.dto
+package com.ditto.api.support.image
 
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Pattern
