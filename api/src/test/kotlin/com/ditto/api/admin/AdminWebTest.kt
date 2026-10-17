@@ -7,6 +7,9 @@ import com.ditto.api.match.matching.ScoredMatch
 import com.ditto.api.match.service.CandidateGenerationSummary
 import com.ditto.api.match.service.CandidateRowCounts
 import com.ditto.api.support.JunitDatabaseCleanExtension
+import com.ditto.domain.feedback.FeedbackFixture
+import com.ditto.domain.feedback.entity.FeedbackType
+import com.ditto.domain.feedback.repository.FeedbackRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -125,6 +128,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var notificationRepository: NotificationRepository
+
+    @Autowired
+    lateinit var feedbackRepository: FeedbackRepository
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
@@ -1137,5 +1143,56 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/login"))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("Apple로 로그인")))
+    }
+
+    @Test
+    @DisplayName("의견 목록·상세 페이지가 렌더링되고 유형으로 거를 수 있다")
+    fun feedbackPages() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "제보자", status = MemberStatus.ACTIVE))
+        val bug = feedbackRepository.save(
+            FeedbackFixture.create(memberId = member.id, type = FeedbackType.BUG, content = "사진이 회색으로 보여요"),
+        )
+        feedbackRepository.save(
+            FeedbackFixture.create(memberId = member.id, type = FeedbackType.SUGGESTION, content = "다크 모드 주세요"),
+        )
+
+        mockMvc.perform(get("/admin/feedbacks").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("사진이 회색으로 보여요")))
+            .andExpect(content().string(containsString("다크 모드 주세요")))
+        mockMvc.perform(get("/admin/feedbacks").param("type", "BUG").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("사진이 회색으로 보여요")))
+            .andExpect(content().string(not(containsString("다크 모드 주세요"))))
+        mockMvc.perform(get("/admin/feedbacks/{id}", bug.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("/admin/members?q=%23${member.id}")))
+            .andExpect(content().string(containsString("처리 완료</button>")))
+    }
+
+    @Test
+    @DisplayName("의견을 처리 완료하면 상세로 돌아가 처리자를 보여 주고, 다시 처리하면 안내한다")
+    fun completeFeedback() {
+        val member = memberRepository.save(MemberFixture.create(nickname = "제보자2", status = MemberStatus.ACTIVE))
+        val feedback = feedbackRepository.save(FeedbackFixture.create(memberId = member.id))
+
+        mockMvc.perform(
+            post("/admin/feedbacks/{id}/complete", feedback.id)
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/feedbacks/" + feedback.id))
+            .andExpect(flash().attribute("message", "의견 #${feedback.id} 를 처리 완료했습니다."))
+
+        mockMvc.perform(get("/admin/feedbacks/{id}", feedback.id).with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("처리 결과")))
+            .andExpect(content().string(not(containsString("처리 완료</button>"))))
+
+        mockMvc.perform(
+            post("/admin/feedbacks/{id}/complete", feedback.id)
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(flash().attribute("error", "이미 처리 완료한 의견입니다."))
     }
 }

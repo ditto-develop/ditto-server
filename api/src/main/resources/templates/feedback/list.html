@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('의견 확인')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('feedback')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content" th:with="completedTab=${selectedStatus.name() == 'COMPLETED'}">
+            <h1 class="page-title">의견 확인</h1>
+            <p class="page-desc">앱에서 받은 버그 제보·개선 제안입니다. 답변은 하지 않고, 확인한 의견은 처리 완료로 표시합니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <div class="field-row">
+                    <span class="muted">상태</span>
+                    <a th:each="s : ${statuses}"
+                       th:href="${selectedType != null} ? @{/admin/feedbacks(status=${s.name()},type=${selectedType.name()})} : @{/admin/feedbacks(status=${s.name()})}"
+                       th:text="${s.description}"
+                       th:classappend="${s == selectedStatus} ? 'btn sm' : 'btn secondary sm'">상태</a>
+                </div>
+                <div class="field-row" style="margin-top:10px">
+                    <span class="muted">유형</span>
+                    <a th:href="@{/admin/feedbacks(status=${selectedStatus.name()})}"
+                       th:classappend="${selectedType == null} ? 'btn sm' : 'btn secondary sm'">전체</a>
+                    <a th:each="t : ${types}"
+                       th:href="@{/admin/feedbacks(status=${selectedStatus.name()},type=${t.name()})}"
+                       th:text="${t.description}"
+                       th:classappend="${t == selectedType} ? 'btn sm' : 'btn secondary sm'">유형</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>목록 <span class="badge cat" th:text="${feedbacks.size()} + '건'">0건</span></h2>
+                <p class="muted" th:if="${feedbacks.isEmpty()}"
+                   th:text="${selectedStatus.description} + (${selectedType != null} ? ' · ' + ${selectedType.description} : '') + ' 의견이 없습니다.'">확인 대기 의견이 없습니다.</p>
+                <div class="tbl-scroll" th:unless="${feedbacks.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>유형</th>
+                            <th>내용</th>
+                            <th>보낸 회원</th>
+                            <th>스크린샷</th>
+                            <th>접수</th>
+                            <th th:if="${completedTab}">처리자</th>
+                            <th th:if="${completedTab}">처리 일시</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="f : ${feedbacks}">
+                            <td th:text="${f.id}">1</td>
+                            <td><span class="badge cat" th:text="${f.typeDescription}">유형</span></td>
+                            <td th:text="${f.contentPreview}">내용</td>
+                            <td th:text="${f.memberNickname}">회원</td>
+                            <td th:text="${f.imageCount > 0} ? ${f.imageCount} + '장' : '-'">-</td>
+                            <td th:text="${#temporals.format(f.createdAt, 'MM-dd HH:mm')}">접수</td>
+                            <td th:if="${completedTab}" th:text="${f.completedByName}">처리자</td>
+                            <td th:if="${completedTab}" th:text="${#temporals.format(f.completedAt, 'MM-dd HH:mm')}">처리 일시</td>
+                            <td class="actions">
+                                <a th:href="@{/admin/feedbacks/{id}(id=${f.id})}"
+                                   th:classappend="${completedTab} ? 'btn secondary sm' : 'btn sm'"
+                                   th:text="${completedTab} ? '보기' : '확인'">확인</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

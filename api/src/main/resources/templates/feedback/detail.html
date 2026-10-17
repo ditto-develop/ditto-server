@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('의견 상세')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('feedback')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">
+                의견 #<span th:text="${feedback.id}">0</span>
+                <span class="badge cat" th:text="${feedback.typeDescription}">유형</span>
+                <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'matching' : 'on'" th:text="${feedback.statusDescription}">상태</span>
+            </h1>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <h2>내용</h2>
+                <p class="muted">
+                    보낸 회원:
+                    <a class="text-link" th:if="${feedback.memberStatus != null}"
+                       th:href="@{/admin/members(q=|#${feedback.memberId}|)}" th:text="${feedback.memberNickname}">닉네임</a>
+                    <span th:unless="${feedback.memberStatus != null}" th:text="${feedback.memberNickname}">탈퇴한 회원</span>
+                    <span th:text="'(#' + ${feedback.memberId} + ')'">(#1)</span>
+                    <span th:replace="~{member/parts :: memberStatusBadge(${feedback.memberStatus})}"></span> ·
+                    접수 일시: <span th:text="${#temporals.format(feedback.createdAt, 'yyyy-MM-dd HH:mm:ss')}">일시</span>
+                </p>
+                <p th:text="${feedback.content}" style="white-space:pre-wrap">내용</p>
+                <th:block th:if="${!feedback.imageUrls.isEmpty()}">
+                    <div class="field-row">
+                        <a th:each="url, i : ${feedback.imageUrls}" th:href="${url}" target="_blank" rel="noopener"
+                           th:attr="aria-label='스크린샷 ' + ${i.count} + ' 원본 보기 (새 탭)'">
+                            <img th:src="${url}" th:alt="'스크린샷 ' + ${i.count}" style="max-width:180px;max-height:180px;border-radius:8px"/>
+                        </a>
+                    </div>
+                    <p class="muted">이미지 링크는 10분 뒤 만료됩니다. 안 열리면 새로고침하세요.</p>
+                </th:block>
+                <p class="muted" th:if="${feedback.imageUrls.isEmpty()}">스크린샷 없음</p>
+            </div>
+
+            <div class="card">
+                <h2>기기 정보</h2>
+                <p th:if="${feedback.hasDeviceInfo}">
+                    앱 버전 <strong th:text="${feedback.appVersion ?: '-'}">1.0.0</strong> ·
+                    OS <strong th:text="${feedback.os ?: '-'}">iOS</strong> ·
+                    기기 <strong th:text="${feedback.deviceModel ?: '-'}">기기</strong>
+                </p>
+                <p class="muted" th:unless="${feedback.hasDeviceInfo}">앱이 기기 정보를 보내지 않았습니다.</p>
+            </div>
+
+            <div class="card" th:if="${feedback.awaitingCompletion}">
+                <h2>처리</h2>
+                <p class="muted">처리 완료는 되돌릴 수 없고, 사용자에게 알림은 가지 않습니다.</p>
+                <form th:action="@{/admin/feedbacks/{id}/complete(id=${feedback.id})}" method="post"
+                      onsubmit="return confirm('처리 완료하면 되돌릴 수 없습니다. 계속할까요?')">
+                    <button class="btn" type="submit">처리 완료</button>
+                </form>
+            </div>
+
+            <div class="card" th:unless="${feedback.awaitingCompletion}">
+                <h2>처리 결과</h2>
+                <p class="muted">
+                    처리자: <span th:text="${feedback.completedByName}">이름</span> ·
+                    처리 일시: <span th:text="${#temporals.format(feedback.completedAt, 'yyyy-MM-dd HH:mm:ss')}">일시</span>
+                </p>
+            </div>
+
+            <p><a class="btn secondary sm" th:href="@{/admin/feedbacks}">목록으로</a></p>
+        </main>
+    </div>
+</div>
+</body>
+</html>
