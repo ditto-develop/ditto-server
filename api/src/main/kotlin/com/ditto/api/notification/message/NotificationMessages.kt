@@ -77,7 +77,7 @@ object NotificationMessages {
     fun rematchMatched(counterpartNickname: String): NotificationContent = NotificationContent(
         type = NotificationType.REMATCH_MATCHED,
         title = "재매칭이 성사됐어요",
-        body = "${counterpartNickname}님과 대화방이 다시 열렸어요. 이어서 이야기 나눠보세요.",
+        body = "${counterpartNickname}님과 대화방이 다시 열렸어요.",
     )
 
     /** [requesterNickname] 이 나에게 대화를 신청했다. */
