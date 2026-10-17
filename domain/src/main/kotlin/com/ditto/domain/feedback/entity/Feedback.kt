@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import java.time.LocalDateTime
 import org.hibernate.annotations.Comment
 
 @Entity
@@ -52,17 +53,45 @@ class Feedback private constructor(
     @Column(name = "device_model", length = DEVICE_MODEL_MAX_LENGTH)
     val deviceModel: String? = null,
 
+    status: FeedbackStatus = FeedbackStatus.RECEIVED,
+) : BaseEntity() {
+
     @Comment("처리 상태")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    val status: FeedbackStatus = FeedbackStatus.RECEIVED,
-) : BaseEntity() {
+    var status: FeedbackStatus = status
+        protected set
+
+    @Comment("처리 완료한 관리자 표시명 스냅샷")
+    @Column(name = "completed_by_name", length = COMPLETED_BY_NAME_MAX_LENGTH)
+    var completedByName: String? = null
+        protected set
+
+    @Comment("처리 완료 일시")
+    @Column(name = "completed_at")
+    var completedAt: LocalDateTime? = null
+        protected set
+
+    val isCompleted: Boolean
+        get() = status == FeedbackStatus.COMPLETED
+
+    fun complete(adminName: String, now: LocalDateTime) {
+        if (isCompleted) {
+            throw WarnException(ErrorCode.BAD_REQUEST, "이미 처리 완료한 의견입니다.")
+        }
+        status = FeedbackStatus.COMPLETED
+        completedByName = adminName
+        completedAt = now
+    }
 
     companion object {
         const val CONTENT_MAX_LENGTH = 1000
         const val APP_VERSION_MAX_LENGTH = 30
         const val OS_MAX_LENGTH = 30
         const val DEVICE_MODEL_MAX_LENGTH = 50
+
+        // 관리자 표시명은 "이름(이메일)"이라 이름 50자, 이메일 100자를 합쳐도 들어가게 둔다.
+        const val COMPLETED_BY_NAME_MAX_LENGTH = 200
 
         fun receive(
             memberId: Long,
