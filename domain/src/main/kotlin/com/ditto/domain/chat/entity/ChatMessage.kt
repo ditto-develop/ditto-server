@@ -1,7 +1,9 @@
 package com.ditto.domain.chat.entity
 
 import com.ditto.domain.BaseEntity
+import com.ditto.domain.chat.converter.ChatContentConverter
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -38,8 +40,9 @@ class ChatMessage private constructor(
     @Column(name = "message_type", nullable = false, length = 20)
     val messageType: ChatMessageType,
 
-    @Comment("메시지 내용")
-    @Column(nullable = false, length = MAX_CONTENT_LENGTH)
+    @Comment("메시지 내용 (암호화 저장)")
+    @Convert(converter = ChatContentConverter::class)
+    @Column(nullable = false, length = STORED_CONTENT_LENGTH)
     val content: String,
 ) : BaseEntity() {
 
@@ -56,8 +59,11 @@ class ChatMessage private constructor(
     }
 
     companion object {
-        /** 텍스트 메시지 상한. 컬럼 길이이기도 하다. */
+        /** 텍스트 메시지 상한. */
         const val MAX_CONTENT_LENGTH = 1000
+
+        /** 암호화하면 길어져서 상한까지 한글로 채운 본문이 4,047자가 된다. */
+        const val STORED_CONTENT_LENGTH = 4100
 
         fun of(
             roomId: Long,
