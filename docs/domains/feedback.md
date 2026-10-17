@@ -31,11 +31,30 @@
 
 ## 상태 전이
 
-- 지금은 `RECEIVED`(확인 대기)뿐이다.
+```
+RECEIVED → COMPLETED   (어드민 /admin/feedbacks/{id}/complete 에서만, 되돌리지 않음)
+```
 
-## 후속
+- 처리 완료하면 처리한 관리자 표시명 스냅샷(`completed_by_name`)과 시각(`completed_at`)을 남긴다. 관리자 계정이 지워져도 기록이 남게 신고 검토자 기록과 같은 방식으로 둔다. 처리 시각은 서버 시각(`ServerTimeProvider`)이라 dev에서 시간을 옮겨 두면 접수 시각보다 이르게 보일 수 있다.
+- 이미 처리 완료한 의견을 다시 처리하면 거부한다(`Feedback.complete`). 두 관리자가 거의 동시에 누르면 둘 다 이 검사를 통과해 나중 사람 이름이 남는다. 결과가 같아서 막지 않는다.
+- 사용자에게 처리 결과를 알리지 않는다.
 
-- 어드민 목록·상세·처리 완료: #311
+## 어드민
+
+- 목록 `/admin/feedbacks`: 상태(기본 확인 대기)·유형으로 거르고 최신순. 페이지 나누기는 없다(신고 목록과 같음).
+- 상세 `/admin/feedbacks/{id}`: 내용·기기 정보·스크린샷(열람용 presigned GET URL, 10분 유효). 보낸 회원은 ID와 회원 상태 배지(탈퇴 대기·정지 포함)를 같이 보여 주고 회원 관리 검색(`#id`)으로 연결한다. 회원 행이 지워졌으면 "(탈퇴한 회원 #id)"로 보여 준다.
+
+### dev에서 의견 만들기
+
+FE 화면이 열리기 전에는 API로 만든다. 회원 access token은 앱으로 로그인한 테스트 계정의 것을 쓴다.
+
+```
+curl -X POST "$HOST/api/v1/feedbacks" \
+  -H "X-API-Key: $API_KEY" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"type":"bug","content":"사진이 안 보여요","appVersion":"1.4.0","os":"iOS 18.2","deviceModel":"iPhone15,2"}'
+```
+
+스크린샷까지 붙이려면 위 "스크린샷 업로드" 1·2단계를 먼저 하고 `imageKeys`를 더한다.
 
 ## 핵심 파일
 
@@ -43,3 +62,4 @@
 - 리포지토리: `domain/src/main/kotlin/com/ditto/domain/feedback/repository/`
 - API: `api/src/main/kotlin/com/ditto/api/feedback/`
 - 첨부 이미지 처리: `api/src/main/kotlin/com/ditto/api/support/image/`
+- 어드민: `api/src/main/kotlin/com/ditto/api/admin/feedback/`, `api/src/main/resources/templates/feedback/`
