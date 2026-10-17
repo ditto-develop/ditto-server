@@ -85,7 +85,8 @@ class ChatRoomOpenedNotifierTest(
         "재매칭 상대의 닉네임을 찾지 못하면 일반 문구로 알린다" {
             val member = memberRepository.save(MemberFixture.create(nickname = "가나", status = MemberStatus.ACTIVE))
             val room = chatRoomRepository.save(ChatRoomFixture.rematch())
-            listOf(member.id, member.id + 100).forEach {
+            val missingMemberId = member.id + 100
+            listOf(member.id, missingMemberId).forEach {
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it))
             }
 

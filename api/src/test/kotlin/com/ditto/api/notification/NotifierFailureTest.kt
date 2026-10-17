@@ -2,6 +2,7 @@ package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.match.service.MatchmakingService
+import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatMessageNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
@@ -84,7 +85,11 @@ class NotifierFailureTest {
         notificationAppender,
         LEAD_HOURS,
     )
-    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, memberRepository, notificationAppender)
+    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(
+        chatRoomMemberRepository,
+        memberRepository,
+        notificationAppender,
+    )
     private val chatNoMessageNotifier = ChatNoMessageNotifier(
         chatRoomRepository,
         chatRoomMemberRepository,
@@ -170,6 +175,27 @@ class NotifierFailureTest {
         every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()
 
         chatRoomOpenedNotifier.notifyOpened(listOf(ChatRoomFixture.personal(id = ROOM_ID))) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("채팅방 오픈 — 재매칭 닉네임 조회가 실패해도 다른 방까지 일반 문구로 알린다")
+    fun chatRoomOpenedFallsBackWhenNicknameQueryFails() {
+        val rematchRoom = ChatRoomFixture.rematch(id = ROOM_ID)
+        val personalRoom = ChatRoomFixture.personal(id = ROOM_ID + 1)
+        every { chatRoomMemberRepository.findByRoomIdIn(any()) } returns listOf(
+            ChatRoomMemberFixture.create(roomId = rematchRoom.id, memberId = 1L),
+            ChatRoomMemberFixture.create(roomId = rematchRoom.id, memberId = 2L),
+            ChatRoomMemberFixture.create(roomId = personalRoom.id, memberId = 3L),
+        )
+        every { memberRepository.findAllById(any()) } throws connectionFailure()
+        every { notificationAppender.append(any(), any(), any()) } returns true
+        every { notificationAppender.appendAll(any(), any(), any()) } answers { firstArg<Collection<Long>>().size }
+
+        chatRoomOpenedNotifier.notifyOpened(listOf(rematchRoom, personalRoom)) shouldBe 3
+
+        verify(exactly = 2) {
+            notificationAppender.append(any(), NotificationMessages.chatRoomOpened(), rematchRoom.id)
+        }
     }
 
     @Test

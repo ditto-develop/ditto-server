@@ -117,7 +117,6 @@ class RematchChatRoomOpenerTest(
             chatRoomRepository.findAll().single().opensAt shouldBe LocalDateTime.of(2026, 3, 20, 0, 0)
         }
 
-        // 방이 곧 처리 완료 기록이라 별도 표시가 없다 — 조회가 다시 집어오지 않는지로 확인한다.
         "양쪽에 상대 닉네임으로 성사를 알린다" {
             val memberA = memberRepository.save(MemberFixture.create(nickname = "가나", status = MemberStatus.ACTIVE))
             val memberB = memberRepository.save(MemberFixture.create(nickname = "다라", status = MemberStatus.ACTIVE))
@@ -134,6 +133,7 @@ class RematchChatRoomOpenerTest(
             )
         }
 
+        // 방이 곧 처리 완료 기록이라 별도 표시가 없다 — 조회가 다시 집어오지 않는지로 확인한다.
         "다시 불러도 방이 늘지 않는다(멱등)" {
             saveMatchedRematch()
 
