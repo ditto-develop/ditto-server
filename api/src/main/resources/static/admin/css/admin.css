@@ -181,6 +181,9 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .btn.sm { padding: 6px 12px; font-size: 12px; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
+/* 의견 목록 미리보기. 폰 폭에서 눌리지 않게 최소 폭을 두고 2줄까지만 보인다 */
+.feedback-preview { min-width: 14em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 /* Forms */
 .field { margin-bottom: 16px; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-sub); }

@@ -12,19 +12,21 @@
                 <span class="badge cat" th:text="${feedback.typeDescription}">유형</span>
                 <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'matching' : 'on'" th:text="${feedback.statusDescription}">상태</span>
             </h1>
+            <p class="page-desc" style="word-break:keep-all">
+                보낸 회원:
+                <a class="text-link" th:if="${feedback.memberStatus != null}"
+                   th:href="@{/admin/members(q=|#${feedback.memberId}|)}" th:text="${feedback.memberNickname}">닉네임</a>
+                <span th:unless="${feedback.memberStatus != null}">탈퇴한 회원</span>
+                <span th:text="'(#' + ${feedback.memberId} + ')'">(#1)</span>
+                <th:block th:if="${feedback.memberStatus != null and feedback.memberStatus.name() != 'ACTIVE'}">
+                    <span th:replace="~{member/parts :: memberStatusBadge(${feedback.memberStatus})}"></span>
+                </th:block> ·
+                접수 일시 <span style="white-space:nowrap" th:text="${#temporals.format(feedback.createdAt, 'yyyy-MM-dd HH:mm:ss')}">일시</span>
+            </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">
                 <h2>내용</h2>
-                <p class="muted">
-                    보낸 회원:
-                    <a class="text-link" th:if="${feedback.memberStatus != null}"
-                       th:href="@{/admin/members(q=|#${feedback.memberId}|)}" th:text="${feedback.memberNickname}">닉네임</a>
-                    <span th:unless="${feedback.memberStatus != null}" th:text="${feedback.memberNickname}">탈퇴한 회원</span>
-                    <span th:text="'(#' + ${feedback.memberId} + ')'">(#1)</span>
-                    <span th:replace="~{member/parts :: memberStatusBadge(${feedback.memberStatus})}"></span> ·
-                    접수 일시: <span th:text="${#temporals.format(feedback.createdAt, 'yyyy-MM-dd HH:mm:ss')}">일시</span>
-                </p>
                 <p th:text="${feedback.content}" style="white-space:pre-wrap">내용</p>
                 <th:block th:if="${!feedback.imageUrls.isEmpty()}">
                     <div class="field-row">
