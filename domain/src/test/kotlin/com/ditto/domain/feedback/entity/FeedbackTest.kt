@@ -6,6 +6,7 @@ import com.ditto.domain.feedback.FeedbackFixture
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
+import java.time.LocalDateTime
 
 class FeedbackTest : FreeSpec(
     {
@@ -31,6 +32,29 @@ class FeedbackTest : FreeSpec(
                 shouldThrow<WarnException> {
                     FeedbackFixture.create(content = "   ")
                 }.errorCode shouldBe ErrorCode.BAD_REQUEST
+            }
+        }
+
+        "complete" - {
+            "처리 완료로 바꾸고 처리한 관리자와 시각을 남긴다" {
+                val feedback = FeedbackFixture.create()
+                val now = LocalDateTime.of(2026, 10, 17, 15, 0)
+
+                feedback.complete(adminName = "운영자", now = now)
+
+                feedback.status shouldBe FeedbackStatus.COMPLETED
+                feedback.completedByName shouldBe "운영자"
+                feedback.completedAt shouldBe now
+            }
+
+            "이미 처리 완료한 의견은 다시 처리하지 않는다" {
+                val feedback = FeedbackFixture.create()
+                feedback.complete(adminName = "운영자", now = LocalDateTime.of(2026, 10, 17, 15, 0))
+
+                shouldThrow<WarnException> {
+                    feedback.complete(adminName = "다른 운영자", now = LocalDateTime.of(2026, 10, 17, 16, 0))
+                }.errorCode shouldBe ErrorCode.BAD_REQUEST
+                feedback.completedByName shouldBe "운영자"
             }
         }
     },
