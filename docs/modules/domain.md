@@ -14,6 +14,7 @@
 현재 도메인: `member`, `quiz`, `match`, `review`, `rematch`, `chat`, `notification`, `memberreport`, `sanction`, `intronote`, `socialaccount`, `refreshtoken`, `system`.
 
 - QueryDSL 구현체는 `repository/querydsl/*RepositoryImpl.kt` 네이밍.
+- JPA `AttributeConverter`는 `converter/`에 둔다(`member`·`memberreport`·`chat`). 컨버터가 설정값이 필요하면 `DomainConfig`의 `@Bean`으로 받는다. 이 모듈은 컴포넌트 스캔 대상이 아니라 `@Component`는 잡히지 않는다.
 
 ## DB 마이그레이션
 
