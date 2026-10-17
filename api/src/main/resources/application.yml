@@ -47,7 +47,7 @@ ditto:
     expiration-ms: 3600000
     refresh-expiration-ms: 1209600000
   chat:
-    # 로컬 전용 키(Base64 32바이트). 운영 키를 잃으면 암호화된 메시지를 되살릴 수 없다.
+    # 로컬 전용 키(Base64 32바이트). 운영은 Secrets Manager 에서 받는다.
     content-encryption-key: XmMGOL7lQ6UREHJbqkXd0VTYiSKNbjqC3U/AMTFDX/g=
   front:
     oauth-callback-url: ${FRONT_OAUTH_CALLBACK_URL:http://localhost:3000/auth/callback}

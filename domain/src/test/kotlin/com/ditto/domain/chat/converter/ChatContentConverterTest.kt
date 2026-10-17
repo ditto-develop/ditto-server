@@ -32,12 +32,14 @@ class ChatContentConverterTest(
     }
 
     "암호화 전에 쌓인 평문 행은 그대로 읽는다" {
+        val legacyRoomId = 1L
         jdbcTemplate.update(
             "INSERT INTO chat_message (room_id, sender_id, message_type, content, created_at, updated_at) " +
-                "VALUES (1, 1, 'TEXT', '예전 메시지', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                "VALUES (?, 1, 'TEXT', '예전 메시지', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            legacyRoomId,
         )
 
-        chatMessageRepository.findByRoomIdWithCursor(roomId = 1L, cursor = null, size = 10)
+        chatMessageRepository.findByRoomIdWithCursor(roomId = legacyRoomId, cursor = null, size = 10)
             .map { it.content } shouldBe listOf("예전 메시지")
     }
 
