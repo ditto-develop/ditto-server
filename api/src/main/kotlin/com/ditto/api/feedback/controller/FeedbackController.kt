@@ -3,7 +3,9 @@ package com.ditto.api.feedback.controller
 import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.feedback.dto.CreateFeedbackRequest
 import com.ditto.api.feedback.dto.CreateFeedbackResponse
+import com.ditto.api.feedback.dto.IssueFeedbackImageUploadUrlsRequest
 import com.ditto.api.feedback.service.FeedbackService
+import com.ditto.api.support.image.ImageUploadUrlsResponse
 import com.ditto.common.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -15,6 +17,15 @@ import org.springframework.web.bind.annotation.RestController
 class FeedbackController(
     private val feedbackService: FeedbackService,
 ) {
+
+    @PostMapping("/api/v1/feedbacks/image-upload-urls")
+    fun issueImageUploadUrls(
+        @Valid @RequestBody request: IssueFeedbackImageUploadUrlsRequest,
+        @AuthenticationPrincipal principal: MemberPrincipal,
+    ): ApiResponse<ImageUploadUrlsResponse> {
+        val result = feedbackService.issueImageUploadUrls(principal.memberId, request)
+        return ApiResponse.ok(result)
+    }
 
     @PostMapping("/api/v1/feedbacks")
     fun createFeedback(
