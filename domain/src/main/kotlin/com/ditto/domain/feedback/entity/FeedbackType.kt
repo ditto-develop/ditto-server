@@ -19,6 +19,6 @@ enum class FeedbackType(
     companion object {
         fun from(code: String): FeedbackType =
             entries.firstOrNull { it.code == code }
-                ?: throw WarnException(ErrorCode.BAD_REQUEST)
+                ?: throw WarnException(ErrorCode.BAD_REQUEST, "지원하지 않는 의견 유형입니다: $code")
     }
 }

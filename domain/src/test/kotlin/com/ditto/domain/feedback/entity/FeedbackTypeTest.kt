@@ -13,10 +13,13 @@ class FeedbackTypeTest : FreeSpec(
             FeedbackType.from("suggestion") shouldBe FeedbackType.SUGGESTION
         }
 
-        "없는 code면 거부한다" {
-            shouldThrow<WarnException> {
-                FeedbackType.from("question")
-            }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        "없는 code면 들어온 값을 메시지에 담아 거부한다" {
+            val exception = shouldThrow<WarnException> {
+                FeedbackType.from("BUG")
+            }
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+            exception.message shouldBe "지원하지 않는 의견 유형입니다: BUG"
         }
     },
 )
