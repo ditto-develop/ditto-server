@@ -34,11 +34,12 @@ class MemberSocialAccountService(
         val existingAccount = socialAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
 
         if (existingAccount != null) {
-            val member = memberRepository.findById(existingAccount.memberId).orElseThrow {
+            // 잠그고 읽는다. 미룬 탈퇴 스케줄러나 애플 알림이 같은 회원을 탈퇴시키는 중이면 그 결과를 덮어쓰지 않게 기다린다.
+            val member = memberRepository.findWithLockById(existingAccount.memberId) ?: run {
                 log.error {
                     "SocialAccount(id=${existingAccount.id})에 연결된 Member(id=${existingAccount.memberId})가 존재하지 않습니다."
                 }
-                ErrorException(ErrorCode.INTERNAL_ERROR)
+                throw ErrorException(ErrorCode.INTERNAL_ERROR)
             }
             if (member.hasEmailChanged(email)) {
                 log.info { "Member(id=${member.id}) 이메일 변경: ${member.email} -> $email" }
@@ -52,6 +53,7 @@ class MemberSocialAccountService(
                 birthDate = birthDate,
             )
             restoreIfWithinRetention(member)
+            cancelDeferredLeave(member)
             return member
         }
 
@@ -90,6 +92,13 @@ class MemberSocialAccountService(
         }
         log.info { "탈퇴 회원(id=${member.id}) 복구 (leftAt=${member.leftAt})" }
         member.restore()
+    }
+
+    // 애플 연결 해제로 미뤄 둔 탈퇴가 있어도 다시 로그인했다면 계속 쓰겠다는 뜻으로 본다.
+    private fun cancelDeferredLeave(member: Member) {
+        if (!member.isLeaveDeferred()) return
+        log.info { "탈퇴 대기 회원(id=${member.id})의 재로그인으로 대기를 푼다 (reason=${member.deferredLeaveReason})" }
+        member.cancelDeferredLeave()
     }
 
     /**

@@ -37,6 +37,7 @@
 - [0039 — 운영 데이터를 지우는 어드민 QA 도구는 환경변수 스위치 뒤에 둔다](0039-admin-qa-tools-env-switch.md)
 - [0040 — 1:1 후보는 회원마다 상위 5명을 고르고 한쪽만 골라도 남긴다](0040-one-to-one-top-picks-per-member.md)
 - [0041 — App Store 심사용 데모 로그인은 정해 둔 소셜 계정 하나로만 연다](0041-app-store-review-login.md)
+- [0042 — 애플 서버 간 알림을 탈퇴로 반영하고, 앱 안 탈퇴 때 애플 토큰을 폐기한다](0042-apple-server-notifications-and-token-revoke.md)
 
 ## 언제 ADR을 쓰는가
 

@@ -89,6 +89,48 @@ class MemberLeaveTransitionTest : FreeSpec(
             }
         }
 
+        "deferLeave" - {
+            "탈퇴를 미루면 사유가 남고 상태는 그대로다" {
+                val member = MemberFixture.create(status = MemberStatus.ACTIVE)
+
+                member.deferLeave("APPLE_ACCOUNT_DELETED")
+
+                member.deferredLeaveReason shouldBe "APPLE_ACCOUNT_DELETED"
+                member.isLeaveDeferred() shouldBe true
+                member.status shouldBe MemberStatus.ACTIVE
+            }
+
+            "이미 탈퇴한 회원은 탈퇴를 미룰 수 없다" {
+                val member = MemberFixture.create(status = MemberStatus.ACTIVE)
+                member.leave(reason = "etc", now = leftAt)
+
+                val exception = shouldThrow<WarnException> {
+                    member.deferLeave("APPLE_ACCOUNT_DELETED")
+                }
+
+                exception.errorCode shouldBe ErrorCode.INVALID_STATUS_TRANSITION
+            }
+
+            "미뤄 둔 탈퇴를 취소하면 대기가 풀린다" {
+                val member = MemberFixture.create(status = MemberStatus.ACTIVE)
+                member.deferLeave("APPLE_CONSENT_REVOKED")
+
+                member.cancelDeferredLeave()
+
+                member.deferredLeaveReason.shouldBeNull()
+                member.isLeaveDeferred() shouldBe false
+            }
+
+            "탈퇴하면 대기가 풀린다" {
+                val member = MemberFixture.create(status = MemberStatus.ACTIVE)
+                member.deferLeave("APPLE_ACCOUNT_DELETED")
+
+                member.leave(reason = "APPLE_ACCOUNT_DELETED", now = leftAt)
+
+                member.deferredLeaveReason.shouldBeNull()
+            }
+        }
+
         "isRetentionExpiredAt" - {
             "보존 기간이 지나면 참이다" {
                 val member = MemberFixture.create(status = MemberStatus.ACTIVE)

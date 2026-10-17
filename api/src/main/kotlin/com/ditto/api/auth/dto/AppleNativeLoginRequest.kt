@@ -27,4 +27,7 @@ data class AppleNativeLoginRequest(
      */
     @field:Size(max = 50)
     val name: String? = null,
+
+    /** `ASAuthorizationAppleIDCredential.authorizationCode` (선택). 5분 안에 한 번만 쓸 수 있어 로그인 요청에 바로 싣는다. */
+    val authorizationCode: String? = null,
 )

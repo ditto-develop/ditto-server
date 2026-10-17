@@ -57,6 +57,7 @@ class NativeSocialAuthenticatorTest : FreeSpec(
                 val authenticator = authenticatorReturning(
                     AppleIdTokenPayload(
                         subject = "001234.apple-subject.0000",
+                        clientId = "pics.ditto.app",
                         email = "user@privaterelay.appleid.com",
                         isPrivateEmail = true,
                     ),
@@ -67,11 +68,12 @@ class NativeSocialAuthenticatorTest : FreeSpec(
                 result.id shouldBe "001234.apple-subject.0000"
                 result.email shouldBe "user@privaterelay.appleid.com"
                 result.nickname shouldBe OAuthConstants.DEFAULT_NICKNAME
+                result.clientId shouldBe "pics.ditto.app"
             }
 
             "애플이 주지 않는 값(생년월일·전화번호·성별)은 null 이다 — 온보딩에서 받는다" {
                 val authenticator = authenticatorReturning(
-                    AppleIdTokenPayload(subject = "sub", email = null, isPrivateEmail = false),
+                    AppleIdTokenPayload(subject = "sub", clientId = "pics.ditto.app", email = null, isPrivateEmail = false),
                 )
 
                 val result = authenticator.authenticate(NativeSocialCredential(token = "apple-id-token"))
@@ -84,7 +86,7 @@ class NativeSocialAuthenticatorTest : FreeSpec(
 
             "이름은 앱이 준 값을 그대로 쓴다 — 애플은 최초 인가 1회만 이름을 주고 ID 토큰에는 없다" {
                 val authenticator = authenticatorReturning(
-                    AppleIdTokenPayload(subject = "sub", email = null, isPrivateEmail = false),
+                    AppleIdTokenPayload(subject = "sub", clientId = "pics.ditto.app", email = null, isPrivateEmail = false),
                 )
 
                 val firstLogin = authenticator.authenticate(
@@ -99,7 +101,7 @@ class NativeSocialAuthenticatorTest : FreeSpec(
             "원본 nonce 를 검증기에 그대로 넘긴다" {
                 val verifier = mockk<AppleIdTokenVerifier>()
                 every { verifier.verify(any(), any()) } returns
-                    AppleIdTokenPayload(subject = "sub", email = null, isPrivateEmail = false)
+                    AppleIdTokenPayload(subject = "sub", clientId = "pics.ditto.app", email = null, isPrivateEmail = false)
 
                 AppleNativeAuthenticator(verifier).authenticate(
                     NativeSocialCredential(token = "apple-id-token", rawNonce = "client-nonce"),

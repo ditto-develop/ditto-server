@@ -7,11 +7,20 @@ import com.ditto.infrastructure.oauth.OAuthClient
 import com.ditto.infrastructure.oauth.OAuthClientFactory
 import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProvider
 import com.ditto.infrastructure.oauth.SocialAuthorizationUrlProviderFactory
+import com.ditto.infrastructure.oauth.apple.AppleAuthSender
+import com.ditto.infrastructure.oauth.apple.AppleClientSecretGenerator
 import com.ditto.infrastructure.oauth.apple.AppleIdTokenVerifier
 import com.ditto.infrastructure.oauth.apple.AppleJwksSender
 import com.ditto.infrastructure.oauth.apple.AppleNativeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleNativeFakeAuthenticator
 import com.ditto.infrastructure.oauth.apple.AppleOAuthProperties
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationFakeVerifier
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationJwsVerifier
+import com.ditto.infrastructure.oauth.apple.AppleServerNotificationVerifier
+import com.ditto.infrastructure.oauth.apple.AppleSignedTokenParser
+import com.ditto.infrastructure.oauth.apple.AppleTokenClient
+import com.ditto.infrastructure.oauth.apple.AppleTokenFakeClient
+import com.ditto.infrastructure.oauth.apple.AppleTokenHttpClient
 import com.ditto.infrastructure.oauth.apple.AppleWebAuthorizationUrlProvider
 import com.ditto.infrastructure.oauth.kakao.KakaoNativeAuthenticator
 import com.ditto.infrastructure.oauth.kakao.KakaoApiSender
@@ -26,6 +35,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.support.RestClientAdapter
 import org.springframework.web.service.invoker.HttpServiceProxyFactory
+import java.time.Duration
 
 @Configuration
 @EnableConfigurationProperties(
@@ -69,6 +79,12 @@ class OAuthConfig {
                 SocialProvider.APPLE to AppleNativeFakeAuthenticator(),
             ),
         )
+
+        @Bean
+        fun appleServerNotificationVerifier(): AppleServerNotificationVerifier = AppleServerNotificationFakeVerifier()
+
+        @Bean
+        fun appleTokenClient(): AppleTokenClient = AppleTokenFakeClient()
     }
 
     @Profile("prod")
@@ -119,14 +135,41 @@ class OAuthConfig {
         @Bean
         fun appleIdTokenVerifier(
             properties: AppleOAuthProperties,
+            signedTokenParser: AppleSignedTokenParser,
+        ): AppleIdTokenVerifier = AppleIdTokenVerifier(properties, signedTokenParser)
+
+        @Bean
+        fun appleServerNotificationVerifier(
+            properties: AppleOAuthProperties,
+            signedTokenParser: AppleSignedTokenParser,
+        ): AppleServerNotificationVerifier = AppleServerNotificationJwsVerifier(properties, signedTokenParser)
+
+        @Bean
+        fun appleSignedTokenParser(
+            properties: AppleOAuthProperties,
             jwksSender: AppleJwksSender,
-        ): AppleIdTokenVerifier = AppleIdTokenVerifier(properties, jwksSender)
+        ): AppleSignedTokenParser = AppleSignedTokenParser(properties, jwksSender)
 
         @Bean
-        fun appleJwksSender(properties: AppleOAuthProperties): AppleJwksSender {
+        fun appleTokenClient(properties: AppleOAuthProperties, authSender: AppleAuthSender): AppleTokenClient =
+            AppleTokenHttpClient(properties, AppleClientSecretGenerator(properties), authSender)
+
+        @Bean
+        fun appleJwksSender(properties: AppleOAuthProperties): AppleJwksSender =
+            httpServiceClient(AppleJwksSender::class.java, properties.connectTimeout, properties.readTimeout)
+
+        @Bean
+        fun appleAuthSender(properties: AppleOAuthProperties): AppleAuthSender =
+            httpServiceClient(AppleAuthSender::class.java, properties.connectTimeout, properties.readTimeout)
+
+        @Bean
+        fun kakaoApiSender(properties: KakaoOAuthProperties): KakaoApiSender =
+            httpServiceClient(KakaoApiSender::class.java, properties.connectTimeout, properties.readTimeout)
+
+        private fun <T> httpServiceClient(type: Class<T>, connectTimeout: Duration, readTimeout: Duration): T {
             val requestFactory = SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(properties.connectTimeout)
-                setReadTimeout(properties.readTimeout)
+                setConnectTimeout(connectTimeout)
+                setReadTimeout(readTimeout)
             }
             val restClient = RestClient.builder()
                 .requestFactory(requestFactory)
@@ -135,24 +178,7 @@ class OAuthConfig {
             return HttpServiceProxyFactory
                 .builderFor(RestClientAdapter.create(restClient))
                 .build()
-                .createClient(AppleJwksSender::class.java)
+                .createClient(type)
         }
-
-        @Bean
-        fun kakaoApiSender(properties: KakaoOAuthProperties): KakaoApiSender {
-            val requestFactory = SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(properties.connectTimeout)
-                setReadTimeout(properties.readTimeout)
-            }
-            val restClient = RestClient.builder()
-                .requestFactory(requestFactory)
-                .build()
-
-            return HttpServiceProxyFactory
-                .builderFor(RestClientAdapter.create(restClient))
-                .build()
-                .createClient(KakaoApiSender::class.java)
-        }
-
     }
 }

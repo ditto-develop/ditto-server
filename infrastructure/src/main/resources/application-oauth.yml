@@ -59,6 +59,10 @@ ditto:
       web-redirect-uri: ${APPLE_WEB_REDIRECT_URI:}
       # 어드민 Return URL 도 콘솔의 같은 Services ID 에 함께 등록해야 한다.
       admin-web-redirect-uri: ${APPLE_ADMIN_REDIRECT_URI:}
+      # 탈퇴 때 애플 토큰을 폐기하는 데 쓴다. 하나라도 비면 인가 코드 교환과 폐기를 건너뛴다.
+      team-id: ${APPLE_TEAM_ID:}
+      key-id: ${APPLE_KEY_ID:}
+      private-key: ${APPLE_PRIVATE_KEY:}
       jwks-cache-ttl: 6h
       connect-timeout: 3s
       read-timeout: 5s

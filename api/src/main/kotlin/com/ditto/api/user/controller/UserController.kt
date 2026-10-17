@@ -13,6 +13,7 @@ import com.ditto.api.user.dto.PublicProfileResponse
 import com.ditto.api.user.dto.RegisterResponse
 import com.ditto.api.user.dto.UpdatePersonalInfoRequest
 import com.ditto.api.user.facade.NicknameReservationFacade
+import com.ditto.api.user.facade.UserLeaveFacade
 import com.ditto.api.user.service.PeerProfileService
 import com.ditto.api.user.service.UserService
 import com.ditto.common.logging.Loggable
@@ -32,6 +33,7 @@ class UserController(
     private val userService: UserService,
     private val peerProfileService: PeerProfileService,
     private val nicknameReservationFacade: NicknameReservationFacade,
+    private val userLeaveFacade: UserLeaveFacade,
 ) {
 
     @PostMapping("/api/v1/users")
@@ -131,7 +133,7 @@ class UserController(
         @Valid @RequestBody(required = false) request: LeaveRequest?,
         @AuthenticationPrincipal principal: MemberPrincipal,
     ): ApiResponse<LeaveResponse> {
-        val result = userService.leaveUser(id, principal.memberId, request ?: LeaveRequest())
+        val result = userLeaveFacade.leave(id, principal.memberId, request ?: LeaveRequest())
         return ApiResponse.ok(result)
     }
 }

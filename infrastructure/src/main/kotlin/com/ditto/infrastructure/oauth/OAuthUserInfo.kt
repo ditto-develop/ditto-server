@@ -11,4 +11,6 @@ data class OAuthUserInfo(
     val name: String?,
     val phoneNumber: String?,
     val gender: Gender?,
+    // 애플만 채운다.
+    val clientId: String? = null,
 )

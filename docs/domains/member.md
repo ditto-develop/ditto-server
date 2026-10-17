@@ -28,6 +28,7 @@
 - **이번 주에 응답을 기다리는 1:1 신청**(보냈든 받았든)·끝나지 않은 채팅방·**성사됐는데 방이 아직 없는 재매칭**·**응답 마감 전 성사 전 그룹에 수락해 둔 상태**가 있으면 탈퇴할 수 없다(`LeaveProgressChecker`). 상대가 기다리는 상태를 남기지 않는다.
   - 1:1: 지난 주 `PENDING`은 막지 않는다. 수락·거절은 이번 주 신청만 처리해서 지난 주 신청은 응답할 길이 없다. `EXPIRED`로 바꾸는 경로가 없어 행은 그대로 남는다. 성사(`ACCEPTED`)는 따로 보지 않는다. 수락할 때 1:1 방이 함께 생겨서 방이 끝날 때까지는 채팅방 조건에 걸리고, 끝나면 탈퇴할 수 있다.
   - 그룹: 다른 사람의 수락으로 언제든 성사되고 성사는 수락자 전원으로 방을 만들어서, 막지 않으면 탈퇴자가 그룹 채팅방 멤버가 된다. 마감(금 00:00)이 지나 미성사로 끝난 그룹은 더 성사되지 않으므로 막지 않는다.
+- **애플 계정 삭제·연결 해제 알림은 탈퇴로 반영하되, 진행 중이면 미룬다**(`deferred_leave_reason`). 위의 진행 중 검사는 그대로 두고, 걸리면 세션만 끊고 사유를 남긴다. 스케줄러(`DeferredLeaveScheduler`, 매시 30분)가 회원 행을 잠근 뒤 진행이 끝났는지 다시 보고 그 사유로 탈퇴시킨다. 대기 중 재로그인하면 대기를 푼다. 탈퇴하면 대기 값을 비운다. 대기 중에도 이미 받은 access token 은 만료까지 유효하다. 주기는 `member.deferred-leave.scheduler.cron` 으로 바꿀 수 있다(로컬 확인용). [ADR 0042](../adr/0042-apple-server-notifications-and-token-revoke.md)
 - 탈퇴는 **미성사 재매칭 쌍을 취소한다**(`CANCELLED(MEMBER_LEFT)`). 그대로 두면 남은 한쪽의 제출로 성사돼 탈퇴자와의 채팅방이 열린다. 상세는 [rematch 도메인](rematch.md).
 - TODO: 역할(Role) 부여 규칙.
 
@@ -42,6 +43,7 @@ ACTIVE|SUSPENDED|BANNED → LEFT      (leave — 탈퇴, 소프트 삭제)
 LEFT → ACTIVE                       (restore — 30일 내 재가입 시 복구)
 ```
 
+- 탈퇴 대기(`deferred_leave_reason`)는 status 가 아니라 별도 값이다. 대기 중에도 상태는 그대로이고, 스케줄러가 LEFT 로 바꾸거나 재로그인이 대기를 푼다.
 - 1차 제재(경고)는 status를 바꾸지 않는다 — 퀴즈 참여만 sanction 조회로 차단.
 - SUSPENDED의 만료 판정은 lazy(요청 시 `suspended_until` 경과 확인), status 원복은 매칭 배치·로그인 시. 배경: 신고·제재 계획 참조.
 - 제재 상태의 이력·차수 SSOT는 `sanction` 도메인, `Member.status`는 매 요청 집행용 반영값.

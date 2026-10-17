@@ -4,6 +4,7 @@ import com.ditto.api.auth.dto.NativeSocialLoginResponse
 import com.ditto.api.auth.dto.NativeSocialLoginResult
 import com.ditto.api.auth.dto.OAuthLoginResult
 import com.ditto.api.auth.dto.ReviewLoginRequest
+import com.ditto.api.auth.service.AppleRefreshTokenService
 import com.ditto.api.auth.service.AuthService
 import com.ditto.api.auth.service.MemberSocialAccountService
 import com.ditto.api.auth.service.OAuthService
@@ -26,6 +27,7 @@ class OAuthFacade(
     private val authService: AuthService,
     private val serverTimeProvider: ServerTimeProvider,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val appleRefreshTokenService: AppleRefreshTokenService,
     private val reviewLoginService: ReviewLoginService,
 ) {
     fun getAuthorizationUrl(provider: SocialProvider): String = oAuthService.getAuthorizationUrl(provider)
@@ -49,9 +51,12 @@ class OAuthFacade(
     fun loginWithIdToken(
         provider: SocialProvider,
         credential: NativeSocialCredential,
-    ): OAuthLoginResult = redirectLoginResult(
-        findOrCreateMember(provider, oAuthService.authenticateNative(provider, credential)),
-    )
+    ): OAuthLoginResult {
+        val userInfo = oAuthService.authenticateNative(provider, credential)
+        val member = findOrCreateMember(provider, userInfo)
+        storeAppleRefreshToken(provider, userInfo, credential)
+        return redirectLoginResult(member)
+    }
 
     private fun redirectLoginResult(member: Member): OAuthLoginResult {
         // 제재 회원은 토큰을 발급하지 않고 콜백으로 제재 사실만 전달한다. (해제일 경과한 정지는 통과)
@@ -74,7 +79,9 @@ class OAuthFacade(
         credential: NativeSocialCredential,
     ): NativeSocialLoginResult {
         val userInfo = oAuthService.authenticateNative(provider, credential)
-        return nativeLoginResult(findOrCreateMember(provider, userInfo))
+        val member = findOrCreateMember(provider, userInfo)
+        storeAppleRefreshToken(provider, userInfo, credential)
+        return nativeLoginResult(member)
     }
 
     /**
@@ -119,6 +126,17 @@ class OAuthFacade(
             ),
             refreshToken = tokens.refreshToken,
         )
+    }
+
+    // 회원을 찾거나 만든 트랜잭션이 끝난 뒤에 부른다. 애플 호출이 회원 트랜잭션을 붙잡지 않게 하기 위해서다.
+    private fun storeAppleRefreshToken(
+        provider: SocialProvider,
+        userInfo: OAuthUserInfo,
+        credential: NativeSocialCredential,
+    ) {
+        if (provider != SocialProvider.APPLE) return
+        val authorizationCode = credential.authorizationCode ?: return
+        appleRefreshTokenService.storeRefreshTokenFromCode(userInfo, authorizationCode)
     }
 
     private fun findOrCreateMember(
