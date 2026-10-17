@@ -7,8 +7,12 @@ import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Member
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
@@ -34,6 +38,7 @@ class RematchChatRoomOpenerTest(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatRoomEndService: ChatRoomEndService,
+    private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -110,6 +115,22 @@ class RematchChatRoomOpenerTest(
             rematchChatRoomOpener.openMissing(now = LocalDateTime.of(2026, 3, 17, 9, 0)) shouldBe 1
 
             chatRoomRepository.findAll().single().opensAt shouldBe LocalDateTime.of(2026, 3, 20, 0, 0)
+        }
+
+        "양쪽에 상대 닉네임으로 성사를 알린다" {
+            val memberA = memberRepository.save(MemberFixture.create(nickname = "가나", status = MemberStatus.ACTIVE))
+            val memberB = memberRepository.save(MemberFixture.create(nickname = "다라", status = MemberStatus.ACTIVE))
+            saveMatchedRematch(memberA = memberA.id, memberB = memberB.id)
+
+            rematchChatRoomOpener.openMissing(BEFORE_WEEKEND)
+
+            val bodiesByMemberId = notificationRepository.findAll()
+                .filter { it.type == NotificationType.REMATCH_MATCHED }
+                .associate { it.memberId to it.body }
+            bodiesByMemberId shouldBe mapOf(
+                memberA.id to "다라님과 대화방이 다시 열렸어요.",
+                memberB.id to "가나님과 대화방이 다시 열렸어요.",
+            )
         }
 
         // 방이 곧 처리 완료 기록이라 별도 표시가 없다 — 조회가 다시 집어오지 않는지로 확인한다.

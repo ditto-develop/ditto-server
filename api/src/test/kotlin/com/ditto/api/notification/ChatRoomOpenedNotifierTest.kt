@@ -6,6 +6,9 @@ import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import io.kotest.matchers.shouldBe
@@ -16,6 +19,7 @@ class ChatRoomOpenedNotifierTest(
     private val chatRoomOpenedNotifier: ChatRoomOpenedNotifier,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
@@ -27,7 +31,7 @@ class ChatRoomOpenedNotifierTest(
                 chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it))
             }
 
-            chatRoomOpenedNotifier.notifyOpened(listOf(room.id)) shouldBe 2
+            chatRoomOpenedNotifier.notifyOpened(listOf(room)) shouldBe 2
 
             val notification = notificationRepository.findAll().first()
             notification.type shouldBe NotificationType.CHAT_ROOM_OPENED
@@ -39,9 +43,9 @@ class ChatRoomOpenedNotifierTest(
         "같은 방을 다시 넘겨도 방마다 한 번만 알린다" {
             val room = chatRoomRepository.save(ChatRoomFixture.group())
             chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = 1L))
-            chatRoomOpenedNotifier.notifyOpened(listOf(room.id))
+            chatRoomOpenedNotifier.notifyOpened(listOf(room))
 
-            chatRoomOpenedNotifier.notifyOpened(listOf(room.id)) shouldBe 0
+            chatRoomOpenedNotifier.notifyOpened(listOf(room)) shouldBe 0
 
             notificationRepository.count() shouldBe 1
         }
@@ -54,9 +58,41 @@ class ChatRoomOpenedNotifierTest(
                     .apply { leave(LocalDateTime.of(2026, 3, 12, 10, 0)) },
             )
 
-            chatRoomOpenedNotifier.notifyOpened(listOf(room.id)) shouldBe 1
+            chatRoomOpenedNotifier.notifyOpened(listOf(room)) shouldBe 1
 
             notificationRepository.findAll().single().memberId shouldBe 1L
+        }
+
+        "재매칭 방은 상대 닉네임이 들어간 문구로 알린다" {
+            val memberA = memberRepository.save(MemberFixture.create(nickname = "가나", status = MemberStatus.ACTIVE))
+            val memberB = memberRepository.save(MemberFixture.create(nickname = "다라", status = MemberStatus.ACTIVE))
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch())
+            listOf(memberA, memberB).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it.id))
+            }
+
+            chatRoomOpenedNotifier.notifyOpened(listOf(room)) shouldBe 2
+
+            val notifications = notificationRepository.findAll()
+            notifications.map { it.type }.toSet() shouldBe setOf(NotificationType.CHAT_ROOM_OPENED)
+            notifications.associate { it.memberId to it.title } shouldBe mapOf(
+                memberA.id to "다라님과 대화를 다시 할 수 있어요",
+                memberB.id to "가나님과 대화를 다시 할 수 있어요",
+            )
+            notifications.map { it.body }.toSet() shouldBe setOf("일요일 자정까지예요. 대화를 이어서 나눠보세요.")
+        }
+
+        "재매칭 상대의 닉네임을 찾지 못하면 일반 문구로 알린다" {
+            val member = memberRepository.save(MemberFixture.create(nickname = "가나", status = MemberStatus.ACTIVE))
+            val room = chatRoomRepository.save(ChatRoomFixture.rematch())
+            val missingMemberId = member.id + 100
+            listOf(member.id, missingMemberId).forEach {
+                chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = room.id, memberId = it))
+            }
+
+            chatRoomOpenedNotifier.notifyOpened(listOf(room))
+
+            notificationRepository.findAll().first { it.memberId == member.id }.title shouldBe "이제 대화를 시작할 수 있어요"
         }
 
         "열린 방이 없으면 0 이다" {

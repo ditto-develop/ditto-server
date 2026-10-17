@@ -115,13 +115,11 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     }
 
     "이번 주기에 열린 방만 오픈 알림으로 넘긴다" {
-        every { chatRoomEndService.openDue(any()) } returns listOf(
-            ChatRoomFixture.personal(id = 11L),
-            ChatRoomFixture.group(id = 12L),
-        )
+        val opened = listOf(ChatRoomFixture.personal(id = 11L), ChatRoomFixture.group(id = 12L))
+        every { chatRoomEndService.openDue(any()) } returns opened
 
         scheduler.sweep()
 
-        verify { chatRoomOpenedNotifier.notifyOpened(listOf(11L, 12L)) }
+        verify { chatRoomOpenedNotifier.notifyOpened(opened) }
     }
 })

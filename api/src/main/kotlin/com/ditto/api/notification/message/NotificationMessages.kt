@@ -77,7 +77,7 @@ object NotificationMessages {
     fun rematchMatched(counterpartNickname: String): NotificationContent = NotificationContent(
         type = NotificationType.REMATCH_MATCHED,
         title = "재매칭이 성사됐어요",
-        body = "${counterpartNickname}님과 대화방이 다시 열렸어요. 이어서 이야기 나눠보세요.",
+        body = "${counterpartNickname}님과 대화방이 다시 열렸어요.",
     )
 
     /** [requesterNickname] 이 나에게 대화를 신청했다. */
@@ -146,6 +146,13 @@ object NotificationMessages {
         type = NotificationType.CHAT_ROOM_OPENED,
         title = "이제 대화를 시작할 수 있어요",
         body = "일요일 자정까지예요. 천천히 이야기 나눠보세요.",
+    )
+
+    /** 재매칭 방이 열렸다. 유형은 일반 방과 같고 문구만 다르다. */
+    fun rematchChatRoomOpened(counterpartNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.CHAT_ROOM_OPENED,
+        title = "${counterpartNickname}님과 대화를 다시 할 수 있어요",
+        body = "일요일 자정까지예요. 대화를 이어서 나눠보세요.",
     )
 
     /**
