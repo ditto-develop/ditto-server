@@ -24,7 +24,7 @@
 - 검토자 기록은 표시명 스냅샷(`reviewer_name`) — 어드민 계정이 삭제돼도 감사 기록이 남는다.
 - 동일 (신고자, 피신고자) 쌍의 RECEIVED 신고가 있으면 재신고 불가 (`DUPLICATE_REPORT`).
 - 이미지는 신고당 최대 `MAX_COUNT`(3)장·중복 키 금지 (`MemberReportImage.attachAll`이 강제), `(member_report_id, display_order)` 유니크.
-- 이미지 키는 본인이 발급받아 업로드를 마친 `pending/user-reports/{memberId}/` 키만 접수 가능 (`INVALID_REPORT_IMAGE_KEY`), 접수 시 `user-reports/`(확정 영역)로 이동.
+- 이미지 키는 본인이 발급받아 업로드를 마친 `pending/user-reports/{memberId}/` 키만 접수 가능 (`INVALID_ATTACHMENT_IMAGE_KEY`), 접수 시 `user-reports/`(확정 영역)로 이동.
 - enum(`Reason`/`Source`)은 값 추가만 허용 — 배포된 값의 이름/`code` 변경·삭제 금지. 채팅 출시 시 `Source.CHAT_ROOM` 추가 예정.
 
 ## 상태 전이
@@ -43,6 +43,8 @@ RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토 /admin/r
 3. `POST /api/v1/user-reports` — objectKey 전달, 서버가 `exists` 검증 후 `pending/ → user-reports/` 이동
 
 미접수 업로드는 S3 라이프사이클 규칙이 `pending/` 접두사 기준으로 삭제한다(버킷 설정 — 인프라 작업).
+
+발급·검증·이동은 의견(feedback)과 함께 쓰는 `api/src/main/kotlin/com/ditto/api/support/image/PendingImageStorage.kt`가 맡는다. 키 접두사는 `ImageUploadCategory`에 모여 있다.
 
 ## 핵심 파일
 

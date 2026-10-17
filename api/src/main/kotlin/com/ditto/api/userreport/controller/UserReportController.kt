@@ -1,9 +1,9 @@
 package com.ditto.api.userreport.controller
 
 import com.ditto.api.config.auth.MemberPrincipal
+import com.ditto.api.support.image.ImageUploadUrlsResponse
 import com.ditto.api.userreport.dto.CreateUserReportRequest
 import com.ditto.api.userreport.dto.CreateUserReportResponse
-import com.ditto.api.userreport.dto.ImageUploadUrlsResponse
 import com.ditto.api.userreport.dto.IssueImageUploadUrlsRequest
 import com.ditto.api.userreport.service.UserReportService
 import com.ditto.common.response.ApiResponse

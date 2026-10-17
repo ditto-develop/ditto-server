@@ -1,8 +1,8 @@
 package com.ditto.api.userreport
 
 import com.ditto.api.support.IntegrationTest
+import com.ditto.api.support.image.ImageUploadFileRequest
 import com.ditto.api.userreport.dto.CreateUserReportRequest
-import com.ditto.api.userreport.dto.ImageUploadFileRequest
 import com.ditto.api.userreport.dto.IssueImageUploadUrlsRequest
 import com.ditto.api.userreport.service.UserReportService
 import com.ditto.common.exception.ErrorCode
@@ -254,7 +254,7 @@ class UserReportServiceTest(
                 )
             }
 
-            exception.errorCode shouldBe ErrorCode.REPORT_IMAGE_LIMIT_EXCEEDED
+            exception.errorCode shouldBe ErrorCode.ATTACHMENT_IMAGE_LIMIT_EXCEEDED
         }
 
         "같은 이미지 키를 중복 첨부하면 거부한다" {
@@ -274,7 +274,7 @@ class UserReportServiceTest(
                 )
             }
 
-            exception.errorCode shouldBe ErrorCode.INVALID_REPORT_IMAGE_KEY
+            exception.errorCode shouldBe ErrorCode.INVALID_ATTACHMENT_IMAGE_KEY
         }
 
         "발급받지 않은 이미지 키는 거부한다" {
@@ -293,7 +293,7 @@ class UserReportServiceTest(
                 )
             }
 
-            exception.errorCode shouldBe ErrorCode.INVALID_REPORT_IMAGE_KEY
+            exception.errorCode shouldBe ErrorCode.INVALID_ATTACHMENT_IMAGE_KEY
         }
 
         "다른 회원이 발급받은 이미지 키는 거부한다" {
@@ -314,7 +314,7 @@ class UserReportServiceTest(
                 )
             }
 
-            exception.errorCode shouldBe ErrorCode.INVALID_REPORT_IMAGE_KEY
+            exception.errorCode shouldBe ErrorCode.INVALID_ATTACHMENT_IMAGE_KEY
         }
     }
 })
