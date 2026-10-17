@@ -3,7 +3,11 @@ package com.ditto.api.notification.notifier
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomMember
+import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.member.repository.MemberRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
@@ -20,33 +24,58 @@ import org.springframework.stereotype.Component
 @Component
 class ChatRoomOpenedNotifier(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val memberRepository: MemberRepository,
     private val notificationAppender: NotificationAppender,
 ) {
     /** 조회 실패는 여기서 삼킨다. 스케줄러의 다른 처리를 막지 않기 위해서다. 실패하면 0. */
-    fun notifyOpened(openedRoomIds: Collection<Long>): Int =
-        runCatchingExceptions { appendToMembers(openedRoomIds) }
-            .onFailure { logger.warn(it) { "채팅방 오픈 알림 실패 — 무시한다: roomIds=$openedRoomIds" } }
+    fun notifyOpened(openedRooms: Collection<ChatRoom>): Int =
+        runCatchingExceptions { appendToMembers(openedRooms) }
+            .onFailure { logger.warn(it) { "채팅방 오픈 알림 실패 — 무시한다: roomIds=${openedRooms.map { it.id }}" } }
             .getOrDefault(0)
 
-    private fun appendToMembers(roomIds: Collection<Long>): Int {
-        if (roomIds.isEmpty()) {
+    private fun appendToMembers(rooms: Collection<ChatRoom>): Int {
+        if (rooms.isEmpty()) {
             return 0
         }
 
-        val content = NotificationMessages.chatRoomOpened()
-        // 열리기 전에 나간 멤버는 제외. 방 단위로 묶어 넘겨 푸시 준비(방 조회)를 방마다 한 번만 한다.
-        val appended = chatRoomMemberRepository.findByRoomIdIn(roomIds)
-            .filter { !it.hasLeft }
+        val membersByRoomId = chatRoomMemberRepository.findByRoomIdIn(rooms.map { it.id })
             .groupBy { it.roomId }
-            .entries
-            .sumOf { (roomId, members) ->
-                notificationAppender.appendAll(members.map { it.memberId }, content, targetId = roomId)
+        val appended = rooms.sumOf { room ->
+            val members = membersByRoomId[room.id].orEmpty()
+            if (room.sourceType == ChatRoomType.REMATCH) {
+                appendRematchRoomOpened(room.id, members)
+            } else {
+                appendRoomOpened(room.id, members)
             }
+        }
 
         if (appended > 0) {
-            logger.info { "채팅방 오픈 알림: ${appended}건 (방 ${roomIds.size}개)" }
+            logger.info { "채팅방 오픈 알림: ${appended}건 (방 ${rooms.size}개)" }
         }
         return appended
+    }
+
+    // 열리기 전에 나간 멤버는 제외. 방 단위로 묶어 넘겨 푸시 준비(방 조회)를 방마다 한 번만 한다.
+    private fun appendRoomOpened(roomId: Long, members: List<ChatRoomMember>): Int =
+        notificationAppender.appendAll(
+            memberIds = members.filter { !it.hasLeft }.map { it.memberId },
+            content = NotificationMessages.chatRoomOpened(),
+            targetId = roomId,
+        )
+
+    // 문구에 상대 닉네임이 들어가 사람마다 따로 남긴다. 닉네임을 못 찾으면 일반 문구로 보낸다.
+    private fun appendRematchRoomOpened(roomId: Long, members: List<ChatRoomMember>): Int {
+        val nicknamesById = memberRepository.findAllById(members.map { it.memberId })
+            .associate { it.id to it.nickname }
+
+        return members.filter { !it.hasLeft }.count { receiver ->
+            val counterpartNickname = members.firstOrNull { it.memberId != receiver.memberId }
+                ?.let { nicknamesById[it.memberId] }
+            val content = counterpartNickname
+                ?.let { NotificationMessages.rematchChatRoomOpened(it) }
+                ?: NotificationMessages.chatRoomOpened()
+            notificationAppender.append(receiver.memberId, content, targetId = roomId)
+        }
     }
 
     companion object {

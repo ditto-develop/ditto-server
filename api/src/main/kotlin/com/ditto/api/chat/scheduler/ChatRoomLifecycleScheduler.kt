@@ -69,7 +69,7 @@ class ChatRoomLifecycleScheduler(
         // 있다 — 오버라이드가 예약된 금요일 이후를 가리키면 openDue 가 곧바로 집어간다.
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
         val opened = chatRoomEndService.openDue(serverNow)
-        chatRoomOpenedNotifier.notifyOpened(opened.map { it.id })
+        chatRoomOpenedNotifier.notifyOpened(opened)
 
         val ended = chatRoomEndService.endExpired(serverNow)
         val endedRoomIds = ended.map { it.id }

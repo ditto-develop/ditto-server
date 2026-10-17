@@ -148,6 +148,13 @@ object NotificationMessages {
         body = "일요일 자정까지예요. 천천히 이야기 나눠보세요.",
     )
 
+    /** 재매칭 방이 열렸다. 유형은 일반 방과 같고 문구만 다르다. */
+    fun rematchChatRoomOpened(counterpartNickname: String): NotificationContent = NotificationContent(
+        type = NotificationType.CHAT_ROOM_OPENED,
+        title = "${counterpartNickname}님과 대화를 다시 할 수 있어요",
+        body = "일요일 자정까지예요. 대화를 이어서 나눠보세요.",
+    )
+
     /**
      * 상대가 메시지를 보냈다. 본문은 미리보기다 — 이미지는 내용을 문구로 대신한다
      * (본문에 S3 key 가 그대로 들어가면 안 된다).

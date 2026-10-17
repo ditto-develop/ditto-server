@@ -84,7 +84,7 @@ class NotifierFailureTest {
         notificationAppender,
         LEAD_HOURS,
     )
-    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, notificationAppender)
+    private val chatRoomOpenedNotifier = ChatRoomOpenedNotifier(chatRoomMemberRepository, memberRepository, notificationAppender)
     private val chatNoMessageNotifier = ChatNoMessageNotifier(
         chatRoomRepository,
         chatRoomMemberRepository,
@@ -169,7 +169,7 @@ class NotifierFailureTest {
     fun chatRoomOpenedAbsorbsMemberQueryFailure() {
         every { chatRoomMemberRepository.findByRoomIdIn(any()) } throws connectionFailure()
 
-        chatRoomOpenedNotifier.notifyOpened(listOf(ROOM_ID)) shouldBe 0
+        chatRoomOpenedNotifier.notifyOpened(listOf(ChatRoomFixture.personal(id = ROOM_ID))) shouldBe 0
     }
 
     @Test
