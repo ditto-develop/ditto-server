@@ -84,7 +84,9 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
   - SYSTEM 메시지는 읽음 표시 대상이 아니라 항상 0.
   - 스키마 변경 없이 방 멤버 목록(≤ 그룹 정원)을 한 번 읽어 메모리에서 센다 — 메시지당 쿼리를 내지 않는다.
 - 인가: 방 멤버만 조회·구독·전송 가능. STOMP 구독 인가는 `StompAuthChannelInterceptor`. WS 인증 배경: [ADR 0009](../adr/0009-websocket-stomp-auth.md).
-- 전송 내용: trim 후 공백 불가, 최대 1000자(컬럼 상한).
+- 전송 내용: trim 후 공백 불가, 최대 1000자.
+- **본문은 암호화해 저장한다**(`ChatContentConverter`, [ADR 0043](../adr/0043-chat-content-server-side-encryption.md)). DB 에는 `enc:v1:` 접두어가 붙은 암호문만 남고, 접두어가 없는 행은 도입 전에 쌓인 평문이라 그대로 읽는다. 그래서 본문으로 검색·정렬하는 쿼리를 만들 수 없다. 컬럼(`VARCHAR(4100)`)이 입력 상한보다 넓은 이유가 암호문 길이다.
+- **운영 콘솔은 더미가 들어 있던 방의 대화만 연다**(`AdminQaRoomService.findRoom`). 실회원끼리의 대화는 운영자도 보지 않는다.
 - **방별 알림 끄기**(`PUT`/`DELETE /api/v1/chat/rooms/{roomId}/mute`, `chat_room_member.muted_at`): 켜고 끄는 상태라 멱등이고 끝난 방도 막지 않는다. 푸시만 막고 센터 적재는 둔다 — 규칙은 [notification](notification.md) "방별 알림 끄기".
 - **방 목록은 방 상태(`status`)와 내 평가 상태(`reviewStatus`·`reviewId`)를 함께 준다.** 평가 목록(`/member-reviews`)이 미완료만 주므로 "이미 끝냄"과 "아직 안 열림"이 둘 다 "목록에 없음"으로 보였다. `NOT_APPLICABLE`(재매칭 — 평가를 열지 않는다) / `NOT_OPENED`(방이 안 끝났거나, 끝났지만 평가 생성이 아직 — 복구 배치가 곧 연다) / `NOT_STARTED`·`IN_PROGRESS`·`COMPLETED`. 방 목록이 평가를 읽는 것은 조회 조립일 뿐이고, 종료 경로(`ChatRoomEndService`)가 평가를 모르는 규칙은 그대로다.
 
@@ -93,5 +95,5 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 - 스케일아웃(2번째 레플리카) 시 SimpleBroker → 외부 STOMP relay(RabbitMQ 등). 인메모리 브로커는 레플리카를 못 넘는다(구독자·발행자가 서로 못 봄).
 
 ## 핵심 파일
-- 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`·`ChatPeriod`), `repository`(+`querydsl` 커서 페이징). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`, 생명주기 컬럼은 `V20260803223317_채팅 종료 생명주기 컬럼 추가.sql`.
+- 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`·`ChatPeriod`), `repository`(+`querydsl` 커서 페이징), `converter`(본문 암호화). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`, 생명주기 컬럼은 `V20260803223317_채팅 종료 생명주기 컬럼 추가.sql`.
 - API: `api/.../chat/controller`(REST 조회·종료·숨김), `service/ChatService`(방 생성·목록·메시지 페이징·읽음·전송·숨김), `service/ChatRoomEndService`(만료 마감·예약 개방·사용자 종료), `service/ChatRoomAccessChecker`(멤버십·종료 여부 판정), `scheduler/ChatRoomLifecycleScheduler`(개방·마감 + 평가 열기·누락 복구), `websocket`(`WebSocketConfig`·`StompAuthChannelInterceptor`·`ChatStompController`).
