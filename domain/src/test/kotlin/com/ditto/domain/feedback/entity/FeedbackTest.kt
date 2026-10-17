@@ -27,7 +27,7 @@ class FeedbackTest : FreeSpec(
                 feedback.status shouldBe FeedbackStatus.RECEIVED
             }
 
-            "내용이 공백뿐이면 거부한다" {
+            "내용이 공백뿐이면 접수하지 않는다" {
                 shouldThrow<WarnException> {
                     FeedbackFixture.create(content = "   ")
                 }.errorCode shouldBe ErrorCode.BAD_REQUEST

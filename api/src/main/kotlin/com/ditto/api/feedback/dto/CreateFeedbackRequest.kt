@@ -10,7 +10,7 @@ data class CreateFeedbackRequest(
     val type: String,
 
     @field:NotBlank(message = "내용을 입력해 주세요.")
-    @field:Size(max = Feedback.CONTENT_MAX_LENGTH, message = "내용은 최대 1000자까지 가능합니다.")
+    @field:Size(max = Feedback.CONTENT_MAX_LENGTH, message = "내용이 너무 깁니다.")
     val content: String,
 
     @field:Size(max = Feedback.APP_VERSION_MAX_LENGTH, message = "앱 버전이 너무 깁니다.")

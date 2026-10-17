@@ -14,7 +14,6 @@ import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.Comment
 
-/** 앱에서 회원이 보낸 버그 제보·개선 제안. 답변은 하지 않는다. */
 @Entity
 @Table(
     name = "feedback",

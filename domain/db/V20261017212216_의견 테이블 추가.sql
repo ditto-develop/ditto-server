@@ -1,5 +1,4 @@
 -- feedback 테이블
--- 앱에서 회원이 보낸 버그 제보·개선 제안. 답변은 하지 않는다.
 CREATE TABLE feedback
 (
     id           BIGINT        AUTO_INCREMENT NOT NULL COMMENT '의견 ID',

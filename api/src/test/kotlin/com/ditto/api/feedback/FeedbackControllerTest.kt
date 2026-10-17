@@ -17,7 +17,7 @@ import org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-// FE와 공유하는 code 목록. enum에서 만들어 문서가 항상 최신이다.
+// FE와 공유하는 code 목록. enum에서 만든다.
 private val FEEDBACK_TYPE_CODES = FeedbackType.entries.joinToString(", ") { "${it.code}(${it.description})" }
 
 class FeedbackControllerTest : RestDocsTest() {
@@ -79,7 +79,7 @@ class FeedbackControllerTest : RestDocsTest() {
     }
 
     @Test
-    @DisplayName("내용이 비어 있으면 접수하지 않는다")
+    @DisplayName("내용이 공백뿐이면 접수하지 않는다")
     fun createFeedbackWithBlankContent() {
         val request = CreateFeedbackRequest(type = "bug", content = " ")
 
