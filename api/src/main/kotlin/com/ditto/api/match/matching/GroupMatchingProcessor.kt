@@ -235,7 +235,7 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
                 return PairScores(indexByMemberId, scores)
             }
 
-            // higherIndex 번째 줄에 그보다 앞 순번과의 점수를 차례로 둔다. 그 앞 줄들에 1+2+...+(higherIndex-1)칸이 있다.
+            // higherIndex 번째 줄에는 앞 순번 higherIndex 개와의 점수가 놓이고, 앞 줄들의 칸 수 합이 1+2+...+(higherIndex-1)이다.
             private fun slotOf(lowerIndex: Int, higherIndex: Int): Int =
                 higherIndex * (higherIndex - 1) / 2 + lowerIndex
         }
