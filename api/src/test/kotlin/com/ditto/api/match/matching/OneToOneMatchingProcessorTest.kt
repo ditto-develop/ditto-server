@@ -5,7 +5,9 @@ import com.ditto.domain.member.entity.GenderPreference
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldNotContainAnyOf
 import io.kotest.matchers.shouldBe
+import kotlin.random.Random
 
 class OneToOneMatchingProcessorTest : FreeSpec(
     {
@@ -55,14 +57,41 @@ class OneToOneMatchingProcessorTest : FreeSpec(
         }
 
         "단계별 공개 메서드" - {
-            "scoreEligibleDuos 는 자격 있는 페어만 점수를 매기고 선발은 하지 않는다" {
+            "findMemberIdsWithEligiblePair 는 자격 상대가 한 명이라도 있는 회원만 돌려준다" {
                 val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
                 val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
                 val farFemale = participant(3L, Gender.FEMALE, GenderPreference.OPPOSITE, age = 40)
 
-                val scoredDuos = processor.scoreEligibleDuos(listOf(male, female, farFemale))
+                processor.findMemberIdsWithEligiblePair(listOf(male, female, farFemale)) shouldBe setOf(1L, 2L)
+            }
 
-                scoredDuos.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
+            "자격 상대가 있는 회원 집합은 match() 에서 후보를 받은 회원 집합과 같다" {
+                // 무작위 풀에 나이가 동떨어진 회원과 성별 미상 회원을 더해 자격 상대가 없는 회원이 반드시 있게 한다.
+                val random = Random(11)
+                val randomPool = (1L..40L).map { id ->
+                    MatchParticipant(
+                        memberId = id,
+                        answers = (101L..105L).associateWith { random.nextLong(1, 3) },
+                        gender = Gender.entries.random(random),
+                        age = random.nextInt(20, 45),
+                        preferredGender = GenderPreference.entries.random(random),
+                        blockedMemberIds = setOf(random.nextLong(1, 41)),
+                    )
+                }
+                val tooOld = participant(41L, Gender.MALE, GenderPreference.ANY, age = 80)
+                val unknownGender = MatchParticipant(42L, mapOf(101L to 1L), gender = null, age = 25)
+                val pool = randomPool + tooOld + unknownGender
+
+                val memberIdsWithCandidate = processor.match(pool).flatMapTo(mutableSetOf()) { it.memberIds }
+
+                memberIdsWithCandidate shouldNotContainAnyOf listOf(tooOld.memberId, unknownGender.memberId)
+                processor.findMemberIdsWithEligiblePair(pool) shouldBe memberIdsWithCandidate
+            }
+
+            "findMemberIdsWithEligiblePair 는 자기 자신을 상대로 세지 않는다" {
+                val alone = participant(1L, Gender.MALE, GenderPreference.ANY)
+
+                processor.findMemberIdsWithEligiblePair(listOf(alone)) shouldBe emptySet()
             }
         }
 

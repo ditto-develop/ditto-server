@@ -188,10 +188,21 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
         }
     }
 
-    /** 참여자 전원의 페어 점수를 양방향으로 미리 계산해 둔다. 배정·교환이 반복 조회한다. */
-    private class PairScores(private val scoreByMemberPair: Map<Long, Map<Long, Double>>) {
+    /**
+     * 참여자 전원의 페어 점수를 미리 계산해 둔다. 배정·교환이 반복 조회한다.
+     * 맵에 담으면 박싱 때문에 수천 명에서 힙이 모자라서 배열에 담는다. 점수가 대칭이라 한쪽 방향만 둔다.
+     */
+    private class PairScores private constructor(
+        private val indexByMemberId: Map<Long, Int>,
+        private val scores: DoubleArray,
+    ) {
 
-        fun of(a: Long, b: Long): Double = scoreByMemberPair.getValue(a).getValue(b)
+        fun of(memberIdA: Long, memberIdB: Long): Double {
+            val indexA = indexByMemberId.getValue(memberIdA)
+            val indexB = indexByMemberId.getValue(memberIdB)
+            require(indexA != indexB) { "자기 자신과의 점수는 없습니다: $memberIdA" }
+            return scores[slotOf(minOf(indexA, indexB), maxOf(indexA, indexB))]
+        }
 
         fun affinitySum(participant: MatchParticipant, group: List<MatchParticipant>): Double =
             group.sumOf { of(participant.memberId, it.memberId) }
@@ -212,16 +223,21 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
             private const val EMPTY_GROUP_AFFINITY = -1.0
 
             fun of(participants: List<MatchParticipant>): PairScores {
-                val scoreByMemberPair = participants.associate { it.memberId to mutableMapOf<Long, Double>() }
-                participants.forEachIndexed { index, participant ->
-                    participants.drop(index + 1).forEach { other ->
-                        val score = MatchScoreCalculator.calculate(participant, other).score
-                        scoreByMemberPair.getValue(participant.memberId)[other.memberId] = score
-                        scoreByMemberPair.getValue(other.memberId)[participant.memberId] = score
+                val indexByMemberId = participants.withIndex()
+                    .associate { (index, participant) -> participant.memberId to index }
+                val scores = DoubleArray(participants.size * (participants.size - 1) / 2)
+                for (higherIndex in participants.indices) {
+                    for (lowerIndex in 0 until higherIndex) {
+                        scores[slotOf(lowerIndex, higherIndex)] =
+                            MatchScoreCalculator.calculate(participants[lowerIndex], participants[higherIndex]).score
                     }
                 }
-                return PairScores(scoreByMemberPair)
+                return PairScores(indexByMemberId, scores)
             }
+
+            // higherIndex 번째 줄에는 앞 순번 higherIndex 개와의 점수가 놓이고, 앞 줄들의 칸 수 합이 1+2+...+(higherIndex-1)이다.
+            private fun slotOf(lowerIndex: Int, higherIndex: Int): Int =
+                higherIndex * (higherIndex - 1) / 2 + lowerIndex
         }
     }
 

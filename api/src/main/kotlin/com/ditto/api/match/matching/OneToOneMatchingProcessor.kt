@@ -20,17 +20,25 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         return TopPicksSelector.select(scoreEligibleDuos(participants), PICKS_PER_MEMBER)
     }
 
-    // 어드민이 후보가 없는 이유를 다시 계산할 때도 쓴다.
-    fun scoreEligibleDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
-        participants.flatMapIndexed { index, participant ->
-            participants.drop(index + 1).mapNotNull { otherParticipant ->
-                if (!isValidPair(participant, otherParticipant)) return@mapNotNull null
-                ScoredMatch.duo(
-                    memberAId = participant.memberId,
-                    memberBId = otherParticipant.memberId,
-                    matchScore = MatchScoreCalculator.calculate(participant, otherParticipant),
-                )
+    // 어드민이 후보가 없는 이유를 다시 계산할 때 쓴다.
+    fun findMemberIdsWithEligiblePair(participants: List<MatchParticipant>): Set<Long> =
+        participants
+            .filter { participant ->
+                participants.any { it.memberId != participant.memberId && isValidPair(participant, it) }
             }
+            .mapTo(mutableSetOf()) { it.memberId }
+
+    private fun scoreEligibleDuos(participants: List<MatchParticipant>): Sequence<ScoredMatch> =
+        participants.asSequence().flatMapIndexed { index, participant ->
+            participants.subList(index + 1, participants.size).asSequence()
+                .filter { otherParticipant -> isValidPair(participant, otherParticipant) }
+                .map { otherParticipant ->
+                    ScoredMatch.duo(
+                        memberAId = participant.memberId,
+                        memberBId = otherParticipant.memberId,
+                        matchScore = MatchScoreCalculator.calculate(participant, otherParticipant),
+                    )
+                }
         }
 
     // 세 조건 모두 대칭이라 A가 B의 자격 상대면 B도 A의 자격 상대다.

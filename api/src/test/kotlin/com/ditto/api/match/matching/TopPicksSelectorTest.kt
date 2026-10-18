@@ -26,7 +26,7 @@ class TopPicksSelectorTest : FreeSpec(
                 val x = 100L
                 val scoredDuos = (1L..6L).map { duo(x, it, (10 - it).toDouble()) }
 
-                TopPicksSelector.select(scoredDuos, 5) shouldContainExactlyInAnyOrder scoredDuos
+                TopPicksSelector.select(scoredDuos.asSequence(), 5) shouldContainExactlyInAnyOrder scoredDuos
             }
 
             "양쪽 모두 고르지 않은 매칭만 빠진다" {
@@ -34,7 +34,7 @@ class TopPicksSelectorTest : FreeSpec(
                 val sixthPartner = 6L
                 val xDuos = (1L..sixthPartner).map { duo(x, it, (10 - it).toDouble()) }
 
-                val selected = TopPicksSelector.select(xDuos + betterDuosOf(sixthPartner), 5)
+                val selected = TopPicksSelector.select((xDuos + betterDuosOf(sixthPartner)).asSequence(), 5)
 
                 selected shouldContainExactlyInAnyOrder xDuos.take(5) + betterDuosOf(sixthPartner)
             }
@@ -50,7 +50,7 @@ class TopPicksSelectorTest : FreeSpec(
                     popularMen.map { man -> duo(woman, man, 80.0) } + lowScoredDuo(woman)
                 }
 
-                val selected = TopPicksSelector.select(scoredDuos, 5)
+                val selected = TopPicksSelector.select(scoredDuos.asSequence(), 5)
 
                 selected.filter { lowScoredMan in it.memberIds } shouldContainExactlyInAnyOrder
                     (2L..6L).map { lowScoredDuo(it) }
@@ -61,7 +61,7 @@ class TopPicksSelectorTest : FreeSpec(
                 val star = 100L
                 val scoredDuos = (1L..7L).map { duo(star, it, 90.0 - it) }
 
-                val selected = TopPicksSelector.select(scoredDuos, 5)
+                val selected = TopPicksSelector.select(scoredDuos.asSequence(), 5)
 
                 selected.count { star in it.memberIds } shouldBe 7
             }
@@ -74,7 +74,7 @@ class TopPicksSelectorTest : FreeSpec(
                     duo(2L, 4L, 7.0),
                 )
 
-                TopPicksSelector.select(scoredDuos, 5) shouldContainExactlyInAnyOrder scoredDuos
+                TopPicksSelector.select(scoredDuos.asSequence(), 5) shouldContainExactlyInAnyOrder scoredDuos
             }
 
             "동점은 무작위로 자르고 점수가 더 높은 상대는 항상 고른다" {
@@ -91,7 +91,7 @@ class TopPicksSelectorTest : FreeSpec(
                 )
                 val othersBetterDuos = (1L..7L).flatMap { betterDuosOf(it) }
 
-                val selected = TopPicksSelector.select(scoredDuos + othersBetterDuos, 5, Random(42))
+                val selected = TopPicksSelector.select((scoredDuos + othersBetterDuos).asSequence(), 5, Random(42))
                 val pickedByX = selected.filter { x in it.memberIds }
 
                 pickedByX shouldHaveSize 5
@@ -112,14 +112,47 @@ class TopPicksSelectorTest : FreeSpec(
                     duo(x, 4L, 5.0),
                 )
 
-                val first = TopPicksSelector.select(scoredDuos, 2, Random(42))
-                val second = TopPicksSelector.select(scoredDuos, 2, Random(42))
+                val first = TopPicksSelector.select(scoredDuos.asSequence(), 2, Random(42))
+                val second = TopPicksSelector.select(scoredDuos.asSequence(), 2, Random(42))
 
                 first shouldBe second
             }
 
+            "남은 매칭은 들어온 순서대로 돌려준다" {
+                val x = 100L
+                // 점수 순(2, 1)과 들어온 순(1, 2)이 다르게 둔다.
+                val scoredDuos = listOf(
+                    duo(x, 1L, 7.0),
+                    duo(x, 2L, 9.0),
+                    duo(x, 3L, 1.0),
+                    duo(x, 4L, 5.0),
+                )
+                val othersBetterDuos = (1L..4L).flatMap { betterDuosOf(it) }
+
+                val selected = TopPicksSelector.select(scoredDuos.asSequence() + othersBetterDuos, 2)
+
+                selected.filter { x in it.memberIds } shouldBe listOf(duo(x, 1L, 7.0), duo(x, 2L, 9.0))
+            }
+
+            "동점이 없으면 회원마다 상위 5개를 모아 합친 것과 같다" {
+                val random = Random(7)
+                val memberIds = (1L..30L).toList()
+                val pairs = memberIds.flatMapIndexed { index, memberA ->
+                    memberIds.drop(index + 1).map { memberB -> memberA to memberB }
+                }
+                val distinctScores = pairs.indices.shuffled(random).map { it / 10.0 }
+                val scoredDuos = pairs.zip(distinctScores) { (memberA, memberB), score -> duo(memberA, memberB, score) }
+                val expectedPicks = memberIds.flatMapTo(mutableSetOf()) { memberId ->
+                    scoredDuos.filter { memberId in it.memberIds }.sortedByDescending { it.score }.take(5)
+                }
+
+                val selected = TopPicksSelector.select(scoredDuos.asSequence(), 5, random)
+
+                selected shouldBe scoredDuos.filter { it in expectedPicks }
+            }
+
             "빈 입력이면 빈 결과다" {
-                TopPicksSelector.select(emptyList(), 5) shouldBe emptyList()
+                TopPicksSelector.select(emptySequence(), 5) shouldBe emptyList()
             }
         }
     },
