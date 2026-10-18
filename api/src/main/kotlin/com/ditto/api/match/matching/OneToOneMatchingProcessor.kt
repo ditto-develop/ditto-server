@@ -20,7 +20,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         return TopPicksSelector.select(scoreEligibleDuos(participants), PICKS_PER_MEMBER)
     }
 
-    // 어드민이 후보가 없는 이유를 다시 계산할 때 쓴다. 자격 상대가 있으면 선발에서 반드시 후보를 받는다.
+    // 어드민이 후보가 없는 이유를 다시 계산할 때 쓴다.
     fun findMemberIdsWithEligiblePair(participants: List<MatchParticipant>): Set<Long> =
         participants
             .filter { participant ->
@@ -31,7 +31,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
     private fun scoreEligibleDuos(participants: List<MatchParticipant>): Sequence<ScoredMatch> =
         participants.asSequence().flatMapIndexed { index, participant ->
             participants.subList(index + 1, participants.size).asSequence()
-                .filter { isValidPair(participant, it) }
+                .filter { otherParticipant -> isValidPair(participant, otherParticipant) }
                 .map { otherParticipant ->
                     ScoredMatch.duo(
                         memberAId = participant.memberId,

@@ -190,17 +190,17 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
 
     /**
      * 참여자 전원의 페어 점수를 미리 계산해 둔다. 배정·교환이 반복 조회한다.
-     * 맵에 담으면 박싱과 노드 때문에 페어당 150바이트쯤 들어서 배열에 담는다. 점수가 대칭이라 한쪽 방향만 둔다.
+     * 맵에 담으면 박싱 때문에 수천 명에서 힙이 모자라서 배열에 담는다. 점수가 대칭이라 한쪽 방향만 둔다.
      */
     private class PairScores private constructor(
         private val indexByMemberId: Map<Long, Int>,
         private val scores: DoubleArray,
     ) {
 
-        fun of(a: Long, b: Long): Double {
-            val indexA = indexByMemberId.getValue(a)
-            val indexB = indexByMemberId.getValue(b)
-            require(indexA != indexB) { "자기 자신과의 점수는 없습니다: $a" }
+        fun of(memberIdA: Long, memberIdB: Long): Double {
+            val indexA = indexByMemberId.getValue(memberIdA)
+            val indexB = indexByMemberId.getValue(memberIdB)
+            require(indexA != indexB) { "자기 자신과의 점수는 없습니다: $memberIdA" }
             return scores[slotOf(minOf(indexA, indexB), maxOf(indexA, indexB))]
         }
 
@@ -226,17 +226,18 @@ class GroupMatchingProcessor(private val random: Random = Random.Default) : Matc
                 val indexByMemberId = participants.withIndex()
                     .associate { (index, participant) -> participant.memberId to index }
                 val scores = DoubleArray(participants.size * (participants.size - 1) / 2)
-                for (higher in participants.indices) {
-                    for (lower in 0 until higher) {
-                        scores[slotOf(lower, higher)] =
-                            MatchScoreCalculator.calculate(participants[lower], participants[higher]).score
+                for (higherIndex in participants.indices) {
+                    for (lowerIndex in 0 until higherIndex) {
+                        scores[slotOf(lowerIndex, higherIndex)] =
+                            MatchScoreCalculator.calculate(participants[lowerIndex], participants[higherIndex]).score
                     }
                 }
                 return PairScores(indexByMemberId, scores)
             }
 
-            // 0..higher-1 번째와의 점수를 higher 번째 줄에 차례로 둔다.
-            private fun slotOf(lower: Int, higher: Int): Int = higher * (higher - 1) / 2 + lower
+            // higherIndex 번째 줄에 그보다 앞 순번과의 점수를 차례로 둔다. 그 앞 줄들에 1+2+...+(higherIndex-1)칸이 있다.
+            private fun slotOf(lowerIndex: Int, higherIndex: Int): Int =
+                higherIndex * (higherIndex - 1) / 2 + lowerIndex
         }
     }
 
