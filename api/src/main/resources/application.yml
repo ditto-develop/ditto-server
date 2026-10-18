@@ -52,7 +52,8 @@ ditto:
   front:
     oauth-callback-url: ${FRONT_OAUTH_CALLBACK_URL:http://localhost:3000/auth/callback}
   admin:
-    # 어드민 QA 도구(퀴즈셋 초기화·더미·QA 콘솔·시간 조정) 스위치. 실제 서비스 시작 전에 끈다.
+    # 어드민 QA 도구(퀴즈셋 초기화·더미·QA 콘솔·시간 조정) 스위치. 실제 서비스 시작 전에 끈다(ADR 0039).
+    # 로컬에서 QA 화면을 쓰려면 ADMIN_QA_TOOLS_ENABLED=true ./gradlew :api:bootRun
     qa-tools:
       enabled: ${ADMIN_QA_TOOLS_ENABLED:false}
   # App Store 심사용 데모 로그인. 둘 중 하나라도 비면 꺼진다. 비밀번호는 BCrypt 해시만 넣는다(레포 공개).
