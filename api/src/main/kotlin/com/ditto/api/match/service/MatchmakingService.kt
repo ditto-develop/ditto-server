@@ -62,11 +62,8 @@ class MatchmakingService(
             ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "매칭 전략이 없는 타입입니다: $matchingType")
 
         val pool = findPool(quizSet)
-        // 페어 계산이 인원의 제곱으로 늘어서 셋마다 걸린 시간을 남긴다.
-        val (matches, matchingDuration) = measureTimedValue {
-            if (pool.memberIds.size < 2) emptyList()
-            else processor.match(loadParticipants(pool))
-        }
+        val participants = if (pool.memberIds.size < 2) emptyList() else loadParticipants(pool)
+        val (matches, matchingDuration) = measureTimedValue { processor.match(participants) }
 
         val summary = CandidateGenerationSummary(
             quizSetId = quizSetId,
