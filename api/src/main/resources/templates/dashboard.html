@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">대시보드</h1>
-            <p class="page-desc">서버 시각 기준의 이번 주와 기간입니다. 시간 조정을 켜 두면 조정한 시각으로 보입니다.</p>
+            <p class="page-desc">서버 시각 기준의 이번 주와 기간입니다.<th:block th:if="${qaToolsEnabled}"> 시간 조정을 켜 두면 조정한 시각으로 보입니다.</th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="grid cols-3">

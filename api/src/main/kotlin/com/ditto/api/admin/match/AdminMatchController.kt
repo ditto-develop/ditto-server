@@ -1,5 +1,6 @@
 package com.ditto.api.admin.match
 
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.notifier.MatchResultNotifier
@@ -25,6 +26,7 @@ class AdminMatchController(
     private val serverTimeProvider: ServerTimeProvider,
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
+    private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @GetMapping("/admin/matching")
     fun page(model: Model): String {
@@ -74,6 +76,8 @@ class AdminMatchController(
     private fun regenerationFailedMessage(quizSetId: Long, exception: WarnException): String {
         val failed = "퀴즈셋 #$quizSetId 매칭 재생성 실패: ${exception.message}"
         if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
+        // 매칭 기록 초기화는 QA 도구라 꺼진 서버에서는 안내할 곳이 없다.
+        if (!adminQaToolsProperties.enabled) return failed
         return "$failed. 퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요."
     }
 }

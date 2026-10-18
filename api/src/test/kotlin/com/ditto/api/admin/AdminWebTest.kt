@@ -165,10 +165,11 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("QA 도구가 켜져 있으면 사이드바에 시간 조정·더미 생성·QA 콘솔 링크가 보인다")
-    fun qaLinksWhenQaToolsEnabled() {
+    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 생성·QA 콘솔 링크가 보인다")
+    fun sidebarShowsQaLinksWhenQaToolsEnabled() {
         mockMvc.perform(get("/admin").with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(containsString("QA 도구 켜짐")))
             .andExpect(content().string(containsString("href=\"/admin/time-override\"")))
             .andExpect(content().string(containsString("href=\"/admin/dummy\"")))
             .andExpect(content().string(containsString("href=\"/admin/qa\"")))
