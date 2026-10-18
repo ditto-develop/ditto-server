@@ -20,7 +20,14 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         return TopPicksSelector.select(scoreEligibleDuos(participants), PICKS_PER_MEMBER)
     }
 
-    // 어드민이 후보가 없는 이유를 다시 계산할 때도 쓴다.
+    // 어드민이 후보가 없는 이유를 다시 계산할 때 쓴다. 자격 상대가 있으면 선발에서 반드시 후보를 받는다.
+    fun findMemberIdsWithEligiblePair(participants: List<MatchParticipant>): Set<Long> =
+        participants
+            .filter { participant ->
+                participants.any { it.memberId != participant.memberId && isValidPair(participant, it) }
+            }
+            .mapTo(mutableSetOf()) { it.memberId }
+
     fun scoreEligibleDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
         participants.flatMapIndexed { index, participant ->
             participants.drop(index + 1).mapNotNull { otherParticipant ->

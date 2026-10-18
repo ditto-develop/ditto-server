@@ -56,8 +56,7 @@ class OneToOneMissFinder(
 
     private class EligiblePairLookup(pool: List<MatchParticipant>, processor: OneToOneMatchingProcessor) {
         private val poolById: Map<Long, MatchParticipant> = pool.associateBy { it.memberId }
-        private val memberIdsWithEligiblePair: Set<Long> =
-            processor.scoreEligibleDuos(pool).flatMap { it.memberIds }.toSet()
+        private val memberIdsWithEligiblePair: Set<Long> = processor.findMemberIdsWithEligiblePair(pool)
 
         fun participantOf(memberId: Long): MatchParticipant? = poolById[memberId]
 

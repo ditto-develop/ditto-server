@@ -64,6 +64,20 @@ class OneToOneMatchingProcessorTest : FreeSpec(
 
                 scoredDuos.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
+
+            "findMemberIdsWithEligiblePair 는 자격 상대가 한 명이라도 있는 회원만 돌려준다" {
+                val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
+                val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
+                val farFemale = participant(3L, Gender.FEMALE, GenderPreference.OPPOSITE, age = 40)
+
+                processor.findMemberIdsWithEligiblePair(listOf(male, female, farFemale)) shouldBe setOf(1L, 2L)
+            }
+
+            "findMemberIdsWithEligiblePair 는 자기 자신을 상대로 세지 않는다" {
+                val alone = participant(1L, Gender.MALE, GenderPreference.ANY)
+
+                processor.findMemberIdsWithEligiblePair(listOf(alone)) shouldBe emptySet()
+            }
         }
 
         "성별 상호호환 하드 필터" - {
