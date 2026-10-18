@@ -22,6 +22,8 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import kotlin.time.Duration
+import kotlin.time.measureTimedValue
 
 /**
  * 한 퀴즈셋의 매칭 후보를 계산해 저장한다. 여러 셋을 도는 배치는 [MatchingBatchFacade]가 맡는다.
@@ -60,9 +62,11 @@ class MatchmakingService(
             ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "매칭 전략이 없는 타입입니다: $matchingType")
 
         val pool = findPool(quizSet)
-        val matches =
+        // 페어 계산이 인원의 제곱으로 늘어서 셋마다 걸린 시간을 남긴다.
+        val (matches, matchingDuration) = measureTimedValue {
             if (pool.memberIds.size < 2) emptyList()
             else processor.match(loadParticipants(pool))
+        }
 
         val summary = CandidateGenerationSummary(
             quizSetId = quizSetId,
@@ -71,7 +75,7 @@ class MatchmakingService(
             rowCounts = replaceCandidates(quizSetId, matchingType, matches),
             matches = matches,
         )
-        logGeneration(summary)
+        logGeneration(summary, matchingDuration)
         return summary
     }
 
@@ -97,11 +101,12 @@ class MatchmakingService(
         return loadParticipants(pool)
     }
 
-    private fun logGeneration(summary: CandidateGenerationSummary) {
+    private fun logGeneration(summary: CandidateGenerationSummary, matchingDuration: Duration) {
         logger.info {
             "매칭 후보 생성: quizSetId=${summary.quizSetId} type=${summary.matchingType} " +
                 "참여자=${summary.participantCount}명 삭제=${summary.rowCounts.deletedCount}행 " +
-                "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건"
+                "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건 " +
+                "계산=${matchingDuration.inWholeMilliseconds}ms"
         }
     }
 
