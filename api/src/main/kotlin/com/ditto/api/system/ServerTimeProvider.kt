@@ -1,5 +1,6 @@
 package com.ditto.api.system
 
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -16,12 +17,17 @@ import java.time.temporal.ChronoUnit
 @Component
 class ServerTimeProvider(
     private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
+    private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @Transactional(readOnly = true)
-    fun now(): LocalDateTime =
-        serverTimeOverrideRepository.findFirstByOrderByIdAsc()
+    fun now(): LocalDateTime {
+        // QA 도구를 끈 뒤에는 해제하지 않고 남은 오버라이드가 운영 시각을 바꾸지 않게 한다.
+        if (!adminQaToolsProperties.enabled) return realNow()
+
+        return serverTimeOverrideRepository.findFirstByOrderByIdAsc()
             ?.resolve(realNow())
             ?: realNow()
+    }
 
     /**
      * DB 컬럼이 `DATETIME(6)`이라 마이크로초까지만 저장된다. 절삭하지 않으면 리눅스처럼

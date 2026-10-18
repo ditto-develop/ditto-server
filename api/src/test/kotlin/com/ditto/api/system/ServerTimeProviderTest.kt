@@ -1,5 +1,6 @@
 package com.ditto.api.system
 
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.core.spec.style.FreeSpec
@@ -11,7 +12,7 @@ import java.time.temporal.ChronoUnit
 
 class ServerTimeProviderTest : FreeSpec({
     val repository = mockk<ServerTimeOverrideRepository>()
-    val provider = ServerTimeProvider(repository)
+    val provider = ServerTimeProvider(repository, AdminQaToolsProperties(enabled = true))
 
     "오버라이드가 없으면 실제 시각을 반환한다" {
         every { repository.findFirstByOrderByIdAsc() } returns null
@@ -50,5 +51,14 @@ class ServerTimeProviderTest : FreeSpec({
         val before = LocalDateTime.now()
 
         (provider.now() >= before) shouldBe true
+    }
+
+    "QA 도구가 꺼져 있으면 활성 오버라이드가 남아 있어도 실제 시각을 반환한다" {
+        val override = ServerTimeOverride.disabled().apply { override(LocalDateTime.of(2020, 1, 1, 0, 0), null, null) }
+        every { repository.findFirstByOrderByIdAsc() } returns override
+        val providerWithQaToolsOff = ServerTimeProvider(repository, AdminQaToolsProperties(enabled = false))
+        val before = LocalDateTime.now()
+
+        (providerWithQaToolsOff.now() >= before) shouldBe true
     }
 })
