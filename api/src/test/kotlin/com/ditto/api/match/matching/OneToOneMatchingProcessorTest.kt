@@ -5,6 +5,7 @@ import com.ditto.domain.member.entity.GenderPreference
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldNotContainAnyOf
 import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
@@ -64,9 +65,10 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 processor.findMemberIdsWithEligiblePair(listOf(male, female, farFemale)) shouldBe setOf(1L, 2L)
             }
 
-            "findMemberIdsWithEligiblePair 가 고른 회원은 match() 에서 빠짐없이 후보를 받는다" {
+            "자격 상대가 있는 회원 집합은 match() 에서 후보를 받은 회원 집합과 같다" {
+                // 무작위 풀에 나이가 동떨어진 회원과 성별 미상 회원을 더해 자격 상대가 없는 회원이 반드시 있게 한다.
                 val random = Random(11)
-                val pool = (1L..40L).map { id ->
+                val randomPool = (1L..40L).map { id ->
                     MatchParticipant(
                         memberId = id,
                         answers = (101L..105L).associateWith { random.nextLong(1, 3) },
@@ -76,9 +78,13 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                         blockedMemberIds = setOf(random.nextLong(1, 41)),
                     )
                 }
+                val tooOld = participant(41L, Gender.MALE, GenderPreference.ANY, age = 80)
+                val unknownGender = MatchParticipant(42L, mapOf(101L to 1L), gender = null, age = 25)
+                val pool = randomPool + tooOld + unknownGender
 
                 val memberIdsWithCandidate = processor.match(pool).flatMapTo(mutableSetOf()) { it.memberIds }
 
+                memberIdsWithCandidate shouldNotContainAnyOf listOf(tooOld.memberId, unknownGender.memberId)
                 processor.findMemberIdsWithEligiblePair(pool) shouldBe memberIdsWithCandidate
             }
 
