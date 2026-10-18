@@ -26,5 +26,5 @@
 
 - commits: 1e4ea6c(파이프라인 분해·동점 무작위), 963747c(성별·나이 대칭 하드필터)
 - [ADR 0040](0040-one-to-one-top-picks-per-member.md): 선발 규칙(상위 20%, 양방향 5명)은 이 결정으로 바뀌었다. 파이프라인 분리와 동점 무작위는 그대로다.
-- [ADR 0044](0044-matching-pair-memory.md): 동점 무작위를 shuffle 대신 페어마다 붙인 무작위 값으로 한다.
+- [ADR 0044](0044-matching-pair-memory.md): 동점 무작위를 shuffle 대신 회원마다 따로 뽑는 무작위 값으로 한다.
 - `api/.../match/matching/{MatchingProcessor,OneToOneMatchingProcessor,TopRatioSelector,HardLimitApplier,MatchScoreCalculator}.kt` (TopRatioSelector·HardLimitApplier는 ADR 0040에서 TopPicksSelector로 대체)(KDoc에 무작위·대칭·양방향 근거), `domain/.../member/entity/GenderPreference.kt`

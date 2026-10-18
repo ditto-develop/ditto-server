@@ -35,5 +35,5 @@
 
 - #293
 - [ADR 0007](0007-matching-pure-pipeline.md): 파이프라인 분리와 동점 무작위는 그대로 유효하다. 선발 규칙만 이 결정으로 바뀌었다.
-- [ADR 0044](0044-matching-pair-memory.md): 동점을 섞어서 자르던 방식은 페어마다 무작위 값을 붙이는 방식으로 바뀌었다. 선발 규칙은 그대로다.
+- [ADR 0044](0044-matching-pair-memory.md): 동점을 섞어서 자르던 방식은 회원마다 따로 뽑는 무작위 값으로 자르는 방식으로 바뀌었다. 선발 규칙과 분포는 그대로다.
 - 핵심 파일: `api/.../match/matching/TopPicksSelector.kt`, `OneToOneMatchingProcessor.kt`, `api/.../admin/quiz/OneToOneMissFinder.kt`
