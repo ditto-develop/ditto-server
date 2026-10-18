@@ -71,6 +71,15 @@ class AdminQaToolsDisabledWebTest(
                 }
         }
 
+        "사이드바와 대시보드에 QA 화면 링크가 없고 매칭 실행은 남는다" {
+            mockMvc.perform(get("/admin").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(not(containsString("href=\"/admin/qa\""))))
+                .andExpect(content().string(not(containsString("href=\"/admin/dummy\""))))
+                .andExpect(content().string(not(containsString("href=\"/admin/time-override\""))))
+                .andExpect(content().string(containsString("href=\"/admin/matching\"")))
+        }
+
         "더미 전체 삭제 요청은 거부하고 더미를 남긴다" {
             val dummyId = memberRepository.save(MemberFixture.create(nickname = "dummy-female-1")).id
 
@@ -141,12 +150,13 @@ class AdminQaToolsDisabledWebTest(
             quizProgressRepository.findByMemberIdAndQuizSetId(1L, quizSetId) shouldNotBe null
         }
 
-        "참여 현황에 행별 초기화 버튼이 없고 회원별 초기화 요청은 거부한다" {
+        "참여 현황에 행별 초기화 버튼과 더미 만들기 링크가 없고 회원별 초기화 요청은 거부한다" {
             val quizSetId = saveQuizSetWithParticipant(memberId = 1L)
 
             mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSetId).with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(not(containsString("reset-answers"))))
+                .andExpect(content().string(not(containsString("/admin/dummy/single"))))
             mockMvc.perform(
                 post("/admin/quiz-sets/{id}/qa/members/{memberId}/reset-answers", quizSetId, 1L)
                     .with(authentication(admin)).with(csrf()),

@@ -35,7 +35,7 @@
                 <h2>바로가기</h2>
                 <div class="btn-row">
                     <a class="btn" th:href="@{/admin/quiz-sets}">퀴즈셋 관리</a>
-                    <a class="btn secondary" th:href="@{/admin/time-override}">시간 조정</a>
+                    <a class="btn secondary" th:if="${qaToolsEnabled}" th:href="@{/admin/time-override}">시간 조정</a>
                     <a class="btn secondary" th:href="@{/admin/matching}">매칭 실행</a>
                 </div>
             </div>
