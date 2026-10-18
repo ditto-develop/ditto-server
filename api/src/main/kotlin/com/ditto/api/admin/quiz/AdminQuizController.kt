@@ -4,6 +4,7 @@ import com.ditto.api.admin.quiz.dto.AnswerResetPreview
 import com.ditto.api.admin.quiz.dto.MatchingErasePreview
 import com.ditto.api.admin.quiz.dto.MemberAnswerResetAvailability
 import com.ditto.api.admin.quiz.dto.QuizSetForm
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import org.springframework.stereotype.Controller
@@ -22,7 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 class AdminQuizController(
     private val adminQuizService: AdminQuizService,
     private val adminQuizParticipantService: AdminQuizParticipantService,
-    private val qaToolGuard: QaToolGuard,
+    private val adminQaToolsProperties: AdminQaToolsProperties,
     private val adminQuizQaService: AdminQuizQaService,
     private val adminQuizAnswerResetService: AdminQuizAnswerResetService,
 ) {
@@ -161,19 +162,19 @@ class AdminQuizController(
 
     // 매칭 기록이 없는 셋은 일반 삭제로 충분해 QA 도구를 보이지 않는다.
     private fun findMatchingErasePreview(quizSetId: Long, hasMatchRecords: Boolean): MatchingErasePreview? {
-        if (!qaToolGuard.isEnabled || !hasMatchRecords) return null
+        if (!adminQaToolsProperties.enabled || !hasMatchRecords) return null
         return adminQuizQaService.previewErase(quizSetId)
     }
 
     // 참여자도 매칭 기록도 없으면 지울 것이 없어 QA 도구 카드를 보이지 않는다.
     private fun findAnswerResetPreview(quizSetId: Long, hasMatchRecords: Boolean): AnswerResetPreview? {
-        if (!qaToolGuard.isEnabled) return null
+        if (!adminQaToolsProperties.enabled) return null
         return adminQuizAnswerResetService.previewAllAnswersReset(quizSetId)
             .takeIf { it.participantCount > 0 || hasMatchRecords }
     }
 
     private fun findMemberAnswerResetAvailability(quizSetId: Long): MemberAnswerResetAvailability? {
-        if (!qaToolGuard.isEnabled) return null
+        if (!adminQaToolsProperties.enabled) return null
         return adminQuizAnswerResetService.findMemberAnswerResetAvailability(quizSetId)
     }
 

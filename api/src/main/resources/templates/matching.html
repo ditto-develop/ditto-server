@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">매칭 실행</h1>
-            <p class="page-desc">매주 목요일 05:00 자동 매칭을 기다리지 않고 지금 돌리거나, 퀴즈셋별로 매칭을 재생성합니다. 자동 매칭은 실제 시각으로 돌아서 시간 조정 중에는 [자동 매칭 실행]을 누르세요.</p>
+            <p class="page-desc">매주 목요일 05:00 자동 매칭을 기다리지 않고 지금 돌리거나, 퀴즈셋별로 매칭을 재생성합니다.<th:block th:if="${qaToolsEnabled}"> 자동 매칭은 실제 시각으로 돌아서 시간 조정 중에는 [자동 매칭 실행]을 누르세요.</th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card" th:if="${regeneration}">

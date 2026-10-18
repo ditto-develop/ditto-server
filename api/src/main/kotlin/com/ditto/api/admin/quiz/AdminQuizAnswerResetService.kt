@@ -58,7 +58,6 @@ class AdminQuizAnswerResetService(
 
     /** 답만 지우면 남은 후보 점수의 근거가 사라지므로 매칭 기록부터 지운다. */
     fun resetAllAnswers(quizSetId: Long): AnswerResetSummary {
-        qaToolGuard.validateEnabled()
         qaToolGuard.validateCurrentWeek(findQuizSet(quizSetId))
 
         val matchingEraseSummary = adminQuizQaService.resetMatching(quizSetId)
@@ -73,7 +72,6 @@ class AdminQuizAnswerResetService(
 
     /** 결과 0건으로 매칭이 돈 셋도 매칭 기록이 없어 받으므로, 그 회원의 노매칭 알림까지 지운다. */
     fun resetMemberAnswers(quizSetId: Long, memberId: Long): MemberAnswerResetSummary {
-        qaToolGuard.validateEnabled()
         findMemberAnswerResetRefusal(findQuizSet(quizSetId))
             ?.let { throw WarnException(ErrorCode.BAD_REQUEST, it.message) }
         validateParticipated(memberId, quizSetId)

@@ -165,6 +165,17 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 생성·QA 콘솔 링크가 보인다")
+    fun sidebarShowsQaLinksWhenQaToolsEnabled() {
+        mockMvc.perform(get("/admin").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("QA 도구 켜짐")))
+            .andExpect(content().string(containsString("href=\"/admin/time-override\"")))
+            .andExpect(content().string(containsString("href=\"/admin/dummy\"")))
+            .andExpect(content().string(containsString("href=\"/admin/qa\"")))
+    }
+
+    @Test
     @DisplayName("시스템 공지를 보내면 활성 회원에게 알림이 남고 이력에 기록된다")
     fun publishSystemNotice() {
         val active = memberRepository.save(MemberFixture.create(nickname = "활성", email = "active@ditto.pics", status = MemberStatus.ACTIVE))

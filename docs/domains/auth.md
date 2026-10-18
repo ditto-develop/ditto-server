@@ -41,6 +41,7 @@
 - **어드민 권한은 로그인 시점에만 DB를 읽는다.** 세션에 `ROLE_ADMIN` authority 를 심는 것이 인가의 근거이고(`AdminOAuthController`), 이후 요청은 `member.role` 을 다시 보지 않는다. 따라서 DB 의 role 을 바꿔도 **재로그인 전까지는 반영되지 않는다**(반대로 권한을 뺏어도 기존 세션은 만료 전까지 살아 있다).
 - 어드민 애플 로그인은 `POST /admin/oauth/apple/callback`(폼 POST)으로 받고, **이 한 경로만 CSRF 예외**다 — 폼 값을 믿지 않고 애플이 서명한 ID 토큰 검증만으로 인증하기 때문이다. 검증기는 앱·유저 웹과 같은 `AppleIdTokenVerifier`. 애플 Return URL 은 https 만 허용해 **로컬에서는 동작하지 않는다**(로컬은 `/admin/oauth/dev`). [ADR 0028](../adr/0028-admin-apple-login-csrf-exemption.md)
 - **QA 콘솔(`/admin/qa/**`)은 앱 API 컨트롤러를 더미의 `MemberPrincipal`로 직접 호출한다.** 어드민 세션 안에서 회원 principal 을 만들어 쓰는 유일한 경로이며, 대상은 `dummy-` 회원으로만 막는다(`QaDummies`). 토큰을 발급하거나 로그인 상태를 바꾸지는 않는다. [ADR 0038](../adr/0038-admin-qa-console-acts-as-dummy.md)
+- QA 경로(`QaToolsSwitchInterceptor.QA_TOOL_PATHS`)는 어드민이어도 QA 도구 스위치(`ADMIN_QA_TOOLS_ENABLED`)가 꺼져 있으면 막고 대시보드로 돌려보낸다. 보안 체인이 아니라 MVC interceptor라서 인증·인가가 끝난 뒤에 걸린다. [ADR 0039](../adr/0039-admin-qa-tools-env-switch.md)
 - TODO: 두 표면의 책임 경계·향후 모듈 분리 계획을 ADR로 정리(현재 ADR 0006은 `/api/v1/admin` JSON 경로 기준).
 
 ## 결정 배경 (ADR)

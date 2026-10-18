@@ -8,6 +8,7 @@
 ## 불변식
 - 단일 행 운영 — `findFirstByOrderByIdAsc`로 가장 먼저 생성된 행 1개만 사용.
 - 적용 시각은 `resolve(fallback)`: `enabled`이고 `overrideDateTime`이 있으면 그 값, 아니면 `fallback`(실제 시각).
+- QA 도구 스위치(`ADMIN_QA_TOOLS_ENABLED`)가 꺼져 있으면 `ServerTimeProvider`는 행을 읽지 않고 실제 시각을 쓴다. 꺼진 채 서버가 뜨면 `LeftoverTimeOverrideDisabler`가 행을 `disable()`해, 스위치를 켜도 예전 시각이 살아나지 않는다. [ADR 0039](../adr/0039-admin-qa-tools-env-switch.md)
 - `disable()`은 `enabled`만 끄고 설정 이력(`overrideDateTime`/설정자)은 남긴다.
 - 주차 계산은 `OperationWeek.containing(date)` 단일 경로 — 월요일이 아닌 날짜로 `OperationWeek`를 직접 만들 수 없고(`require`), `SystemState`의 `year/month/week`는 현재 날짜가 아닌 주 시작 월요일 기준 파생 표시값이다.
 

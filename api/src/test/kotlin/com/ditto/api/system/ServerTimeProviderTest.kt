@@ -1,17 +1,20 @@
 package com.ditto.api.system
 
+import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 class ServerTimeProviderTest : FreeSpec({
     val repository = mockk<ServerTimeOverrideRepository>()
-    val provider = ServerTimeProvider(repository)
+    val provider = ServerTimeProvider(repository, AdminQaToolsProperties(enabled = true))
 
     "오버라이드가 없으면 실제 시각을 반환한다" {
         every { repository.findFirstByOrderByIdAsc() } returns null
@@ -50,5 +53,15 @@ class ServerTimeProviderTest : FreeSpec({
         val before = LocalDateTime.now()
 
         (provider.now() >= before) shouldBe true
+    }
+
+    "QA 도구가 꺼져 있으면 시간 조정 행을 읽지 않고 실제 시각을 반환한다" {
+        val leftoverOverride = ServerTimeOverride.disabled().apply { override(LocalDateTime.of(2020, 1, 1, 0, 0), null, null) }
+        val offRepository = mockk<ServerTimeOverrideRepository>()
+        every { offRepository.findFirstByOrderByIdAsc() } returns leftoverOverride
+        val providerWithQaToolsOff = ServerTimeProvider(offRepository, AdminQaToolsProperties(enabled = false))
+
+        providerWithQaToolsOff.now().year shouldNotBe 2020
+        verify(exactly = 0) { offRepository.findFirstByOrderByIdAsc() }
     }
 })
