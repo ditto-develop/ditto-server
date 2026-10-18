@@ -4,6 +4,7 @@
     const POLL_INTERVAL_MS = 3000;
     const NEAR_BOTTOM_PX = 40;
     const LOGIN_PATH = '/admin/login';
+    const CONSOLE_PATH = '/admin/qa';
     const LIVE_TEXT = `${POLL_INTERVAL_MS / 1000}초마다 자동 갱신`;
     // 가로로 미는 표 상자. 그룹처럼 늘고 줄 수 있는 상자는 data-scroll-key 로 짝을 찾는다.
     const TABLE_SCROLL_BOX = '.tbl-scroll';
@@ -18,6 +19,7 @@
     let submitGeneration = 0;
     let submitting = false;
     let polling = false;
+    let qaToolsOff = false;
     let touchedTableRegion = null;
     let tableTouchedAt = 0;
 
@@ -204,14 +206,30 @@
         return response.redirected && new URL(response.url).pathname.startsWith(LOGIN_PATH);
     }
 
+    // QA 도구 스위치가 꺼지면 서버가 QA 경로 요청을 대시보드로 돌려보낸다.
+    function isPushedOutOfConsole(response) {
+        if (!response.redirected) return false;
+        const path = new URL(response.url).pathname;
+        return path !== CONSOLE_PATH && !path.startsWith(`${CONSOLE_PATH}/`);
+    }
+
+    function stopForQaToolsOff() {
+        qaToolsOff = true;
+        showLiveState('갱신 멈춤: 이 서버에서 QA 도구가 꺼졌습니다.', false);
+    }
+
     async function refresh() {
-        if (polling || submitting || document.hidden) return;
+        if (polling || submitting || qaToolsOff || document.hidden) return;
         polling = true;
         const startedGeneration = submitGeneration;
         try {
             const response = await fetch(window.location.pathname, { credentials: 'same-origin' });
             if (isLoggedOut(response)) {
                 showLiveState('갱신 멈춤: 세션이 끝났습니다. 다시 로그인하세요.', false);
+                return;
+            }
+            if (isPushedOutOfConsole(response)) {
+                stopForQaToolsOff();
                 return;
             }
             if (!response.ok) {
@@ -348,6 +366,11 @@
             const response = await fetch(action, { method: 'POST', body, credentials: 'same-origin' });
             if (isLoggedOut(response)) {
                 showSubmitError('세션이 끝나 요청이 처리되지 않았습니다. 다시 로그인하세요.', submittedAlertScope);
+                return;
+            }
+            if (isPushedOutOfConsole(response)) {
+                stopForQaToolsOff();
+                showSubmitError('이 서버에서 QA 도구가 꺼져 요청이 처리되지 않았습니다.', submittedAlertScope);
                 return;
             }
             const doc = parse(await response.text());
