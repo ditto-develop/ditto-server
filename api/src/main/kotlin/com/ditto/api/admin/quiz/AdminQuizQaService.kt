@@ -38,7 +38,6 @@ class AdminQuizQaService(
 
     /** 퀴즈셋·답·진행은 남기고 매칭 기록만 지워 같은 셋으로 매칭을 다시 돌릴 수 있게 한다. */
     fun resetMatching(quizSetId: Long): MatchingEraseSummary {
-        qaToolGuard.validateEnabled()
         val quizSet = findQuizSet(quizSetId)
         qaToolGuard.validateCurrentWeek(quizSet)
         return eraseMatchingRecordsOf(quizSet)
@@ -46,7 +45,6 @@ class AdminQuizQaService(
 
     /** 매칭 기록을 먼저 지워 일반 삭제가 막히지 않게 한 뒤 퀴즈셋까지 지운다. */
     fun forceDelete(quizSetId: Long): MatchingEraseSummary {
-        qaToolGuard.validateEnabled()
         val summary = eraseMatchingRecordsOf(findQuizSet(quizSetId))
         // 일반 삭제가 매칭 결과 알림을 한 번 더 지우지만 이미 비어 있어 0건이다.
         quizSetDeleter.delete(quizSetId)
