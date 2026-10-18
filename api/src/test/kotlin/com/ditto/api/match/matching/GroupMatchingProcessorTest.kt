@@ -5,6 +5,7 @@ import com.ditto.domain.member.entity.GenderPreference
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class GroupMatchingProcessorTest : FreeSpec(
@@ -58,6 +59,21 @@ class GroupMatchingProcessorTest : FreeSpec(
 
                 // (50.0 + 50.0 + 0.0) / 3 = 33.33... → 소수점 1자리
                 result.single().score shouldBe 33.3
+            }
+
+            "인원이 많아도 그룹 점수는 구성원 페어 점수를 직접 계산한 평균과 같다" {
+                val participants = pool(30)
+                val participantById = participants.associateBy { it.memberId }
+
+                val result = processor.match(participants)
+
+                result.forEach { group ->
+                    val members = group.memberIds.sorted().map { participantById.getValue(it) }
+                    val pairScores = members.flatMapIndexed { index, member ->
+                        members.drop(index + 1).map { MatchScoreCalculator.calculate(member, it).score }
+                    }
+                    group.score shouldBe (pairScores.average() * 10).roundToInt() / 10.0
+                }
             }
 
             "그룹은 문항 수 근거 없이 평균 점수만 갖는다" {

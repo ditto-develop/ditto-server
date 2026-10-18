@@ -6,6 +6,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import kotlin.random.Random
 
 class OneToOneMatchingProcessorTest : FreeSpec(
     {
@@ -61,6 +62,24 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                 val farFemale = participant(3L, Gender.FEMALE, GenderPreference.OPPOSITE, age = 40)
 
                 processor.findMemberIdsWithEligiblePair(listOf(male, female, farFemale)) shouldBe setOf(1L, 2L)
+            }
+
+            "findMemberIdsWithEligiblePair 가 고른 회원은 match() 에서 빠짐없이 후보를 받는다" {
+                val random = Random(11)
+                val pool = (1L..40L).map { id ->
+                    MatchParticipant(
+                        memberId = id,
+                        answers = (101L..105L).associateWith { random.nextLong(1, 3) },
+                        gender = Gender.entries.random(random),
+                        age = random.nextInt(20, 45),
+                        preferredGender = GenderPreference.entries.random(random),
+                        blockedMemberIds = setOf(random.nextLong(1, 41)),
+                    )
+                }
+
+                val memberIdsWithCandidate = processor.match(pool).flatMapTo(mutableSetOf()) { it.memberIds }
+
+                processor.findMemberIdsWithEligiblePair(pool) shouldBe memberIdsWithCandidate
             }
 
             "findMemberIdsWithEligiblePair 는 자기 자신을 상대로 세지 않는다" {
