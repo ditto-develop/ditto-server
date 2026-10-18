@@ -28,16 +28,17 @@ class OneToOneMatchingProcessor : MatchingProcessor {
             }
             .mapTo(mutableSetOf()) { it.memberId }
 
-    fun scoreEligibleDuos(participants: List<MatchParticipant>): List<ScoredMatch> =
-        participants.flatMapIndexed { index, participant ->
-            participants.drop(index + 1).mapNotNull { otherParticipant ->
-                if (!isValidPair(participant, otherParticipant)) return@mapNotNull null
-                ScoredMatch.duo(
-                    memberAId = participant.memberId,
-                    memberBId = otherParticipant.memberId,
-                    matchScore = MatchScoreCalculator.calculate(participant, otherParticipant),
-                )
-            }
+    private fun scoreEligibleDuos(participants: List<MatchParticipant>): Sequence<ScoredMatch> =
+        participants.asSequence().flatMapIndexed { index, participant ->
+            participants.subList(index + 1, participants.size).asSequence()
+                .filter { isValidPair(participant, it) }
+                .map { otherParticipant ->
+                    ScoredMatch.duo(
+                        memberAId = participant.memberId,
+                        memberBId = otherParticipant.memberId,
+                        matchScore = MatchScoreCalculator.calculate(participant, otherParticipant),
+                    )
+                }
         }
 
     // 세 조건 모두 대칭이라 A가 B의 자격 상대면 B도 A의 자격 상대다.

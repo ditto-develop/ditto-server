@@ -55,16 +55,6 @@ class OneToOneMatchingProcessorTest : FreeSpec(
         }
 
         "단계별 공개 메서드" - {
-            "scoreEligibleDuos 는 자격 있는 페어만 점수를 매기고 선발은 하지 않는다" {
-                val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
-                val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
-                val farFemale = participant(3L, Gender.FEMALE, GenderPreference.OPPOSITE, age = 40)
-
-                val scoredDuos = processor.scoreEligibleDuos(listOf(male, female, farFemale))
-
-                scoredDuos.map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
-            }
-
             "findMemberIdsWithEligiblePair 는 자격 상대가 한 명이라도 있는 회원만 돌려준다" {
                 val male = participant(1L, Gender.MALE, GenderPreference.OPPOSITE)
                 val female = participant(2L, Gender.FEMALE, GenderPreference.OPPOSITE)
