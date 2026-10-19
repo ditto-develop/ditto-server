@@ -89,6 +89,9 @@ class SecurityConfig(
      *
      * App Store 심사용 데모 로그인(review-login)도 같은 이유로 여기 둔다 — 네이티브 로그인처럼 앱이 직접 부르는
      * 로그인 전 호출이다.
+     *
+     * 출시 알림 신청(launch-notification-requests)은 로그인하지 않은 웹 방문자가 부른다. API Key가 웹 번들에 있어
+     * 사실상 공개이므로 컨트롤러가 IP당 요청 한도를 따로 건다.
      */
     @Bean
     @Order(4)
@@ -99,6 +102,7 @@ class SecurityConfig(
                 "/api/v1/users/nickname/**",
                 "/api/v1/users/social-login/*/native",
                 "/api/v1/users/review-login",
+                "/api/v1/launch-notification-requests",
             )
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }

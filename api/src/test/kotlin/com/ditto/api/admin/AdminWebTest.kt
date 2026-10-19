@@ -10,6 +10,9 @@ import com.ditto.api.support.JunitDatabaseCleanExtension
 import com.ditto.domain.feedback.FeedbackFixture
 import com.ditto.domain.feedback.entity.FeedbackType
 import com.ditto.domain.feedback.repository.FeedbackRepository
+import com.ditto.domain.launchnotification.LaunchNotificationRequestFixture
+import com.ditto.domain.launchnotification.entity.LaunchPlatform
+import com.ditto.domain.launchnotification.repository.LaunchNotificationRequestRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -71,6 +74,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
@@ -131,6 +135,9 @@ class AdminWebTest {
 
     @Autowired
     lateinit var feedbackRepository: FeedbackRepository
+
+    @Autowired
+    lateinit var launchNotificationRequestRepository: LaunchNotificationRequestRepository
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
@@ -1205,5 +1212,50 @@ class AdminWebTest {
                 .with(authentication(admin())).with(csrf()),
         )
             .andExpect(flash().attribute("error", "이미 처리 완료한 의견입니다."))
+    }
+
+    @Test
+    @DisplayName("화면은 건수만 보여 주고 이메일은 보여 주지 않는다")
+    fun summaryPage() {
+        launchNotificationRequestRepository.save(LaunchNotificationRequestFixture.create(email = "shown-nowhere@example.com"))
+
+        mockMvc.perform(get("/admin/launch-notifications").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString("1건")))
+            .andExpect(content().string(containsString("CSV 내려받기")))
+            .andExpect(content().string(not(containsString("shown-nowhere@example.com"))))
+    }
+
+    @Test
+    @DisplayName("미발송 신청을 CSV 첨부 파일로 내려받는다")
+    fun exportCsv() {
+        val saved = launchNotificationRequestRepository.save(LaunchNotificationRequestFixture.create(email = "a@example.com"))
+
+        mockMvc.perform(
+            get("/admin/launch-notifications/export")
+                .param("platform", "ANDROID").param("upToId", saved.id.toString())
+                .with(authentication(admin())),
+        )
+            .andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", containsString("attachment")))
+            .andExpect(content().string(containsString("a@example.com")))
+    }
+
+    @Test
+    @DisplayName("발송 완료하면 요약으로 돌아가 처리 건수를 알려 준다")
+    fun markNotified() {
+        val saved = launchNotificationRequestRepository.save(LaunchNotificationRequestFixture.create(email = "a@example.com"))
+
+        mockMvc.perform(
+            post("/admin/launch-notifications/mark-notified")
+                .param("platform", "ANDROID").param("upToId", saved.id.toString())
+                .with(authentication(admin())).with(csrf()),
+        )
+            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/launch-notifications?platform=ANDROID"))
+            .andExpect(flash().attribute("message", "1건을 발송 완료로 처리했습니다."))
+
+        // 테스트가 트랜잭션 안이라 findById 는 벌크 UPDATE 전 캐시를 돌려준다. 쿼리로 DB를 직접 본다.
+        launchNotificationRequestRepository.countByPlatformAndNotifiedAtIsNull(LaunchPlatform.ANDROID) shouldBe 0
     }
 }

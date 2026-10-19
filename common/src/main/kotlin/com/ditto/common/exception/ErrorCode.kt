@@ -9,6 +9,7 @@ enum class ErrorCode(
     UNAUTHORIZED_ERROR(401, "0002", "인증이 필요합니다."),
     FORBIDDEN(403, "0003", "접근 권한이 없습니다."),
     NOT_FOUND(404, "0004", "요청한 대상을 찾을 수 없습니다."),
+    TOO_MANY_REQUESTS(429, "0005", "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
     UNSUPPORTED_PROVIDER(400, "1001", "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_SOCIAL_ACCESS_TOKEN(401, "1002", "유효하지 않은 소셜 로그인 토큰입니다."),
     INVALID_SOCIAL_AUTH_CODE(401, "1003", "유효하지 않거나 만료된 소셜 로그인 인가 코드입니다."),

@@ -17,6 +17,7 @@
         <a th:href="@{/admin/members}" th:classappend="${active == 'member'} ? 'active'"><span class="ico">👤</span> 회원 관리</a>
         <a th:href="@{/admin/reports}" th:classappend="${active == 'report'} ? 'active'"><span class="ico">🚨</span> 신고 검토</a>
         <a th:href="@{/admin/feedbacks}" th:classappend="${active == 'feedback'} ? 'active'"><span class="ico">💬</span> 의견 확인</a>
+        <a th:href="@{/admin/launch-notifications}" th:classappend="${active == 'launch-notification'} ? 'active'"><span class="ico">📮</span> 출시 알림 신청</a>
         <a th:if="${qaToolsEnabled}" th:href="@{/admin/time-override}" th:classappend="${active == 'time'} ? 'active'"><span class="ico">⏱️</span> 시간 조정</a>
         <a th:href="@{/admin/matching}" th:classappend="${active == 'matching'} ? 'active'"><span class="ico">💞</span> 매칭 실행</a>
         <a th:href="@{/admin/notices}" th:classappend="${active == 'notice'} ? 'active'"><span class="ico">📢</span> 시스템 공지</a>
