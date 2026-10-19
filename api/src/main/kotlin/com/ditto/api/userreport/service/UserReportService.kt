@@ -27,6 +27,7 @@ class UserReportService(
     private val memberRepository: MemberRepository,
     private val memberBlockService: MemberBlockService,
     private val pendingImageStorage: PendingImageStorage,
+    private val userReportMetrics: UserReportMetrics,
 ) {
 
     fun issueImageUploadUrls(memberId: Long, request: IssueImageUploadUrlsRequest): ImageUploadUrlsResponse =
@@ -60,6 +61,7 @@ class UserReportService(
         pendingImageStorage.validateUploadedBy(ImageUploadCategory.USER_REPORT, reporterId, request.imageKeys)
         memberReportImageRepository.saveAll(images)
         pendingImageStorage.moveToPermanent(request.imageKeys)
+        userReportMetrics.countReceivedAfterCommit(saved)
         return CreateUserReportResponse(id = saved.id)
     }
 

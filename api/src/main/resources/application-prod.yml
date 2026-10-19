@@ -11,6 +11,11 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+    distribution:
+      # Grafana에서 p95를 보려는 버킷. percentiles-histogram(버킷 70여 개)을 켜면 엔드포인트×상태 조합마다
+      # 곱해져 Grafana Cloud 무료 한도(10K series)를 넘으므로, 판단에 필요한 경계만 고정한다.
+      slo:
+        http.server.requests: 50ms, 100ms, 200ms, 500ms, 1s, 2s, 5s
 
 springdoc:
   swagger-ui:

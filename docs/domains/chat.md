@@ -93,6 +93,9 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 ## 실시간·스케일
 - 전송: STOMP over WebSocket + 내장 SimpleBroker(인메모리, **단일 인스턴스 전제**). 백프레셔 하드닝(아웃바운드 큐 유한화, send/message 크기·시간 상한)으로 느린 소비자발 OOM 차단.
 - 스케일아웃(2번째 레플리카) 시 SimpleBroker → 외부 STOMP relay(RabbitMQ 등). 인메모리 브로커는 레플리카를 못 넘는다(구독자·발행자가 서로 못 봄).
+- 생존 메트릭: STOMP 전송은 HTTP 메트릭에 안 잡혀서 따로 낸다 — `ditto.chat.messages.sent{outcome=success|rejected|error}`(`ChatStompController`), 현재 세션 수 `ditto.websocket.sessions`·비정상 종료 `ditto.websocket.sessions.closed{reason}`·`ditto.stomp.frames{frame}`(`ChatWebSocketMetrics`). 아웃바운드 큐는 Boot가 내는 `executor_*{name="clientOutboundChannelExecutor"}`로 본다. Grafana 대시보드·알림은 코드 밖(Grafana Cloud)에 있다.
+  - Prometheus 이름은 `_`로 바뀌고 카운터에 `_total`이 붙는다: `ditto_chat_messages_sent_total`, `ditto_websocket_sessions`, `ditto_websocket_sessions_closed_total`, `ditto_stomp_frames_total`. 운영에서 확인: `curl localhost:8080/actuator/prometheus | grep ditto_`(prod 프로필만 노출).
+  - 전송 실패율: `sum(rate(ditto_chat_messages_sent_total{outcome="error"}[5m])) / sum(rate(ditto_chat_messages_sent_total[5m]))`. 응답시간 p95는 prod의 SLO 버킷(`application-prod.yml`)으로 `histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket[5m])))`.
 
 ## 핵심 파일
 - 도메인: `domain/.../chat/entity`(`ChatRoom`·`ChatRoomMember`·`ChatMessage`·`ChatPeriod`), `repository`(+`querydsl` 커서 페이징), `converter`(본문 암호화). 스키마: `domain/db/V20260715000000_채팅 테이블 추가.sql`, 생명주기 컬럼은 `V20260803223317_채팅 종료 생명주기 컬럼 추가.sql`.
