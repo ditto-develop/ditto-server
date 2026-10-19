@@ -21,6 +21,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.micrometer.core.instrument.MeterRegistry
+import org.springframework.transaction.support.TransactionTemplate
 import javax.sql.DataSource
 
 class UserReportServiceTest(
@@ -29,6 +30,7 @@ class UserReportServiceTest(
     private val memberReportRepository: MemberReportRepository,
     private val memberReportImageRepository: MemberReportImageRepository,
     private val meterRegistry: MeterRegistry,
+    private val transactionTemplate: TransactionTemplate,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -133,7 +135,7 @@ class UserReportServiceTest(
             receivedCount(severe = true) shouldBe before + 1
         }
 
-        "거부된 신고는 접수 수에 들어가지 않는다" {
+        "중복으로 거부된 신고는 접수 수에 들어가지 않는다" {
             val reporter = saveActiveMember("신고자")
             val reported = saveActiveMember("피신고자")
             val request = CreateUserReportRequest(reportedMemberId = reported.id, reason = "underage", source = "profile")
@@ -143,6 +145,22 @@ class UserReportServiceTest(
             shouldThrow<WarnException> { userReportService.submitReport(reporterId = reporter.id, request = request) }
 
             receivedCount(severe = false) shouldBe before
+        }
+
+        "접수 트랜잭션이 롤백되면 접수 수에 들어가지 않는다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val before = receivedCount(severe = true)
+
+            transactionTemplate.executeWithoutResult { status ->
+                userReportService.submitReport(
+                    reporterId = reporter.id,
+                    request = CreateUserReportRequest(reportedMemberId = reported.id, reason = "money-demand", source = "profile"),
+                )
+                status.setRollbackOnly()
+            }
+
+            receivedCount(severe = true) shouldBe before
         }
 
         "사유를 하나도 보내지 않으면 거부한다" {

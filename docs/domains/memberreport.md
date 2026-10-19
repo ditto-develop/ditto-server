@@ -48,7 +48,7 @@ RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토 /admin/r
 
 ## 접수 알림
 
-접수가 **커밋된 뒤** `ditto.user.reports.received{severe,source}`를 하나 올린다(`UserReportMetrics`) — Grafana가 이 값으로 운영자에게 알린다. 태그에 회원 식별값을 넣지 않는다. 롤백된 접수는 세지 않는다.
+접수가 **커밋된 뒤** `ditto.user.reports.received{severe,source}`를 하나 올린다(`UserReportMetrics`) — Grafana가 이 값으로 운영자에게 알린다. 태그에 회원 식별값을 넣지 않는다. 롤백된 접수는 세지 않는다. Prometheus 이름은 `ditto_user_reports_received_total`.
 
 ## 핵심 파일
 

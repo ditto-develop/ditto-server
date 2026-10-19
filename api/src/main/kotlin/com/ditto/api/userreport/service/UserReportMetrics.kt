@@ -1,6 +1,7 @@
 package com.ditto.api.userreport.service
 
 import com.ditto.domain.memberreport.entity.MemberReport
+import com.ditto.domain.memberreport.entity.MemberReportSource
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
@@ -15,6 +16,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 class UserReportMetrics(
     private val meterRegistry: MeterRegistry,
 ) {
+
+    init {
+        // 조합마다 0으로 미리 만든다. 처음 생긴 시계열의 첫 1은 increase()가 못 잡아서 첫 신고 알림이 빠진다.
+        listOf(true, false).forEach { severe ->
+            MemberReportSource.entries.forEach { source -> counter(severe, source.code) }
+        }
+    }
 
     /** 커밋된 신고만 센다 — 롤백된 신고로 알림이 울리면 안 된다. */
     fun countReceivedAfterCommit(report: MemberReport) {
@@ -31,14 +39,14 @@ class UserReportMetrics(
         )
     }
 
-    private fun countReceived(severe: Boolean, source: String) {
+    private fun countReceived(severe: Boolean, source: String) = counter(severe, source).increment()
+
+    private fun counter(severe: Boolean, source: String): Counter =
         Counter.builder(RECEIVED_METRIC)
             .description("접수된 회원 신고 수")
             .tag("severe", severe.toString())
             .tag("source", source)
             .register(meterRegistry)
-            .increment()
-    }
 
     companion object {
         const val RECEIVED_METRIC = "ditto.user.reports.received"

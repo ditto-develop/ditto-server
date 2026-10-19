@@ -24,6 +24,11 @@ class ChatStompController(
     private val meterRegistry: MeterRegistry,
 ) {
 
+    init {
+        // 결과별로 0부터 만들어 둔다. 처음 생긴 시계열의 첫 1은 increase()가 못 잡아서 첫 실패 알림이 빠진다.
+        listOf(OUTCOME_SUCCESS, OUTCOME_REJECTED, OUTCOME_ERROR).forEach { sendCounter(it) }
+    }
+
     /**
      * 클라이언트가 `/pub/chat/rooms/{roomId}` 로 전송 → 저장 후 `/sub/chat/rooms/{roomId}` 로 브로드캐스트.
      *
@@ -31,6 +36,7 @@ class ChatStompController(
      * 적재가 실패해도 메시지는 이미 전달돼 있어야 한다(알림 실패는 `ChatMessageNotifier`가 삼킨다).
      *
      * STOMP 전송은 HTTP 메트릭에 안 잡혀서 결과를 따로 센다 — 실패율이 채팅 장애 알림의 기준이다.
+     * 저장은 됐는데 브로드캐스트가 실패해도 error로 센다 — 상대에게 실시간으로 안 갔으니 사용자 입장에선 실패다.
      */
     @MessageMapping(ChatStompDestinations.SEND_MAPPING)
     fun sendMessage(
@@ -53,13 +59,13 @@ class ChatStompController(
         chatMessageNotifier.notifyNewMessage(message)
     }
 
-    private fun countSend(outcome: String) {
+    private fun countSend(outcome: String) = sendCounter(outcome).increment()
+
+    private fun sendCounter(outcome: String): Counter =
         Counter.builder(SEND_METRIC)
             .description("STOMP 채팅 메시지 전송 결과")
             .tag("outcome", outcome)
             .register(meterRegistry)
-            .increment()
-    }
 
     private fun memberIdOf(principal: Principal): Long {
         val authentication = principal as? Authentication ?: throw WarnException(ErrorCode.UNAUTHORIZED_ERROR)

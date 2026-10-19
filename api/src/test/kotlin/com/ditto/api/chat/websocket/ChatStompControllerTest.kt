@@ -33,6 +33,18 @@ class ChatStompControllerTest {
         meterRegistry.find(ChatStompController.SEND_METRIC).tag("outcome", outcome).counter()?.count() ?: 0.0
 
     @Test
+    @DisplayName("전송 전에도 결과별 카운터가 0으로 등록돼 있다")
+    fun sendCountersStartAtZero() {
+        listOf(
+            ChatStompController.OUTCOME_SUCCESS,
+            ChatStompController.OUTCOME_REJECTED,
+            ChatStompController.OUTCOME_ERROR,
+        ).forEach { outcome ->
+            meterRegistry.find(ChatStompController.SEND_METRIC).tag("outcome", outcome).counter()?.count() shouldBe 0.0
+        }
+    }
+
+    @Test
     @DisplayName("메시지를 저장하고 방 토픽으로 브로드캐스트한다")
     fun sendMessage() {
         val response = ChatMessageResponse(
