@@ -6,6 +6,8 @@ import com.ditto.api.config.auth.MemberPrincipal
 import com.ditto.api.notification.notifier.ChatMessageNotifier
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
@@ -19,6 +21,7 @@ class ChatStompController(
     private val chatService: ChatService,
     private val messagingTemplate: SimpMessagingTemplate,
     private val chatMessageNotifier: ChatMessageNotifier,
+    private val meterRegistry: MeterRegistry,
 ) {
 
     /**
@@ -26,6 +29,8 @@ class ChatStompController(
      *
      * 알림은 **브로드캐스트 뒤에** 남긴다 — 실시간 전달이 알림 적재를 기다리지 않아야 하고,
      * 적재가 실패해도 메시지는 이미 전달돼 있어야 한다(알림 실패는 `ChatMessageNotifier`가 삼킨다).
+     *
+     * STOMP 전송은 HTTP 메트릭에 안 잡혀서 결과를 따로 센다 — 실패율이 채팅 장애 알림의 기준이다.
      */
     @MessageMapping(ChatStompDestinations.SEND_MAPPING)
     fun sendMessage(
@@ -33,10 +38,27 @@ class ChatStompController(
         @Payload request: ChatSendRequest,
         principal: Principal,
     ) {
-        val memberId = memberIdOf(principal)
-        val message = chatService.sendMessage(memberId, roomId, request.content, request.messageType)
-        messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), message)
+        val message = try {
+            val memberId = memberIdOf(principal)
+            chatService.sendMessage(memberId, roomId, request.content, request.messageType)
+                .also { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(roomId), it) }
+        } catch (e: WarnException) {
+            countSend(OUTCOME_REJECTED)
+            throw e
+        } catch (e: Exception) {
+            countSend(OUTCOME_ERROR)
+            throw e
+        }
+        countSend(OUTCOME_SUCCESS)
         chatMessageNotifier.notifyNewMessage(message)
+    }
+
+    private fun countSend(outcome: String) {
+        Counter.builder(SEND_METRIC)
+            .description("STOMP 채팅 메시지 전송 결과")
+            .tag("outcome", outcome)
+            .register(meterRegistry)
+            .increment()
     }
 
     private fun memberIdOf(principal: Principal): Long {
@@ -44,5 +66,12 @@ class ChatStompController(
         val memberPrincipal = authentication.principal as? MemberPrincipal
             ?: throw WarnException(ErrorCode.UNAUTHORIZED_ERROR)
         return memberPrincipal.memberId
+    }
+
+    companion object {
+        const val SEND_METRIC = "ditto.chat.messages.sent"
+        const val OUTCOME_SUCCESS = "success"
+        const val OUTCOME_REJECTED = "rejected"
+        const val OUTCOME_ERROR = "error"
     }
 }

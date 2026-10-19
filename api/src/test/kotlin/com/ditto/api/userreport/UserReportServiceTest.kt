@@ -4,6 +4,7 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.api.support.image.ImageUploadFileRequest
 import com.ditto.api.userreport.dto.CreateUserReportRequest
 import com.ditto.api.userreport.dto.IssueImageUploadUrlsRequest
+import com.ditto.api.userreport.service.UserReportMetrics
 import com.ditto.api.userreport.service.UserReportService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -19,6 +20,7 @@ import com.ditto.domain.memberreport.repository.MemberReportRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
+import io.micrometer.core.instrument.MeterRegistry
 import javax.sql.DataSource
 
 class UserReportServiceTest(
@@ -26,8 +28,15 @@ class UserReportServiceTest(
     private val memberRepository: MemberRepository,
     private val memberReportRepository: MemberReportRepository,
     private val memberReportImageRepository: MemberReportImageRepository,
+    private val meterRegistry: MeterRegistry,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
+
+    // 컨텍스트가 테스트 간 공유돼 레지스트리 값이 누적되므로, 호출 전후 차이로 단언한다.
+    fun receivedCount(severe: Boolean): Double =
+        meterRegistry.find(UserReportMetrics.RECEIVED_METRIC)
+            .tags("severe", severe.toString(), "source", "profile")
+            .counter()?.count() ?: 0.0
 
     fun saveActiveMember(nickname: String): Member =
         memberRepository.save(MemberFixture.create(nickname = nickname, status = MemberStatus.ACTIVE))
@@ -109,6 +118,31 @@ class UserReportServiceTest(
             val saved = memberReportRepository.findById(result.id).orElseThrow()
             saved.reasons shouldBe setOf(MemberReportReason.MONEY_DEMAND, MemberReportReason.UNDERAGE)
             saved.reason shouldBe MemberReportReason.MONEY_DEMAND
+        }
+
+        "접수가 커밋되면 심각 사유 여부를 태그로 달아 접수 수를 센다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val before = receivedCount(severe = true)
+
+            userReportService.submitReport(
+                reporterId = reporter.id,
+                request = CreateUserReportRequest(reportedMemberId = reported.id, reason = "money-demand", source = "profile"),
+            )
+
+            receivedCount(severe = true) shouldBe before + 1
+        }
+
+        "거부된 신고는 접수 수에 들어가지 않는다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val request = CreateUserReportRequest(reportedMemberId = reported.id, reason = "underage", source = "profile")
+            userReportService.submitReport(reporterId = reporter.id, request = request)
+            val before = receivedCount(severe = false)
+
+            shouldThrow<WarnException> { userReportService.submitReport(reporterId = reporter.id, request = request) }
+
+            receivedCount(severe = false) shouldBe before
         }
 
         "사유를 하나도 보내지 않으면 거부한다" {

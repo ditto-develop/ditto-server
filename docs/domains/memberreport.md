@@ -46,6 +46,10 @@ RECEIVED → ACTIONED | REJECTED | REJECTED_ABUSIVE   (어드민 검토 /admin/r
 
 발급·검증·이동은 의견(feedback)과 함께 쓰는 `api/src/main/kotlin/com/ditto/api/support/image/PendingImageStorage.kt`가 맡는다. 키 접두사는 `ImageUploadCategory`에 모여 있다.
 
+## 접수 알림
+
+접수가 **커밋된 뒤** `ditto.user.reports.received{severe,source}`를 하나 올린다(`UserReportMetrics`) — Grafana가 이 값으로 운영자에게 알린다. 태그에 회원 식별값을 넣지 않는다. 롤백된 접수는 세지 않는다.
+
 ## 핵심 파일
 
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/memberreport/entity/`
