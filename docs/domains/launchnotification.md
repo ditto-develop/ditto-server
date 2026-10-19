@@ -6,10 +6,11 @@
 ## 용어
 
 - `LaunchNotificationRequest`(신청 1건 — 이메일·플랫폼·동의 버전·동의 시각·발송 시각), `LaunchPlatform`(플랫폼 enum, 값 추가 전용).
-- API 표면: `POST /api/v1/launch-notification-requests`(요청 DTO는 엔티티와 이름이 겹치지 않게 `LaunchNotificationSignupRequest`).
+- API 표면: `POST /api/v1/launch-notification-requests`(요청 DTO는 엔티티와 이름이 겹치지 않게 `CreateLaunchNotificationRequest`).
 
 ## 불변식
 
+- 이메일 문자는 영문·숫자·`._%+-`만 받는다 — `,`·`"`·`=`가 들어가면 어드민 CSV 열이 밀리거나 엑셀 수식이 된다. 국제화 도메인(IDN)은 받지 않는다.
 - (이메일, 플랫폼)당 한 행 (`launch_notification_request_uk_1`). 이메일은 저장 전에 trim·소문자로 맞춘다.
 - 재신청은 성공 응답 + 동의 시각·버전 갱신. 응답으로 등록 여부를 드러내지 않는다.
 - `privacyConsent`가 true가 아니면 저장하지 않는다(0001). 동의 시각은 증빙이라 실제 시각(시각 오버라이드 미적용).
@@ -31,6 +32,13 @@
 - `/admin/launch-notifications` — 건수만 보여 준다(이메일은 화면에 없음). CSV 내려받기·발송 완료.
 - CSV는 `email,requested_at`. `=`·`+`·`-`·`@`로 시작하는 주소는 앞에 `'`를 붙인다(엑셀 수식 실행 방지).
 - 내려받기·발송 완료는 어드민 표시명과 건수만 로그로 남긴다.
+
+## QA
+
+- 로컬: `POST /api/v1/launch-notification-requests`에 `X-API-Key: local-dev-key`. 한도는 IP 기준이라 `X-Forwarded-For: 203.0.113.1`처럼 값을 바꾸면 새 한도로 시험할 수 있다. 같은 값으로 6번째가 0005, 1분 뒤 풀린다.
+- 검증: 이메일은 영문·숫자·`._%+-`만, 254자 이하. `consentVersion`은 30자 이하.
+- 파기: 실제 시각으로 돌아 어드민 시각 오버라이드가 먹지 않는다. 확인하려면 DB에서 `notified_at`을 31일 전으로 고치고 `launch-notification.purge.scheduler.cron`을 가깝게 바꿔 띄운다.
+- CSV 행 수는 화면의 "이번 범위 N건"과 같아야 한다.
 
 ## 메트릭
 

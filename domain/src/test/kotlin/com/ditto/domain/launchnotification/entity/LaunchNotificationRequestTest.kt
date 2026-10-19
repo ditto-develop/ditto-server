@@ -26,6 +26,14 @@ class LaunchNotificationRequestTest : FreeSpec(
                 }
             }
 
+            "CSV 열을 밀거나 수식이 될 수 있는 문자가 섞인 이메일은 거부한다" {
+                listOf("x,=cmd()@example.com", "\"quoted\"@example.com", "=cmd@example.com", "a;b@example.com").forEach { email ->
+                    shouldThrow<WarnException> {
+                        LaunchNotificationRequestFixture.create(email = email)
+                    }.errorCode shouldBe ErrorCode.BAD_REQUEST
+                }
+            }
+
             "254자를 넘는 이메일은 거부한다" {
                 val local = "a".repeat(64)
                 val tooLong = "$local@" + "b".repeat(254 - local.length - 1 - 4 + 1) + ".com"
@@ -54,6 +62,16 @@ class LaunchNotificationRequestTest : FreeSpec(
                 request.consentVersion shouldBe "2026-11-01"
                 request.consentedAt shouldBe later
                 request.email shouldBe "visitor@example.com"
+            }
+        }
+
+        "requireConsent" - {
+            "동의가 true가 아니면 거부한다" {
+                listOf(false, null).forEach { consent ->
+                    shouldThrow<WarnException> {
+                        LaunchNotificationRequest.requireConsent(consent)
+                    }.errorCode shouldBe ErrorCode.BAD_REQUEST
+                }
             }
         }
 

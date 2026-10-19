@@ -1,6 +1,6 @@
 package com.ditto.api.launchnotification
 
-import com.ditto.api.launchnotification.dto.LaunchNotificationSignupRequest
+import com.ditto.api.launchnotification.dto.CreateLaunchNotificationRequest
 import com.ditto.api.launchnotification.scheduler.LaunchNotificationPurgeScheduler
 import com.ditto.api.launchnotification.service.LaunchNotificationMetrics
 import com.ditto.api.launchnotification.service.LaunchNotificationService
@@ -25,7 +25,7 @@ class LaunchNotificationServiceTest(
 ) : IntegrationTest(dataSource, {
 
     fun signup(email: String = "visitor@example.com", consentVersion: String = "2026-10-19", platform: String = "ANDROID") =
-        LaunchNotificationSignupRequest(email = email, platform = platform, privacyConsent = true, consentVersion = consentVersion)
+        CreateLaunchNotificationRequest(email = email, platform = platform, privacyConsent = true, consentVersion = consentVersion)
 
     // 레지스트리가 테스트 간에 공유돼 값이 누적되므로 호출 전후 차이로 단언한다.
     fun requestedCount(result: String): Double =

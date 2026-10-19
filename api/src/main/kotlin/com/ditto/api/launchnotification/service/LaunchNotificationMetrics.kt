@@ -24,7 +24,7 @@ class LaunchNotificationMetrics(
     fun countRequested(platform: LaunchPlatform, created: Boolean) =
         counter(platform.name, if (created) RESULT_CREATED else RESULT_REFRESHED).increment()
 
-    // 리미터는 본문을 읽기 전에 거절해서 플랫폼을 모른다.
+    // 리미터는 플랫폼을 검증하기 전에 거절해서 플랫폼을 모른다.
     fun countRateLimited() = counter(UNKNOWN_PLATFORM, RESULT_RATE_LIMITED).increment()
 
     private fun counter(platform: String, result: String): Counter =

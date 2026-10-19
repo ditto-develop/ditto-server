@@ -5,6 +5,7 @@ import com.ditto.domain.launchnotification.repository.LaunchNotificationRequestR
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Service
 class AdminLaunchNotificationService(
@@ -23,9 +24,8 @@ class AdminLaunchNotificationService(
     /** 아직 안내를 안 보낸 [upToId] 이하 신청의 CSV. 열은 이메일과 최초 신청 일시뿐이다. */
     @Transactional(readOnly = true)
     fun exportPendingCsv(platform: LaunchPlatform, upToId: Long): String {
-        val rows = launchNotificationRequestRepository
-            .findAllByPlatformAndNotifiedAtIsNullAndIdLessThanEqualOrderByIdAsc(platform, upToId)
-            .map { "${csvCell(it.email)},${it.createdAt}" }
+        val rows = launchNotificationRequestRepository.findPendingUpTo(platform, upToId)
+            .map { "${csvCell(it.email)},${it.createdAt.format(REQUESTED_AT_FORMAT)}" }
         return (listOf(CSV_HEADER) + rows).joinToString(separator = "\r\n", postfix = "\r\n")
     }
 
@@ -40,6 +40,7 @@ class AdminLaunchNotificationService(
 
     companion object {
         private const val CSV_HEADER = "email,requested_at"
+        private val REQUESTED_AT_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         private val FORMULA_PREFIXES = setOf('=', '+', '-', '@', '\t', '\r')
     }
 }

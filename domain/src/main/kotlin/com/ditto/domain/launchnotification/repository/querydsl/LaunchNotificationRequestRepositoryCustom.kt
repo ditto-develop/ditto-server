@@ -1,9 +1,13 @@
 package com.ditto.domain.launchnotification.repository.querydsl
 
+import com.ditto.domain.launchnotification.entity.LaunchNotificationRequest
 import com.ditto.domain.launchnotification.entity.LaunchPlatform
 import java.time.LocalDateTime
 
 interface LaunchNotificationRequestRepositoryCustom {
+
+    /** 내보내기 대상 — 아직 안내를 안 보낸 [upToId] 이하 신청, 오래된 순. 상한을 두는 이유는 [markNotified]. */
+    fun findPendingUpTo(platform: LaunchPlatform, upToId: Long): List<LaunchNotificationRequest>
 
     /**
      * 아직 안내를 안 보낸 [upToId] 이하 신청에 발송 시각을 찍는다 — 어드민 "발송 완료".

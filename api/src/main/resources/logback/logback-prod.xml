@@ -15,6 +15,9 @@
     <logger name="com.ditto" level="INFO"/>
     <logger name="org.springframework" level="WARN"/>
     <logger name="org.hibernate.SQL" level="WARN"/>
+    <!-- 제약 위반 시 MySQL 메시지("Duplicate entry '<값>' ...")를 ERROR로 찍어 이메일 같은 입력값이 그대로 남는다.
+         코드가 잡아 처리하는 위반(출시 알림 동시 신청 등)도 찍히므로 끈다. 못 잡은 예외는 GlobalExceptionHandler가 원인과 함께 남긴다. -->
+    <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="OFF"/>
     <root level="INFO">
         <appender-ref ref="JSON_CONSOLE"/>
     </root>

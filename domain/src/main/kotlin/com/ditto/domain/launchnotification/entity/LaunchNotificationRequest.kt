@@ -20,7 +20,7 @@ import org.hibernate.annotations.Comment
  * 앱 출시 알림 신청 1건 — 로그인하지 않은 방문자가 남긴 이메일.
  *
  * 같은 (이메일, 플랫폼)은 한 행이다. 다시 신청하면 새 행 없이 동의 시각·버전만 바뀐다([reconsent]).
- * 출시 안내를 보내면 [markNotified]로 발송 시각을 찍고, 그로부터 [RETENTION_DAYS]일 뒤 파기한다.
+ * 출시 안내를 보내면 어드민이 벌크 UPDATE로 발송 시각([notifiedAt])을 찍고, 그로부터 [RETENTION_DAYS]일 뒤 파기한다.
  */
 @Entity
 @Table(
@@ -78,8 +78,9 @@ class LaunchNotificationRequest private constructor(
         /** 출시 안내를 보낸 뒤 이메일을 들고 있는 기간. 반송·문의 대응 여유분이다. */
         const val RETENTION_DAYS = 30L
 
-        // 실제 전달 가능 여부는 메일을 보내 봐야 안다. 여기서는 오타 수준(골뱅이·도메인 점 누락, 공백)만 거른다.
-        private val EMAIL_PATTERN = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+        // 실제 전달 가능 여부는 메일을 보내 봐야 안다. 여기서는 오타 수준만 거르되, 문자는 흔히 쓰는 것만 받는다.
+        // RFC가 허용하는 `,`·`"`·`=` 같은 문자를 받으면 어드민이 내보내는 CSV의 열이 밀리고 엑셀 수식이 실행될 수 있다.
+        private val EMAIL_PATTERN = Regex("^[a-z0-9._%+-]+@[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}$")
 
         fun request(
             email: String,
@@ -100,6 +101,13 @@ class LaunchNotificationRequest private constructor(
                 throw WarnException(ErrorCode.BAD_REQUEST, "이메일 형식이 올바르지 않습니다.")
             }
             return normalized
+        }
+
+        /** 동의는 신청과 재신청 모두의 전제다. 체크박스를 끈 채 보낸 요청은 저장하지 않는다. */
+        fun requireConsent(privacyConsent: Boolean?) {
+            if (privacyConsent != true) {
+                throw WarnException(ErrorCode.BAD_REQUEST, "개인정보 수집·이용에 동의해야 신청할 수 있습니다.")
+            }
         }
 
         fun retentionThreshold(now: LocalDateTime): LocalDateTime = now.minusDays(RETENTION_DAYS)

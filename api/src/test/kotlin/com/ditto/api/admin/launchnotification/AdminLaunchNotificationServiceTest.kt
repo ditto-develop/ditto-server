@@ -5,6 +5,7 @@ import com.ditto.domain.launchnotification.LaunchNotificationRequestFixture
 import com.ditto.domain.launchnotification.entity.LaunchPlatform
 import com.ditto.domain.launchnotification.repository.LaunchNotificationRequestRepository
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -46,12 +47,12 @@ class AdminLaunchNotificationServiceTest(
             launchNotificationRequestRepository.findById(arrivedLater.id).get().notifiedAt shouldBe null
         }
 
-        "수식으로 시작하는 이메일은 엑셀이 실행하지 않게 '를 붙여 내보낸다" {
-            val formula = save("=cmd@example.com")
+        "+·-로 시작하는 이메일은 엑셀이 수식으로 읽지 않게 '를 붙이고, 신청 일시는 초까지 적는다" {
+            val formula = save("+cmd@example.com")
 
             val csv = adminLaunchNotificationService.exportPendingCsv(LaunchPlatform.ANDROID, formula.id)
 
-            csv.lines()[1].startsWith("'=cmd@example.com,") shouldBe true
+            csv.lines()[1] shouldMatch Regex("^'\\+cmd@example\\.com,\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$")
         }
     }
 })

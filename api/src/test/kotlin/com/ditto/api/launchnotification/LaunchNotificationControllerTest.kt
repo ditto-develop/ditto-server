@@ -1,6 +1,6 @@
 package com.ditto.api.launchnotification
 
-import com.ditto.api.launchnotification.dto.LaunchNotificationSignupRequest
+import com.ditto.api.launchnotification.dto.CreateLaunchNotificationRequest
 import com.ditto.api.launchnotification.service.LaunchNotificationRateLimiter
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.launchnotification.entity.LaunchPlatform
@@ -31,7 +31,7 @@ class LaunchNotificationControllerTest : RestDocsTest() {
     // 리미터는 컨텍스트와 함께 테스트 간에 공유된다. 테스트마다 다른 IP로 보내 한도가 섞이지 않게 한다.
     private fun nextIp(): String = "203.0.113.${ipSeq.incrementAndGet()}"
 
-    private fun perform(request: LaunchNotificationSignupRequest, clientIp: String = nextIp()): ResultActions =
+    private fun perform(request: CreateLaunchNotificationRequest, clientIp: String = nextIp()): ResultActions =
         mockMvc.perform(
             post("/api/v1/launch-notification-requests")
                 .withApiKey()
@@ -41,7 +41,7 @@ class LaunchNotificationControllerTest : RestDocsTest() {
         )
 
     private fun signup(email: String = "visitor@example.com", privacyConsent: Boolean? = true) =
-        LaunchNotificationSignupRequest(
+        CreateLaunchNotificationRequest(
             email = email,
             platform = "ANDROID",
             privacyConsent = privacyConsent,
@@ -69,9 +69,11 @@ class LaunchNotificationControllerTest : RestDocsTest() {
                                     "이메일은 앞뒤 공백을 지우고 소문자로 저장합니다. " +
                                     "같은 이메일·플랫폼으로 다시 신청해도 성공으로 응답하고(등록 여부를 드러내지 않음), " +
                                     "새로 만들지 않고 동의 시각과 버전만 갱신합니다. " +
-                                    "이메일 형식이 틀리거나 254자를 넘거나, privacyConsent가 true가 아니거나, 모르는 platform이면 " +
-                                    "error.code 0001. 같은 IP에서 1분에 " + LaunchNotificationRateLimiter.LIMIT_PER_WINDOW +
-                                    "회를 넘기면 error.code 0005입니다.",
+                                    "다음은 error.code 0001입니다: 필드가 없거나 빈 문자열, 이메일 형식이 틀리거나 254자 초과" +
+                                    "(영문·숫자·._%+- 외 문자 불가), privacyConsent가 true가 아님, 모르는 platform, " +
+                                    "consentVersion이 30자 초과. " +
+                                    "같은 IP에서 1분에 " + LaunchNotificationRateLimiter.LIMIT_PER_WINDOW + "회를 넘기면 error.code 0005" +
+                                    "(HTTP는 200, error.statusCode는 429)입니다. 1분이 지나면 다시 받습니다.",
                             )
                             .requestFields(
                                 fieldWithPath("email").description("이메일 (최대 254자)"),

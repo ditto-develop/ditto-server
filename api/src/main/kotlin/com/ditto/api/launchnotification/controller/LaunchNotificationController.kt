@@ -1,6 +1,6 @@
 package com.ditto.api.launchnotification.controller
 
-import com.ditto.api.launchnotification.dto.LaunchNotificationSignupRequest
+import com.ditto.api.launchnotification.dto.CreateLaunchNotificationRequest
 import com.ditto.api.launchnotification.service.LaunchNotificationRateLimiter
 import com.ditto.api.launchnotification.service.LaunchNotificationService
 import com.ditto.api.support.ratelimit.ClientIp
@@ -20,7 +20,7 @@ class LaunchNotificationController(
 
     @PostMapping("/api/v1/launch-notification-requests")
     fun requestLaunchNotification(
-        @Valid @RequestBody request: LaunchNotificationSignupRequest,
+        @Valid @RequestBody request: CreateLaunchNotificationRequest,
         httpRequest: HttpServletRequest,
     ): ApiResponse<Unit> {
         launchNotificationRateLimiter.check(ClientIp.of(httpRequest))
