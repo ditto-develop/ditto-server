@@ -23,9 +23,9 @@ class QuizResponsePeriodTest : FreeSpec(
                 period.endsAt shouldBe LocalDateTime.of(2026, 7, 1, 23, 59, 59)
             }
 
-            "종료는 목요일 05:00 매칭 배치 시각보다 앞선다" {
+            "종료는 목요일 00:01 매칭 배치 시각보다 앞선다" {
                 val period = QuizResponsePeriod(OperationWeek(LocalDate.of(2026, 9, 14)))
-                val matchingBatchAt = LocalDateTime.of(2026, 9, 17, 5, 0)
+                val matchingBatchAt = LocalDateTime.of(2026, 9, 17, 0, 1)
 
                 (period.endsAt < matchingBatchAt) shouldBe true
             }

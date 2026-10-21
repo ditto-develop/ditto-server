@@ -36,8 +36,8 @@ class MatchingBatchFacadeTest(
 ) : IntegrationTest(
     dataSource,
     {
-        // 픽스처 퀴즈셋은 2026-04-12 23:59:59 에 끝난다 — 그 다음 목요일 05:00 배치 시각
-        val batchAt = LocalDateTime.of(2026, 4, 16, 5, 0)
+        // 픽스처 퀴즈셋은 2026-04-12 23:59:59 에 끝난다 — 그 다음 목요일 00:01 배치 시각
+        val batchAt = LocalDateTime.of(2026, 4, 16, 0, 1)
 
         /** 문항 하나짜리 퀴즈셋에 [nicknames] 회원이 모두 같은 답으로 완주한 상태를 만든다. 1:1 자격(활성 회원·성별·나이·선호)도 채운다. */
         fun saveEndedQuizSetCompletedBy(matchingType: MatchingType, nicknames: List<String>): Long {
