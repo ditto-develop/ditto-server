@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 매칭 운영. 실시간 스케줄러(목 05:00)와 별개로, 어드민이 동일 배치 로직을 수동 실행하거나
+ * 매칭 운영. 실시간 스케줄러(목 00:01)와 별개로, 어드민이 동일 배치 로직을 수동 실행하거나
  * 특정 퀴즈셋의 매칭 후보를 재생성한다. 수동 실행은 어드민 설정 시각([ServerTimeProvider]) 기준으로 동작한다.
  */
 @Controller
