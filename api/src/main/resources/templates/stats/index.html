@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('운영 지표')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('stats')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">운영 지표</h1>
+            <p class="page-desc">회차와 회원 조건으로 좁혀 봅니다. 관리자 계정은 세지 않습니다. 성별·생년월일은 본인인증 전이라 회원이 입력하거나 소셜 로그인에서 받은 값입니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <form th:action="@{/admin/stats}" method="get" class="field-row stats-filter">
+                    <div class="field">
+                        <label for="week" title="퀴즈셋이 있는 주를 오래된 순으로 센 번호입니다">회차</label>
+                        <select id="week" name="week">
+                            <option th:each="option : ${weekOptions}"
+                                    th:value="${option.startedOn}"
+                                    th:text="${(option.round != null ? option.round + '회차' : '회차 없음') + ' · ' + #temporals.format(option.startedOn, 'M/d') + ' 주'}"
+                                    th:selected="${option.startedOn == selectedWeekStartedOn}">1회차</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="track">트랙</label>
+                        <select id="track" name="track">
+                            <option th:each="track : ${tracks}"
+                                    th:value="${track.name()}"
+                                    th:text="${track.description}"
+                                    th:selected="${track == filter.track}">전체</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="gender">성별</label>
+                        <select id="gender" name="gender">
+                            <option value="">전체</option>
+                            <option th:each="gender : ${genders}"
+                                    th:value="${gender.name()}"
+                                    th:text="${gender.description}"
+                                    th:selected="${gender == filter.gender}">남성</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="ageBand">연령대 (만 나이)</label>
+                        <select id="ageBand" name="ageBand">
+                            <option value="">전체</option>
+                            <option th:each="band : ${ageBands}"
+                                    th:value="${band.name()}"
+                                    th:text="|${band.description} (${band.ages.first}~${band.ages.last}세)|"
+                                    th:selected="${band == filter.ageBand}">20대 초반</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="joinedWeek">가입 주차 (그 주의 아무 날)</label>
+                        <input type="date" id="joinedWeek" name="joinedWeek" th:value="${filter.joinedWeek}"/>
+                    </div>
+                    <div class="field stats-filter-actions">
+                        <button class="btn" type="submit">조회</button>
+                        <a class="btn secondary" th:href="@{/admin/stats}">초기화</a>
+                    </div>
+                </form>
+                <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
+            </div>
+
+            <section class="stats-section" id="members">
+                <h2 class="stats-section-title">유저 현황</h2>
+                <p class="stats-section-desc">트랙 조건은 이 장에 걸리지 않습니다. 탈퇴 후 30일이 지나 완전히 삭제된 회원은 셀 수 없습니다.</p>
+                <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
+
+                <p class="stats-basis">지금 기준 · 기준일 <span id="statsToday">-</span></p>
+                <div class="grid stats-totals">
+                    <div class="card stat">
+                        <span class="label">누적 가입자 (탈퇴 포함)</span>
+                        <span class="value" id="memberJoinedCount">-</span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">현재 회원 (정지 포함)</span>
+                        <span class="value" id="memberCurrentCount">-</span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">탈퇴</span>
+                        <span class="value" id="memberLeftCount">-</span>
+                    </div>
+                </div>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card">
+                        <h3>성비 (현재 회원)</h3>
+                        <div id="genderShares"></div>
+                    </div>
+                    <div class="card">
+                        <h3>연령대 × 성별 (현재 회원)</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead id="ageGenderHead"></thead>
+                                <tbody id="ageGenderRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="stats-basis">고른 회차 기준 · 나중에 탈퇴한 회원도 가입한 날에 셉니다</p>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card">
+                        <h3>회차 일별 신규 가입</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead><tr><th>날짜</th><th class="num">신규</th></tr></thead>
+                                <tbody id="dailyJoinRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 id="weeklyJoinTitle">주별 신규 가입</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead><tr><th>주</th><th class="num">신규</th></tr></thead>
+                                <tbody id="weeklyJoinRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:inline="javascript">
+    window.statsPageJson = /*[[${statsPageJson}]]*/ null;
+</script>
+<script th:src="@{/admin/js/stats-calc.js}"></script>
+<script th:src="@{/admin/js/stats.js}"></script>
+</body>
+</html>

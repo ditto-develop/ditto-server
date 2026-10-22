@@ -2,6 +2,7 @@ package com.ditto.domain.system
 
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 
@@ -24,6 +25,11 @@ value class OperationWeek(val startedOn: LocalDate) {
 
     val weekOfMonth: Int
         get() = startedOn.get(WEEK_FIELDS.weekOfMonth())
+
+    val dateTimeRange: OpenEndRange<LocalDateTime>
+        get() = startedOn.atStartOfDay()..<startedOn.plusWeeks(1).atStartOfDay()
+
+    fun minusWeeks(weeks: Long): OperationWeek = OperationWeek(startedOn.minusWeeks(weeks))
 
     companion object {
         private val WEEK_FIELDS = WeekFields.of(DayOfWeek.MONDAY, 1)

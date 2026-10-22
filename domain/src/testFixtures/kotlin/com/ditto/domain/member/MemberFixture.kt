@@ -8,6 +8,7 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.withId
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 object MemberFixture {
@@ -20,6 +21,8 @@ object MemberFixture {
         role: MemberRole = MemberRole.USER,
         gender: Gender? = null,
         age: Int? = null,
+        birthDate: LocalDate? = null,
+        joinedAt: LocalDateTime? = null,
         interests: Set<Interest> = emptySet(),
         location: Location? = null,
         job: Job? = null,
@@ -33,6 +36,8 @@ object MemberFixture {
         role = role,
         gender = gender,
         age = age,
+        birthDate = birthDate?.atStartOfDay(),
+        joinedAt = joinedAt,
         interests = interests,
         location = location,
         job = job,

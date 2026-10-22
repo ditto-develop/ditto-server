@@ -13,6 +13,7 @@
     <div class="brand">Ditto<span>.</span>admin</div>
     <nav class="nav">
         <a th:href="@{/admin}" th:classappend="${active == 'dashboard'} ? 'active'"><span class="ico">🏠</span> 대시보드</a>
+        <a th:href="@{/admin/stats}" th:classappend="${active == 'stats'} ? 'active'"><span class="ico">📊</span> 운영 지표</a>
         <a th:href="@{/admin/quiz-sets}" th:classappend="${active == 'quiz'} ? 'active'"><span class="ico">📝</span> 퀴즈셋 관리</a>
         <a th:href="@{/admin/members}" th:classappend="${active == 'member'} ? 'active'"><span class="ico">👤</span> 회원 관리</a>
         <a th:href="@{/admin/reports}" th:classappend="${active == 'report'} ? 'active'"><span class="ico">🚨</span> 신고 검토</a>

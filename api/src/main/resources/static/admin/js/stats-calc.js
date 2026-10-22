@@ -1,0 +1,113 @@
+// 운영 지표 화면의 계산. DOM 을 건드리지 않아 node --test 로 검증한다(api/src/test/js).
+const StatsCalc = (() => {
+    const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
+    const GENDER_UNKNOWN_LABEL = '미입력';
+    const AGE_OUTSIDE_BANDS_LABEL = '그 외 나이';
+    const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
+
+    // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
+    const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
+    const addDays = (isoDate, days) => {
+        const date = toUtcDate(isoDate);
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
+    };
+    const mondayOf = (isoDate) => addDays(isoDate, -((toUtcDate(isoDate).getUTCDay() + 6) % 7));
+    // 서버는 일시를 'yyyy-MM-dd HH:mm:ss' 로 준다.
+    const dateOf = (dateTime) => dateTime.slice(0, 10);
+
+    const countBy = (items, keyOf) => items.reduce((counts, item) => {
+        const key = keyOf(item);
+        return counts.set(key, (counts.get(key) || 0) + 1);
+    }, new Map());
+    const sumCountsBy = (countRows, keyOf) => countRows.reduce((counts, countRow) => {
+        const key = keyOf(countRow);
+        return counts.set(key, (counts.get(key) || 0) + countRow.count);
+    }, new Map());
+    const groupBy = (items, keyOf) => items.reduce((groups, item) => {
+        const key = keyOf(item);
+        return groups.set(key, [...(groups.get(key) || []), item]);
+    }, new Map());
+
+    const formatCount = (count) => count.toLocaleString('ko-KR');
+    const percent = (part, whole) => (whole === 0 ? 0 : (part * 100) / whole);
+    const percentText = (part, whole) => (whole === 0 ? '-' : `${percent(part, whole).toFixed(1)}%`);
+
+    const memberTotals = (countsByStatus) => {
+        const joined = Object.values(countsByStatus).reduce((sum, count) => sum + count, 0);
+        const left = countsByStatus.LEFT || 0;
+        return { joined, current: joined - left, left };
+    };
+
+    // 오늘 이후 날짜는 아직 오지 않아 count 가 null 이다.
+    const dailyJoins = (weekStartedOn, today, joinedAts) => {
+        const countsByDate = countBy(joinedAts, dateOf);
+        return DAY_LABELS.map((dayLabel, index) => {
+            const date = addDays(weekStartedOn, index);
+            const count = date > today ? null : countsByDate.get(date) || 0;
+            return { date, dayLabel, isToday: date === today, count };
+        });
+    };
+
+    const weekStartsUntil = (lastWeekStartedOn, weekCount) =>
+        Array.from({ length: weekCount }, (_, index) => addDays(lastWeekStartedOn, -7 * (weekCount - 1 - index)));
+
+    const weeklyJoins = (lastWeekStartedOn, weekCount, joinedAts) => {
+        const countsByWeek = countBy(joinedAts, (joinedAt) => mondayOf(dateOf(joinedAt)));
+        return weekStartsUntil(lastWeekStartedOn, weekCount)
+            .map((weekStartedOn) => ({ weekStartedOn, count: countsByWeek.get(weekStartedOn) || 0 }));
+    };
+
+    // 만 나이. 서버 AgeBand.birthDateRange 와 경계가 같다.
+    const ageOn = (birthDate, today) => {
+        const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
+        const [year, month, day] = today.split('-').map(Number);
+        const hadBirthday = month > birthMonth || (month === birthMonth && day >= birthDay);
+        return year - birthYear - (hadBirthday ? 0 : 1);
+    };
+
+    const genderCounts = (genderBirthDateCounts, genderLabels) => {
+        const countsByGender = sumCountsBy(genderBirthDateCounts, (countRow) => countRow.gender);
+        return [
+            ...Object.entries(genderLabels).map(([gender, label]) => ({ label, count: countsByGender.get(gender) || 0 })),
+            { label: GENDER_UNKNOWN_LABEL, count: countsByGender.get(null) || 0 },
+        ];
+    };
+
+    // 성별 칸은 genderLabels 순서이고 마지막 칸이 미입력이다.
+    const ageGenderRows = (genderBirthDateCounts, genderLabels, ageBandRanges, today) => {
+        const ageLabelOf = (birthDate) => {
+            if (!birthDate) return BIRTH_DATE_UNKNOWN_LABEL;
+            const age = ageOn(birthDate, today);
+            const band = ageBandRanges.find(({ minAge, maxAge }) => age >= minAge && age <= maxAge);
+            return band ? band.label : AGE_OUTSIDE_BANDS_LABEL;
+        };
+        const countRowsByAgeLabel = groupBy(genderBirthDateCounts, (countRow) => ageLabelOf(countRow.birthDate));
+        const toAgeGenderRow = (label) => {
+            const countsByGender = sumCountsBy(countRowsByAgeLabel.get(label) || [], (countRow) => countRow.gender);
+            const countsInColumnOrder = [...Object.keys(genderLabels), null]
+                .map((gender) => countsByGender.get(gender) || 0);
+            const totalCount = countsInColumnOrder.reduce((sum, count) => sum + count, 0);
+            return { label, countsInColumnOrder, totalCount };
+        };
+        const labels = [...ageBandRanges.map((band) => band.label), AGE_OUTSIDE_BANDS_LABEL, BIRTH_DATE_UNKNOWN_LABEL];
+        return labels.map(toAgeGenderRow);
+    };
+
+    const genderColumnLabels = (genderLabels) => [...Object.values(genderLabels), GENDER_UNKNOWN_LABEL];
+
+    return {
+        formatCount,
+        percent,
+        percentText,
+        memberTotals,
+        dailyJoins,
+        weeklyJoins,
+        ageOn,
+        genderCounts,
+        genderColumnLabels,
+        ageGenderRows,
+    };
+})();
+
+if (typeof module !== 'undefined') module.exports = StatsCalc;
