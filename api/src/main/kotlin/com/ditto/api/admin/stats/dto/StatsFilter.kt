@@ -21,6 +21,9 @@ data class StatsFilter(
     fun selectedWeek(currentWeek: OperationWeek): OperationWeek =
         week?.let { OperationWeek.containing(it) } ?: currentWeek
 
+    fun hasConditions(): Boolean =
+        matchingType != MatchingTypeFilter.ALL || gender != null || ageBand != null || joinedWeek != null
+
     fun toMemberFilter(today: LocalDate): MemberFilter = MemberFilter(
         gender = gender,
         birthDateRange = ageBand?.birthDateRange(today),

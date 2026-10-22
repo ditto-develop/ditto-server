@@ -140,7 +140,9 @@
         const participation = StatsCalc.quizParticipation(progressCounts, quizMatchingTypeLabels);
         showSectionIfAny('quiz', participation.startedCount > 0);
 
-        byId('quizActiveRounds').textContent = `최근 ${activeRoundCount}회차(${activeRoundWeeks.join(', ')})`;
+        byId('quizActiveRoundCount').textContent = activeRoundCount;
+        const activeRoundDates = activeRoundWeeks.map(shortDate).reverse().join('·');
+        byId('quizActiveRounds').textContent = `최근 ${activeRoundWeeks.length}회차(${activeRoundDates} 주)`;
         renderQuizRates(participation, activeMemberCount);
         fillShares('quizMatchingTypeShares', participation.participantCountsByType);
         fillGenderTable({
@@ -164,9 +166,6 @@
 
     const renderQuestionSection = ({ quizMatchingTypeLabels, quizStats }) => {
         const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts);
-        byId('questionEmptyNotice').textContent = distributions.length === 0
-            ? '이 회차에 활성 퀴즈셋이 없습니다.'
-            : '이 회차에 조건에 맞는 답이 없습니다.';
         showSectionIfAny('question', StatsCalc.sumCounts(quizStats.choiceAnswerCounts) > 0);
         byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions }) => {
             const card = element('div', 'card');
@@ -223,9 +222,6 @@
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         const { previousCount, completedAgainCount, byType } =
             StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels);
-        byId('retentionEmptyNotice').textContent = previousRoundWeek === null
-            ? '고른 회차 앞에 회차가 없습니다.'
-            : '지난 회차 참여자가 없습니다.';
         showSectionIfAny('retention', previousCount > 0);
         if (previousRoundWeek === null) return;
 

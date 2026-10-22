@@ -101,8 +101,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"progressCounts":[{"matchingType":"ONE_TO_ONE","status":"COMPLETED",""" +
-                                """"gender":null,"count":1}],"activeRoundCount":4,"activeRoundWeeks":["2026-04-06"],""" +
-                                """"activeMemberCount":1""",
+                                """"gender":null,"count":1}],""" +
+                                """"activeRoundCount":4,"activeRoundWeeks":["2026-04-06"],"activeMemberCount":1""",
                         ),
                     ),
                 )
@@ -199,7 +199,28 @@ class AdminStatsWebTest(
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-06").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("회차 없음 · 4/6 주")))
-                .andExpect(content().string(containsString("고른 주는 활성 퀴즈셋이 없어 회차가 아닙니다")))
+                .andExpect(content().string(containsString("이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다")))
+        }
+
+        "회차가 아닌 주는 앞 회차에 참여자가 있어도 리텐션을 비운다" {
+            val previous = quizSetRepository.save(QuizSetFixture.create())
+            val member = memberRepository.save(MemberFixture.create(status = MemberStatus.ACTIVE))
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = member.id, quizSetId = previous.id, totalCount = 1)
+                    .apply { recordAnswer() },
+            )
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-13").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
+                                """"completedAgainCounts":[]}""",
+                        ),
+                    ),
+                )
+                .andExpect(content().string(containsString("회차가 아닌 주입니다.")))
         }
 
         "매칭 유형을 고르면 그 유형 라벨만 페이지 JSON 에 넣는다" {

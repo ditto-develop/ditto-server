@@ -19,10 +19,13 @@ class StatsRoundFinder(
             .filter { it <= week.startedOn }
             .take(count)
 
-    /** 퀴즈를 쉰 주는 건너뛴다. */
+    /** 고른 주가 회차가 아니면 비교할 회차가 없어 null 이다. 퀴즈를 쉰 주는 건너뛴다. */
     @Transactional(readOnly = true)
-    fun findPreviousRoundWeek(week: OperationWeek): LocalDate? =
-        quizSetRepository.findActiveWeekStartedOnsNewestFirst().firstOrNull { it < week.startedOn }
+    fun findPreviousRoundWeek(week: OperationWeek): LocalDate? {
+        val roundWeeksNewestFirst = quizSetRepository.findActiveWeekStartedOnsNewestFirst()
+        if (week.startedOn !in roundWeeksNewestFirst) return null
+        return roundWeeksNewestFirst.firstOrNull { it < week.startedOn }
+    }
 
     /** 회차 번호는 회차를 오래된 순으로 센 값이다. 함께 넣은 주가 회차가 아니면 번호가 없다. */
     @Transactional(readOnly = true)

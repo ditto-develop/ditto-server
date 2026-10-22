@@ -23,6 +23,17 @@ class StatsFilterTest : FreeSpec(
             }
         }
 
+        "hasConditions" - {
+            "회차만 고르면 조건이 없다" {
+                StatsFilter(week = LocalDate.of(2026, 10, 15)).hasConditions() shouldBe false
+            }
+
+            "매칭 유형이나 회원 조건을 하나라도 걸면 조건이 있다" {
+                StatsFilter(matchingType = MatchingTypeFilter.GROUP).hasConditions() shouldBe true
+                StatsFilter(joinedWeek = LocalDate.of(2026, 10, 1)).hasConditions() shouldBe true
+            }
+        }
+
         "toMemberFilter" - {
             "성별·연령대·가입 주차를 회원 조회 조건으로 바꾼다" {
                 val filter = StatsFilter(

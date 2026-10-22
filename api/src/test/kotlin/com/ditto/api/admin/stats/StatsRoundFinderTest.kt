@@ -68,5 +68,11 @@ class StatsRoundFinderTest(
 
             statsRoundFinder.findPreviousRoundWeek(FIRST) shouldBe null
         }
+
+        "고른 주가 회차가 아니면 앞에 회차가 있어도 null 이다" {
+            saveRounds()
+
+            statsRoundFinder.findPreviousRoundWeek(OperationWeek(FIRST.startedOn.plusWeeks(1))) shouldBe null
+        }
     }
 })
