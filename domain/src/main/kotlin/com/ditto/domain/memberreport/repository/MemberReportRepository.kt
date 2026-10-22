@@ -4,6 +4,7 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.entity.MemberReportStatus
+import com.ditto.domain.memberreport.repository.querydsl.MemberReportRepositoryCustom
 import java.time.LocalDateTime
 import org.springframework.data.domain.Limit
 import org.springframework.data.jpa.repository.JpaRepository
@@ -12,7 +13,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.transaction.annotation.Transactional
 
-interface MemberReportRepository : JpaRepository<MemberReport, Long> {
+interface MemberReportRepository : JpaRepository<MemberReport, Long>, MemberReportRepositoryCustom {
 
     fun findByReporterIdInOrReportedMemberIdIn(
         reporterIds: Collection<Long>,

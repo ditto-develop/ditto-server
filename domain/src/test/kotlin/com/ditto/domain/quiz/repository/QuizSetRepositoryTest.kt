@@ -290,4 +290,29 @@ class QuizSetRepositoryTest(
             quizSetRepository.findEndedQuizSetsWithoutCandidates(endedAfter, now).size shouldBe 0
         }
     }
+
+    "findActiveQuizSetWeeksNewestFirst" - {
+        "활성 셋이 있는 주만 겹치지 않게 최신 주부터 준다" {
+            fun saveInWeek(
+                monday: LocalDate,
+                matchingType: MatchingType,
+                isActive: Boolean = true,
+            ) = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = monday.atStartOfDay(),
+                    endDate = monday.plusDays(2).atTime(23, 59, 59),
+                    matchingType = matchingType,
+                    isActive = isActive,
+                ),
+            )
+            val older = LocalDate.of(2026, 4, 6)
+            val newer = LocalDate.of(2026, 4, 13)
+            saveInWeek(older, MatchingType.ONE_TO_ONE)
+            saveInWeek(newer, MatchingType.ONE_TO_ONE)
+            saveInWeek(newer, MatchingType.GROUP)
+            saveInWeek(LocalDate.of(2026, 4, 20), MatchingType.ONE_TO_ONE, isActive = false)
+
+            quizSetRepository.findActiveQuizSetWeeksNewestFirst() shouldBe listOf(newer, older)
+        }
+    }
 })

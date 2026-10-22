@@ -5,6 +5,8 @@ import com.ditto.domain.member.entity.Interest
 import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.random.Random
 
@@ -34,7 +36,7 @@ object DummyMemberFactory {
                 phoneNumber = null,
                 gender = profile.gender,
                 age = profile.age,
-                birthDate = null,
+                birthDate = randomBirthDateOf(profile.age, LocalDate.now()).atStartOfDay(),
                 email = null,
                 interests = profile.interests,
                 location = profile.location,
@@ -42,6 +44,13 @@ object DummyMemberFactory {
                 caricature = profile.caricature,
             )
         }
+
+    // 운영 지표가 생년월일로 만 나이를 구해서, 오늘 그 나이가 되는 날 중 하나로 정한다.
+    fun randomBirthDateOf(age: Int, today: LocalDate): LocalDate {
+        val earliest = today.minusYears(age + 1L).plusDays(1)
+        val latest = today.minusYears(age.toLong())
+        return earliest.plusDays(Random.nextLong(ChronoUnit.DAYS.between(earliest, latest) + 1))
+    }
 
     fun nicknameOf(suffix: String): String = DummyMarker.NICKNAME_PREFIX + suffix
 

@@ -1,7 +1,10 @@
 package com.ditto.domain.review.repository.querydsl
 
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswer
+import java.time.LocalDate
 
 interface ReviewAnswerRepositoryCustom {
 
@@ -16,4 +19,11 @@ interface ReviewAnswerRepositoryCustom {
         reviewedMemberId: Long,
         meetingStatus: MeetingStatus,
     ): Long
+
+    /** 그 주 평가에서 확정된 답을 유형·만남 상태·별점으로 묶은 수. 회원 조건은 평가를 쓴 사람에게 건다. */
+    fun countAnsweredInWeek(
+        weekStartedOn: LocalDate,
+        matchType: ChatRoomType?,
+        filter: MemberFilter,
+    ): List<ReviewAnswerCount>
 }

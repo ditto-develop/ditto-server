@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class OperationWeekTest : FreeSpec(
     {
@@ -64,6 +65,21 @@ class OperationWeekTest : FreeSpec(
                 week.year shouldBe 2026
                 week.month shouldBe 12
                 week.weekOfMonth shouldBe 5
+            }
+        }
+
+        "dateTimeRange" - {
+            "월요일 00:00 에 시작해 다음 주 월요일 00:00 직전까지다" {
+                val week = OperationWeek(LocalDate.of(2026, 10, 19))
+
+                week.dateTimeRange.start shouldBe LocalDateTime.of(2026, 10, 19, 0, 0)
+                week.dateTimeRange.endExclusive shouldBe LocalDateTime.of(2026, 10, 26, 0, 0)
+            }
+        }
+
+        "minusWeeks" - {
+            "연 경계를 넘어 앞 주로 간다" {
+                OperationWeek(LocalDate.of(2027, 1, 4)).minusWeeks(2).startedOn shouldBe LocalDate.of(2026, 12, 21)
             }
         }
     },

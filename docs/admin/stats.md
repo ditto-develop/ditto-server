@@ -1,0 +1,182 @@
+# 어드민 운영 지표 (`/admin/stats`)
+
+기획 "디토 어드민 운영 지표 정의서"의 지표를 회차·회원 조건으로 본다. 구조(서버는 집계 결과만, 계산은 JS)는 [ADR 0046](../adr/0046-admin-stats-render-in-browser.md).
+
+## 공통
+
+- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다.
+- **기준일**: `ServerTimeProvider.now()`의 날짜. QA 시각 조정을 따른다. 화면 "오늘(…) 기준" 줄에 보인다.
+- **회차**: 그 주 월요일 00:00 ~ 다음 월요일 00:00. 번호는 활성 퀴즈셋이 있는 주를 오래된 순으로 센 값이라, 퀴즈셋을 지우거나 비활성으로 돌리거나 과거 주에 만들면 번호가 밀린다. 같은 주에 QA 용 비활성 셋이 있어도 매칭처럼 활성 셋만 본다.
+- **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
+- **가입 주차**: 고른 날이 속한 주(월~일)에 `joined_at`이 있는 회원.
+- **더미**: dev 의 더미 회원(닉네임 `dummy-`)도 일반 회원처럼 센다. 운영은 QA 도구가 꺼져 있어 더미가 없다. 더미는 만들 때 고른 나이가 그날(실제 날짜) 만 나이가 되는 생년월일을 무작위로 받는다. 시각 조정을 몇 주 앞으로 걸면 기준일이 달라 연령대가 고른 나이와 한 칸 어긋날 수 있다.
+- **탈퇴·삭제**: 그때의 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 탈퇴 30일 뒤 완전 삭제된 회원은 행이 없어 빠진다(지금은 삭제가 dry-run).
+- **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·평가·리텐션)은 "회차가 아닌 주"로 비운다.
+
+## 회원 현황
+
+기획서의 "유저 현황"이다. 화면은 다른 어드민 화면처럼 "회원"으로 부른다.
+
+| 블록 | 세는 것 |
+|---|---|
+| 누적 가입자 | `joined_at` 있는 회원. 탈퇴(LEFT) 포함. 가입을 마치지 않은 PENDING 은 `joined_at`이 없어 빠진다 |
+| 현재 회원 | 누적 가입자 중 LEFT 가 아닌 회원. 정지(SUSPENDED·BANNED) 포함 |
+| 탈퇴 | 누적 가입자 중 LEFT |
+| 성비·연령대 × 성별 | 현재 회원 |
+| 회차 일별·주별(고른 주까지 8주) 신규 | 그 기간 `joined_at`. 나중에 탈퇴한 회원도 가입한 날에 센다 |
+
+매칭 유형(1:1·그룹) 조건은 이 장에 걸리지 않는다.
+
+## 퀴즈 참여
+
+| 블록 | 세는 것 |
+|---|---|
+| 회차 참여자 | 그 회차 활성 셋을 완주(`quiz_progress.status = COMPLETED`)한 회원 |
+| 시작 | 그 회차 활성 셋에 진행 행이 있는 회원. 행은 첫 답을 낼 때 생기고, 진행을 초기화하면 지워져 빠진다 |
+| 참여율 | 참여자 ÷ 활성 회원. 활성 회원은 고른 회차까지 최근 4회차 안에 한 번이라도 완주한 회원(겹치면 한 명) |
+| 완료율 | 참여자 ÷ 시작 |
+| 매칭 유형별 참여자·성비 | 참여자를 1:1·그룹으로 나눈 것 |
+
+- 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다.
+- 그때 참여한 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 분자와 분모가 같은 기준이라 참여율이 100%를 넘지 않는다.
+
+## 문항 분포
+
+- 그 회차 활성 퀴즈셋의 문항마다 선택지별 답 수와 비율. 매칭 유형을 고르면 그 유형 퀴즈셋만 나온다.
+- 성별·연령대·가입 주차 조건은 답한 회원에게 건다. 답이 없는 선택지도 0으로 나온다.
+- 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
+- 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
+
+## 평가
+
+| 블록 | 세는 것 |
+|---|---|
+| 평가지 | 그 회차(`member_review.week_started_on`) 매칭에서 열린 평가. 한 사람 × 한 채팅방이 한 건 |
+| 제출률 | 완료(`COMPLETED`) ÷ 평가지. 대상 일부만 답한 진행 중(`IN_PROGRESS`)은 제출로 치지 않고 따로 보여 준다 |
+| 만남 상태·별점 | 응답(확정된 답, `review_answer.answered_at` 있음). 그룹은 대상마다 한 건이라 평가지보다 많다 |
+
+- 회원 조건은 평가를 쓴 사람에게 건다.
+- 매칭 유형 1:1 은 평가의 `PERSONAL`, 그룹은 `GROUP` 이다(`MatchingTypeFilter`). 재매칭 채팅은 평가를 열지 않아 없다.
+- 프로필의 받은 평가 집계와 달리 방이 끝났는지는 보지 않는다. 열린 그룹 방에서 나간 사람이 먼저 낸 평가도 센다.
+
+## 리텐션
+
+- 주간 재참여율 = 지난 회차 참여자 중 고른 회차에도 완주한 회원 ÷ 지난 회차 참여자.
+- 지난 회차는 고른 회차 바로 앞의 회차(활성 퀴즈셋이 있는 주)다. 퀴즈를 쉰 주는 건너뛴다. 앞에 회차가 없거나 고른 주가 회차가 아니면 비운다.
+- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함). 유형 전환 수는 P1 이라 따로 보여 주지 않는다.
+- 회원 조건은 지난 회차 참여자에게 건다.
+
+## 신고
+
+- 고른 회차 주(월~일)에 접수(`member_report.created_at`)된 신고. 처리 상태는 지금 상태다.
+- 접수 시각은 실제 시각이다. 시각 조정을 걸고 신고해도 실제 날짜의 주에 잡힌다.
+- 평가일(월)에 낸 신고는 다음 회차 주에 잡힌다.
+- 회원 조건은 피신고자에게 건다. 관리자가 피신고자인 신고는 뺀다.
+- 신고에는 어느 매칭에서 나왔는지가 없다. 매칭 유형을 고르면 피신고자가 그 회차에 그 유형 퀴즈셋을 완주한 신고만 센다. 한 주에 한 유형만 풀 수 있어 근사가 크게 어긋나지 않지만, 프로필 화면에서 들어온 신고처럼 매칭과 상관없는 신고도 섞인다. "전체"는 퀴즈에 참여하지 않은 피신고자의 신고도 센다.
+- 사유는 여러 개 고를 수 있어 사유별 수를 더하면 신고 건수보다 클 수 있다.
+
+## 손으로 대조하기
+
+필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
+
+```sql
+-- 누적 가입자·현재 회원·탈퇴
+SELECT status, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL
+GROUP BY status;
+
+-- 성비 (현재 회원)
+SELECT gender, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL AND status <> 'LEFT'
+GROUP BY gender;
+
+-- 연령대 (현재 회원, 기준일 :today 의 만 나이)
+SELECT TIMESTAMPDIFF(YEAR, birth_date, :today) AS age, gender, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL AND status <> 'LEFT'
+GROUP BY age, gender;
+
+-- 회차 참여자·시작 (매칭 유형별). 참여자 = COMPLETED, 시작 = 상태와 상관없이 행 수(행은 첫 답을 낼 때 생긴다)
+SELECT qs.matching_type, qp.status, COUNT(*) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY qs.matching_type, qp.status;
+
+-- 문항 분포
+SELECT q.display_order, q.question, c.content, COUNT(m.id) FROM quiz_choice c
+JOIN quiz q ON q.id = c.quiz_id
+JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active
+LEFT JOIN quiz_answer a ON a.choice_id = c.id
+LEFT JOIN member m ON m.id = a.member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY qs.id, q.id, c.id
+ORDER BY qs.id, q.display_order, c.display_order;
+
+-- 활성 회원 (:rounds 는 화면 퀴즈 참여 장 기준 줄에 나온 회차 월요일들)
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED';
+
+-- 평가지 상태 (쓴 사람 기준)
+SELECT r.match_type, r.status, COUNT(*) FROM member_review r
+JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
+WHERE r.week_started_on = :monday
+GROUP BY r.match_type, r.status;
+
+-- 만남 상태·별점 (확정된 답)
+SELECT a.meeting_status, a.rating, COUNT(*) FROM review_answer a
+JOIN member_review r ON r.id = a.member_review_id
+JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
+WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
+GROUP BY a.meeting_status, a.rating;
+
+-- 주간 재참여 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
+SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'COMPLETED'
+JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
+WHERE qp.status = 'COMPLETED'
+GROUP BY qs.matching_type;
+
+-- 신고 처리 상태 (피신고자 기준)
+SELECT r.status, COUNT(*) FROM member_report r
+JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
+WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY
+GROUP BY r.status;
+
+-- 신고 사유별 (reasons 는 콤마로 이은 문자열이라 사유마다 포함 여부를 센다)
+SELECT
+    SUM(FIND_IN_SET('INAPPROPRIATE_BEHAVIOR', r.reasons) > 0) AS inappropriate_behavior,
+    SUM(FIND_IN_SET('MONEY_DEMAND', r.reasons) > 0) AS money_demand,
+    SUM(FIND_IN_SET('FALSE_INFORMATION', r.reasons) > 0) AS false_information,
+    SUM(FIND_IN_SET('UNDERAGE', r.reasons) > 0) AS underage,
+    SUM(FIND_IN_SET('ETC', r.reasons) > 0) AS etc
+FROM member_report r
+JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
+WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY;
+
+-- 회차 일별 신규 (:monday 는 고른 회차의 월요일)
+SELECT DATE(joined_at), COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at >= :monday AND joined_at < :monday + INTERVAL 7 DAY
+GROUP BY DATE(joined_at);
+```
+
+## dev 에서 재현하기
+
+| 장 | 쓸 도구 | 주의 |
+|---|---|---|
+| 회원 현황 | 더미 생성 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다) |
+| 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨) |
+| 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다 |
+| 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
+| 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333) |
+| 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
+
+더미 정리를 하면 더미의 진행·답·평가·신고와 함께 더미가 낀 방의 테스트 계정 평가, 테스트 계정이 더미를 신고한 건도 지워져 지난 회차 숫자가 바뀐다.
+
+## 알아 둘 것
+
+- `joined_at`은 실제 시각으로 저장된다(`Member.register`). QA 시각 조정을 걸어도 새로 가입한 회원은 실제 날짜에 잡히므로, 회차 경계는 시각 조정만으로 재현되지 않는다.
+- 탈퇴 30일 뒤 완전 삭제(`LeftMemberPurgeService`)를 켜면 그 회원은 누적·탈퇴·신규 숫자에서 모두 빠진다. 지금은 dry-run 이라 지워지지 않는다. 켜기 전에 회차 스냅샷을 정한다.
