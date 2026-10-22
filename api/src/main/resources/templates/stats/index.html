@@ -6,7 +6,8 @@
     <aside th:replace="~{fragments :: sidebar('stats')}"></aside>
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
-        <main class="content">
+        <main class="content"
+              th:with="roundLabel=${(selectedWeekOption.round != null ? selectedWeekOption.round + '회차' : '회차 없음') + ' · ' + #temporals.format(selectedWeekOption.startedOn, 'M/d') + ' 주'}">
             <h1 class="page-title">운영 지표</h1>
             <p class="page-desc">회차와 회원 조건으로 좁혀 봅니다. 관리자 계정은 세지 않습니다. 성별·생년월일은 본인인증 전이라 회원이 입력하거나 소셜 로그인에서 받은 값입니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
@@ -14,12 +15,12 @@
             <div class="card">
                 <form th:action="@{/admin/stats}" method="get" class="field-row stats-filter">
                     <div class="field">
-                        <label for="week" title="퀴즈셋이 있는 주를 오래된 순으로 센 번호입니다">회차</label>
+                        <label for="week" title="활성 퀴즈셋이 있는 주를 오래된 순으로 센 번호입니다">회차</label>
                         <select id="week" name="week">
                             <option th:each="option : ${weekOptions}"
                                     th:value="${option.startedOn}"
                                     th:text="${(option.round != null ? option.round + '회차' : '회차 없음') + ' · ' + #temporals.format(option.startedOn, 'M/d') + ' 주'}"
-                                    th:selected="${option.startedOn == selectedWeekStartedOn}">1회차</option>
+                                    th:selected="${option.startedOn == selectedWeekOption.startedOn}">1회차</option>
                         </select>
                     </div>
                     <div class="field">
@@ -63,98 +64,120 @@
                 <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
             </div>
 
+            <p class="alert info" th:if="${selectedWeekOption.round == null}">고른 주는 활성 퀴즈셋이 없어 회차가 아닙니다. 퀴즈 참여·문항 분포·리텐션은 비어 있습니다.</p>
+
+            <div class="qa-bar stats-nav">
+                <span>회차 <b th:text="${roundLabel}">2회차 · 10/19 주</b></span>
+                <span>매칭 유형 <b th:text="${filter.matchingType.description}">전체</b></span>
+                <span th:if="${filter.gender != null}">성별 <b th:text="${filter.gender.description}">여성</b></span>
+                <span th:if="${filter.ageBand != null}">연령대 <b th:text="${filter.ageBand.description}">20대 초반</b></span>
+                <span th:if="${filter.joinedWeek != null}">가입 주차 <b th:text="|${#temporals.format(filter.joinedWeek, 'M/d')}가 속한 주|">10/19가 속한 주</b></span>
+                <span class="qa-bar-links">
+                    <a href="#members">유저</a>
+                    <a href="#quiz-participation">퀴즈</a>
+                    <a href="#questions">문항</a>
+                    <a href="#member-reviews">평가</a>
+                    <a href="#retention">리텐션</a>
+                    <a href="#member-reports">신고</a>
+                </span>
+            </div>
+
             <section class="stats-section" id="members">
                 <h2 class="stats-section-title">유저 현황</h2>
                 <p class="stats-section-desc">매칭 유형 조건은 이 장에 걸리지 않습니다. 탈퇴 후 30일이 지나 완전히 삭제된 회원은 셀 수 없습니다.</p>
                 <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
-
-                <p class="stats-basis">지금 기준 · 기준일 <span id="statsToday">-</span></p>
-                <div class="grid stats-totals">
-                    <div class="card stat">
-                        <span class="label">누적 가입자 (탈퇴 포함)</span>
-                        <span class="value" id="memberJoinedCount">-</span>
-                    </div>
-                    <div class="card stat">
-                        <span class="label">현재 회원 (정지 포함)</span>
-                        <span class="value" id="memberCurrentCount">-</span>
-                    </div>
-                    <div class="card stat">
-                        <span class="label">탈퇴</span>
-                        <span class="value" id="memberLeftCount">-</span>
-                    </div>
-                </div>
-                <div class="grid cols-2 stats-align-start">
-                    <div class="card">
-                        <h3>성비 (현재 회원)</h3>
-                        <div id="genderShares"></div>
-                    </div>
-                    <div class="card">
-                        <h3>연령대 × 성별 (현재 회원)</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead id="ageGenderHead"></thead>
-                                <tbody id="ageGenderRows"></tbody>
-                            </table>
+                <div id="memberSectionBody">
+                    <p class="stats-basis">지금 기준 · 기준일 <span id="statsToday">-</span></p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">누적 가입자 (탈퇴 포함)</span>
+                            <span class="value" id="memberJoinedCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">현재 회원 (정지 포함)</span>
+                            <span class="value" id="memberCurrentCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">탈퇴</span>
+                            <span class="value" id="memberLeftCount">-</span>
                         </div>
                     </div>
-                </div>
-
-                <p class="stats-basis">고른 회차 기준 · 나중에 탈퇴한 회원도 가입한 날에 셉니다</p>
-                <div class="grid cols-2 stats-align-start">
-                    <div class="card">
-                        <h3>회차 일별 신규 가입</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead><tr><th>날짜</th><th class="num">신규</th></tr></thead>
-                                <tbody id="dailyJoinRows"></tbody>
-                            </table>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>성비 (현재 회원)</h3>
+                            <div id="genderShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3>연령대 × 성별 (현재 회원)</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="ageGenderHead"></thead>
+                                    <tbody id="ageGenderRows"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="card">
-                        <h3 id="weeklyJoinTitle">주별 신규 가입</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead><tr><th>주</th><th class="num">신규</th></tr></thead>
-                                <tbody id="weeklyJoinRows"></tbody>
-                            </table>
+
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 나중에 탈퇴한 회원도 가입한 날에 셉니다</p>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>회차 일별 신규 가입</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>날짜</th><th class="num">신규(명)</th></tr></thead>
+                                    <tbody id="dailyJoinRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 id="weeklyJoinTitle">주별 신규 가입</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>주</th><th class="num">신규(명)</th></tr></thead>
+                                    <tbody id="weeklyJoinRows"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="stats-section" id="quiz">
+            <section class="stats-section" id="quiz-participation">
                 <h2 class="stats-section-title">퀴즈 참여</h2>
-                <p class="stats-section-desc">참여는 그 회차 퀴즈를 끝까지 낸 것, 시작은 첫 답을 낸 것입니다. 활성 퀴즈셋만 셉니다.</p>
-
-                <p class="stats-basis">고른 회차 기준 · 활성 유저는 최근 4회차(<span id="quizActiveRounds">-</span>) 안에 한 번이라도 완주한 회원</p>
-                <div class="grid stats-totals">
-                    <div class="card stat">
-                        <span class="label">회차 참여자</span>
-                        <span class="value" id="quizParticipantCount">-</span>
+                <p class="stats-section-desc">참여는 그 회차 퀴즈를 끝까지 낸 것, 시작은 첫 답을 낸 것입니다. 활성 퀴즈셋만 셉니다. 활성 유저는 고른 회차까지 최근 몇 회차 안에 한 번이라도 완주한 회원입니다.</p>
+                <p class="alert info" id="quizEmptyNotice" hidden>이 회차에 퀴즈를 시작한 회원이 없습니다.</p>
+                <div id="quizSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 활성 유저 = <span id="quizActiveRounds">-</span> 완주자</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">회차 참여자</span>
+                            <span class="value" id="quizParticipantCount">-</span>
+                            <span class="basis" id="quizParticipantCountBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">참여율</span>
+                            <span class="value" id="quizParticipationRate">-</span>
+                            <span class="basis" id="quizParticipationRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">완료율</span>
+                            <span class="value" id="quizCompletionRate">-</span>
+                            <span class="basis" id="quizCompletionRateBasis"></span>
+                        </div>
                     </div>
-                    <div class="card stat">
-                        <span class="label">참여율 (참여 ÷ 활성)</span>
-                        <span class="value" id="quizParticipationRate">-</span>
-                        <span class="basis" id="quizParticipationRateBasis"></span>
-                    </div>
-                    <div class="card stat">
-                        <span class="label">완료율 (완주 ÷ 시작)</span>
-                        <span class="value" id="quizCompletionRate">-</span>
-                        <span class="basis" id="quizCompletionRateBasis"></span>
-                    </div>
-                </div>
-                <div class="grid cols-2 stats-align-start">
-                    <div class="card">
-                        <h3>매칭 유형별 참여자</h3>
-                        <div id="quizMatchingTypeShares"></div>
-                    </div>
-                    <div class="card">
-                        <h3>매칭 유형별 참여자 성비</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead id="quizParticipantGenderHead"></thead>
-                                <tbody id="quizParticipantGenderRows"></tbody>
-                            </table>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>매칭 유형별 참여자</h3>
+                            <div id="quizMatchingTypeShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3>매칭 유형별 참여자 성비</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="quizParticipantGenderHead"></thead>
+                                    <tbody id="quizParticipantGenderRows"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -163,47 +186,53 @@
             <section class="stats-section" id="questions">
                 <h2 class="stats-section-title">문항 분포</h2>
                 <p class="stats-section-desc">한쪽으로 쏠린 문항은 매칭에서 사람을 가르지 못합니다. 완주하지 않은 회원의 답도 셉니다.</p>
-                <p class="stats-basis">고른 회차 기준</p>
-                <p class="alert info" id="questionEmptyNotice" hidden>이 회차에 활성 퀴즈셋이 없습니다.</p>
-                <div id="questionDistributions"></div>
+                <p class="alert info" id="questionEmptyNotice" hidden></p>
+                <div id="questionSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준</p>
+                    <div id="questionDistributions"></div>
+                </div>
             </section>
 
-            <section class="stats-section" id="reviews">
+            <section class="stats-section" id="member-reviews">
                 <h2 class="stats-section-title">평가</h2>
                 <p class="stats-section-desc">평가지는 채팅이 끝나면 참여자마다 하나씩 열립니다. 재매칭 채팅은 평가가 없습니다. 회원 조건은 평가를 쓴 사람에게 겁니다.</p>
-                <p class="stats-basis">고른 회차 기준</p>
-                <div class="grid stats-totals">
-                    <div class="card stat">
-                        <span class="label">제출률 (완료 ÷ 평가지)</span>
-                        <span class="value" id="reviewSubmissionRate">-</span>
-                        <span class="basis" id="reviewSubmissionRateBasis"></span>
+                <p class="alert info" id="memberReviewEmptyNotice" hidden>이 회차 평가지가 없습니다. 평가는 채팅이 끝난 뒤(다음 주 월) 열립니다.</p>
+                <div id="memberReviewSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">제출률</span>
+                            <span class="value" id="memberReviewSubmissionRate">-</span>
+                            <span class="basis" id="memberReviewSubmissionRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">진행 중</span>
+                            <span class="value" id="memberReviewInProgressCount">-</span>
+                            <span class="basis">일부 대상만 답함</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">시작 안 함</span>
+                            <span class="value" id="memberReviewNotStartedCount">-</span>
+                        </div>
                     </div>
-                    <div class="card stat">
-                        <span class="label">진행 중 (일부 대상만 답함)</span>
-                        <span class="value" id="reviewInProgressCount">-</span>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3 id="memberReviewMeetingStatusTitle">만남 상태</h3>
+                            <div id="memberReviewMeetingStatusShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3 id="memberReviewRatingTitle">별점</h3>
+                            <div id="memberReviewRatingShares"></div>
+                        </div>
                     </div>
-                    <div class="card stat">
-                        <span class="label">시작 안 함</span>
-                        <span class="value" id="reviewNotStartedCount">-</span>
-                    </div>
-                </div>
-                <div class="grid cols-2 stats-align-start">
                     <div class="card">
-                        <h3>만남 상태 (확정된 답)</h3>
-                        <div id="reviewMeetingStatusShares"></div>
-                    </div>
-                    <div class="card">
-                        <h3>별점 (확정된 답)</h3>
-                        <div id="reviewRatingShares"></div>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3>매칭 유형별 제출률</h3>
-                    <div class="tbl-scroll">
-                        <table class="tbl">
-                            <thead><tr><th>매칭 유형</th><th class="num">평가지</th><th class="num">완료</th><th class="num">제출률</th></tr></thead>
-                            <tbody id="reviewSubmissionByTypeRows"></tbody>
-                        </table>
+                        <h3>매칭 유형별 제출률</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead><tr><th>매칭 유형</th><th class="num">평가지(건)</th><th class="num">완료(건)</th><th class="num">제출률</th></tr></thead>
+                                <tbody id="memberReviewSubmissionByTypeRows"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -211,19 +240,29 @@
             <section class="stats-section" id="retention">
                 <h2 class="stats-section-title">리텐션</h2>
                 <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞의 회차입니다. 매칭 유형은 지난 회차에 푼 유형이고, 이번 회차엔 어느 유형이든 완주하면 다시 참여한 것으로 셉니다.</p>
-                <p class="stats-basis">지난 회차 → 고른 회차 · <span id="retentionRounds">-</span></p>
-                <p class="alert info" id="retentionEmptyNotice" hidden>고른 회차 앞에 회차가 없습니다.</p>
-                <div class="grid cols-2 stats-align-start">
-                    <div class="card stat">
-                        <span class="label">주간 재참여율 (다시 참여 ÷ 지난 회차 참여자)</span>
-                        <span class="value" id="retentionRate">-</span>
-                        <span class="basis" id="retentionRateBasis"></span>
+                <p class="alert info" id="retentionEmptyNotice" hidden></p>
+                <div id="retentionSectionBody">
+                    <p class="stats-basis"><span id="retentionRounds">-</span> 기준</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">주간 재참여율</span>
+                            <span class="value" id="retentionRate">-</span>
+                            <span class="basis" id="retentionRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">지난 회차 참여자</span>
+                            <span class="value" id="retentionPreviousCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">다시 참여</span>
+                            <span class="value" id="retentionCompletedAgainCount">-</span>
+                        </div>
                     </div>
                     <div class="card">
                         <h3>매칭 유형별 재참여율</h3>
                         <div class="tbl-scroll">
                             <table class="tbl">
-                                <thead><tr><th>매칭 유형</th><th class="num">지난 회차</th><th class="num">다시 참여</th><th class="num">재참여율</th></tr></thead>
+                                <thead><tr><th>매칭 유형</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
                                 <tbody id="retentionByTypeRows"></tbody>
                             </table>
                         </div>
@@ -233,22 +272,33 @@
 
             <section class="stats-section" id="member-reports">
                 <h2 class="stats-section-title">신고</h2>
-                <p class="stats-section-desc">회원 조건은 피신고자에게 겁니다. 신고에는 어느 매칭에서 나왔는지가 없어, 매칭 유형은 피신고자가 그 회차에 푼 퀴즈셋 유형으로 대신합니다.</p>
-                <p class="stats-basis">고른 회차 주(월~일)에 접수된 신고</p>
-                <div class="grid stats-totals">
-                    <div class="card stat">
-                        <span class="label">신고 건수</span>
-                        <span class="value" id="memberReportCount">-</span>
+                <p class="stats-section-desc">회원 조건은 피신고자에게 겁니다. 신고에는 어느 매칭에서 나왔는지가 없어, 매칭 유형은 피신고자가 그 회차에 푼 퀴즈셋 유형으로 대신합니다. 접수 시각은 실제 시각입니다.</p>
+                <p class="alert info" id="memberReportEmptyNotice" hidden>이 회차에 접수된 신고가 없습니다.</p>
+                <div id="memberReportSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 월~일에 접수된 신고</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">신고 건수</span>
+                            <span class="value" id="memberReportCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">검토 대기</span>
+                            <span class="value" id="memberReportReceivedCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">처리 완료</span>
+                            <span class="value" id="memberReportReviewedCount">-</span>
+                        </div>
                     </div>
-                </div>
-                <div class="grid cols-2 stats-align-start">
-                    <div class="card">
-                        <h3>사유별 (여러 개 선택 가능)</h3>
-                        <div id="memberReportReasonShares"></div>
-                    </div>
-                    <div class="card">
-                        <h3>처리 상태</h3>
-                        <div id="memberReportStatusShares"></div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3 id="memberReportReasonTitle">사유별</h3>
+                            <div id="memberReportReasonShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3>처리 상태</h3>
+                            <div id="memberReportStatusShares"></div>
+                        </div>
                     </div>
                 </div>
             </section>

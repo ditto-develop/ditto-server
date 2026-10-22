@@ -180,7 +180,7 @@ describe('quizParticipation', () => {
     test('매칭 유형별 참여자는 matchingTypeLabels 순서로 0이어도 나온다', () => {
         const participation = StatsCalc.quizParticipation([], MATCHING_TYPE_LABELS);
 
-        assert.deepEqual(participation.participantsByType, [
+        assert.deepEqual(participation.participantCountsByType, [
             { label: '1:1', count: 0 },
             { label: '그룹', count: 0 },
         ]);
@@ -233,7 +233,7 @@ describe('questionDistributions', () => {
     });
 });
 
-const CHAT_ROOM_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+const MEMBER_REVIEW_MATCH_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
 const MEMBER_REVIEW_COUNTS = [
     { matchType: 'PERSONAL', status: 'COMPLETED', count: 6 },
     { matchType: 'PERSONAL', status: 'NOT_STARTED', count: 2 },
@@ -246,22 +246,24 @@ const ANSWER_COUNTS = [
     { matchType: 'GROUP', meetingStatus: 'NO_SHOW', rating: 1, count: 1 },
 ];
 
-describe('reviewSubmission', () => {
+describe('memberReviewSubmission', () => {
     test('진행 중은 제출로 치지 않고 따로 센다', () => {
-        assert.deepEqual(StatsCalc.reviewSubmission(MEMBER_REVIEW_COUNTS), {
-            total: 12,
-            completed: 9,
-            inProgress: 1,
-            notStarted: 2,
+        assert.deepEqual(StatsCalc.memberReviewSubmission(MEMBER_REVIEW_COUNTS), {
+            memberReviewCount: 12,
+            completedCount: 9,
+            inProgressCount: 1,
+            notStartedCount: 2,
         });
     });
 });
 
-describe('reviewSubmissionByType', () => {
-    test('채팅방 유형마다 평가지와 완료 수를 낸다', () => {
-        assert.deepEqual(StatsCalc.reviewSubmissionByType(MEMBER_REVIEW_COUNTS, CHAT_ROOM_TYPE_LABELS), [
-            { label: '1:1', total: 8, completed: 6 },
-            { label: '그룹', total: 4, completed: 3 },
+describe('memberReviewSubmissionByType', () => {
+    test('매칭 유형마다 평가지와 완료 수를 낸다', () => {
+        const rows = StatsCalc.memberReviewSubmissionByType(MEMBER_REVIEW_COUNTS, MEMBER_REVIEW_MATCH_TYPE_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '1:1', memberReviewCount: 8, completedCount: 6 },
+            { label: '그룹', memberReviewCount: 4, completedCount: 3 },
         ]);
     });
 });
@@ -275,7 +277,7 @@ describe('meetingStatusCounts', () => {
 });
 
 describe('ratingCounts', () => {
-    test('별점은 받은 순서대로 0이어도 나온다', () => {
+    test('별점은 ratingScores 순서대로 0이어도 나온다', () => {
         assert.deepEqual(StatsCalc.ratingCounts(ANSWER_COUNTS, [5, 4, 3, 2, 1]), [
             { label: '5점', count: 4 },
             { label: '4점', count: 2 },
@@ -286,7 +288,7 @@ describe('ratingCounts', () => {
     });
 });
 
-describe('retention', () => {
+describe('retentionCounts', () => {
     test('지난 회차 완주자만 분모로 세고 매칭 유형별로 나눈다', () => {
         const previousProgressCounts = [
             { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'MALE', count: 6 },
@@ -296,35 +298,60 @@ describe('retention', () => {
         ];
         const completedAgainCounts = [{ previousMatchingType: 'ONE_TO_ONE', count: 7 }];
 
-        assert.deepEqual(StatsCalc.retention(previousProgressCounts, completedAgainCounts, MATCHING_TYPE_LABELS), {
+        const counts = StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, MATCHING_TYPE_LABELS);
+
+        assert.deepEqual(counts, {
             previousCount: 15,
-            againCount: 7,
+            completedAgainCount: 7,
             byType: [
-                { label: '1:1', previousCount: 10, againCount: 7 },
-                { label: '그룹', previousCount: 5, againCount: 0 },
+                { label: '1:1', previousCount: 10, completedAgainCount: 7 },
+                { label: '그룹', previousCount: 5, completedAgainCount: 0 },
             ],
         });
     });
 });
 
-describe('memberReportSummary', () => {
+describe('memberReportCounts', () => {
     const reasonLabels = { MONEY_DEMAND: '금전 요구', ETC: '기타' };
     const statusLabels = { RECEIVED: '검토 대기', REJECTED: '기각' };
-    const memberReportCounts = [
+    const memberReportCountRows = [
         { reasons: ['MONEY_DEMAND', 'ETC'], status: 'RECEIVED', count: 2 },
         { reasons: ['ETC'], status: 'REJECTED', count: 1 },
     ];
 
     test('사유는 고른 것마다 세서 합이 건수보다 클 수 있다', () => {
-        const summary = StatsCalc.memberReportSummary(memberReportCounts, reasonLabels, statusLabels);
+        const counts = StatsCalc.memberReportCounts(memberReportCountRows, reasonLabels, statusLabels);
 
-        assert.equal(summary.total, 3);
-        assert.deepEqual(summary.reasonCounts, [{ label: '금전 요구', count: 2 }, { label: '기타', count: 3 }]);
+        assert.equal(counts.memberReportCount, 3);
+        assert.deepEqual(counts.reasonCounts, [{ label: '금전 요구', count: 2 }, { label: '기타', count: 3 }]);
     });
 
     test('처리 상태는 라벨 순서대로 0이어도 나온다', () => {
-        const summary = StatsCalc.memberReportSummary([], reasonLabels, statusLabels);
+        const counts = StatsCalc.memberReportCounts([], reasonLabels, statusLabels);
 
-        assert.deepEqual(summary.statusCounts, [{ label: '검토 대기', count: 0 }, { label: '기각', count: 0 }]);
+        assert.deepEqual(counts.statusCounts, [{ label: '검토 대기', count: 0 }, { label: '기각', count: 0 }]);
+    });
+});
+
+describe('memberReportCounts 처리 상태 합계', () => {
+    test('검토 대기 밖의 상태는 모두 처리 완료로 센다', () => {
+        const counts = StatsCalc.memberReportCounts(
+            [
+                { reasons: ['ETC'], status: 'RECEIVED', count: 2 },
+                { reasons: ['ETC'], status: 'ACTIONED', count: 1 },
+                { reasons: ['ETC'], status: 'REJECTED_ABUSIVE', count: 1 },
+            ],
+            { ETC: '기타' },
+            { RECEIVED: '검토 대기' },
+        );
+
+        assert.equal(counts.receivedCount, 2);
+        assert.equal(counts.reviewedCount, 2);
+    });
+});
+
+describe('sumCounts', () => {
+    test('행의 count 를 더한다', () => {
+        assert.equal(StatsCalc.sumCounts([{ count: 2 }, { count: 3 }]), 5);
     });
 });

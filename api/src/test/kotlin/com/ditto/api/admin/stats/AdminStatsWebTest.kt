@@ -101,7 +101,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"progressCounts":[{"matchingType":"ONE_TO_ONE","status":"COMPLETED",""" +
-                                """"gender":null,"count":1}],"activeRoundWeeks":["2026-04-06"],"activeMemberCount":1""",
+                                """"gender":null,"count":1}],"activeRoundCount":4,"activeRoundWeeks":["2026-04-06"],""" +
+                                """"activeMemberCount":1""",
                         ),
                     ),
                 )
@@ -192,12 +193,20 @@ class AdminStatsWebTest(
                 )
         }
 
-        "비활성 퀴즈셋만 있는 주는 회차 번호가 없다" {
+        "비활성 퀴즈셋만 있는 주는 회차 번호가 없고 회차가 아니라고 알린다" {
             quizSetRepository.save(QuizSetFixture.create(isActive = false))
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-06").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("회차 없음 · 4/6 주")))
+                .andExpect(content().string(containsString("고른 주는 활성 퀴즈셋이 없어 회차가 아닙니다")))
+        }
+
+        "매칭 유형을 고르면 그 유형 라벨만 페이지 JSON 에 넣는다" {
+            mockMvc.perform(get("/admin/stats").param("matchingType", "GROUP").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(pageJsonContaining(""""quizMatchingTypeLabels":{"GROUP":""")))
+                .andExpect(content().string(pageJsonContaining(""""memberReviewMatchTypeLabels":{"GROUP":""")))
         }
 
         "빈 필터 값을 넘겨도 오류 없이 매칭 유형 전체로 열린다" {

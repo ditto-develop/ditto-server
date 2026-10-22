@@ -27,6 +27,7 @@ class QuizStatsService(
                 quizMatchingType,
                 memberFilter,
             ),
+            activeRoundCount = ACTIVE_ROUND_COUNT,
             activeRoundWeeks = activeRoundWeeks,
             activeMemberCount = quizProgressRepository.countMembersCompletedInWeeks(
                 activeRoundWeeks,

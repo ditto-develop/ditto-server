@@ -163,8 +163,9 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-filter .field { margin-bottom: 0; }
 .stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .stats-filter-note { margin: 12px 0 0; font-size: 13px; }
-.stats-section { margin-top: 32px; }
-.stats-section-title { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+.stats-section { margin-top: 32px; scroll-margin-top: 80px; }
+.stats-section + .stats-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border); }
+.stats-section-title { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
 .stats-section-desc { color: var(--text-sub); font-size: 13px; margin: 0 0 16px; }
 .stats-basis { color: var(--text-sub); font-size: 12px; font-weight: 700; margin: 20px 0 8px; }
 .stats-section .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
@@ -183,9 +184,10 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .share-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
 .share-bar > span { display: block; height: 100%; background: var(--primary); }
 .share-value { color: var(--text-sub); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
-/* 선택지 문구가 길어 라벨 칸을 넓힌다. */
-.choice-row { grid-template-columns: minmax(0, 1fr) minmax(64px, 1fr) 128px; margin-bottom: 6px; font-size: 13px; }
-.choice-row > span:first-child { word-break: keep-all; }
+.share-value.empty { color: var(--text-muted); }
+/* 선택지·만남 상태·신고 사유처럼 라벨이 긴 막대 행. 나란히 놓인 카드는 같은 행 모양을 쓴다. */
+.wide-label-row { grid-template-columns: minmax(0, 1fr) minmax(64px, 1fr) 128px; margin-bottom: 6px; font-size: 13px; }
+.wide-label-row > span:first-child { word-break: keep-all; }
 .question-block { padding: 14px 0; border-bottom: 1px solid var(--border); }
 .question-block:last-child { border-bottom: none; padding-bottom: 0; }
 .question-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
@@ -907,6 +909,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .stats-totals .value { font-size: 19px; }
     .stats-section table.tbl :is(th, td) { padding: 9px 8px; }
     .stats-filter-actions .btn { padding-top: 12px; padding-bottom: 12px; }
+    .stats-section { scroll-margin-top: 16px; }
     .qa-composer-dummies, .qa-composer-row select { width: 100%; }
 
     /* 손가락으로 누르기 어려운 작은 버튼을 키운다. */
@@ -919,6 +922,9 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 
 /* 폰 폭. 960px 블록보다 뒤에 둔다. */
 @media (max-width: 480px) {
+    /* 긴 라벨은 한 줄을 다 쓰고, 막대와 값은 그 아래에 둔다. */
+    .wide-label-row { grid-template-columns: 1fr 128px; row-gap: 4px; }
+    .wide-label-row > span:first-child { grid-column: 1 / -1; }
     /* 버튼이 여럿인 칸은 세로로 쌓아서 붙여 둔 버튼 열이 표를 다 가리지 않게 한다. */
     .tbl-scroll table.tbl td.actions:has(> * + *) { white-space: normal; }
     .tbl-scroll table.tbl td.actions:has(> * + *) > :is(form, a) { display: flex; margin: 0; }

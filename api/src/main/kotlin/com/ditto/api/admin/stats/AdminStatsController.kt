@@ -37,13 +37,13 @@ class AdminStatsController(
             memberReviewStats = memberReviewStatsService.findStats(filter, week, today),
             retentionStats = retentionStatsService.findStats(filter, week, today),
             memberReportStats = memberReportStatsService.findStats(filter, week, today),
+            quizMatchingTypeLabels = filter.matchingType.quizMatchingTypeLabels(),
+            memberReviewMatchTypeLabels = filter.matchingType.memberReviewMatchTypeLabels(),
         )
+        val weekOptions = statsRoundFinder.findWeekOptionsIncluding(listOf(currentWeek.startedOn, week.startedOn))
 
-        model.addAttribute("selectedWeekStartedOn", week.startedOn)
-        model.addAttribute(
-            "weekOptions",
-            statsRoundFinder.findWeekOptionsIncluding(listOf(currentWeek.startedOn, week.startedOn)),
-        )
+        model.addAttribute("weekOptions", weekOptions)
+        model.addAttribute("selectedWeekOption", weekOptions.first { it.startedOn == week.startedOn })
         model.addAttribute("matchingTypeFilters", MatchingTypeFilter.entries)
         model.addAttribute("genders", Gender.entries)
         model.addAttribute("ageBands", AgeBand.entries)

@@ -6,6 +6,7 @@ import java.time.LocalDate
 
 data class QuizStatsData(
     val progressCounts: List<QuizProgressCount>,
+    val activeRoundCount: Int,
     val activeRoundWeeks: List<LocalDate>,
     val activeMemberCount: Long,
     val choiceAnswerCounts: List<ChoiceAnswerCount>,
