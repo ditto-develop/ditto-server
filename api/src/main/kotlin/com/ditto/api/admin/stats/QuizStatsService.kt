@@ -16,31 +16,33 @@ class QuizStatsService(
     private val statsRoundFinder: StatsRoundFinder,
 ) {
 
-    /** 활성 유저는 고른 회차까지 최근 4회차 안에 한 번이라도 완주한 회원이다. */
     @Transactional(readOnly = true)
     fun findStats(filter: StatsFilter, week: OperationWeek, today: LocalDate): QuizStatsData {
         val memberFilter = filter.toMemberFilter(today)
-        val matchingType = filter.matchingType.targetType
-        val activeRoundWeeks = statsRoundFinder.findRoundWeeksNewestFirst()
-            .filter { it <= week.startedOn }
-            .take(ACTIVE_ROUND_COUNT)
+        val quizMatchingType = filter.matchingType.quizMatchingType
+        val activeRoundWeeks = statsRoundFinder.findRecentRoundWeeksUntil(week, ACTIVE_ROUND_COUNT)
         return QuizStatsData(
-            progressCounts = quizProgressRepository.countProgressesInWeek(week.startedOn, matchingType, memberFilter),
+            progressCounts = quizProgressRepository.countProgressesInWeek(
+                week.startedOn,
+                quizMatchingType,
+                memberFilter,
+            ),
             activeRoundWeeks = activeRoundWeeks,
             activeMemberCount = quizProgressRepository.countMembersCompletedInWeeks(
                 activeRoundWeeks,
-                matchingType,
+                quizMatchingType,
                 memberFilter,
             ),
             choiceAnswerCounts = quizAnswerRepository.countAnswersPerChoiceInWeek(
                 week.startedOn,
-                matchingType,
+                quizMatchingType,
                 memberFilter,
             ),
         )
     }
 
     companion object {
+        // 활성 유저는 고른 회차까지 최근 이만큼의 회차 안에 한 번이라도 완주한 회원이다.
         private const val ACTIVE_ROUND_COUNT = 4
     }
 }

@@ -20,7 +20,7 @@ import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
 
-class QuizChoiceAnswerQueryTest(
+class QuizAnswerStatsQueryTest(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val quizSetRepository: QuizSetRepository,
     private val quizRepository: QuizRepository,
@@ -81,7 +81,7 @@ class QuizChoiceAnswerQueryTest(
 
             val counts = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, MemberFilter.NONE)
 
-            counts.map { Triple(it.question, it.choiceContent, it.answerCount) } shouldBe listOf(
+            counts.map { Triple(it.question, it.choiceContent, it.count) } shouldBe listOf(
                 Triple("질문1", "A", 2L),
                 Triple("질문1", "B", 0L),
                 Triple("질문2", "A", 0L),
@@ -100,7 +100,7 @@ class QuizChoiceAnswerQueryTest(
 
             val counts = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, femaleOnly)
 
-            counts.map { it.choiceContent to it.answerCount } shouldBe listOf("A" to 1L, "B" to 0L)
+            counts.map { it.choiceContent to it.count } shouldBe listOf("A" to 1L, "B" to 0L)
         }
 
         "비활성 셋·다른 주·다른 매칭 유형의 문항은 나오지 않는다" {

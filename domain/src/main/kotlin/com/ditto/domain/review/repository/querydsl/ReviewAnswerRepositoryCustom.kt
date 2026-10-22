@@ -21,7 +21,7 @@ interface ReviewAnswerRepositoryCustom {
     ): Long
 
     /** 그 주 평가에서 확정된 답을 유형·만남 상태·별점으로 묶은 수. 회원 조건은 평가를 쓴 사람에게 건다. */
-    fun countAnswersInWeek(
+    fun countAnsweredInWeek(
         weekStartedOn: LocalDate,
         matchType: ChatRoomType?,
         filter: MemberFilter,

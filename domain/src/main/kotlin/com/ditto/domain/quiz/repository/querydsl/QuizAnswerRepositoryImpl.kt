@@ -51,7 +51,7 @@ class QuizAnswerRepositoryImpl(
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): List<ChoiceAnswerCount> {
-        val answerCountExpression = member.id.count()
+        val countExpression = member.id.count()
         return queryFactory
             .select(
                 quizSet.id,
@@ -62,7 +62,7 @@ class QuizAnswerRepositoryImpl(
                 quizChoice.id,
                 quizChoice.displayOrder,
                 quizChoice.content,
-                answerCountExpression,
+                countExpression,
             )
             .from(quizChoice)
             .join(quiz).on(quiz.id.eq(quizChoice.quizId))
@@ -93,7 +93,7 @@ class QuizAnswerRepositoryImpl(
                     choiceId = row.get(quizChoice.id) ?: throw IllegalStateException("group by 키 choiceId 가 비었다"),
                     choiceDisplayOrder = row.get(quizChoice.displayOrder) ?: 0,
                     choiceContent = row.get(quizChoice.content).orEmpty(),
-                    answerCount = row.get(answerCountExpression) ?: 0L,
+                    count = row.get(countExpression) ?: 0L,
                 )
             }
     }

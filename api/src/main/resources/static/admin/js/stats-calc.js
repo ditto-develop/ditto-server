@@ -129,9 +129,9 @@ const StatsCalc = (() => {
             questions: [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()].map((choiceRows) => ({
                 displayOrder: choiceRows[0].quizDisplayOrder,
                 question: choiceRows[0].question,
-                answerCount: choiceRows.reduce((sum, choiceRow) => sum + choiceRow.answerCount, 0),
+                answerCount: sumCounts(choiceRows),
                 choices: choiceRows
-                    .map((choiceRow) => ({ label: choiceRow.choiceContent, count: choiceRow.answerCount })),
+                    .map((choiceRow) => ({ label: choiceRow.choiceContent, count: choiceRow.count })),
             })),
         }));
 
@@ -168,7 +168,7 @@ const StatsCalc = (() => {
     const retention = (previousProgressCounts, completedAgainCounts, matchingTypeLabels) => {
         const previousCompletedCounts = completedOnly(previousProgressCounts);
         const previousCountsByType = sumCountsBy(previousCompletedCounts, (countRow) => countRow.matchingType);
-        const againCountsByType = sumCountsBy(completedAgainCounts, (countRow) => countRow.matchingType);
+        const againCountsByType = sumCountsBy(completedAgainCounts, (countRow) => countRow.previousMatchingType);
         const byType = Object.entries(matchingTypeLabels).map(([matchingType, label]) => ({
             label,
             previousCount: previousCountsByType.get(matchingType) || 0,

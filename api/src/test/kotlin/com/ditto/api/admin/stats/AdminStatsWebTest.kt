@@ -64,26 +64,11 @@ class AdminStatsWebTest(
     fun pageJsonContaining(json: String) = containsString(json.replace("\"", "\\\""))
 
     "운영 지표 화면" - {
-        "퀴즈셋이 있는 주를 회차로 보여 주고 집계 결과를 페이지 JSON 에 넣는다" {
-            val quizSet = quizSetRepository.save(QuizSetFixture.create())
-            val member = memberRepository.save(
+        "퀴즈셋이 있는 주를 회차로 보여 주고 회원 집계를 페이지 JSON 에 넣는다" {
+            quizSetRepository.save(QuizSetFixture.create())
+            memberRepository.save(
                 MemberFixture.create(status = MemberStatus.ACTIVE, joinedAt = LocalDateTime.of(2026, 4, 7, 10, 0)),
             )
-            quizProgressRepository.save(
-                QuizProgressFixture.create(memberId = member.id, quizSetId = quizSet.id, totalCount = 1)
-                    .apply { recordAnswer() },
-            )
-            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "Q1"))
-            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A"))
-            quizAnswerRepository.save(
-                QuizAnswerFixture.create(memberId = member.id, quizId = quiz.id, choiceId = choice.id),
-            )
-            val memberReview = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = member.id))
-            reviewAnswerRepository.save(
-                ReviewAnswerFixture.pending(memberReviewId = memberReview.id)
-                    .apply { answer(ReviewAnswerContent.of(MeetingStatus.MET, 5, null), ANSWERED_AT) },
-            )
-            memberReviewRepository.save(memberReview.apply { recordAnswer(false, ANSWERED_AT) })
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(status().isOk)
@@ -95,6 +80,23 @@ class AdminStatsWebTest(
                         pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
                     ),
                 )
+        }
+
+        "퀴즈 참여·문항 분포 집계를 페이지 JSON 에 넣는다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val member = memberRepository.save(MemberFixture.create(status = MemberStatus.ACTIVE))
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = member.id, quizSetId = quizSet.id, totalCount = 1)
+                    .apply { recordAnswer() },
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "Q1"))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A"))
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = member.id, quizId = quiz.id, choiceId = choice.id),
+            )
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
+                .andExpect(status().isOk)
                 .andExpect(
                     content().string(
                         pageJsonContaining(
@@ -109,15 +111,28 @@ class AdminStatsWebTest(
                             """"choiceAnswerCounts":[{"quizSetId":${quizSet.id},"matchingType":"ONE_TO_ONE",""" +
                                 """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
                                 """"choiceId":${choice.id},""" +
-                                """"choiceDisplayOrder":1,"choiceContent":"A","answerCount":1}]""",
+                                """"choiceDisplayOrder":1,"choiceContent":"A","count":1}]""",
                         ),
                     ),
                 )
+        }
+
+        "평가 집계를 페이지 JSON 에 넣는다" {
+            val member = memberRepository.save(MemberFixture.create(status = MemberStatus.ACTIVE))
+            val memberReview = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = member.id))
+            reviewAnswerRepository.save(
+                ReviewAnswerFixture.pending(memberReviewId = memberReview.id)
+                    .apply { answer(ReviewAnswerContent.of(MeetingStatus.MET, 5, null), ANSWERED_AT) },
+            )
+            memberReviewRepository.save(memberReview.apply { recordAnswer(false, ANSWERED_AT) })
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
+                .andExpect(status().isOk)
                 .andExpect(
                     content().string(
                         pageJsonContaining(
                             """"memberReviewStats":{"memberReviewCounts":""" +
-                                """[{"matchType":"PERSONAL","status":"COMPLETED","count":1}],"answerCounts":""" +
+                                """[{"matchType":"PERSONAL","status":"COMPLETED","count":1}],"reviewAnswerCounts":""" +
                                 """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}]}""",
                         ),
                     ),
@@ -147,7 +162,7 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":"2026-04-06","previousProgressCounts":""" +
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
-                                """"completedAgainCounts":[{"matchingType":"ONE_TO_ONE","count":1}]}""",
+                                """"completedAgainCounts":[{"previousMatchingType":"ONE_TO_ONE","count":1}]}""",
                         ),
                     ),
                 )

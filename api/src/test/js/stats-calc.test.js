@@ -197,7 +197,7 @@ describe('participantGenderRows', () => {
 });
 
 describe('questionDistributions', () => {
-    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, answerCount) => ({
+    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
         quizSetId,
         matchingType: quizSetId === 1 ? 'ONE_TO_ONE' : 'GROUP',
         quizId,
@@ -206,7 +206,7 @@ describe('questionDistributions', () => {
         choiceId: quizId * 10 + choiceContent.length,
         choiceDisplayOrder: 1,
         choiceContent,
-        answerCount,
+        count,
     });
 
     test('퀴즈셋·문항 순서를 지키며 묶고 문항마다 응답 수를 더한다', () => {
@@ -294,7 +294,7 @@ describe('retention', () => {
             { matchingType: 'ONE_TO_ONE', status: 'IN_PROGRESS', gender: 'FEMALE', count: 5 },
             { matchingType: 'GROUP', status: 'COMPLETED', gender: null, count: 5 },
         ];
-        const completedAgainCounts = [{ matchingType: 'ONE_TO_ONE', count: 7 }];
+        const completedAgainCounts = [{ previousMatchingType: 'ONE_TO_ONE', count: 7 }];
 
         assert.deepEqual(StatsCalc.retention(previousProgressCounts, completedAgainCounts, MATCHING_TYPE_LABELS), {
             previousCount: 15,

@@ -5,5 +5,5 @@ import com.ditto.domain.review.repository.querydsl.ReviewAnswerCount
 
 data class MemberReviewStatsData(
     val memberReviewCounts: List<MemberReviewCount>,
-    val answerCounts: List<ReviewAnswerCount>,
+    val reviewAnswerCounts: List<ReviewAnswerCount>,
 )

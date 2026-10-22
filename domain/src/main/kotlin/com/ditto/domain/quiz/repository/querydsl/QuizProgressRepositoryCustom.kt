@@ -15,7 +15,7 @@ interface QuizProgressRepositoryCustom {
      */
     fun findLatestQuizSetIdCompletedByBoth(memberId: Long, otherMemberId: Long): Long?
 
-    /** 그 주 활성 퀴즈셋의 진행을 타입·상태·성별로 묶은 수. matchingType 이 null 이면 두 타입 모두. */
+    /** 그 주 활성 퀴즈셋의 진행을 유형·상태·성별로 묶은 수. matchingType 이 null 이면 두 유형 모두. */
     fun countProgressesInWeek(
         weekStartedOn: LocalDate,
         matchingType: MatchingType?,
@@ -27,11 +27,11 @@ interface QuizProgressRepositoryCustom {
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
-    ): List<MatchingTypeMemberCount>
+    ): List<CompletedAgainCount>
 
     /** 여러 주에 걸쳐 완주했어도 한 명으로 센다. */
     fun countMembersCompletedInWeeks(
-        weekStartedOns: Collection<LocalDate>,
+        roundWeeks: Collection<LocalDate>,
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): Long

@@ -6,7 +6,7 @@ import com.ditto.domain.quiz.entity.MatchingType
 /** 퀴즈셋은 MatchingType, 평가는 채팅방 유형으로 같은 구분을 저장한다. */
 enum class MatchingTypeFilter(
     val description: String,
-    val targetType: MatchingType?,
+    val quizMatchingType: MatchingType?,
     val chatRoomType: ChatRoomType?,
 ) {
     ALL("전체", null, null),

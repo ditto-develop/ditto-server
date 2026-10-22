@@ -100,7 +100,7 @@ class MemberReviewStatsQueryTest(
         }
     }
 
-    "countAnswersInWeek" - {
+    "countAnsweredInWeek" - {
         "확정된 답만 유형·만남 상태·별점으로 묶는다" {
             answer(saveReview(saveMember()), MeetingStatus.MET, 5)
             answer(saveReview(saveMember()), MeetingStatus.MET, 5)
@@ -108,7 +108,7 @@ class MemberReviewStatsQueryTest(
             reviewAnswerRepository.save(ReviewAnswerFixture.pending(memberReviewId = saveReview(saveMember()).id))
             answer(saveReview(saveMember(role = MemberRole.ADMIN)), MeetingStatus.MET, 4)
 
-            val counts = reviewAnswerRepository.countAnswersInWeek(WEEK, null, MemberFilter.NONE)
+            val counts = reviewAnswerRepository.countAnsweredInWeek(WEEK, null, MemberFilter.NONE)
 
             counts shouldContainExactlyInAnyOrder listOf(
                 ReviewAnswerCount(ChatRoomType.PERSONAL, MeetingStatus.MET, 5, 2L),

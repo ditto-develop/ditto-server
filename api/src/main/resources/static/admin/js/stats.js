@@ -110,8 +110,8 @@
         renderJoinTables(memberStats, weekStartedOn, today);
     };
 
-    const renderQuizSection = ({ genderLabels, matchingTypeLabels, quizStats }) => {
-        const participation = StatsCalc.quizParticipation(quizStats.progressCounts, matchingTypeLabels);
+    const renderQuizSection = ({ genderLabels, quizMatchingTypeLabels, quizStats }) => {
+        const participation = StatsCalc.quizParticipation(quizStats.progressCounts, quizMatchingTypeLabels);
         const { participantCount, startedCount } = participation;
         const { activeMemberCount, activeRoundWeeks } = quizStats;
 
@@ -134,7 +134,7 @@
             bodyId: 'quizParticipantGenderRows',
             firstColumnLabel: '매칭 유형',
             genderLabels,
-            rows: StatsCalc.participantGenderRows(quizStats.progressCounts, matchingTypeLabels, genderLabels),
+            rows: StatsCalc.participantGenderRows(quizStats.progressCounts, quizMatchingTypeLabels, genderLabels),
         });
     };
 
@@ -148,13 +148,13 @@
         return block;
     };
 
-    const renderQuestionSection = ({ matchingTypeLabels, quizStats }) => {
+    const renderQuestionSection = ({ quizMatchingTypeLabels, quizStats }) => {
         const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts);
         byId('questionEmptyNotice').hidden = distributions.length > 0;
         byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions }) => {
             const card = element('div', 'card');
             card.append(
-                element('h3', null, `${matchingTypeLabels[matchingType]} 퀴즈셋 · 문항 ${questions.length}개`),
+                element('h3', null, `${quizMatchingTypeLabels[matchingType]} 퀴즈셋 · 문항 ${questions.length}개`),
                 ...questions.map(questionBlock),
             );
             return card;
@@ -162,8 +162,8 @@
     };
 
     const renderMemberReviewSection = (pageData) => {
-        const { chatRoomTypeLabels, meetingStatusLabels, ratingScores, memberReviewStats } = pageData;
-        const { memberReviewCounts, answerCounts } = memberReviewStats;
+        const { memberReviewMatchTypeLabels, meetingStatusLabels, ratingScores, memberReviewStats } = pageData;
+        const { memberReviewCounts, reviewAnswerCounts } = memberReviewStats;
         const submission = StatsCalc.reviewSubmission(memberReviewCounts);
         byId('reviewSubmissionRate').textContent = StatsCalc.percentText(submission.completed, submission.total);
         byId('reviewSubmissionRateBasis').textContent =
@@ -171,7 +171,7 @@
         byId('reviewInProgressCount').textContent = `${StatsCalc.formatCount(submission.inProgress)}건`;
         byId('reviewNotStartedCount').textContent = `${StatsCalc.formatCount(submission.notStarted)}건`;
 
-        const submissionByType = StatsCalc.reviewSubmissionByType(memberReviewCounts, chatRoomTypeLabels);
+        const submissionByType = StatsCalc.reviewSubmissionByType(memberReviewCounts, memberReviewMatchTypeLabels);
         fillRows('reviewSubmissionByTypeRows', submissionByType, (row) => [
             cell(row.label),
             countCell(row.total),
@@ -179,18 +179,18 @@
             cell(StatsCalc.percentText(row.completed, row.total), 'num'),
         ]);
 
-        const answerTotal = answerCounts.reduce((sum, { count }) => sum + count, 0);
+        const answerTotal = reviewAnswerCounts.reduce((sum, { count }) => sum + count, 0);
         byId('reviewMeetingStatusShares').replaceChildren(
-            ...StatsCalc.meetingStatusCounts(answerCounts, meetingStatusLabels)
+            ...StatsCalc.meetingStatusCounts(reviewAnswerCounts, meetingStatusLabels)
                 .map((row) => shareRow(row, answerTotal, { className: 'share-row choice-row', unit: '건' })),
         );
         byId('reviewRatingShares').replaceChildren(
-            ...StatsCalc.ratingCounts(answerCounts, ratingScores)
+            ...StatsCalc.ratingCounts(reviewAnswerCounts, ratingScores)
                 .map((row) => shareRow(row, answerTotal, { unit: '건' })),
         );
     };
 
-    const renderRetentionSection = ({ weekStartedOn, matchingTypeLabels, retentionStats }) => {
+    const renderRetentionSection = ({ weekStartedOn, quizMatchingTypeLabels, retentionStats }) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         byId('retentionEmptyNotice').hidden = previousRoundWeek !== null;
         byId('retentionRounds').textContent = previousRoundWeek === null
@@ -198,7 +198,7 @@
             : `${shortDate(previousRoundWeek)} 주 → ${shortDate(weekStartedOn)} 주`;
 
         const { previousCount, againCount, byType } =
-            StatsCalc.retention(previousProgressCounts, completedAgainCounts, matchingTypeLabels);
+            StatsCalc.retention(previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels);
         byId('retentionRate').textContent = StatsCalc.percentText(againCount, previousCount);
         byId('retentionRateBasis').textContent =
             `${StatsCalc.formatCount(againCount)} / ${StatsCalc.formatCount(previousCount)}명`;

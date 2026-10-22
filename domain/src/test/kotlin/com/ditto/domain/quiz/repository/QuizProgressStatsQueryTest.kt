@@ -10,7 +10,7 @@ import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
-import com.ditto.domain.quiz.repository.querydsl.MatchingTypeMemberCount
+import com.ditto.domain.quiz.repository.querydsl.CompletedAgainCount
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressCount
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -20,7 +20,7 @@ import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
 
-class QuizParticipationQueryTest(
+class QuizProgressStatsQueryTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
@@ -57,7 +57,7 @@ class QuizParticipationQueryTest(
     }
 
     "countProgressesInWeek" - {
-        "그 주 활성 셋의 진행을 타입·상태·성별로 묶는다" {
+        "그 주 활성 셋의 진행을 유형·상태·성별로 묶는다" {
             val oneToOne = saveQuizSet(matchingType = MatchingType.ONE_TO_ONE)
             val group = saveQuizSet(matchingType = MatchingType.GROUP)
             saveProgress(saveMember(Gender.MALE), oneToOne)
@@ -74,7 +74,7 @@ class QuizParticipationQueryTest(
             )
         }
 
-        "비활성 셋·다른 주·관리자는 빼고 타입과 회원 조건을 건다" {
+        "비활성 셋·다른 주·관리자는 빼고 유형과 회원 조건을 건다" {
             val oneToOne = saveQuizSet(matchingType = MatchingType.ONE_TO_ONE)
             saveProgress(saveMember(Gender.FEMALE), oneToOne)
             saveProgress(saveMember(Gender.MALE), oneToOne)
@@ -114,7 +114,7 @@ class QuizParticipationQueryTest(
 
             val counts = quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE)
 
-            counts shouldContainExactlyInAnyOrder listOf(MatchingTypeMemberCount(MatchingType.ONE_TO_ONE, 2L))
+            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 2L))
         }
 
         "회원 조건은 이전 주 완주자에게 건다" {
@@ -132,7 +132,7 @@ class QuizParticipationQueryTest(
                 MemberFilter(gender = Gender.FEMALE),
             )
 
-            counts shouldContainExactlyInAnyOrder listOf(MatchingTypeMemberCount(MatchingType.ONE_TO_ONE, 1L))
+            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 1L))
         }
     }
 

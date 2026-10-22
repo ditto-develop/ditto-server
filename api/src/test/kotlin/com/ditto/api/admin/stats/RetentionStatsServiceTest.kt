@@ -11,7 +11,7 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.quiz.repository.querydsl.MatchingTypeMemberCount
+import com.ditto.domain.quiz.repository.querydsl.CompletedAgainCount
 import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -62,7 +62,7 @@ class RetentionStatsServiceTest(
             val stats = retentionStatsService.findStats(StatsFilter(), WEEK, TODAY)
 
             stats.previousRoundWeek shouldBe WEEK.minusWeeks(2).startedOn
-            stats.completedAgainCounts shouldContainExactly listOf(MatchingTypeMemberCount(MatchingType.ONE_TO_ONE, 1L))
+            stats.completedAgainCounts shouldContainExactly listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 1L))
         }
 
         "앞에 회차가 없으면 비어 있다" {
@@ -82,7 +82,7 @@ class RetentionStatsServiceTest(
 
             val stats = retentionStatsService.findStats(groupOnly, WEEK, TODAY)
 
-            stats.completedAgainCounts shouldContainExactly listOf(MatchingTypeMemberCount(MatchingType.GROUP, 1L))
+            stats.completedAgainCounts shouldContainExactly listOf(CompletedAgainCount(MatchingType.GROUP, 1L))
             stats.previousProgressCounts.map { it.matchingType } shouldContainExactly listOf(MatchingType.GROUP)
         }
     }

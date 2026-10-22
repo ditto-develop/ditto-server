@@ -79,16 +79,16 @@ class QuizProgressRepositoryImpl(
     }
 
     override fun countMembersCompletedInWeeks(
-        weekStartedOns: Collection<LocalDate>,
+        roundWeeks: Collection<LocalDate>,
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): Long {
-        if (weekStartedOns.isEmpty()) return 0L
+        if (roundWeeks.isEmpty()) return 0L
         return queryFactory
             .select(quizProgress.memberId.countDistinct())
             .fromProgressOfActiveSetsWithMember()
             .where(
-                quizSet.weekStartedOn.`in`(weekStartedOns),
+                quizSet.weekStartedOn.`in`(roundWeeks),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 matchingTypeIs(matchingType),
                 member.nonAdminMatching(filter),
@@ -100,7 +100,7 @@ class QuizProgressRepositoryImpl(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
-    ): List<MatchingTypeMemberCount> {
+    ): List<CompletedAgainCount> {
         val againProgress = QQuizProgress("againProgress")
         val againSet = QQuizSet("againSet")
         val countExpression = quizProgress.memberId.countDistinct()
@@ -124,8 +124,8 @@ class QuizProgressRepositoryImpl(
             .groupBy(quizSet.matchingType)
             .fetch()
             .map { row ->
-                MatchingTypeMemberCount(
-                    matchingType = row.get(quizSet.matchingType)
+                CompletedAgainCount(
+                    previousMatchingType = row.get(quizSet.matchingType)
                         ?: throw IllegalStateException("group by 키 matchingType 이 비었다"),
                     count = row.get(countExpression) ?: 0L,
                 )

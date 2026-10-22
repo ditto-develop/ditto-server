@@ -19,10 +19,10 @@ data class StatsPageData(
     val retentionStats: RetentionStatsData,
     val memberReportStats: MemberReportStatsData,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
-    val matchingTypeLabels: Map<String, String> = MatchingTypeFilter.entries
-        .mapNotNull { option -> option.targetType?.let { it.name to option.description } }
+    val quizMatchingTypeLabels: Map<String, String> = MatchingTypeFilter.entries
+        .mapNotNull { option -> option.quizMatchingType?.let { it.name to option.description } }
         .toMap(),
-    val chatRoomTypeLabels: Map<String, String> = MatchingTypeFilter.entries
+    val memberReviewMatchTypeLabels: Map<String, String> = MatchingTypeFilter.entries
         .mapNotNull { option -> option.chatRoomType?.let { it.name to option.description } }
         .toMap(),
     val meetingStatusLabels: Map<String, String> = MeetingStatus.entries.associate { it.name to it.description },

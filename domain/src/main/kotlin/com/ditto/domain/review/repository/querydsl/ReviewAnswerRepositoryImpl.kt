@@ -48,7 +48,7 @@ class ReviewAnswerRepositoryImpl(
         )
         .fetchOne() ?: 0L
 
-    override fun countAnswersInWeek(
+    override fun countAnsweredInWeek(
         weekStartedOn: LocalDate,
         matchType: ChatRoomType?,
         filter: MemberFilter,

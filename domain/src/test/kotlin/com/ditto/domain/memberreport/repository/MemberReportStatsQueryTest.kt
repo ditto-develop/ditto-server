@@ -64,7 +64,7 @@ class MemberReportStatsQueryTest(
         }
     }
 
-    "countReceivedInWeek" - {
+    "countMemberReportsReceivedInWeek" - {
         "그 주 접수된 신고를 사유 조합·상태로 묶고 다른 주와 관리자 피신고는 뺀다" {
             report(saveMember(), MemberReportReason.MONEY_DEMAND, MemberReportReason.ETC)
             report(saveMember(), MemberReportReason.ETC, MemberReportReason.MONEY_DEMAND)
@@ -80,7 +80,11 @@ class MemberReportStatsQueryTest(
             moveReceivedAt(report(saveMember(), MemberReportReason.ETC), WEEK.dateTimeRange.start.minusSeconds(1))
             report(saveMember(role = MemberRole.ADMIN), MemberReportReason.ETC)
 
-            val counts = memberReportRepository.countReceivedInWeek(WEEK.startedOn, null, MemberFilter.NONE)
+            val counts = memberReportRepository.countMemberReportsReceivedInWeek(
+                WEEK.startedOn,
+                null,
+                MemberFilter.NONE,
+            )
 
             counts shouldContainExactlyInAnyOrder listOf(
                 MemberReportCount(
@@ -109,7 +113,7 @@ class MemberReportStatsQueryTest(
             report(saveMember(Gender.FEMALE), MemberReportReason.ETC)
             report(saveMember(Gender.MALE), MemberReportReason.ETC)
 
-            val femaleGroupOnly = memberReportRepository.countReceivedInWeek(
+            val femaleGroupOnly = memberReportRepository.countMemberReportsReceivedInWeek(
                 WEEK.startedOn,
                 MatchingType.GROUP,
                 MemberFilter(gender = Gender.FEMALE),

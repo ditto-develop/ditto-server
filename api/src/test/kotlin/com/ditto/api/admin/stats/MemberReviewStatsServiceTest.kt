@@ -24,11 +24,11 @@ class MemberReviewStatsServiceTest(
 
     "평가 원본" - {
         "매칭 유형 그룹을 고르면 그룹 채팅방 평가지만 센다" {
-            val author = memberRepository.save(MemberFixture.create()).id
+            val authorId = memberRepository.save(MemberFixture.create()).id
             listOf(ChatRoomType.PERSONAL, ChatRoomType.GROUP).forEachIndexed { index, matchType ->
                 memberReviewRepository.save(
                     MemberReviewFixture.create(
-                        authorMemberId = author,
+                        authorMemberId = authorId,
                         matchType = matchType,
                         chatRoomId = index + 1L,
                         weekStartedOn = WEEK.startedOn,

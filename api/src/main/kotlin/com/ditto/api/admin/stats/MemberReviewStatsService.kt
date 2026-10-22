@@ -19,14 +19,13 @@ class MemberReviewStatsService(
     fun findStats(filter: StatsFilter, week: OperationWeek, today: LocalDate): MemberReviewStatsData {
         val memberFilter = filter.toMemberFilter(today)
         val chatRoomType = filter.matchingType.chatRoomType
-        val weekStartedOn = week.startedOn
         return MemberReviewStatsData(
             memberReviewCounts = memberReviewRepository.countMemberReviewsInWeek(
-                weekStartedOn,
+                week.startedOn,
                 chatRoomType,
                 memberFilter,
             ),
-            answerCounts = reviewAnswerRepository.countAnswersInWeek(weekStartedOn, chatRoomType, memberFilter),
+            reviewAnswerCounts = reviewAnswerRepository.countAnsweredInWeek(week.startedOn, chatRoomType, memberFilter),
         )
     }
 }

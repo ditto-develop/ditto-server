@@ -11,5 +11,5 @@ data class ChoiceAnswerCount(
     val choiceId: Long,
     val choiceDisplayOrder: Int,
     val choiceContent: String,
-    val answerCount: Long,
+    val count: Long,
 )

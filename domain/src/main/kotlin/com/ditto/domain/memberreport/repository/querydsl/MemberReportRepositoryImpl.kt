@@ -20,22 +20,22 @@ class MemberReportRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : MemberReportRepositoryCustom {
 
-    override fun countReceivedInWeek(
+    override fun countMemberReportsReceivedInWeek(
         weekStartedOn: LocalDate,
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): List<MemberReportCount> {
-        val receivedWithin = OperationWeek(weekStartedOn).dateTimeRange
+        val receivedRange = OperationWeek(weekStartedOn).dateTimeRange
         val countExpression = memberReport.count()
         return queryFactory
             .select(memberReport.reasons, memberReport.status, countExpression)
             .from(memberReport)
             .join(member).on(member.id.eq(memberReport.reportedMemberId))
             .where(
-                memberReport.createdAt.goe(receivedWithin.start),
-                memberReport.createdAt.lt(receivedWithin.endExclusive),
+                memberReport.createdAt.goe(receivedRange.start),
+                memberReport.createdAt.lt(receivedRange.endExclusive),
                 member.nonAdminMatching(filter),
-                matchingType?.let { reportedMemberCompleted(weekStartedOn, it) },
+                matchingType?.let { reportedMemberCompletedQuizSetInWeek(weekStartedOn, it) },
             )
             .groupBy(memberReport.reasons, memberReport.status)
             .fetch()
@@ -48,8 +48,10 @@ class MemberReportRepositoryImpl(
             }
     }
 
-    // 신고에는 어느 매칭에서 나왔는지가 없어 피신고자가 그 주에 푼 퀴즈셋 유형으로 대신한다.
-    private fun reportedMemberCompleted(weekStartedOn: LocalDate, matchingType: MatchingType): BooleanExpression =
+    private fun reportedMemberCompletedQuizSetInWeek(
+        weekStartedOn: LocalDate,
+        matchingType: MatchingType,
+    ): BooleanExpression =
         JPAExpressions.selectOne()
             .from(quizProgress)
             .join(quizSet).on(quizSet.id.eq(quizProgress.quizSetId), quizSet.isActive.isTrue)

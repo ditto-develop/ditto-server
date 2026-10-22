@@ -16,9 +16,9 @@ class MemberReportStatsService(
     @Transactional(readOnly = true)
     fun findStats(filter: StatsFilter, week: OperationWeek, today: LocalDate): MemberReportStatsData =
         MemberReportStatsData(
-            memberReportCounts = memberReportRepository.countReceivedInWeek(
+            memberReportCounts = memberReportRepository.countMemberReportsReceivedInWeek(
                 week.startedOn,
-                filter.matchingType.targetType,
+                filter.matchingType.quizMatchingType,
                 filter.toMemberFilter(today),
             ),
         )
