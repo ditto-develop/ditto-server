@@ -72,13 +72,13 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
     @DisplayName("PENDING 회원도 푸시 토큰을 등록할 수 있다")
     fun pendingMemberCanRegisterDevice() {
         val member = memberRepository.save(Member(nickname = "대기유저-device"))
-        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+        val accessToken = jwtTokenProvider.generateAccessToken(member.id, member.role)
         val request = MemberDeviceRegisterRequest(token = "fcm-token-pending", platform = DevicePlatform.IOS)
 
         mockMvc.perform(
             post("/api/v1/notifications/devices")
                 .withApiKey()
-                .header("Authorization", "Bearer $token")
+                .header("Authorization", "Bearer $accessToken")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)),
         )
@@ -94,7 +94,7 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
         val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
 
         mockMvc.perform(
-            delete("/api/v1/notifications/devices/fcm-token-pending")
+            delete("/api/v1/notifications/devices/any-token")
                 .withApiKey()
                 .header("Authorization", "Bearer $token"),
         )

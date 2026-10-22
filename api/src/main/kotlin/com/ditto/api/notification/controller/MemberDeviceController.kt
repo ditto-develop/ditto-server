@@ -20,7 +20,11 @@ class MemberDeviceController(
     private val memberDeviceFacade: MemberDeviceFacade,
 ) {
 
-    /** 로그인 직후·앱 실행·토큰 갱신 때마다 온다. 재호출해도 행이 늘지 않는다. */
+    /**
+     * 로그인 직후·앱 실행·토큰 갱신 때마다 온다. 재호출해도 행이 늘지 않는다.
+     * 로그인 직후는 가입 전(PENDING)이라 `SecurityConfig.PENDING_ALLOWED_PATHS`에 들어 있다. 그 목록이
+     * method 없이 경로만 보므로 같은 경로에 다른 method 를 두면 PENDING 회원에게도 열린다.
+     */
     @Loggable
     @PostMapping("/api/v1/notifications/devices")
     fun register(
