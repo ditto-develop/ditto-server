@@ -25,14 +25,19 @@ class StatsFilterTest : FreeSpec(
 
         "toMemberFilter" - {
             "성별·연령대·가입 주차를 회원 조회 조건으로 바꾼다" {
-                val filter = StatsFilter(gender = Gender.FEMALE, ageBand = AgeBand.THIRTIES, joinedWeek = LocalDate.of(2026, 10, 1))
+                val filter = StatsFilter(
+                    gender = Gender.FEMALE,
+                    ageBand = AgeBand.THIRTIES,
+                    joinedWeek = LocalDate.of(2026, 10, 1),
+                )
                 val today = LocalDate.of(2026, 10, 22)
 
                 val memberFilter = filter.toMemberFilter(today)
 
                 memberFilter.gender shouldBe Gender.FEMALE
                 memberFilter.birthDateRange shouldBe AgeBand.THIRTIES.birthDateRange(today)
-                memberFilter.joinedAtRange shouldBe LocalDateTime.of(2026, 9, 28, 0, 0)..<LocalDateTime.of(2026, 10, 5, 0, 0)
+                memberFilter.joinedAtRange shouldBe
+                    LocalDateTime.of(2026, 9, 28, 0, 0)..<LocalDateTime.of(2026, 10, 5, 0, 0)
             }
         }
     },

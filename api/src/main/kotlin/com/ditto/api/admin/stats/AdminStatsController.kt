@@ -15,8 +15,9 @@ import org.springframework.web.bind.annotation.ModelAttribute
 @Controller
 class AdminStatsController(
     private val serverTimeProvider: ServerTimeProvider,
-    private val statsWeekOptionFinder: StatsWeekOptionFinder,
+    private val statsRoundFinder: StatsRoundFinder,
     private val memberStatsService: MemberStatsService,
+    private val quizStatsService: QuizStatsService,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -25,14 +26,19 @@ class AdminStatsController(
         val today = serverTimeProvider.now().toLocalDate()
         val currentWeek = OperationWeek.containing(today)
         val week = filter.selectedWeek(currentWeek)
-        val pageData = StatsPageData.of(week, today, memberStatsService.findStats(filter, week, today))
+        val pageData = StatsPageData(
+            weekStartedOn = week.startedOn,
+            today = today,
+            memberStats = memberStatsService.findStats(filter, week, today),
+            quizStats = quizStatsService.findStats(filter, week, today),
+        )
 
         model.addAttribute("selectedWeekStartedOn", week.startedOn)
         model.addAttribute(
             "weekOptions",
-            statsWeekOptionFinder.findWeekOptionsIncluding(listOf(currentWeek.startedOn, week.startedOn)),
+            statsRoundFinder.findWeekOptionsIncluding(listOf(currentWeek.startedOn, week.startedOn)),
         )
-        model.addAttribute("tracks", StatsTrack.entries)
+        model.addAttribute("matchingTypeFilters", MatchingTypeFilter.entries)
         model.addAttribute("genders", Gender.entries)
         model.addAttribute("ageBands", AgeBand.entries)
         model.addAttribute("statsPageJson", objectMapper.writeValueAsString(pageData))

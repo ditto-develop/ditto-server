@@ -157,3 +157,38 @@ describe('ageGenderRows', () => {
         assert.equal(earlyTwenties.totalCount, 2);
     });
 });
+
+const MATCHING_TYPE_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
+const PROGRESS_COUNTS = [
+    { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'MALE', count: 3 },
+    { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'FEMALE', count: 2 },
+    { matchingType: 'ONE_TO_ONE', status: 'IN_PROGRESS', gender: 'FEMALE', count: 4 },
+    { matchingType: 'GROUP', status: 'COMPLETED', gender: null, count: 1 },
+];
+
+describe('quizParticipation', () => {
+    test('참여자는 완주만, 시작은 진행 중까지 센다', () => {
+        const participation = StatsCalc.quizParticipation(PROGRESS_COUNTS, MATCHING_TYPE_LABELS);
+
+        assert.equal(participation.participantCount, 6);
+        assert.equal(participation.startedCount, 10);
+    });
+
+    test('매칭 유형별 참여자는 matchingTypeLabels 순서로 0이어도 나온다', () => {
+        const participation = StatsCalc.quizParticipation([], MATCHING_TYPE_LABELS);
+
+        assert.deepEqual(participation.participantsByType, [
+            { label: '1:1', count: 0 },
+            { label: '그룹', count: 0 },
+        ]);
+    });
+});
+
+describe('participantGenderRows', () => {
+    test('매칭 유형마다 완주한 회원만 성별 칸으로 나눈다', () => {
+        assert.deepEqual(StatsCalc.participantGenderRows(PROGRESS_COUNTS, MATCHING_TYPE_LABELS, GENDER_LABELS), [
+            { label: '1:1', countsInColumnOrder: [3, 2, 0], totalCount: 5 },
+            { label: '그룹', countsInColumnOrder: [0, 0, 1], totalCount: 1 },
+        ]);
+    });
+});

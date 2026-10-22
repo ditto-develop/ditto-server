@@ -5,7 +5,9 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.matchers.string.shouldContain
 import org.hamcrest.CoreMatchers.containsString
@@ -25,6 +27,7 @@ class AdminStatsWebTest(
     private val mockMvc: MockMvc,
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -34,30 +37,52 @@ class AdminStatsWebTest(
         listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
     )
 
+    // 필드 이름은 stats-calc.js 가 읽는다. JSON 이 JS 문자열 리터럴 안에 들어가서 페이지에는 따옴표가 \" 로 나온다.
+    fun pageJsonContaining(json: String) = containsString(json.replace("\"", "\\\""))
+
     "운영 지표 화면" - {
         "퀴즈셋이 있는 주를 회차로 보여 주고 집계 결과를 페이지 JSON 에 넣는다" {
-            quizSetRepository.save(QuizSetFixture.create())
-            memberRepository.save(
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val member = memberRepository.save(
                 MemberFixture.create(status = MemberStatus.ACTIVE, joinedAt = LocalDateTime.of(2026, 4, 7, 10, 0)),
+            )
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = member.id, quizSetId = quizSet.id, totalCount = 1)
+                    .apply { recordAnswer() },
             )
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("1회차 · 4/6 주")))
-                // JSON 이 JS 문자열 리터럴 안에 들어가서 따옴표가 \" 로 나온다. 필드 이름은 stats-calc.js 가 읽는다.
-                .andExpect(content().string(containsString("""\"countsByStatus\":{\"ACTIVE\":1}""")))
-                .andExpect(content().string(containsString("""\"recentJoinedAts\":[\"2026-04-07 10:00:00\"]""")))
+                .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":1}""")))
+                .andExpect(content().string(pageJsonContaining(""""recentJoinedAts":["2026-04-07 10:00:00"]""")))
                 .andExpect(
                     content().string(
-                        containsString("""\"genderBirthDateCounts\":[{\"gender\":null,\"birthDate\":null,\"count\":1}]"""),
+                        pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"progressCounts":[{"matchingType":"ONE_TO_ONE","status":"COMPLETED",""" +
+                                """"gender":null,"count":1}],"activeRoundWeeks":["2026-04-06"],"activeMemberCount":1""",
+                        ),
                     ),
                 )
         }
 
-        "빈 필터 값을 넘겨도 오류 없이 트랙 전체로 열린다" {
+        "비활성 퀴즈셋만 있는 주는 회차 번호가 없다" {
+            quizSetRepository.save(QuizSetFixture.create(isActive = false))
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-06").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(containsString("회차 없음 · 4/6 주")))
+        }
+
+        "빈 필터 값을 넘겨도 오류 없이 매칭 유형 전체로 열린다" {
             val html = mockMvc.perform(
                 get("/admin/stats")
-                    .param("track", "")
+                    .param("matchingType", "")
                     .param("gender", "")
                     .param("ageBand", "")
                     .param("joinedWeek", "")

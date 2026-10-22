@@ -23,12 +23,12 @@
                         </select>
                     </div>
                     <div class="field">
-                        <label for="track">트랙</label>
-                        <select id="track" name="track">
-                            <option th:each="track : ${tracks}"
-                                    th:value="${track.name()}"
-                                    th:text="${track.description}"
-                                    th:selected="${track == filter.track}">전체</option>
+                        <label for="matchingType">매칭 유형</label>
+                        <select id="matchingType" name="matchingType">
+                            <option th:each="option : ${matchingTypeFilters}"
+                                    th:value="${option.name()}"
+                                    th:text="${option.description}"
+                                    th:selected="${option == filter.matchingType}">전체</option>
                         </select>
                     </div>
                     <div class="field">
@@ -65,7 +65,7 @@
 
             <section class="stats-section" id="members">
                 <h2 class="stats-section-title">유저 현황</h2>
-                <p class="stats-section-desc">트랙 조건은 이 장에 걸리지 않습니다. 탈퇴 후 30일이 지나 완전히 삭제된 회원은 셀 수 없습니다.</p>
+                <p class="stats-section-desc">매칭 유형 조건은 이 장에 걸리지 않습니다. 탈퇴 후 30일이 지나 완전히 삭제된 회원은 셀 수 없습니다.</p>
                 <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
 
                 <p class="stats-basis">지금 기준 · 기준일 <span id="statsToday">-</span></p>
@@ -116,6 +116,44 @@
                             <table class="tbl">
                                 <thead><tr><th>주</th><th class="num">신규</th></tr></thead>
                                 <tbody id="weeklyJoinRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section" id="quiz">
+                <h2 class="stats-section-title">퀴즈 참여</h2>
+                <p class="stats-section-desc">참여는 그 회차 퀴즈를 끝까지 낸 것, 시작은 첫 답을 낸 것입니다. 활성 퀴즈셋만 셉니다.</p>
+
+                <p class="stats-basis">고른 회차 기준 · 활성 유저는 최근 4회차(<span id="quizActiveRounds">-</span>) 안에 한 번이라도 완주한 회원</p>
+                <div class="grid stats-totals">
+                    <div class="card stat">
+                        <span class="label">회차 참여자</span>
+                        <span class="value" id="quizParticipantCount">-</span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">참여율 (참여 ÷ 활성)</span>
+                        <span class="value" id="quizParticipationRate">-</span>
+                        <span class="basis" id="quizParticipationRateBasis"></span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">완료율 (완주 ÷ 시작)</span>
+                        <span class="value" id="quizCompletionRate">-</span>
+                        <span class="basis" id="quizCompletionRateBasis"></span>
+                    </div>
+                </div>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card">
+                        <h3>매칭 유형별 참여자</h3>
+                        <div id="quizMatchingTypeShares"></div>
+                    </div>
+                    <div class="card">
+                        <h3>매칭 유형별 참여자 성비</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead id="quizParticipantGenderHead"></thead>
+                                <tbody id="quizParticipantGenderRows"></tbody>
                             </table>
                         </div>
                     </div>

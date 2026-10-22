@@ -69,21 +69,29 @@
         byId('genderShares').replaceChildren(...genderCounts.map((gender) => shareRow(gender, currentTotal)));
     };
 
-    const renderAgeGenderTable = (memberStats, genderLabels, ageBandRanges, today) => {
+    const fillGenderTable = ({ headId, bodyId, firstColumnLabel, genderLabels, rows }) => {
         const headRow = document.createElement('tr');
         headRow.append(
-            headerCell('연령대'),
+            headerCell(firstColumnLabel),
             ...StatsCalc.genderColumnLabels(genderLabels).map((label) => headerCell(label, 'num')),
             headerCell('합계', 'num'),
         );
-        byId('ageGenderHead').replaceChildren(headRow);
-
-        const rows = StatsCalc.ageGenderRows(memberStats.genderBirthDateCounts, genderLabels, ageBandRanges, today);
-        fillRows('ageGenderRows', rows, (row) => [
+        byId(headId).replaceChildren(headRow);
+        fillRows(bodyId, rows, (row) => [
             cell(row.label),
             ...row.countsInColumnOrder.map(countCell),
             countCell(row.totalCount),
         ]);
+    };
+
+    const renderAgeGenderTable = (memberStats, genderLabels, ageBandRanges, today) => {
+        fillGenderTable({
+            headId: 'ageGenderHead',
+            bodyId: 'ageGenderRows',
+            firstColumnLabel: '연령대',
+            genderLabels,
+            rows: StatsCalc.ageGenderRows(memberStats.genderBirthDateCounts, genderLabels, ageBandRanges, today),
+        });
     };
 
     const renderJoinTables = (memberStats, weekStartedOn, today) => {
@@ -97,7 +105,10 @@
 
         byId('weeklyJoinTitle').textContent = `고른 회차까지 ${memberStats.recentWeekCount}주 신규 가입`;
         const weeks = StatsCalc.weeklyJoins(weekStartedOn, memberStats.recentWeekCount, memberStats.recentJoinedAts);
-        fillRows('weeklyJoinRows', weeks, (week) => [cell(`${shortDate(week.weekStartedOn)} 주`), countCell(week.count)]);
+        fillRows('weeklyJoinRows', weeks, (week) => [
+            cell(`${shortDate(week.weekStartedOn)} 주`),
+            countCell(week.count),
+        ]);
     };
 
     const renderMemberSection = ({ weekStartedOn, today, genderLabels, ageBandRanges, memberStats }) => {
@@ -108,5 +119,34 @@
         renderJoinTables(memberStats, weekStartedOn, today);
     };
 
+    const renderQuizSection = ({ genderLabels, matchingTypeLabels, quizStats }) => {
+        const participation = StatsCalc.quizParticipation(quizStats.progressCounts, matchingTypeLabels);
+        const { participantCount, startedCount } = participation;
+        const { activeMemberCount, activeRoundWeeks } = quizStats;
+
+        byId('quizActiveRounds').textContent = activeRoundWeeks.length === 0
+            ? '회차 없음'
+            : activeRoundWeeks.map((week) => `${shortDate(week)} 주`).join(', ');
+        byId('quizParticipantCount').textContent = `${StatsCalc.formatCount(participantCount)}명`;
+        byId('quizParticipationRate').textContent = StatsCalc.percentText(participantCount, activeMemberCount);
+        byId('quizParticipationRateBasis').textContent =
+            `${StatsCalc.formatCount(participantCount)} / ${StatsCalc.formatCount(activeMemberCount)}명`;
+        byId('quizCompletionRate').textContent = StatsCalc.percentText(participantCount, startedCount);
+        byId('quizCompletionRateBasis').textContent =
+            `${StatsCalc.formatCount(participantCount)} / ${StatsCalc.formatCount(startedCount)}명`;
+
+        byId('quizMatchingTypeShares').replaceChildren(
+            ...participation.participantsByType.map((typeCount) => shareRow(typeCount, participantCount)),
+        );
+        fillGenderTable({
+            headId: 'quizParticipantGenderHead',
+            bodyId: 'quizParticipantGenderRows',
+            firstColumnLabel: '매칭 유형',
+            genderLabels,
+            rows: StatsCalc.participantGenderRows(quizStats.progressCounts, matchingTypeLabels, genderLabels),
+        });
+    };
+
     renderMemberSection(pageData);
+    renderQuizSection(pageData);
 })();

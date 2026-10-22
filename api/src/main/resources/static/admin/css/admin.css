@@ -168,6 +168,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section-desc { color: var(--text-sub); font-size: 13px; margin: 0 0 16px; }
 .stats-basis { color: var(--text-sub); font-size: 12px; font-weight: 700; margin: 20px 0 8px; }
 .stats-section .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
+.stats-section .stat .basis { color: var(--text-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stats-totals { grid-template-columns: repeat(3, 1fr); }
 .stats-align-start { align-items: start; }
 .stats-section table.tbl :is(th, td).num { text-align: right; font-variant-numeric: tabular-nums; }

@@ -1,7 +1,7 @@
 package com.ditto.api.admin.stats.dto
 
 import com.ditto.api.admin.stats.AgeBand
-import com.ditto.api.admin.stats.StatsTrack
+import com.ditto.api.admin.stats.MatchingTypeFilter
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.system.OperationWeek
@@ -12,7 +12,7 @@ import java.time.LocalDate
 data class StatsFilter(
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val week: LocalDate? = null,
-    val track: StatsTrack = StatsTrack.ALL,
+    val matchingType: MatchingTypeFilter = MatchingTypeFilter.ALL,
     val gender: Gender? = null,
     val ageBand: AgeBand? = null,
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

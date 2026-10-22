@@ -29,6 +29,9 @@ const StatsCalc = (() => {
         return groups.set(key, [...(groups.get(key) || []), item]);
     }, new Map());
 
+    const sumCounts = (countRows) => countRows.reduce((sum, countRow) => sum + countRow.count, 0);
+    const completedOnly = (progressCounts) => progressCounts.filter((countRow) => countRow.status === 'COMPLETED');
+
     const formatCount = (count) => count.toLocaleString('ko-KR');
     const percent = (part, whole) => (whole === 0 ? 0 : (part * 100) / whole);
     const percentText = (part, whole) => (whole === 0 ? '-' : `${percent(part, whole).toFixed(1)}%`);
@@ -69,12 +72,21 @@ const StatsCalc = (() => {
     const genderCounts = (genderBirthDateCounts, genderLabels) => {
         const countsByGender = sumCountsBy(genderBirthDateCounts, (countRow) => countRow.gender);
         return [
-            ...Object.entries(genderLabels).map(([gender, label]) => ({ label, count: countsByGender.get(gender) || 0 })),
+            ...Object.entries(genderLabels)
+                .map(([gender, label]) => ({ label, count: countsByGender.get(gender) || 0 })),
             { label: GENDER_UNKNOWN_LABEL, count: countsByGender.get(null) || 0 },
         ];
     };
 
     // 성별 칸은 genderLabels 순서이고 마지막 칸이 미입력이다.
+    const genderRow = (label, countRows, genderLabels) => {
+        const countsByGender = sumCountsBy(countRows, (countRow) => countRow.gender);
+        const countsInColumnOrder = [...Object.keys(genderLabels), null]
+            .map((gender) => countsByGender.get(gender) || 0);
+        const totalCount = countsInColumnOrder.reduce((sum, count) => sum + count, 0);
+        return { label, countsInColumnOrder, totalCount };
+    };
+
     const ageGenderRows = (genderBirthDateCounts, genderLabels, ageBandRanges, today) => {
         const ageLabelOf = (birthDate) => {
             if (!birthDate) return BIRTH_DATE_UNKNOWN_LABEL;
@@ -83,15 +95,29 @@ const StatsCalc = (() => {
             return band ? band.label : AGE_OUTSIDE_BANDS_LABEL;
         };
         const countRowsByAgeLabel = groupBy(genderBirthDateCounts, (countRow) => ageLabelOf(countRow.birthDate));
-        const toAgeGenderRow = (label) => {
-            const countsByGender = sumCountsBy(countRowsByAgeLabel.get(label) || [], (countRow) => countRow.gender);
-            const countsInColumnOrder = [...Object.keys(genderLabels), null]
-                .map((gender) => countsByGender.get(gender) || 0);
-            const totalCount = countsInColumnOrder.reduce((sum, count) => sum + count, 0);
-            return { label, countsInColumnOrder, totalCount };
-        };
         const labels = [...ageBandRanges.map((band) => band.label), AGE_OUTSIDE_BANDS_LABEL, BIRTH_DATE_UNKNOWN_LABEL];
-        return labels.map(toAgeGenderRow);
+        return labels.map((label) => genderRow(label, countRowsByAgeLabel.get(label) || [], genderLabels));
+    };
+
+    // 참여는 그 회차 퀴즈를 끝까지 낸 것, 시작은 진행 행이 있는 것(첫 답을 낸 것)이다.
+    const quizParticipation = (progressCounts, matchingTypeLabels) => {
+        const completedCounts = completedOnly(progressCounts);
+        const participantCountsByType = sumCountsBy(completedCounts, (countRow) => countRow.matchingType);
+        return {
+            participantCount: sumCounts(completedCounts),
+            startedCount: sumCounts(progressCounts),
+            participantsByType: Object.entries(matchingTypeLabels)
+                .map(([matchingType, label]) => ({ label, count: participantCountsByType.get(matchingType) || 0 })),
+        };
+    };
+
+    const participantGenderRows = (progressCounts, matchingTypeLabels, genderLabels) => {
+        const completedCounts = completedOnly(progressCounts);
+        return Object.entries(matchingTypeLabels).map(([matchingType, label]) => genderRow(
+            label,
+            completedCounts.filter((countRow) => countRow.matchingType === matchingType),
+            genderLabels,
+        ));
     };
 
     const genderColumnLabels = (genderLabels) => [...Object.values(genderLabels), GENDER_UNKNOWN_LABEL];
@@ -107,6 +133,8 @@ const StatsCalc = (() => {
         genderCounts,
         genderColumnLabels,
         ageGenderRows,
+        quizParticipation,
+        participantGenderRows,
     };
 })();
 
