@@ -1,6 +1,9 @@
 package com.ditto.domain.review.repository.querydsl
 
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.review.entity.MemberReview
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 interface MemberReviewRepositoryCustom {
@@ -37,4 +40,11 @@ interface MemberReviewRepositoryCustom {
      * [MemberReview.REVIEWABLE_MATCH_TYPES]에 적어 뒀다.
      */
     fun findEndedChatRoomIdsWithoutReview(limit: Int): List<Long>
+
+    /** 그 주 평가지를 유형·상태로 묶은 수. 회원 조건은 평가를 쓴 사람에게 건다. */
+    fun countMemberReviewsInWeek(
+        weekStartedOn: LocalDate,
+        matchType: ChatRoomType?,
+        filter: MemberFilter,
+    ): List<MemberReviewCount>
 }

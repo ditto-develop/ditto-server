@@ -135,6 +135,35 @@ const StatsCalc = (() => {
             })),
         }));
 
+    // 평가지는 한 사람 × 한 채팅방이다. 대상 일부만 답한 진행 중은 제출로 치지 않는다.
+    const reviewSubmission = (memberReviewCounts) => {
+        const countsByStatus = sumCountsBy(memberReviewCounts, (countRow) => countRow.status);
+        return {
+            total: sumCounts(memberReviewCounts),
+            completed: countsByStatus.get('COMPLETED') || 0,
+            inProgress: countsByStatus.get('IN_PROGRESS') || 0,
+            notStarted: countsByStatus.get('NOT_STARTED') || 0,
+        };
+    };
+
+    const reviewSubmissionByType = (memberReviewCounts, chatRoomTypeLabels) =>
+        Object.entries(chatRoomTypeLabels).map(([chatRoomType, label]) => {
+            const typeCounts = memberReviewCounts.filter((countRow) => countRow.matchType === chatRoomType);
+            const { total, completed } = reviewSubmission(typeCounts);
+            return { label, total, completed };
+        });
+
+    const meetingStatusCounts = (answerCounts, meetingStatusLabels) => {
+        const countsByMeetingStatus = sumCountsBy(answerCounts, (countRow) => countRow.meetingStatus);
+        return Object.entries(meetingStatusLabels)
+            .map(([meetingStatus, label]) => ({ label, count: countsByMeetingStatus.get(meetingStatus) || 0 }));
+    };
+
+    const ratingCounts = (answerCounts, ratingScores) => {
+        const countsByRating = sumCountsBy(answerCounts, (countRow) => countRow.rating);
+        return ratingScores.map((rating) => ({ label: `${rating}점`, count: countsByRating.get(rating) || 0 }));
+    };
+
     return {
         formatCount,
         percent,
@@ -149,6 +178,10 @@ const StatsCalc = (() => {
         quizParticipation,
         participantGenderRows,
         questionDistributions,
+        reviewSubmission,
+        reviewSubmissionByType,
+        meetingStatusCounts,
+        ratingCounts,
     };
 })();
 

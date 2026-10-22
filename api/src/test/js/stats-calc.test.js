@@ -232,3 +232,56 @@ describe('questionDistributions', () => {
         assert.deepEqual(StatsCalc.questionDistributions([]), []);
     });
 });
+
+const CHAT_ROOM_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+const MEMBER_REVIEW_COUNTS = [
+    { matchType: 'PERSONAL', status: 'COMPLETED', count: 6 },
+    { matchType: 'PERSONAL', status: 'NOT_STARTED', count: 2 },
+    { matchType: 'GROUP', status: 'COMPLETED', count: 3 },
+    { matchType: 'GROUP', status: 'IN_PROGRESS', count: 1 },
+];
+const ANSWER_COUNTS = [
+    { matchType: 'PERSONAL', meetingStatus: 'MET', rating: 5, count: 4 },
+    { matchType: 'GROUP', meetingStatus: 'MET', rating: 4, count: 2 },
+    { matchType: 'GROUP', meetingStatus: 'NO_SHOW', rating: 1, count: 1 },
+];
+
+describe('reviewSubmission', () => {
+    test('진행 중은 제출로 치지 않고 따로 센다', () => {
+        assert.deepEqual(StatsCalc.reviewSubmission(MEMBER_REVIEW_COUNTS), {
+            total: 12,
+            completed: 9,
+            inProgress: 1,
+            notStarted: 2,
+        });
+    });
+});
+
+describe('reviewSubmissionByType', () => {
+    test('채팅방 유형마다 평가지와 완료 수를 낸다', () => {
+        assert.deepEqual(StatsCalc.reviewSubmissionByType(MEMBER_REVIEW_COUNTS, CHAT_ROOM_TYPE_LABELS), [
+            { label: '1:1', total: 8, completed: 6 },
+            { label: '그룹', total: 4, completed: 3 },
+        ]);
+    });
+});
+
+describe('meetingStatusCounts', () => {
+    test('만남 상태는 라벨 순서대로 0이어도 나온다', () => {
+        const labels = { MET: '만났어요', APPOINTMENT_MADE: '약속 잡았어요', CHAT_ONLY: '채팅만 했어요', NO_SHOW: '노쇼 당했어요' };
+
+        assert.deepEqual(StatsCalc.meetingStatusCounts(ANSWER_COUNTS, labels).map((row) => row.count), [6, 0, 0, 1]);
+    });
+});
+
+describe('ratingCounts', () => {
+    test('별점은 받은 순서대로 0이어도 나온다', () => {
+        assert.deepEqual(StatsCalc.ratingCounts(ANSWER_COUNTS, [5, 4, 3, 2, 1]), [
+            { label: '5점', count: 4 },
+            { label: '4점', count: 2 },
+            { label: '3점', count: 0 },
+            { label: '2점', count: 0 },
+            { label: '1점', count: 1 },
+        ]);
+    });
+});

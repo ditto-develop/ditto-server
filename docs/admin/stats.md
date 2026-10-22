@@ -43,6 +43,18 @@
 - 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
 - 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
 
+## 평가
+
+| 블록 | 세는 것 |
+|---|---|
+| 평가지 | 그 회차(`member_review.week_started_on`) 매칭에서 열린 평가. 한 사람 × 한 채팅방이 한 건 |
+| 제출률 | 완료(`COMPLETED`) ÷ 평가지. 대상 일부만 답한 진행 중(`IN_PROGRESS`)은 제출로 치지 않고 따로 보여 준다 |
+| 만남 상태·별점 | 확정된 답(`review_answer.answered_at` 있음). 그룹은 대상마다 한 건이라 평가지보다 많다 |
+
+- 회원 조건은 평가를 쓴 사람에게 건다.
+- 매칭 유형 1:1 은 평가의 `PERSONAL`, 그룹은 `GROUP` 이다(`MatchingTypeFilter`). 재매칭 채팅은 평가를 열지 않아 없다.
+- 프로필의 받은 평가 집계와 달리 방이 끝났는지는 보지 않는다. 열린 그룹 방에서 나간 사람이 먼저 낸 평가도 센다.
+
 ## 손으로 대조하기
 
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
@@ -85,6 +97,19 @@ SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED';
+
+-- 평가지 상태 (쓴 사람 기준)
+SELECT r.match_type, r.status, COUNT(*) FROM member_review r
+JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
+WHERE r.week_started_on = :monday
+GROUP BY r.match_type, r.status;
+
+-- 만남 상태·별점 (확정된 답)
+SELECT a.meeting_status, a.rating, COUNT(*) FROM review_answer a
+JOIN member_review r ON r.id = a.member_review_id
+JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
+WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
+GROUP BY a.meeting_status, a.rating;
 
 -- 회차 일별 신규 (:monday 는 고른 회차의 월요일)
 SELECT DATE(joined_at), COUNT(*) FROM member

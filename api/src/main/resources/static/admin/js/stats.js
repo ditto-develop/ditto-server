@@ -34,12 +34,12 @@
         byId(tbodyId).replaceChildren(...rowElements);
     };
 
-    const shareRow = ({ label, count }, whole, className = 'share-row') => {
+    const shareRow = ({ label, count }, whole, { className = 'share-row', unit = '명' } = {}) => {
         const fill = element('span');
         fill.style.width = `${StatsCalc.percent(count, whole)}%`;
         const bar = element('span', 'share-bar');
         bar.append(fill);
-        const countText = `${StatsCalc.formatCount(count)}명`;
+        const countText = `${StatsCalc.formatCount(count)}${unit}`;
         const valueText = whole === 0 ? countText : `${countText} · ${StatsCalc.percentText(count, whole)}`;
         const row = element('div', className);
         row.append(element('span', null, label), bar, element('span', 'share-value', valueText));
@@ -142,7 +142,9 @@
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
         title.append(element('span', 'question-count', `응답 ${StatsCalc.formatCount(answerCount)}`));
-        block.append(title, ...choices.map((choice) => shareRow(choice, answerCount, 'share-row choice-row')));
+        const choiceRows = choices
+            .map((choice) => shareRow(choice, answerCount, { className: 'share-row choice-row' }));
+        block.append(title, ...choiceRows);
         return block;
     };
 
@@ -159,7 +161,37 @@
         }));
     };
 
+    const renderMemberReviewSection = (pageData) => {
+        const { chatRoomTypeLabels, meetingStatusLabels, ratingScores, memberReviewStats } = pageData;
+        const { memberReviewCounts, answerCounts } = memberReviewStats;
+        const submission = StatsCalc.reviewSubmission(memberReviewCounts);
+        byId('reviewSubmissionRate').textContent = StatsCalc.percentText(submission.completed, submission.total);
+        byId('reviewSubmissionRateBasis').textContent =
+            `${StatsCalc.formatCount(submission.completed)} / ${StatsCalc.formatCount(submission.total)}건`;
+        byId('reviewInProgressCount').textContent = `${StatsCalc.formatCount(submission.inProgress)}건`;
+        byId('reviewNotStartedCount').textContent = `${StatsCalc.formatCount(submission.notStarted)}건`;
+
+        const submissionByType = StatsCalc.reviewSubmissionByType(memberReviewCounts, chatRoomTypeLabels);
+        fillRows('reviewSubmissionByTypeRows', submissionByType, (row) => [
+            cell(row.label),
+            countCell(row.total),
+            countCell(row.completed),
+            cell(StatsCalc.percentText(row.completed, row.total), 'num'),
+        ]);
+
+        const answerTotal = answerCounts.reduce((sum, { count }) => sum + count, 0);
+        byId('reviewMeetingStatusShares').replaceChildren(
+            ...StatsCalc.meetingStatusCounts(answerCounts, meetingStatusLabels)
+                .map((row) => shareRow(row, answerTotal, { className: 'share-row choice-row', unit: '건' })),
+        );
+        byId('reviewRatingShares').replaceChildren(
+            ...StatsCalc.ratingCounts(answerCounts, ratingScores)
+                .map((row) => shareRow(row, answerTotal, { unit: '건' })),
+        );
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
+    renderMemberReviewSection(pageData);
 })();

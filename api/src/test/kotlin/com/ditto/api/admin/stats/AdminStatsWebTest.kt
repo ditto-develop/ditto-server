@@ -15,6 +15,12 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.review.MemberReviewFixture
+import com.ditto.domain.review.ReviewAnswerFixture
+import com.ditto.domain.review.entity.MeetingStatus
+import com.ditto.domain.review.entity.ReviewAnswerContent
+import com.ditto.domain.review.repository.MemberReviewRepository
+import com.ditto.domain.review.repository.ReviewAnswerRepository
 import io.kotest.matchers.string.shouldContain
 import org.hamcrest.CoreMatchers.containsString
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -28,6 +34,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
+private val ANSWERED_AT = LocalDateTime.of(2026, 4, 13, 10, 0)
+
 @AutoConfigureMockMvc
 class AdminStatsWebTest(
     private val mockMvc: MockMvc,
@@ -37,6 +45,8 @@ class AdminStatsWebTest(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
+    private val memberReviewRepository: MemberReviewRepository,
+    private val reviewAnswerRepository: ReviewAnswerRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -64,6 +74,12 @@ class AdminStatsWebTest(
             quizAnswerRepository.save(
                 QuizAnswerFixture.create(memberId = member.id, quizId = quiz.id, choiceId = choice.id),
             )
+            val memberReview = memberReviewRepository.save(MemberReviewFixture.create(authorMemberId = member.id))
+            reviewAnswerRepository.save(
+                ReviewAnswerFixture.pending(memberReviewId = memberReview.id)
+                    .apply { answer(ReviewAnswerContent.of(MeetingStatus.MET, 5, null), ANSWERED_AT) },
+            )
+            memberReviewRepository.save(memberReview.apply { recordAnswer(false, ANSWERED_AT) })
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(status().isOk)
@@ -90,6 +106,15 @@ class AdminStatsWebTest(
                                 """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
                                 """"choiceId":${choice.id},""" +
                                 """"choiceDisplayOrder":1,"choiceContent":"A","answerCount":1}]""",
+                        ),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"memberReviewStats":{"memberReviewCounts":""" +
+                                """[{"matchType":"PERSONAL","status":"COMPLETED","count":1}],"answerCounts":""" +
+                                """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}]}""",
                         ),
                     ),
                 )

@@ -1,14 +1,18 @@
 package com.ditto.domain.review.repository.querydsl
 
 import com.ditto.domain.chat.entity.ChatRoomStatus
+import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
+import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.nonAdminMatching
 import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
 import com.ditto.domain.review.entity.ReviewProgressStatus
 import com.querydsl.jpa.impl.JPAQueryFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
 
@@ -70,4 +74,31 @@ class MemberReviewRepositoryImpl(
             .orderBy(chatRoom.endedAt.asc(), chatRoom.id.asc())
             .limit(limit.toLong())
             .fetch()
+
+    override fun countMemberReviewsInWeek(
+        weekStartedOn: LocalDate,
+        matchType: ChatRoomType?,
+        filter: MemberFilter,
+    ): List<MemberReviewCount> {
+        val countExpression = memberReview.count()
+        return queryFactory
+            .select(memberReview.matchType, memberReview.status, countExpression)
+            .from(memberReview)
+            .join(member).on(member.id.eq(memberReview.authorMemberId))
+            .where(
+                memberReview.weekStartedOn.eq(weekStartedOn),
+                matchType?.let { memberReview.matchType.eq(it) },
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(memberReview.matchType, memberReview.status)
+            .fetch()
+            .map { row ->
+                MemberReviewCount(
+                    matchType = row.get(memberReview.matchType)
+                        ?: throw IllegalStateException("group by 키 matchType 이 비었다"),
+                    status = row.get(memberReview.status) ?: throw IllegalStateException("group by 키 status 가 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
 }

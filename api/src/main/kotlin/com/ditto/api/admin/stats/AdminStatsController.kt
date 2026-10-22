@@ -18,6 +18,7 @@ class AdminStatsController(
     private val statsRoundFinder: StatsRoundFinder,
     private val memberStatsService: MemberStatsService,
     private val quizStatsService: QuizStatsService,
+    private val memberReviewStatsService: MemberReviewStatsService,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -31,6 +32,7 @@ class AdminStatsController(
             today = today,
             memberStats = memberStatsService.findStats(filter, week, today),
             quizStats = quizStatsService.findStats(filter, week, today),
+            memberReviewStats = memberReviewStatsService.findStats(filter, week, today),
         )
 
         model.addAttribute("selectedWeekStartedOn", week.startedOn)

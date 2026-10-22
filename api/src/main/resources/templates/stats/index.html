@@ -167,6 +167,46 @@
                 <p class="alert info" id="questionEmptyNotice" hidden>이 회차에 활성 퀴즈셋이 없습니다.</p>
                 <div id="questionDistributions"></div>
             </section>
+
+            <section class="stats-section" id="reviews">
+                <h2 class="stats-section-title">평가</h2>
+                <p class="stats-section-desc">평가지는 채팅이 끝나면 참여자마다 하나씩 열립니다. 재매칭 채팅은 평가가 없습니다. 회원 조건은 평가를 쓴 사람에게 겁니다.</p>
+                <p class="stats-basis">고른 회차 기준</p>
+                <div class="grid stats-totals">
+                    <div class="card stat">
+                        <span class="label">제출률 (완료 ÷ 평가지)</span>
+                        <span class="value" id="reviewSubmissionRate">-</span>
+                        <span class="basis" id="reviewSubmissionRateBasis"></span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">진행 중 (일부 대상만 답함)</span>
+                        <span class="value" id="reviewInProgressCount">-</span>
+                    </div>
+                    <div class="card stat">
+                        <span class="label">시작 안 함</span>
+                        <span class="value" id="reviewNotStartedCount">-</span>
+                    </div>
+                </div>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card">
+                        <h3>만남 상태 (확정된 답)</h3>
+                        <div id="reviewMeetingStatusShares"></div>
+                    </div>
+                    <div class="card">
+                        <h3>별점 (확정된 답)</h3>
+                        <div id="reviewRatingShares"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>매칭 유형별 제출률</h3>
+                    <div class="tbl-scroll">
+                        <table class="tbl">
+                            <thead><tr><th>매칭 유형</th><th class="num">평가지</th><th class="num">완료</th><th class="num">제출률</th></tr></thead>
+                            <tbody id="reviewSubmissionByTypeRows"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 </div>
