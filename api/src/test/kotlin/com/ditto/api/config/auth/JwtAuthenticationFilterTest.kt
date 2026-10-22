@@ -1,13 +1,17 @@
 package com.ditto.api.config.auth
 
 import com.ditto.api.config.TestExceptionController
+import com.ditto.api.notification.dto.MemberDeviceRegisterRequest
 import com.ditto.api.support.RestDocsTest
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.notification.entity.DevicePlatform
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -57,6 +61,40 @@ class JwtAuthenticationFilterTest : RestDocsTest() {
 
         mockMvc.perform(
             post("/api/v1/users/auth/logout")
+                .withApiKey()
+                .header("Authorization", "Bearer $token"),
+        )
+            .andExpect(status().isForbidden)
+            .andExpect(jsonPath("$.error.code").value("3001"))
+    }
+
+    @Test
+    @DisplayName("PENDING 회원도 푸시 토큰을 등록할 수 있다")
+    fun pendingMemberCanRegisterDevice() {
+        val member = memberRepository.save(Member(nickname = "대기유저-device"))
+        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+        val request = MemberDeviceRegisterRequest(token = "fcm-token-pending", platform = DevicePlatform.IOS)
+
+        mockMvc.perform(
+            post("/api/v1/notifications/devices")
+                .withApiKey()
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.registered").value(true))
+    }
+
+    @Test
+    @DisplayName("PENDING 회원의 푸시 토큰 해제는 차단된다(403)")
+    fun pendingMemberCannotUnregisterDevice() {
+        val member = memberRepository.save(Member(nickname = "대기유저-unregister"))
+        val token = jwtTokenProvider.generateAccessToken(member.id, member.role)
+
+        mockMvc.perform(
+            delete("/api/v1/notifications/devices/fcm-token-pending")
                 .withApiKey()
                 .header("Authorization", "Bearer $token"),
         )
