@@ -306,3 +306,25 @@ describe('retention', () => {
         });
     });
 });
+
+describe('memberReportSummary', () => {
+    const reasonLabels = { MONEY_DEMAND: '금전 요구', ETC: '기타' };
+    const statusLabels = { RECEIVED: '검토 대기', REJECTED: '기각' };
+    const memberReportCounts = [
+        { reasons: ['MONEY_DEMAND', 'ETC'], status: 'RECEIVED', count: 2 },
+        { reasons: ['ETC'], status: 'REJECTED', count: 1 },
+    ];
+
+    test('사유는 고른 것마다 세서 합이 건수보다 클 수 있다', () => {
+        const summary = StatsCalc.memberReportSummary(memberReportCounts, reasonLabels, statusLabels);
+
+        assert.equal(summary.total, 3);
+        assert.deepEqual(summary.reasonCounts, [{ label: '금전 요구', count: 2 }, { label: '기타', count: 3 }]);
+    });
+
+    test('처리 상태는 라벨 순서대로 0이어도 나온다', () => {
+        const summary = StatsCalc.memberReportSummary([], reasonLabels, statusLabels);
+
+        assert.deepEqual(summary.statusCounts, [{ label: '검토 대기', count: 0 }, { label: '기각', count: 0 }]);
+    });
+});

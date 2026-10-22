@@ -210,9 +210,23 @@
         ]);
     };
 
+    const renderMemberReportSection = ({ memberReportReasonLabels, memberReportStatusLabels, memberReportStats }) => {
+        const { total, reasonCounts, statusCounts } = StatsCalc.memberReportSummary(
+            memberReportStats.memberReportCounts,
+            memberReportReasonLabels,
+            memberReportStatusLabels,
+        );
+        byId('memberReportCount').textContent = `${StatsCalc.formatCount(total)}건`;
+        const shareOptions = { className: 'share-row choice-row', unit: '건' };
+        const sharesOf = (rows) => rows.map((row) => shareRow(row, total, shareOptions));
+        byId('memberReportReasonShares').replaceChildren(...sharesOf(reasonCounts));
+        byId('memberReportStatusShares').replaceChildren(...sharesOf(statusCounts));
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
+    renderMemberReportSection(pageData);
 })();

@@ -230,6 +230,28 @@
                     </div>
                 </div>
             </section>
+
+            <section class="stats-section" id="member-reports">
+                <h2 class="stats-section-title">신고</h2>
+                <p class="stats-section-desc">회원 조건은 피신고자에게 겁니다. 신고에는 어느 매칭에서 나왔는지가 없어, 매칭 유형은 피신고자가 그 회차에 푼 퀴즈셋 유형으로 대신합니다.</p>
+                <p class="stats-basis">고른 회차 주(월~일)에 접수된 신고</p>
+                <div class="grid stats-totals">
+                    <div class="card stat">
+                        <span class="label">신고 건수</span>
+                        <span class="value" id="memberReportCount">-</span>
+                    </div>
+                </div>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card">
+                        <h3>사유별 (여러 개 선택 가능)</h3>
+                        <div id="memberReportReasonShares"></div>
+                    </div>
+                    <div class="card">
+                        <h3>처리 상태</h3>
+                        <div id="memberReportStatusShares"></div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 </div>

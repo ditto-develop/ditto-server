@@ -62,6 +62,13 @@
 - 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함). 유형 전환 수는 P1 이라 따로 보여 주지 않는다.
 - 회원 조건은 지난 회차 참여자에게 건다.
 
+## 신고
+
+- 고른 회차 주(월~일)에 접수(`member_report.created_at`)된 신고. 처리 상태는 지금 상태다.
+- 회원 조건은 피신고자에게 건다. 관리자가 피신고자인 신고는 뺀다.
+- 신고에는 어느 매칭에서 나왔는지가 없다. 매칭 유형을 고르면 피신고자가 그 회차에 그 유형 퀴즈셋을 완주한 신고만 센다. 한 주에 한 유형만 풀 수 있어 근사가 크게 어긋나지 않지만, 프로필 화면에서 들어온 신고처럼 매칭과 상관없는 신고도 섞인다. "전체"는 퀴즈에 참여하지 않은 피신고자의 신고도 센다.
+- 사유는 여러 개 고를 수 있어 사유별 수를 더하면 신고 건수보다 클 수 있다.
+
 ## 손으로 대조하기
 
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
@@ -126,6 +133,12 @@ JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'C
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
 WHERE qp.status = 'COMPLETED'
 GROUP BY qs.matching_type;
+
+-- 신고 (피신고자 기준)
+SELECT r.reasons, r.status, COUNT(*) FROM member_report r
+JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
+WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY
+GROUP BY r.reasons, r.status;
 
 -- 회차 일별 신규 (:monday 는 고른 회차의 월요일)
 SELECT DATE(joined_at), COUNT(*) FROM member

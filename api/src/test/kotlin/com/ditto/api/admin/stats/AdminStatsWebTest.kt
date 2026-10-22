@@ -5,6 +5,9 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.memberreport.MemberReportFixture
+import com.ditto.domain.memberreport.entity.MemberReportReason
+import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
@@ -47,6 +50,7 @@ class AdminStatsWebTest(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
+    private val memberReportRepository: MemberReportRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -144,6 +148,30 @@ class AdminStatsWebTest(
                             """"retentionStats":{"previousRoundWeek":"2026-04-06","previousProgressCounts":""" +
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
                                 """"completedAgainCounts":[{"matchingType":"ONE_TO_ONE","count":1}]}""",
+                        ),
+                    ),
+                )
+        }
+
+        "이번 회차에 접수된 신고를 페이지 JSON 에 넣는다" {
+            val (reporter, reported) = listOf("reporter", "reported").map { nickname ->
+                memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics"))
+            }
+            memberReportRepository.save(
+                MemberReportFixture.create(
+                    reporterId = reporter.id,
+                    reportedMemberId = reported.id,
+                    reason = MemberReportReason.MONEY_DEMAND,
+                ),
+            )
+
+            mockMvc.perform(get("/admin/stats").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"memberReportStats":{"memberReportCounts":""" +
+                                """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}]}""",
                         ),
                     ),
                 )

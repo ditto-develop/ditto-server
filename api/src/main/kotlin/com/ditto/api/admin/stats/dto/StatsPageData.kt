@@ -3,6 +3,8 @@ package com.ditto.api.admin.stats.dto
 import com.ditto.api.admin.stats.AgeBand
 import com.ditto.api.admin.stats.MatchingTypeFilter
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.memberreport.entity.MemberReportReason
+import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswerContent
 import java.time.LocalDate
@@ -15,6 +17,7 @@ data class StatsPageData(
     val quizStats: QuizStatsData,
     val memberReviewStats: MemberReviewStatsData,
     val retentionStats: RetentionStatsData,
+    val memberReportStats: MemberReportStatsData,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val matchingTypeLabels: Map<String, String> = MatchingTypeFilter.entries
         .mapNotNull { option -> option.targetType?.let { it.name to option.description } }
@@ -24,6 +27,10 @@ data class StatsPageData(
         .toMap(),
     val meetingStatusLabels: Map<String, String> = MeetingStatus.entries.associate { it.name to it.description },
     val ratingScores: List<Int> = (ReviewAnswerContent.RATING_MAX downTo ReviewAnswerContent.RATING_MIN).toList(),
+    val memberReportReasonLabels: Map<String, String> =
+        MemberReportReason.entries.associate { it.name to it.description },
+    val memberReportStatusLabels: Map<String, String> =
+        MemberReportStatus.entries.associate { it.name to it.description },
     val ageBandRanges: List<AgeBandRange> = AgeBand.entries.map { it.toRange() },
 )
 

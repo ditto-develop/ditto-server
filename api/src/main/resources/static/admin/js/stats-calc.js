@@ -181,6 +181,20 @@ const StatsCalc = (() => {
         };
     };
 
+    // 사유는 여러 개 고를 수 있어 사유별 수를 더하면 신고 건수보다 클 수 있다.
+    const memberReportSummary = (memberReportCounts, reasonLabels, statusLabels) => {
+        const countsByStatus = sumCountsBy(memberReportCounts, (countRow) => countRow.status);
+        const countWithReason = (reason) =>
+            sumCounts(memberReportCounts.filter((countRow) => countRow.reasons.includes(reason)));
+        return {
+            total: sumCounts(memberReportCounts),
+            reasonCounts: Object.entries(reasonLabels)
+                .map(([reason, label]) => ({ label, count: countWithReason(reason) })),
+            statusCounts: Object.entries(statusLabels)
+                .map(([status, label]) => ({ label, count: countsByStatus.get(status) || 0 })),
+        };
+    };
+
     return {
         formatCount,
         percent,
@@ -200,6 +214,7 @@ const StatsCalc = (() => {
         meetingStatusCounts,
         ratingCounts,
         retention,
+        memberReportSummary,
     };
 })();
 
