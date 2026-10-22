@@ -16,7 +16,7 @@ interface QuizSetRepository :
     fun findByWeekStartedOn(weekStartedOn: LocalDate): List<QuizSet>
 
     @Query("select distinct q.weekStartedOn from QuizSet q where q.isActive = true order by q.weekStartedOn desc")
-    fun findActiveWeekStartedOnsNewestFirst(): List<LocalDate>
+    fun findActiveQuizSetWeeksNewestFirst(): List<LocalDate>
 
     /**
      * 같은 주차·타입에 자기 말고 활성 셋이 또 있는지. 아직 저장 전인 셋은 [id]가 0이라 자기 자신이 걸릴 일이 없다.

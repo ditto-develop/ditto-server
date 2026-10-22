@@ -165,15 +165,15 @@ const StatsCalc = (() => {
             sumCountsBy(completedOnly(previousProgressCounts), (countRow) => countRow.matchingType);
         const completedAgainCountsByType =
             sumCountsBy(completedAgainCounts, (countRow) => countRow.previousMatchingType);
-        const byType = Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => ({
+        const countsByType = Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => ({
             label,
             previousCount: previousCountsByType.get(matchingType) || 0,
             completedAgainCount: completedAgainCountsByType.get(matchingType) || 0,
         }));
         return {
-            previousCount: byType.reduce((sum, row) => sum + row.previousCount, 0),
-            completedAgainCount: byType.reduce((sum, row) => sum + row.completedAgainCount, 0),
-            byType,
+            previousCount: countsByType.reduce((sum, row) => sum + row.previousCount, 0),
+            completedAgainCount: countsByType.reduce((sum, row) => sum + row.completedAgainCount, 0),
+            countsByType,
         };
     };
 
@@ -188,7 +188,7 @@ const StatsCalc = (() => {
         return {
             memberReportCount,
             receivedCount,
-            reviewedCount: memberReportCount - receivedCount,
+            processedCount: memberReportCount - receivedCount,
             reasonCounts: labeledCounts(countsByReason, reasonLabels),
             statusCounts: labeledCounts(countsByStatus, statusLabels),
         };

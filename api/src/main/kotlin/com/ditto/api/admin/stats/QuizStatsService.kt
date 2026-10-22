@@ -43,7 +43,7 @@ class QuizStatsService(
     }
 
     companion object {
-        // 활성 유저는 고른 회차까지 최근 이만큼의 회차 안에 한 번이라도 완주한 회원이다.
+        // 고른 회차까지 이 수의 회차 안에서 한 번이라도 완주하면 활성 회원이다.
         private const val ACTIVE_ROUND_COUNT = 4
     }
 }

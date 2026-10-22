@@ -52,7 +52,7 @@ class QuizStatsServiceTest(
     }
 
     "퀴즈 참여 원본" - {
-        "활성 유저 회차는 고른 회차까지 활성 셋이 있는 주 최근 4개다" {
+        "활성 회원 회차는 고른 회차까지 활성 셋이 있는 주 최근 4개다" {
             (0L..5L).forEach { weeksAgo -> saveQuizSet(WEEK.minusWeeks(weeksAgo)) }
             saveQuizSet(WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
             saveQuizSet(WEEK.minusWeeks(6), isActive = false)
@@ -63,7 +63,7 @@ class QuizStatsServiceTest(
             stats.activeRoundWeeks shouldContainExactly (1L..4L).map { WEEK.minusWeeks(it).startedOn }
         }
 
-        "매칭 유형을 고르면 참여와 활성 유저 모두 그 유형만 센다" {
+        "매칭 유형을 고르면 참여와 활성 회원 모두 그 유형만 센다" {
             saveCompletedProgress("one", saveQuizSet(WEEK))
             saveCompletedProgress("group", saveQuizSet(WEEK, matchingType = MatchingType.GROUP))
 

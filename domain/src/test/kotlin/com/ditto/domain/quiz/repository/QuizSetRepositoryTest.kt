@@ -291,7 +291,7 @@ class QuizSetRepositoryTest(
         }
     }
 
-    "findActiveWeekStartedOnsNewestFirst" - {
+    "findActiveQuizSetWeeksNewestFirst" - {
         "활성 셋이 있는 주만 겹치지 않게 최신 주부터 준다" {
             fun saveInWeek(
                 monday: LocalDate,
@@ -312,7 +312,7 @@ class QuizSetRepositoryTest(
             saveInWeek(newer, MatchingType.GROUP)
             saveInWeek(LocalDate.of(2026, 4, 20), MatchingType.ONE_TO_ONE, isActive = false)
 
-            quizSetRepository.findActiveWeekStartedOnsNewestFirst() shouldBe listOf(newer, older)
+            quizSetRepository.findActiveQuizSetWeeksNewestFirst() shouldBe listOf(newer, older)
         }
     }
 })

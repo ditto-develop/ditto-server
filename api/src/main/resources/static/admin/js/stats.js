@@ -81,9 +81,7 @@
         byId(`${sectionName}SectionBody`).hidden = !hasData;
     };
 
-    const renderMemberTotals = (memberStats) => {
-        const totals = StatsCalc.memberTotals(memberStats.countsByStatus);
-        showSectionIfAny('member', totals.joined > 0);
+    const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
         byId('memberCurrentCount').textContent = countText(totals.current, '명');
         byId('memberLeftCount').textContent = countText(totals.left, '명');
@@ -117,8 +115,10 @@
     };
 
     const renderMemberSection = ({ weekStartedOn, today, genderLabels, ageBandRanges, memberStats }) => {
+        const totals = StatsCalc.memberTotals(memberStats.countsByStatus);
+        showSectionIfAny('member', totals.joined > 0);
         byId('statsToday').textContent = today;
-        renderMemberTotals(memberStats);
+        renderMemberTotals(totals);
         fillShares('genderShares', StatsCalc.genderCounts(memberStats.genderBirthDateCounts, genderLabels));
         renderAgeGenderTable(memberStats, genderLabels, ageBandRanges, today);
         renderJoinTables(memberStats, weekStartedOn, today);
@@ -179,9 +179,7 @@
         }));
     };
 
-    const renderMemberReviewSubmission = (memberReviewCounts, memberReviewMatchTypeLabels) => {
-        const submission = StatsCalc.memberReviewSubmission(memberReviewCounts);
-        showSectionIfAny('memberReview', submission.memberReviewCount > 0);
+    const renderMemberReviewSubmission = (submission, memberReviewCounts, memberReviewMatchTypeLabels) => {
         fillRateCard('memberReviewSubmissionRate', {
             part: submission.completedCount,
             whole: submission.memberReviewCount,
@@ -214,15 +212,19 @@
         fillShares('memberReviewRatingShares', StatsCalc.ratingCounts(reviewAnswerCounts, ratingScores), shareOptions);
     };
 
-    const renderMemberReviewSection = (pageData) => {
-        const { memberReviewMatchTypeLabels, meetingStatusLabels, ratingScores, memberReviewStats } = pageData;
-        renderMemberReviewSubmission(memberReviewStats.memberReviewCounts, memberReviewMatchTypeLabels);
-        renderMemberReviewAnswers(memberReviewStats.reviewAnswerCounts, meetingStatusLabels, ratingScores);
+    const renderMemberReviewSection = (
+        { memberReviewMatchTypeLabels, meetingStatusLabels, ratingScores, memberReviewStats },
+    ) => {
+        const { memberReviewCounts, reviewAnswerCounts } = memberReviewStats;
+        const submission = StatsCalc.memberReviewSubmission(memberReviewCounts);
+        showSectionIfAny('memberReview', submission.memberReviewCount > 0);
+        renderMemberReviewSubmission(submission, memberReviewCounts, memberReviewMatchTypeLabels);
+        renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
     };
 
     const renderRetentionSection = ({ weekStartedOn, quizMatchingTypeLabels, retentionStats }) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
-        const { previousCount, completedAgainCount, byType } =
+        const { previousCount, completedAgainCount, countsByType } =
             StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels);
         showSectionIfAny('retention', previousCount > 0);
         if (previousRoundWeek === null) return;
@@ -234,7 +236,7 @@
         });
         byId('retentionPreviousCount').textContent = countText(previousCount, '명');
         byId('retentionCompletedAgainCount').textContent = countText(completedAgainCount, '명');
-        fillRows('retentionByTypeRows', byType, (row) => [
+        fillRows('retentionByTypeRows', countsByType, (row) => [
             cell(row.label),
             countCell(row.previousCount),
             countCell(row.completedAgainCount),
@@ -242,8 +244,7 @@
         ]);
     };
 
-    const renderMemberReportSection = (pageData) => {
-        const { memberReportReasonLabels, memberReportStatusLabels, memberReportStats } = pageData;
+    const renderMemberReportSection = ({ memberReportReasonLabels, memberReportStatusLabels, memberReportStats }) => {
         const counts = StatsCalc.memberReportCounts(
             memberReportStats.memberReportCounts,
             memberReportReasonLabels,
@@ -252,7 +253,7 @@
         showSectionIfAny('memberReport', counts.memberReportCount > 0);
         byId('memberReportCount').textContent = countText(counts.memberReportCount, '건');
         byId('memberReportReceivedCount').textContent = countText(counts.receivedCount, '건');
-        byId('memberReportReviewedCount').textContent = countText(counts.reviewedCount, '건');
+        byId('memberReportProcessedCount').textContent = countText(counts.processedCount, '건');
 
         // 사유는 여러 개 고를 수 있어 비율의 분모가 사유 합이 아니라 신고 건수다.
         byId('memberReportReasonTitle').textContent =

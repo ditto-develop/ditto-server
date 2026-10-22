@@ -161,7 +161,7 @@ describe('ageGenderRows', () => {
     });
 });
 
-const MATCHING_TYPE_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
+const QUIZ_MATCHING_TYPE_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
 const PROGRESS_COUNTS = [
     { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'MALE', count: 3 },
     { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'FEMALE', count: 2 },
@@ -171,14 +171,14 @@ const PROGRESS_COUNTS = [
 
 describe('quizParticipation', () => {
     test('참여자는 완주만, 시작은 진행 중까지 센다', () => {
-        const participation = StatsCalc.quizParticipation(PROGRESS_COUNTS, MATCHING_TYPE_LABELS);
+        const participation = StatsCalc.quizParticipation(PROGRESS_COUNTS, QUIZ_MATCHING_TYPE_LABELS);
 
         assert.equal(participation.participantCount, 6);
         assert.equal(participation.startedCount, 10);
     });
 
-    test('매칭 유형별 참여자는 matchingTypeLabels 순서로 0이어도 나온다', () => {
-        const participation = StatsCalc.quizParticipation([], MATCHING_TYPE_LABELS);
+    test('매칭 유형별 참여자는 quizMatchingTypeLabels 순서로 0이어도 나온다', () => {
+        const participation = StatsCalc.quizParticipation([], QUIZ_MATCHING_TYPE_LABELS);
 
         assert.deepEqual(participation.participantCountsByType, [
             { label: '1:1', count: 0 },
@@ -189,7 +189,7 @@ describe('quizParticipation', () => {
 
 describe('participantGenderRows', () => {
     test('매칭 유형마다 완주한 회원만 성별 칸으로 나눈다', () => {
-        assert.deepEqual(StatsCalc.participantGenderRows(PROGRESS_COUNTS, MATCHING_TYPE_LABELS, GENDER_LABELS), [
+        assert.deepEqual(StatsCalc.participantGenderRows(PROGRESS_COUNTS, QUIZ_MATCHING_TYPE_LABELS, GENDER_LABELS), [
             { label: '1:1', countsInColumnOrder: [3, 2, 0], totalCount: 5 },
             { label: '그룹', countsInColumnOrder: [0, 0, 1], totalCount: 1 },
         ]);
@@ -240,7 +240,7 @@ const MEMBER_REVIEW_COUNTS = [
     { matchType: 'GROUP', status: 'COMPLETED', count: 3 },
     { matchType: 'GROUP', status: 'IN_PROGRESS', count: 1 },
 ];
-const ANSWER_COUNTS = [
+const REVIEW_ANSWER_COUNTS = [
     { matchType: 'PERSONAL', meetingStatus: 'MET', rating: 5, count: 4 },
     { matchType: 'GROUP', meetingStatus: 'MET', rating: 4, count: 2 },
     { matchType: 'GROUP', meetingStatus: 'NO_SHOW', rating: 1, count: 1 },
@@ -272,13 +272,15 @@ describe('meetingStatusCounts', () => {
     test('만남 상태는 라벨 순서대로 0이어도 나온다', () => {
         const labels = { MET: '만났어요', APPOINTMENT_MADE: '약속 잡았어요', CHAT_ONLY: '채팅만 했어요', NO_SHOW: '노쇼 당했어요' };
 
-        assert.deepEqual(StatsCalc.meetingStatusCounts(ANSWER_COUNTS, labels).map((row) => row.count), [6, 0, 0, 1]);
+        const counts = StatsCalc.meetingStatusCounts(REVIEW_ANSWER_COUNTS, labels).map((row) => row.count);
+
+        assert.deepEqual(counts, [6, 0, 0, 1]);
     });
 });
 
 describe('ratingCounts', () => {
     test('별점은 ratingScores 순서대로 0이어도 나온다', () => {
-        assert.deepEqual(StatsCalc.ratingCounts(ANSWER_COUNTS, [5, 4, 3, 2, 1]), [
+        assert.deepEqual(StatsCalc.ratingCounts(REVIEW_ANSWER_COUNTS, [5, 4, 3, 2, 1]), [
             { label: '5점', count: 4 },
             { label: '4점', count: 2 },
             { label: '3점', count: 0 },
@@ -298,12 +300,13 @@ describe('retentionCounts', () => {
         ];
         const completedAgainCounts = [{ previousMatchingType: 'ONE_TO_ONE', count: 7 }];
 
-        const counts = StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, MATCHING_TYPE_LABELS);
+        const counts =
+            StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, QUIZ_MATCHING_TYPE_LABELS);
 
         assert.deepEqual(counts, {
             previousCount: 15,
             completedAgainCount: 7,
-            byType: [
+            countsByType: [
                 { label: '1:1', previousCount: 10, completedAgainCount: 7 },
                 { label: '그룹', previousCount: 5, completedAgainCount: 0 },
             ],
@@ -331,9 +334,7 @@ describe('memberReportCounts', () => {
 
         assert.deepEqual(counts.statusCounts, [{ label: '검토 대기', count: 0 }, { label: '기각', count: 0 }]);
     });
-});
 
-describe('memberReportCounts 처리 상태 합계', () => {
     test('검토 대기 밖의 상태는 모두 처리 완료로 센다', () => {
         const counts = StatsCalc.memberReportCounts(
             [
@@ -346,7 +347,7 @@ describe('memberReportCounts 처리 상태 합계', () => {
         );
 
         assert.equal(counts.receivedCount, 2);
-        assert.equal(counts.reviewedCount, 2);
+        assert.equal(counts.processedCount, 2);
     });
 });
 
