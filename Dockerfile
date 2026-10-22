@@ -1,5 +1,8 @@
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
+# :api:test 가 check 를 거쳐 jsTest(node --test)까지 돌린다.
+RUN apk add --no-cache nodejs
+
 WORKDIR /app
 COPY . .
 RUN chmod +x gradlew
