@@ -34,7 +34,9 @@ describe('percentText', () => {
 
 describe('memberTotals', () => {
     test('누적 가입은 탈퇴를 포함하고 현재 회원은 탈퇴를 뺀다', () => {
-        assert.deepEqual(StatsCalc.memberTotals({ ACTIVE: 5, SUSPENDED: 1, LEFT: 2 }), { joined: 8, current: 6, left: 2 });
+        const totals = StatsCalc.memberTotals({ ACTIVE: 5, SUSPENDED: 1, LEFT: 2 });
+
+        assert.deepEqual(totals, { joined: 8, current: 6, left: 2 });
     });
 });
 
@@ -152,7 +154,8 @@ describe('ageGenderRows', () => {
             { gender: 'MALE', birthDate: '2002-10-23', count: 1 },
         ];
 
-        const [earlyTwenties] = StatsCalc.ageGenderRows(genderBirthDateCounts, GENDER_LABELS, AGE_BAND_RANGES, '2026-10-22');
+        const [earlyTwenties] =
+            StatsCalc.ageGenderRows(genderBirthDateCounts, GENDER_LABELS, AGE_BAND_RANGES, '2026-10-22');
 
         assert.equal(earlyTwenties.totalCount, 2);
     });
@@ -190,5 +193,42 @@ describe('participantGenderRows', () => {
             { label: '1:1', countsInColumnOrder: [3, 2, 0], totalCount: 5 },
             { label: '그룹', countsInColumnOrder: [0, 0, 1], totalCount: 1 },
         ]);
+    });
+});
+
+describe('questionDistributions', () => {
+    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, answerCount) => ({
+        quizSetId,
+        matchingType: quizSetId === 1 ? 'ONE_TO_ONE' : 'GROUP',
+        quizId,
+        quizDisplayOrder,
+        question: `질문${quizId}`,
+        choiceId: quizId * 10 + choiceContent.length,
+        choiceDisplayOrder: 1,
+        choiceContent,
+        answerCount,
+    });
+
+    test('퀴즈셋·문항 순서를 지키며 묶고 문항마다 응답 수를 더한다', () => {
+        const distributions = StatsCalc.questionDistributions([
+            choiceRow(1, 11, 1, 'A', 3),
+            choiceRow(1, 11, 1, 'BB', 1),
+            choiceRow(1, 12, 2, 'A', 0),
+            choiceRow(1, 12, 2, 'BB', 0),
+            choiceRow(2, 21, 1, 'A', 2),
+        ]);
+
+        assert.deepEqual(distributions.map((quizSet) => quizSet.matchingType), ['ONE_TO_ONE', 'GROUP']);
+        assert.deepEqual(distributions[0].questions[0], {
+            displayOrder: 1,
+            question: '질문11',
+            answerCount: 4,
+            choices: [{ label: 'A', count: 3 }, { label: 'BB', count: 1 }],
+        });
+        assert.equal(distributions[0].questions[1].answerCount, 0);
+    });
+
+    test('문항이 없으면 빈 목록이다', () => {
+        assert.deepEqual(StatsCalc.questionDistributions([]), []);
     });
 });

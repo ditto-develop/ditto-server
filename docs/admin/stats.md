@@ -36,6 +36,13 @@
 - 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 유저 양쪽에 같이 걸린다.
 - 그때 참여한 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 분자와 분모가 같은 기준이라 참여율이 100%를 넘지 않는다.
 
+## 문항 분포
+
+- 그 회차 활성 퀴즈셋의 문항마다 선택지별 답 수와 비율. 매칭 유형을 고르면 그 유형 퀴즈셋만 나온다.
+- 성별·연령대·가입 주차 조건은 답한 회원에게 건다. 답이 없는 선택지도 0으로 나온다.
+- 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
+- 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
+
 ## 손으로 대조하기
 
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
@@ -62,6 +69,16 @@ JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY qs.matching_type, qp.status;
+
+-- 문항 분포
+SELECT q.display_order, q.question, c.content, COUNT(m.id) FROM quiz_choice c
+JOIN quiz q ON q.id = c.quiz_id
+JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active
+LEFT JOIN quiz_answer a ON a.choice_id = c.id
+LEFT JOIN member m ON m.id = a.member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY qs.id, q.id, c.id
+ORDER BY qs.id, q.display_order, c.display_order;
 
 -- 활성 유저 (:rounds 는 화면에 나온 최근 4회차 월요일들)
 SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp

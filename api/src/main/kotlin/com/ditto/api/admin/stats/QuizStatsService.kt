@@ -2,6 +2,7 @@ package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.stats.dto.QuizStatsData
 import com.ditto.api.admin.stats.dto.StatsFilter
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
@@ -11,6 +12,7 @@ import java.time.LocalDate
 @Service
 class QuizStatsService(
     private val quizProgressRepository: QuizProgressRepository,
+    private val quizAnswerRepository: QuizAnswerRepository,
     private val statsRoundFinder: StatsRoundFinder,
 ) {
 
@@ -27,6 +29,11 @@ class QuizStatsService(
             activeRoundWeeks = activeRoundWeeks,
             activeMemberCount = quizProgressRepository.countMembersCompletedInWeeks(
                 activeRoundWeeks,
+                matchingType,
+                memberFilter,
+            ),
+            choiceAnswerCounts = quizAnswerRepository.countAnswersPerChoiceInWeek(
+                week.startedOn,
                 matchingType,
                 memberFilter,
             ),

@@ -7,12 +7,14 @@
 
     const byId = (id) => document.getElementById(id);
 
-    const cell = (text, className) => {
-        const td = document.createElement('td');
-        td.textContent = text;
-        if (className) td.className = className;
-        return td;
+    const element = (tagName, className, text) => {
+        const created = document.createElement(tagName);
+        if (className) created.className = className;
+        if (text !== undefined) created.textContent = text;
+        return created;
     };
+
+    const cell = (text, className) => element('td', className, text);
 
     // 0 은 흐리게, 아직 오지 않은 날(null)은 '-' 로 그린다.
     const countCell = (count) => {
@@ -20,12 +22,7 @@
         return cell(StatsCalc.formatCount(count), count === 0 ? 'num empty' : 'num');
     };
 
-    const headerCell = (text, className) => {
-        const th = document.createElement('th');
-        th.textContent = text;
-        if (className) th.className = className;
-        return th;
-    };
+    const headerCell = (text, className) => element('th', className, text);
 
     const fillRows = (tbodyId, rows, cellsOf, classNameOf = () => '') => {
         const rowElements = rows.map((row) => {
@@ -37,21 +34,15 @@
         byId(tbodyId).replaceChildren(...rowElements);
     };
 
-    const shareRow = ({ label, count }, whole) => {
-        const row = document.createElement('div');
-        row.className = 'share-row';
-        const name = document.createElement('span');
-        name.textContent = label;
-        const bar = document.createElement('span');
-        bar.className = 'share-bar';
-        const fill = document.createElement('span');
+    const shareRow = ({ label, count }, whole, className = 'share-row') => {
+        const fill = element('span');
         fill.style.width = `${StatsCalc.percent(count, whole)}%`;
+        const bar = element('span', 'share-bar');
         bar.append(fill);
-        const value = document.createElement('span');
-        value.className = 'share-value';
         const countText = `${StatsCalc.formatCount(count)}명`;
-        value.textContent = whole === 0 ? countText : `${countText} · ${StatsCalc.percentText(count, whole)}`;
-        row.append(name, bar, value);
+        const valueText = whole === 0 ? countText : `${countText} · ${StatsCalc.percentText(count, whole)}`;
+        const row = element('div', className);
+        row.append(element('span', null, label), bar, element('span', 'share-value', valueText));
         return row;
     };
 
@@ -147,6 +138,28 @@
         });
     };
 
+    const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
+        const block = element('div', 'question-block');
+        const title = element('p', 'question-title', `${displayOrder}. ${question}`);
+        title.append(element('span', 'question-count', `응답 ${StatsCalc.formatCount(answerCount)}`));
+        block.append(title, ...choices.map((choice) => shareRow(choice, answerCount, 'share-row choice-row')));
+        return block;
+    };
+
+    const renderQuestionSection = ({ matchingTypeLabels, quizStats }) => {
+        const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts);
+        byId('questionEmptyNotice').hidden = distributions.length > 0;
+        byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions }) => {
+            const card = element('div', 'card');
+            card.append(
+                element('h3', null, `${matchingTypeLabels[matchingType]} 퀴즈셋 · 문항 ${questions.length}개`),
+                ...questions.map(questionBlock),
+            );
+            return card;
+        }));
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
+    renderQuestionSection(pageData);
 })();

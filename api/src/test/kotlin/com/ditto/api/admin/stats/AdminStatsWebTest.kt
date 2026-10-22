@@ -5,9 +5,15 @@ import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.QuizAnswerFixture
+import com.ditto.domain.quiz.QuizChoiceFixture
+import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizAnswerRepository
+import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.kotest.matchers.string.shouldContain
 import org.hamcrest.CoreMatchers.containsString
@@ -28,6 +34,9 @@ class AdminStatsWebTest(
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
     private val quizProgressRepository: QuizProgressRepository,
+    private val quizRepository: QuizRepository,
+    private val quizChoiceRepository: QuizChoiceRepository,
+    private val quizAnswerRepository: QuizAnswerRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -37,7 +46,7 @@ class AdminStatsWebTest(
         listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
     )
 
-    // 필드 이름은 stats-calc.js 가 읽는다. JSON 이 JS 문자열 리터럴 안에 들어가서 페이지에는 따옴표가 \" 로 나온다.
+    // 필드 이름은 stats-calc.js 가 읽는다. JSON 이 JS 문자열 안에 들어가 따옴표는 \" 로, 한글은 \uXXXX 로 나온다.
     fun pageJsonContaining(json: String) = containsString(json.replace("\"", "\\\""))
 
     "운영 지표 화면" - {
@@ -49,6 +58,11 @@ class AdminStatsWebTest(
             quizProgressRepository.save(
                 QuizProgressFixture.create(memberId = member.id, quizSetId = quizSet.id, totalCount = 1)
                     .apply { recordAnswer() },
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "Q1"))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "A"))
+            quizAnswerRepository.save(
+                QuizAnswerFixture.create(memberId = member.id, quizId = quiz.id, choiceId = choice.id),
             )
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
@@ -66,6 +80,16 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"progressCounts":[{"matchingType":"ONE_TO_ONE","status":"COMPLETED",""" +
                                 """"gender":null,"count":1}],"activeRoundWeeks":["2026-04-06"],"activeMemberCount":1""",
+                        ),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"choiceAnswerCounts":[{"quizSetId":${quizSet.id},"matchingType":"ONE_TO_ONE",""" +
+                                """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
+                                """"choiceId":${choice.id},""" +
+                                """"choiceDisplayOrder":1,"choiceContent":"A","answerCount":1}]""",
                         ),
                     ),
                 )

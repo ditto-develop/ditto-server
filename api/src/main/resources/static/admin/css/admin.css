@@ -181,6 +181,13 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .share-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
 .share-bar > span { display: block; height: 100%; background: var(--primary); }
 .share-value { color: var(--text-sub); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+/* 선택지 문구가 길어 라벨 칸을 넓힌다. */
+.choice-row { grid-template-columns: minmax(0, 1fr) minmax(64px, 1fr) 128px; margin-bottom: 6px; font-size: 13px; }
+.choice-row > span:first-child { word-break: keep-all; }
+.question-block { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.question-block:last-child { border-bottom: none; padding-bottom: 0; }
+.question-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.question-count { margin-left: 6px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
 
 /* Buttons */
 .btn {

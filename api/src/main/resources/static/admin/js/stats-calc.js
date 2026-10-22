@@ -122,6 +122,19 @@ const StatsCalc = (() => {
 
     const genderColumnLabels = (genderLabels) => [...Object.values(genderLabels), GENDER_UNKNOWN_LABEL];
 
+    // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
+    const questionDistributions = (choiceAnswerCounts) =>
+        [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
+            matchingType: quizSetRows[0].matchingType,
+            questions: [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()].map((choiceRows) => ({
+                displayOrder: choiceRows[0].quizDisplayOrder,
+                question: choiceRows[0].question,
+                answerCount: choiceRows.reduce((sum, choiceRow) => sum + choiceRow.answerCount, 0),
+                choices: choiceRows
+                    .map((choiceRow) => ({ label: choiceRow.choiceContent, count: choiceRow.answerCount })),
+            })),
+        }));
+
     return {
         formatCount,
         percent,
@@ -135,6 +148,7 @@ const StatsCalc = (() => {
         ageGenderRows,
         quizParticipation,
         participantGenderRows,
+        questionDistributions,
     };
 })();
 
