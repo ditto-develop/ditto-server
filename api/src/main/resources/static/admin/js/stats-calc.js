@@ -2,7 +2,7 @@
 const StatsCalc = (() => {
     const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
     const GENDER_UNKNOWN_LABEL = '미입력';
-    const AGE_OUTSIDE_BANDS_LABEL = '그 외 나이';
+    const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.

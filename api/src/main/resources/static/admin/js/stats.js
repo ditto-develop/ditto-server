@@ -70,9 +70,9 @@
         byId(containerId).replaceChildren(...rows.map((row) => shareRow(row, whole, options)));
     };
 
-    const fillRateCard = (id, { part, whole, unit, formula }) => {
+    const fillRateCard = (id, { part, whole, unit, wholeLabel }) => {
         byId(id).textContent = StatsCalc.percentText(part, whole);
-        byId(`${id}Basis`).textContent = `${StatsCalc.formatCount(part)} / ${countText(whole, unit)} · ${formula}`;
+        byId(`${id}Basis`).textContent = `${wholeLabel} ${countText(whole, unit)} 중 ${countText(part, unit)}`;
     };
 
     // 분모가 0인 장은 숫자 대신 안내만 보여 준다.
@@ -108,7 +108,7 @@
             (day) => (day.isToday ? 'today' : ''),
         );
 
-        byId('weeklyJoinTitle').textContent = `고른 회차까지 ${memberStats.recentWeekCount}주 신규 가입`;
+        byId('weeklyJoinTitle').textContent = `주별 신규 가입 · 고른 주까지 ${memberStats.recentWeekCount}주`;
         const weeks = StatsCalc.weeklyJoins(weekStartedOn, memberStats.recentWeekCount, memberStats.recentJoinedAts);
         fillRows('weeklyJoinRows', weeks, (week) => [
             cell(`${shortDate(week.weekStartedOn)} 주`),
@@ -128,10 +128,10 @@
         byId('quizParticipantCount').textContent = countText(participantCount, '명');
         byId('quizParticipantCountBasis').textContent = `시작 ${countText(startedCount, '명')}`;
         fillRateCard('quizParticipationRate', {
-            part: participantCount, whole: activeMemberCount, unit: '명', formula: '참여 ÷ 활성',
+            part: participantCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
         });
         fillRateCard('quizCompletionRate', {
-            part: participantCount, whole: startedCount, unit: '명', formula: '완주 ÷ 시작',
+            part: participantCount, whole: startedCount, unit: '명', wholeLabel: '시작',
         });
     };
 
@@ -144,6 +144,8 @@
         const activeRoundDates = activeRoundWeeks.map(shortDate).reverse().join('·');
         byId('quizActiveRounds').textContent = `최근 ${activeRoundWeeks.length}회차(${activeRoundDates} 주)`;
         renderQuizRates(participation, activeMemberCount);
+        // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
+        byId('quizMatchingTypeSharesCard').hidden = Object.keys(quizMatchingTypeLabels).length < 2;
         fillShares('quizMatchingTypeShares', participation.participantCountsByType);
         fillGenderTable({
             headId: 'quizParticipantGenderHead',
@@ -159,7 +161,7 @@
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
         title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
         const choiceRows = choices
-            .map((choice) => shareRow(choice, answerCount, { className: 'share-row wide-label-row' }));
+            .map((choice) => shareRow(choice, answerCount, { className: 'share-row wide-label-row stack-on-phone' }));
         block.append(title, ...choiceRows);
         return block;
     };
@@ -184,7 +186,7 @@
             part: submission.completedCount,
             whole: submission.memberReviewCount,
             unit: '건',
-            formula: '완료 ÷ 평가지',
+            wholeLabel: '평가지',
         });
         byId('memberReviewInProgressCount').textContent = countText(submission.inProgressCount, '건');
         byId('memberReviewNotStartedCount').textContent = countText(submission.notStartedCount, '건');
@@ -200,7 +202,7 @@
     };
 
     const renderMemberReviewAnswers = (reviewAnswerCounts, meetingStatusLabels, ratingScores) => {
-        const answerTitle = `확정된 답 ${countText(StatsCalc.sumCounts(reviewAnswerCounts), '건')}`;
+        const answerTitle = `응답 ${countText(StatsCalc.sumCounts(reviewAnswerCounts), '건')}`;
         byId('memberReviewMeetingStatusTitle').textContent = `만남 상태 · ${answerTitle}`;
         byId('memberReviewRatingTitle').textContent = `별점 · ${answerTitle}`;
         const shareOptions = { className: 'share-row wide-label-row', unit: '건' };
@@ -228,7 +230,7 @@
         byId('retentionRounds').textContent =
             `지난 회차 ${shortDate(previousRoundWeek)} 주 → 고른 회차 ${shortDate(weekStartedOn)} 주`;
         fillRateCard('retentionRate', {
-            part: completedAgainCount, whole: previousCount, unit: '명', formula: '다시 참여 ÷ 지난 회차',
+            part: completedAgainCount, whole: previousCount, unit: '명', wholeLabel: '지난 회차',
         });
         byId('retentionPreviousCount').textContent = countText(previousCount, '명');
         byId('retentionCompletedAgainCount').textContent = countText(completedAgainCount, '명');
@@ -254,12 +256,13 @@
 
         // 사유는 여러 개 고를 수 있어 비율의 분모가 사유 합이 아니라 신고 건수다.
         byId('memberReportReasonTitle').textContent =
-            `사유별 · 신고 ${countText(counts.memberReportCount, '건')} 중 (여러 개 선택)`;
-        const shareOptions = { className: 'share-row wide-label-row', unit: '건' };
+            `사유별 · 신고 ${countText(counts.memberReportCount, '건')} 중 · 복수 선택`;
+        const reasonOptions = { className: 'share-row wide-label-row stack-on-phone', unit: '건' };
         byId('memberReportReasonShares').replaceChildren(
-            ...counts.reasonCounts.map((row) => shareRow(row, counts.memberReportCount, shareOptions)),
+            ...counts.reasonCounts.map((row) => shareRow(row, counts.memberReportCount, reasonOptions)),
         );
-        fillShares('memberReportStatusShares', counts.statusCounts, shareOptions);
+        const statusOptions = { className: 'share-row wide-label-row', unit: '건' };
+        fillShares('memberReportStatusShares', counts.statusCounts, statusOptions);
     };
 
     renderMemberSection(pageData);

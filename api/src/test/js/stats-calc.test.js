@@ -125,13 +125,13 @@ describe('genderColumnLabels', () => {
 });
 
 describe('ageGenderRows', () => {
-    test('행은 늘 연령대 뒤에 그 외 나이·생년월일 없음이 오고 칸은 genderColumnLabels 순서다', () => {
+    test('행은 늘 연령대 뒤에 그 외·생년월일 없음이 오고 칸은 genderColumnLabels 순서다', () => {
         const genderBirthDateCounts = [{ gender: 'FEMALE', birthDate: '2004-01-01', count: 2 }];
 
         assert.deepEqual(StatsCalc.ageGenderRows(genderBirthDateCounts, GENDER_LABELS, AGE_BAND_RANGES, '2026-10-22'), [
             { label: '20대 초반', countsInColumnOrder: [0, 2, 0], totalCount: 2 },
             { label: '20대 중반', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
-            { label: '그 외 나이', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
+            { label: '그 외', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
             { label: '생년월일 없음', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
         ]);
     });
