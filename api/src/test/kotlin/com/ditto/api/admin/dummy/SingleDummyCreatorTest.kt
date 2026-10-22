@@ -26,6 +26,8 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import java.time.LocalDate
+import java.time.Period
 import javax.sql.DataSource
 
 class SingleDummyCreatorTest(
@@ -86,6 +88,7 @@ class SingleDummyCreatorTest(
             dummy.status shouldBe MemberStatus.ACTIVE
             dummy.gender shouldBe Gender.FEMALE
             dummy.age shouldBe 31
+            Period.between(dummy.birthDate.shouldNotBeNull().toLocalDate(), LocalDate.now()).years shouldBe 31
             dummy.location shouldBe Location.BUSAN
             dummy.job shouldBe Job.DESIGN
             dummy.interests shouldBe setOf(Interest.TRAVEL, Interest.COOKING)
