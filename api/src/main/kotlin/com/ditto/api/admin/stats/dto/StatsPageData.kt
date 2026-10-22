@@ -14,6 +14,7 @@ data class StatsPageData(
     val memberStats: MemberStatsData,
     val quizStats: QuizStatsData,
     val memberReviewStats: MemberReviewStatsData,
+    val retentionStats: RetentionStatsData,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val matchingTypeLabels: Map<String, String> = MatchingTypeFilter.entries
         .mapNotNull { option -> option.targetType?.let { it.name to option.description } }

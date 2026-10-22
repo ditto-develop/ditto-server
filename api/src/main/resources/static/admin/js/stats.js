@@ -190,8 +190,29 @@
         );
     };
 
+    const renderRetentionSection = ({ weekStartedOn, matchingTypeLabels, retentionStats }) => {
+        const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
+        byId('retentionEmptyNotice').hidden = previousRoundWeek !== null;
+        byId('retentionRounds').textContent = previousRoundWeek === null
+            ? '-'
+            : `${shortDate(previousRoundWeek)} 주 → ${shortDate(weekStartedOn)} 주`;
+
+        const { previousCount, againCount, byType } =
+            StatsCalc.retention(previousProgressCounts, completedAgainCounts, matchingTypeLabels);
+        byId('retentionRate').textContent = StatsCalc.percentText(againCount, previousCount);
+        byId('retentionRateBasis').textContent =
+            `${StatsCalc.formatCount(againCount)} / ${StatsCalc.formatCount(previousCount)}명`;
+        fillRows('retentionByTypeRows', byType, (row) => [
+            cell(row.label),
+            countCell(row.previousCount),
+            countCell(row.againCount),
+            cell(StatsCalc.percentText(row.againCount, row.previousCount), 'num'),
+        ]);
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
     renderMemberReviewSection(pageData);
+    renderRetentionSection(pageData);
 })();

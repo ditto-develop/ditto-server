@@ -164,6 +164,23 @@ const StatsCalc = (() => {
         return ratingScores.map((rating) => ({ label: `${rating}점`, count: countsByRating.get(rating) || 0 }));
     };
 
+    // 매칭 유형은 지난 회차에 푼 유형이다. 이번 회차엔 어느 유형이든 완주하면 다시 참여한 것이다.
+    const retention = (previousProgressCounts, completedAgainCounts, matchingTypeLabels) => {
+        const previousCompletedCounts = completedOnly(previousProgressCounts);
+        const previousCountsByType = sumCountsBy(previousCompletedCounts, (countRow) => countRow.matchingType);
+        const againCountsByType = sumCountsBy(completedAgainCounts, (countRow) => countRow.matchingType);
+        const byType = Object.entries(matchingTypeLabels).map(([matchingType, label]) => ({
+            label,
+            previousCount: previousCountsByType.get(matchingType) || 0,
+            againCount: againCountsByType.get(matchingType) || 0,
+        }));
+        return {
+            previousCount: byType.reduce((sum, row) => sum + row.previousCount, 0),
+            againCount: byType.reduce((sum, row) => sum + row.againCount, 0),
+            byType,
+        };
+    };
+
     return {
         formatCount,
         percent,
@@ -182,6 +199,7 @@ const StatsCalc = (() => {
         reviewSubmissionByType,
         meetingStatusCounts,
         ratingCounts,
+        retention,
     };
 })();
 

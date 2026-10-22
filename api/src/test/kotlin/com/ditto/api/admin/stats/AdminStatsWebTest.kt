@@ -120,6 +120,35 @@ class AdminStatsWebTest(
                 )
         }
 
+        "지난 회차가 있으면 재참여 집계를 페이지 JSON 에 넣는다" {
+            val previous = quizSetRepository.save(QuizSetFixture.create())
+            val current = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = LocalDateTime.of(2026, 4, 13, 0, 0),
+                    endDate = LocalDateTime.of(2026, 4, 15, 23, 59, 59),
+                ),
+            )
+            val member = memberRepository.save(MemberFixture.create(status = MemberStatus.ACTIVE))
+            listOf(previous, current).forEach { quizSet ->
+                quizProgressRepository.save(
+                    QuizProgressFixture.create(memberId = member.id, quizSetId = quizSet.id, totalCount = 1)
+                        .apply { recordAnswer() },
+                )
+            }
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-13").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"retentionStats":{"previousRoundWeek":"2026-04-06","previousProgressCounts":""" +
+                                """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
+                                """"completedAgainCounts":[{"matchingType":"ONE_TO_ONE","count":1}]}""",
+                        ),
+                    ),
+                )
+        }
+
         "비활성 퀴즈셋만 있는 주는 회차 번호가 없다" {
             quizSetRepository.save(QuizSetFixture.create(isActive = false))
 

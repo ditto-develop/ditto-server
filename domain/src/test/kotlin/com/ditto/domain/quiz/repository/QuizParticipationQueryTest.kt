@@ -10,6 +10,7 @@ import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
+import com.ditto.domain.quiz.repository.querydsl.MatchingTypeMemberCount
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressCount
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -91,6 +92,47 @@ class QuizParticipationQueryTest(
             counts shouldContainExactlyInAnyOrder listOf(
                 QuizProgressCount(MatchingType.ONE_TO_ONE, QuizProgressStatus.COMPLETED, Gender.FEMALE, 1L),
             )
+        }
+    }
+
+    "countMembersCompletedAgain" - {
+        "이전 주 완주자 중 이번 주에도 완주한 회원을 이전 주 유형별로 센다" {
+            val previousOneToOne = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
+            val thisOneToOne = saveQuizSet()
+            val thisGroup = saveQuizSet(matchingType = MatchingType.GROUP)
+            val stayed = saveMember()
+            saveProgress(stayed, previousOneToOne)
+            saveProgress(stayed, thisOneToOne)
+            val switched = saveMember()
+            saveProgress(switched, previousOneToOne)
+            saveProgress(switched, thisGroup)
+            val quitMidway = saveMember()
+            saveProgress(quitMidway, previousGroup)
+            saveProgress(quitMidway, thisGroup, completed = false)
+            saveProgress(saveMember(), previousGroup)
+
+            val counts = quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(MatchingTypeMemberCount(MatchingType.ONE_TO_ONE, 2L))
+        }
+
+        "회원 조건은 이전 주 완주자에게 건다" {
+            val previous = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val current = saveQuizSet()
+            listOf(Gender.MALE, Gender.FEMALE).forEach { gender ->
+                val memberId = saveMember(gender)
+                saveProgress(memberId, previous)
+                saveProgress(memberId, current)
+            }
+
+            val counts = quizProgressRepository.countMembersCompletedAgain(
+                WEEK.minusWeeks(1),
+                WEEK,
+                MemberFilter(gender = Gender.FEMALE),
+            )
+
+            counts shouldContainExactlyInAnyOrder listOf(MatchingTypeMemberCount(MatchingType.ONE_TO_ONE, 1L))
         }
     }
 

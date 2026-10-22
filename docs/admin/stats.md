@@ -55,6 +55,13 @@
 - 매칭 유형 1:1 은 평가의 `PERSONAL`, 그룹은 `GROUP` 이다(`MatchingTypeFilter`). 재매칭 채팅은 평가를 열지 않아 없다.
 - 프로필의 받은 평가 집계와 달리 방이 끝났는지는 보지 않는다. 열린 그룹 방에서 나간 사람이 먼저 낸 평가도 센다.
 
+## 리텐션
+
+- 주간 재참여율 = 지난 회차 참여자 중 고른 회차에도 완주한 회원 ÷ 지난 회차 참여자.
+- 지난 회차는 고른 회차 바로 앞의 회차(활성 퀴즈셋이 있는 주)다. 퀴즈를 쉰 주는 건너뛴다. 앞에 회차가 없으면 비운다.
+- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함). 유형 전환 수는 P1 이라 따로 보여 주지 않는다.
+- 회원 조건은 지난 회차 참여자에게 건다.
+
 ## 손으로 대조하기
 
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
@@ -110,6 +117,15 @@ JOIN member_review r ON r.id = a.member_review_id
 JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
 WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
 GROUP BY a.meeting_status, a.rating;
+
+-- 주간 재참여 (:previous 는 지난 회차 월요일)
+SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'COMPLETED'
+JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
+WHERE qp.status = 'COMPLETED'
+GROUP BY qs.matching_type;
 
 -- 회차 일별 신규 (:monday 는 고른 회차의 월요일)
 SELECT DATE(joined_at), COUNT(*) FROM member

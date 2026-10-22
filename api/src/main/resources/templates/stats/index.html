@@ -207,6 +207,29 @@
                     </div>
                 </div>
             </section>
+
+            <section class="stats-section" id="retention">
+                <h2 class="stats-section-title">리텐션</h2>
+                <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞의 회차입니다. 매칭 유형은 지난 회차에 푼 유형이고, 이번 회차엔 어느 유형이든 완주하면 다시 참여한 것으로 셉니다.</p>
+                <p class="stats-basis">지난 회차 → 고른 회차 · <span id="retentionRounds">-</span></p>
+                <p class="alert info" id="retentionEmptyNotice" hidden>고른 회차 앞에 회차가 없습니다.</p>
+                <div class="grid cols-2 stats-align-start">
+                    <div class="card stat">
+                        <span class="label">주간 재참여율 (다시 참여 ÷ 지난 회차 참여자)</span>
+                        <span class="value" id="retentionRate">-</span>
+                        <span class="basis" id="retentionRateBasis"></span>
+                    </div>
+                    <div class="card">
+                        <h3>매칭 유형별 재참여율</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead><tr><th>매칭 유형</th><th class="num">지난 회차</th><th class="num">다시 참여</th><th class="num">재참여율</th></tr></thead>
+                                <tbody id="retentionByTypeRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 </div>

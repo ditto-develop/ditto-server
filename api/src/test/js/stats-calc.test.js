@@ -285,3 +285,24 @@ describe('ratingCounts', () => {
         ]);
     });
 });
+
+describe('retention', () => {
+    test('지난 회차 완주자만 분모로 세고 매칭 유형별로 나눈다', () => {
+        const previousProgressCounts = [
+            { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'MALE', count: 6 },
+            { matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'FEMALE', count: 4 },
+            { matchingType: 'ONE_TO_ONE', status: 'IN_PROGRESS', gender: 'FEMALE', count: 5 },
+            { matchingType: 'GROUP', status: 'COMPLETED', gender: null, count: 5 },
+        ];
+        const completedAgainCounts = [{ matchingType: 'ONE_TO_ONE', count: 7 }];
+
+        assert.deepEqual(StatsCalc.retention(previousProgressCounts, completedAgainCounts, MATCHING_TYPE_LABELS), {
+            previousCount: 15,
+            againCount: 7,
+            byType: [
+                { label: '1:1', previousCount: 10, againCount: 7 },
+                { label: '그룹', previousCount: 5, againCount: 0 },
+            ],
+        });
+    });
+});
