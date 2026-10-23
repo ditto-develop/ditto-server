@@ -8,6 +8,7 @@ const StatsCalc = (() => {
     const INVITATION_ACCEPTED = 'ACCEPTED';
     const GROUP_ROOM_TYPE = 'GROUP';
     const REMATCH_ROOM_TYPE = 'REMATCH';
+    // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
     const MATCHING_BATCH_DAY_OFFSET = 3;
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
@@ -154,7 +155,7 @@ const StatsCalc = (() => {
         return genderRow(label, unmatchedCounts, genderLabels);
     };
 
-    const sumOf = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0);
+    const sumField = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0);
 
     // 미매칭 카드는 성별 표 합계와 같은 값이다.
     const matchFunnel = (progressCounts, matchStats, quizMatchingTypeLabels, genderLabels) => {
@@ -173,16 +174,15 @@ const StatsCalc = (() => {
             genderLabels,
         ));
         return {
-            completedCount: sumOf(countsByType, 'completedCount'),
-            candidateCount: sumOf(countsByType, 'candidateCount'),
-            matchedCount: sumOf(countsByType, 'matchedCount'),
-            unmatchedCount: sumOf(unmatchedGenderRows, 'totalCount'),
+            completedCount: sumField(countsByType, 'completedCount'),
+            candidateCount: sumField(countsByType, 'candidateCount'),
+            matchedCount: sumField(countsByType, 'matchedCount'),
+            unmatchedCount: sumField(unmatchedGenderRows, 'totalCount'),
             countsByType,
             unmatchedGenderRows,
         };
     };
 
-    // 매칭 배치는 그 주 목요일 00:01 에 돈다.
     const isBeforeMatchingBatch = (weekStartedOn, today) => today < addDays(weekStartedOn, MATCHING_BATCH_DAY_OFFSET);
 
     // 분모는 모두 열린 방이다. 전원은 나간 사람까지 참여자로 친다.

@@ -191,12 +191,15 @@
     const rateCell = (part, whole) => cell(StatsCalc.percentText(part, whole), 'num');
 
     // 두 사람 방은 전원이 곧 양방향이라 그룹만 채운다.
+    const allSentCell = (row) =>
+        (row.isGroup ? rateCell(row.allSentCount, row.openedCount) : cell('-', 'num empty'));
+
     const chatTypeCells = (row, showsAllSent) => [
         cell(row.label),
         countCell(row.openedCount),
         rateCell(row.startedCount, row.openedCount),
         rateCell(row.twoWayCount, row.openedCount),
-        ...(showsAllSent ? [row.isGroup ? rateCell(row.allSentCount, row.openedCount) : cell('-', 'num empty')] : []),
+        ...(showsAllSent ? [allSentCell(row)] : []),
     ];
 
     // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.

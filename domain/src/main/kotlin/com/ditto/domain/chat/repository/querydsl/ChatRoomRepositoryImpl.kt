@@ -104,10 +104,7 @@ class ChatRoomRepositoryImpl(
             .select(chatRoom.id, chatRoom.sourceType, countExpression)
             .from(chatRoom)
             .join(chatRoomMember).on(chatRoomMember.roomId.eq(chatRoom.id))
-            .where(
-                chatRoom.status.ne(ChatRoomStatus.SCHEDULED),
-                sourceQuizSetActiveInWeek(weekStartedOn),
-            )
+            .where(openedRoomInWeek(weekStartedOn))
             .groupBy(chatRoom.id, chatRoom.sourceType)
             .fetch()
             .map { row ->
@@ -129,10 +126,7 @@ class ChatRoomRepositoryImpl(
                 chatMessage.roomId.eq(chatRoom.id),
                 chatMessage.messageType.ne(ChatMessageType.SYSTEM),
             )
-            .where(
-                chatRoom.status.ne(ChatRoomStatus.SCHEDULED),
-                sourceQuizSetActiveInWeek(weekStartedOn),
-            )
+            .where(openedRoomInWeek(weekStartedOn))
             .groupBy(chatRoom.id)
             .fetch()
             .map { row ->
@@ -142,6 +136,9 @@ class ChatRoomRepositoryImpl(
                 )
             }
     }
+
+    private fun openedRoomInWeek(weekStartedOn: LocalDate): BooleanExpression =
+        chatRoom.status.ne(ChatRoomStatus.SCHEDULED).and(sourceQuizSetActiveInWeek(weekStartedOn))
 
     // 방의 회차는 원본 매칭의 퀴즈셋 주다. 재매칭 방도 원래 그룹의 퀴즈셋을 따른다.
     private fun sourceQuizSetActiveInWeek(weekStartedOn: LocalDate): BooleanExpression =

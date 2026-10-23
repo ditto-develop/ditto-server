@@ -520,6 +520,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 .qa-bar b { color: var(--text); }
 .qa-bar-links { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.qa-bar-links a { white-space: nowrap; }
 .content.qa-console-page { max-width: 1320px; }
 #rooms, #personal, #personal-sent, #group, #report { scroll-margin-top: 80px; }
 .qa-sanction-link { font-size: 12px; }
@@ -667,7 +668,6 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 .qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
-.qa-bar-links a { white-space: nowrap; }
 .qa-guide summary { cursor: pointer; font-weight: 700; }
 .qa-guide ol { margin: 12px 0 0; padding-left: 20px; color: var(--text-sub); line-height: 1.9; }
 .card h2 .count, .qa-report-title .count {

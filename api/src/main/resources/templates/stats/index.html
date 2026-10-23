@@ -251,9 +251,9 @@
                 <h2 class="stats-section-title">채팅</h2>
                 <p class="stats-section-desc">방 단위라 성별·연령대·가입 주차 조건은 걸지 않고 관리자가 든 방도 셉니다. 시스템 메시지는 세지 않고, 양방향은 2명 이상, 전원은 나간 사람까지 모두 말한 방입니다. 재매칭 방은 원래 그룹 회차에 따로 한 줄로 세며, 뒤늦게 성사되면 지난 회차 숫자가 늘 수 있습니다.</p>
                 <p class="alert info" id="chatEmptyNotice" hidden
-                   th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (filter.matchingType.name() != 'ALL' ? '조건에 맞는 채팅방이 없습니다.' : '이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.')}">이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.</p>
+                   th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (filter.hasMatchingTypeCondition() ? '조건에 맞는 채팅방이 없습니다.' : '이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.')}">이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.</p>
                 <div id="chatSectionBody">
-                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준<span th:if="${filter.gender != null || filter.ageBand != null || filter.joinedWeek != null}"> · 회원 조건 미적용</span></p>
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준<span th:if="${filter.hasMemberConditions()}"> · 회원 조건 미적용</span></p>
                     <div class="grid stats-totals">
                         <div class="card stat">
                             <span class="label">열린 방</span>

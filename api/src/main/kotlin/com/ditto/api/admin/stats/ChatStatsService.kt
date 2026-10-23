@@ -6,7 +6,7 @@ import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-// 방 단위 지표라 회원 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
+// 방 단위 지표라 회원 조건은 걸지 않는다.
 @Service
 class ChatStatsService(
     private val chatRoomRepository: ChatRoomRepository,

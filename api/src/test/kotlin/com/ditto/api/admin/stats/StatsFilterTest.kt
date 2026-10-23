@@ -34,6 +34,20 @@ class StatsFilterTest : FreeSpec(
             }
         }
 
+        "hasMemberConditions" - {
+            "매칭 유형만 고르면 회원 조건이 없다" {
+                val filter = StatsFilter(matchingType = MatchingTypeFilter.GROUP)
+
+                filter.hasMatchingTypeCondition() shouldBe true
+                filter.hasMemberConditions() shouldBe false
+            }
+
+            "성별·연령대·가입 주차 중 하나라도 걸면 회원 조건이 있다" {
+                StatsFilter(gender = Gender.MALE).hasMemberConditions() shouldBe true
+                StatsFilter(ageBand = AgeBand.THIRTIES).hasMemberConditions() shouldBe true
+            }
+        }
+
         "toMemberFilter" - {
             "성별·연령대·가입 주차를 회원 조회 조건으로 바꾼다" {
                 val filter = StatsFilter(
