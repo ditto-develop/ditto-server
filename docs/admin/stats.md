@@ -71,6 +71,7 @@
 | 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
 | 매칭률 | 성사 ÷ 완주 |
 | 1:1 후보 노출 쏠림 | 1:1 후보를 받은 회원마다 받은 후보 수(`match_candidate`의 `owner_member_id`별 행 수)를 1~5명·6~10명·11명 이상으로 묶고, 6명 이상 받은 회원 수와 비율. 회원마다 5명을 고르고 한쪽만 골라도 남기는 규칙(ADR 0040)이라 6명 이상은 여러 사람이 고른 회원이다. 회원 조건은 받은 회원에게 걸고, 받은 후보에는 관리자도 들어간다 |
+| 연속 미매칭 회원 | 고른 주까지 최근 2회차를 모두 완주했는데 어느 회차에서도 성사되지 못한 `ACTIVE` 회원의 닉네임·id. 성사는 위 성사와 같다. 한 주에 진행은 하나라 성사되지 않은 완주가 있는 회차 수가 2인 회원을 고른다. 앞 회차가 없으면 비운다. 매칭 유형을 고르면 그 유형 셋의 완주만 본다 |
 | 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
 | 1:1 후보 점수 | 그 회차 후보 쌍의 `match_candidate.score`(0~100). 쌍은 두 방향 행으로 저장되어 `owner_member_id < other_member_id` 쪽만 센다. 평균·중앙값과 10점 구간, 옆에 성사(ACCEPTED) 쌍의 평균. 후보를 다시 만들면 이미 성사된 회원은 새 후보에서 빠져 그 쌍의 후보 행이 없어서, "점수 없는 성사 N쌍"으로 따로 보인다 |
 | 그룹 후보 점수 | 그 회차 후보 그룹의 `group_match.score`. 평균·중앙값과 10점 구간, 옆에 성사(`is_active`) 그룹의 평균 |
@@ -141,6 +142,8 @@
 - 회원 조건은 피신고자에게 건다. 관리자가 피신고자인 신고는 뺀다.
 - 신고에는 어느 매칭에서 나왔는지가 없다. 매칭 유형을 고르면 피신고자가 그 회차에 그 유형 퀴즈셋을 완주한 신고만 센다. 한 주에 한 유형만 풀 수 있어 근사가 크게 어긋나지 않지만, 프로필 화면에서 들어온 신고처럼 매칭과 상관없는 신고도 섞인다. "전체"는 퀴즈에 참여하지 않은 피신고자의 신고도 센다.
 - 사유는 여러 개 고를 수 있어 사유별 수를 더하면 신고 건수보다 클 수 있다.
+- 신고 상위 회원: 고른 회차 주까지 4주(그 주 포함) 동안 접수된 신고를 피신고자마다 세서 2건 이상인 회원을 많은 순(같으면 id 순)으로 10명까지. 서버가 많은 순 10명을 내리고 2건 미만은 화면이 거른다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않는다. 이 장의 다른 카드와 달리 그 주 신고가 없어도 보인다.
+- 연속 미매칭·신고 상위 목록은 닉네임과 id 만 내리고, 닉네임을 누르면 회원 관리 검색(`#id`)으로 간다([ADR 0047](../adr/0047-admin-stats-member-lists.md)).
 
 ## 차단
 
@@ -261,6 +264,19 @@ JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY c.owner_member_id;
+
+-- 연속 미매칭 회원 (:rounds = 고른 주까지 최근 2회차)
+SELECT m.id, m.nickname FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE'
+WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED'
+  AND NOT EXISTS (SELECT 1 FROM personal_match pm WHERE pm.quiz_set_id = qp.quiz_set_id
+                  AND pm.status = 'ACCEPTED' AND qp.member_id IN (pm.member_id_1, pm.member_id_2))
+  AND NOT EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
+                  WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id
+                  AND gmm.status = 'ACCEPTED')
+GROUP BY m.id, m.nickname
+HAVING COUNT(DISTINCT qs.week_started_on) = 2;
 
 -- 1:1 성사 (두 사람을 각각)
 SELECT m.gender, COUNT(*) FROM personal_match pm
@@ -432,6 +448,15 @@ SELECT
 FROM member_report r
 JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
 WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY;
+
+-- 신고 상위 회원 (고른 주까지 4주, 2건 이상, 많은 순 10명)
+SELECT m.id, m.nickname, COUNT(*) AS report_count FROM member_report r
+JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
+WHERE r.created_at >= :monday - INTERVAL 21 DAY AND r.created_at < :monday + INTERVAL 7 DAY
+GROUP BY m.id, m.nickname
+HAVING report_count >= 2
+ORDER BY report_count DESC, m.id
+LIMIT 10;
 
 -- 알림 발송 이력 (받는 회원 기준). skip_reason 이 NULL 이면 보낸 것, failed_device_count > 0 이면 실패
 SELECT h.notification_type, h.skip_reason, h.failed_device_count > 0 AS failed, COUNT(*),

@@ -42,6 +42,7 @@
 - [0044 — 매칭은 페어를 객체로 모아 두지 않는다](0044-matching-pair-memory.md)
 - [0045 — 출시 알림 신청은 API Key 전용 체인에 두고, IP당 한도를 인메모리로 건다](0045-launch-notification-public-endpoint.md)
 - [0046 — 어드민 운영 지표는 서버가 집계 결과만 넘기고 화면 JS 가 계산해 그린다](0046-admin-stats-render-in-browser.md)
+- [0047 — 운영 지표의 운영 개입용 회원 목록은 닉네임과 id 만 내린다](0047-admin-stats-member-lists.md)
 
 ## 언제 ADR을 쓰는가
 

@@ -278,6 +278,16 @@
                             <div id="matchCandidateExposureShares"></div>
                             <p class="muted">회원마다 5명을 고르고 한쪽만 골라도 후보로 남아서, 여러 사람이 고른 회원은 5명보다 많이 받습니다.</p>
                         </div>
+                        <div class="card">
+                            <h3 id="matchUnmatchedMembersTitle">연속 미매칭 회원</h3>
+                            <p class="muted" id="matchUnmatchedMembersBasis"></p>
+                            <div class="tbl-scroll stats-member-list">
+                                <table class="tbl">
+                                    <thead><tr><th>닉네임</th><th class="num">회원 id</th></tr></thead>
+                                    <tbody id="matchUnmatchedMembersRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <p class="stats-basis">쌍·그룹 단위라 회원 조건은 걸지 않고 관리자가 낀 쌍·그룹도 셉니다</p>
@@ -534,6 +544,16 @@
                             <div id="memberReportStatusShares"></div>
                         </div>
                     </div>
+                </div>
+                <div class="card">
+                    <h3>신고 상위 회원 · 최근 4주</h3>
+                    <div class="tbl-scroll">
+                        <table class="tbl">
+                            <thead><tr><th>닉네임</th><th class="num">회원 id</th><th class="num">신고(건)</th></tr></thead>
+                            <tbody id="memberReportRepeatedRows"></tbody>
+                        </table>
+                    </div>
+                    <p class="muted">고른 회차 주까지 4주 동안 신고를 2건 이상 받은 회원을 많은 순으로 10명까지 보여 줍니다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않습니다.</p>
                 </div>
             </section>
 

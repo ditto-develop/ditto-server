@@ -187,7 +187,8 @@ class AdminStatsWebTest(
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
                                 """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +
                                 """"groupScores":[{"isActive":false,"score":80.0}],""" +
-                                """"activeGroupMemberCounts":[]}""",
+                                """"activeGroupMemberCounts":[],""" +
+                                """"unmatchedRoundWeeks":["2026-04-06"],"membersUnmatchedInEveryRound":[]}""",
                         ),
                     ),
                 )
@@ -299,7 +300,9 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"memberReportStats":{"memberReportCounts":""" +
-                                """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}]}""",
+                                """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}],""" +
+                                """"mostReportedMembers":""" +
+                                """[{"memberId":${reported.id},"nickname":"reported","count":1}]}""",
                         ),
                     ),
                 )

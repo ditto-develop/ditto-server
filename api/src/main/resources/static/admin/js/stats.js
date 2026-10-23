@@ -236,7 +236,35 @@
             rows: funnel.unmatchedGenderRows,
         });
         renderCandidateExposure(matchStats, quizMatchingTypeLabels);
+        renderMembersUnmatchedInEveryRound(matchStats);
         renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const memberLinkCell = ({ memberId, nickname }) => {
+        const link = element('a', null, nickname);
+        link.href = StatsCalc.memberSearchPath(memberId);
+        const linkCell = cell();
+        linkCell.append(link);
+        return linkCell;
+    };
+
+    const memberIdCell = ({ memberId }) => cell(`#${memberId}`, 'num');
+
+    const renderMembersUnmatchedInEveryRound = ({ unmatchedRoundWeeks, membersUnmatchedInEveryRound }) => {
+        byId('matchUnmatchedMembersTitle').textContent =
+            `연속 미매칭 회원 · ${countText(membersUnmatchedInEveryRound.length, '명')}`;
+        const roundText = [...unmatchedRoundWeeks].reverse()
+            .map((roundWeek) => `${shortDate(roundWeek)} 주`)
+            .join(' · ');
+        byId('matchUnmatchedMembersBasis').textContent = unmatchedRoundWeeks.length < 2
+            ? '앞 회차가 없어 연속 여부를 볼 수 없습니다.'
+            : `${roundText} 모두 완주했는데 한 번도 성사되지 않은 활성 회원`;
+        fillRows(
+            'matchUnmatchedMembersRows',
+            membersUnmatchedInEveryRound,
+            (row) => [memberLinkCell(row), memberIdCell(row)],
+        );
+        fillEmptyRowIfNone('matchUnmatchedMembersRows', '연속 미매칭 회원이 없습니다.');
     };
 
     const renderCandidateExposure = ({ candidateCountsPerOwner }, quizMatchingTypeLabels) => {
@@ -603,6 +631,13 @@
         );
         const statusOptions = { className: 'share-row wide-label-row', unit: '건' };
         fillShares('memberReportStatusShares', counts.statusCounts, statusOptions);
+
+        fillRows(
+            'memberReportRepeatedRows',
+            StatsCalc.repeatedlyReportedMembers(memberReportStats.mostReportedMembers),
+            (row) => [memberLinkCell(row), memberIdCell(row), countCell(row.count)],
+        );
+        fillEmptyRowIfNone('memberReportRepeatedRows', '최근 4주에 신고를 2건 이상 받은 회원이 없습니다.');
     };
 
     const renderMemberBlockSection = ({ memberBlockCount }) => {

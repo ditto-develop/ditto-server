@@ -3,6 +3,7 @@ package com.ditto.domain.memberreport.repository.querydsl
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 interface MemberReportRepositoryCustom {
 
@@ -16,4 +17,11 @@ interface MemberReportRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): List<MemberReportCount>
+
+    /** 기간 안에 접수된 신고를 피신고자마다 센 수를 많은 순으로 limit 명까지. 회원 조건은 피신고자에게 건다. */
+    fun findMostReportedMembers(
+        receivedRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+        limit: Long,
+    ): List<ReportedMemberCount>
 }

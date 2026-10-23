@@ -10,6 +10,7 @@ import com.ditto.domain.memberreport.entity.MemberReport
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.memberreport.repository.querydsl.MemberReportCount
+import com.ditto.domain.memberreport.repository.querydsl.ReportedMemberCount
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
@@ -18,6 +19,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.support.IntegrationTest
 import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
@@ -42,6 +44,8 @@ class MemberReportStatsQueryTest(
             MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", gender = gender, role = role),
         ).id
     }
+
+    fun nicknameOf(memberId: Long): String = memberRepository.findById(memberId).orElseThrow().nickname
 
     // 기타 사유는 상세 설명이 있어야 접수된다.
     fun report(reportedMemberId: Long, vararg reasons: MemberReportReason): MemberReport =
@@ -122,6 +126,40 @@ class MemberReportStatsQueryTest(
             femaleGroupOnly shouldContainExactlyInAnyOrder listOf(
                 MemberReportCount(setOf(MemberReportReason.ETC), MemberReportStatus.RECEIVED, 1L),
             )
+        }
+    }
+
+    "findMostReportedMembers" - {
+        "기간 안에 받은 신고를 피신고자마다 세서 많은 순으로 limit 명까지 준다" {
+            val most = saveMember()
+            val second = saveMember()
+            val third = saveMember()
+            repeat(3) { report(most, MemberReportReason.MONEY_DEMAND) }
+            repeat(2) { report(second, MemberReportReason.MONEY_DEMAND) }
+            report(third, MemberReportReason.MONEY_DEMAND)
+            moveReceivedAt(report(third, MemberReportReason.ETC), WEEK.dateTimeRange.start.minusSeconds(1))
+            report(saveMember(role = MemberRole.ADMIN), MemberReportReason.ETC)
+
+            memberReportRepository.findMostReportedMembers(
+                WEEK.dateTimeRange.start..<WEEK.dateTimeRange.endExclusive,
+                MemberFilter.NONE,
+                2L,
+            ) shouldBe listOf(
+                ReportedMemberCount(most, nicknameOf(most), 3L),
+                ReportedMemberCount(second, nicknameOf(second), 2L),
+            )
+        }
+
+        "회원 조건은 피신고자에게 건다" {
+            val woman = saveMember(Gender.FEMALE)
+            report(woman, MemberReportReason.MONEY_DEMAND)
+            report(saveMember(Gender.MALE), MemberReportReason.MONEY_DEMAND)
+
+            memberReportRepository.findMostReportedMembers(
+                WEEK.dateTimeRange.start..<WEEK.dateTimeRange.endExclusive,
+                MemberFilter(gender = Gender.FEMALE),
+                10L,
+            ) shouldBe listOf(ReportedMemberCount(woman, nicknameOf(woman), 1L))
         }
     }
 })

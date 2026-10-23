@@ -655,6 +655,13 @@ const StatsCalc = (() => {
         ];
     };
 
+    // 운영자가 찾아가 볼 회원 목록이다(ADR 0047). 닉네임을 누르면 회원 관리 검색으로 그 회원만 찾는다.
+    const memberSearchPath = (memberId) => `/admin/members?q=${encodeURIComponent(`#${memberId}`)}`;
+
+    const MIN_REPEATED_REPORT_COUNT = 2;
+    const repeatedlyReportedMembers = (mostReportedMembers) =>
+        mostReportedMembers.filter((reportedMember) => reportedMember.count >= MIN_REPEATED_REPORT_COUNT);
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -737,6 +744,8 @@ const StatsCalc = (() => {
         chatMessageStats,
         scoreSummary,
         candidateExposure,
+        memberSearchPath,
+        repeatedlyReportedMembers,
         matchScores,
         activeGroupSizeRows,
         memberReportCounts,

@@ -949,3 +949,20 @@ describe('candidateExposure', () => {
     });
 });
 
+describe('memberSearchPath', () => {
+    test('회원 관리 검색에 #id 로 넘긴다', () => {
+        assert.equal(StatsCalc.memberSearchPath(42), '/admin/members?q=%2342');
+    });
+});
+
+describe('repeatedlyReportedMembers', () => {
+    test('신고를 2건 이상 받은 회원만 남긴다', () => {
+        const members = [
+            { memberId: 1, nickname: 'a', count: 3 },
+            { memberId: 2, nickname: 'b', count: 2 },
+            { memberId: 3, nickname: 'c', count: 1 },
+        ];
+
+        assert.deepEqual(StatsCalc.repeatedlyReportedMembers(members).map((member) => member.memberId), [1, 2]);
+    });
+});
