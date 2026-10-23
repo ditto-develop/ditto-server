@@ -15,6 +15,7 @@ import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
@@ -104,6 +105,21 @@ class QuizAnswerStatsQueryTest(
             val counts = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, femaleOnly)
 
             counts.map { it.choiceContent to it.count } shouldBe listOf("A" to 1L, "B" to 0L)
+        }
+
+        "같은 선택지의 답을 성별로 나눈다" {
+            val (choiceA, _) = saveQuestion(saveQuizSet())
+            answer(saveMember(Gender.FEMALE), choiceA)
+            answer(saveMember(Gender.FEMALE), choiceA)
+            answer(saveMember(Gender.MALE), choiceA)
+
+            val counts = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, MemberFilter.NONE)
+
+            counts.map { Triple(it.choiceContent, it.gender, it.count) } shouldContainExactlyInAnyOrder listOf(
+                Triple("A", Gender.FEMALE, 2L),
+                Triple("A", Gender.MALE, 1L),
+                Triple("B", null, 0L),
+            )
         }
 
         "비활성 셋·다른 주·다른 매칭 유형의 문항은 나오지 않는다" {

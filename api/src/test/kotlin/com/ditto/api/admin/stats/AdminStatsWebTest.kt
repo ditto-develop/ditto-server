@@ -152,7 +152,7 @@ class AdminStatsWebTest(
                             """"choiceAnswerCounts":[{"quizSetId":${quizSet.id},"matchingType":"ONE_TO_ONE",""" +
                                 """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
                                 """"choiceId":${choice.id},""" +
-                                """"choiceDisplayOrder":1,"choiceContent":"A","count":1}]""",
+                                """"choiceDisplayOrder":1,"choiceContent":"A","gender":null,"count":1}]""",
                         ),
                     ),
                 )

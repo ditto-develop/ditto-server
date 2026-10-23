@@ -299,17 +299,52 @@ const StatsCalc = (() => {
     };
 
     // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
-    const questionDistributions = (choiceAnswerCounts) =>
-        [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
-            matchingType: quizSetRows[0].matchingType,
-            questions: [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()].map((choiceRows) => ({
-                displayOrder: choiceRows[0].quizDisplayOrder,
-                question: choiceRows[0].question,
-                answerCount: sumCounts(choiceRows),
-                choices: choiceRows
-                    .map((choiceRow) => ({ label: choiceRow.choiceContent, count: choiceRow.count })),
-            })),
-        }));
+    // 문항은 선택지가 둘이라 첫 선택지 비율 하나로 쏠림과 성별 차이를 본다. 행은 선택지 순서로 온다.
+    const firstChoiceShare = (questionRows, answerRows) => {
+        const firstChoiceId = questionRows[0].choiceId;
+        const firstChoiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === firstChoiceId));
+        return percent(firstChoiceCount, sumCounts(answerRows));
+    };
+
+    // 답한 성별만 나온다. 성별 조건을 걸면 한 줄이라 차이를 볼 수 없다.
+    const firstChoiceSharesByGender = (questionRows, genderLabels) =>
+        Object.entries(genderLabels)
+            .map(([gender, label]) => {
+                const genderRows = questionRows.filter((countRow) => countRow.gender === gender);
+                return {
+                    label,
+                    answerCount: sumCounts(genderRows),
+                    share: firstChoiceShare(questionRows, genderRows),
+                };
+            })
+            .filter((genderShare) => genderShare.answerCount > 0);
+
+    // 쏠림은 첫 선택지 비율이 50%에서 벗어난 %p 다. 0 이면 반반, 50 이면 한쪽으로 다 몰렸다.
+    const questionDistribution = (questionRows, genderLabels) => {
+        const answerCount = sumCounts(questionRows);
+        return {
+            displayOrder: questionRows[0].quizDisplayOrder,
+            question: questionRows[0].question,
+            answerCount,
+            choices: [...groupBy(questionRows, (countRow) => countRow.choiceId).values()]
+                .map((choiceRows) => ({ label: choiceRows[0].choiceContent, count: sumCounts(choiceRows) })),
+            skew: answerCount === 0 ? null : Math.abs(firstChoiceShare(questionRows, questionRows) - 50),
+            genderShares: firstChoiceSharesByGender(questionRows, genderLabels),
+        };
+    };
+
+    // 퀴즈셋의 쏠림 점수는 답이 있는 문항의 쏠림 평균이다.
+    const averageSkew = (questions) => {
+        const skews = questions.map((question) => question.skew).filter((skew) => skew !== null);
+        return skews.length === 0 ? null : skews.reduce((sum, skew) => sum + skew, 0) / skews.length;
+    };
+
+    const questionDistributions = (choiceAnswerCounts, genderLabels) =>
+        [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => {
+            const questions = [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()]
+                .map((questionRows) => questionDistribution(questionRows, genderLabels));
+            return { matchingType: quizSetRows[0].matchingType, questions, skewScore: averageSkew(questions) };
+        });
 
     const memberReviewSubmission = (memberReviewCounts) => {
         const countsByStatus = sumCountsBy(memberReviewCounts, (countRow) => countRow.status);

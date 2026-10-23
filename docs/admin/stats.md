@@ -56,6 +56,9 @@
 - 성별·연령대·가입 주차 조건은 답한 회원에게 건다. 답이 없는 선택지도 0으로 나온다.
 - 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
 - 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
+- 쏠림 점수: 문항마다 첫 선택지 비율이 50%에서 벗어난 %p(|A 비율 − 50|)를 구해, 답이 있는 문항끼리 평균한다. 퀴즈셋 제목 옆에 보인다. 문항은 선택지가 둘이라 첫 선택지 하나로 본다.
+- 성별 응답 차: 문항마다 성별로 첫 선택지를 고른 비율과 그 차이(%p). 두 성별 이상이 답한 문항에만 보여서, 성별 조건을 걸면 사라진다. 성별 미입력 회원은 차이에 넣지 않는다.
+- 서버는 선택지마다 성별로 나눈 답 수를 내리고 합치기·비율은 `stats-calc.js`가 한다.
 
 ## 매칭
 
@@ -196,14 +199,14 @@ SELECT DAYOFWEEK(completed_at) AS day_of_week, COUNT(*) FROM (
 ) completed
 GROUP BY day_of_week;
 
--- 문항 분포
-SELECT q.display_order, q.question, c.content, COUNT(m.id) FROM quiz_choice c
+-- 문항 분포·성별 응답 차 (성별로 나뉜 행을 선택지마다 더하면 분포다)
+SELECT q.display_order, q.question, c.content, m.gender, COUNT(m.id) FROM quiz_choice c
 JOIN quiz q ON q.id = c.quiz_id
 JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active
 LEFT JOIN quiz_answer a ON a.choice_id = c.id
 LEFT JOIN member m ON m.id = a.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
-GROUP BY qs.id, q.id, c.id
+GROUP BY qs.id, q.id, c.id, m.gender
 ORDER BY qs.id, q.display_order, c.display_order;
 
 -- 활성 회원 (:rounds 는 화면 퀴즈 참여 장 기준 줄에 나온 회차 월요일들)

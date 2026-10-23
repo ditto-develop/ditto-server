@@ -215,7 +215,7 @@
 
             <section class="stats-section" id="questions">
                 <h2 class="stats-section-title">문항 분포</h2>
-                <p class="stats-section-desc">답이 한쪽으로 몰린 문항은 매칭에 별 도움이 안 됩니다. 끝까지 안 푼 회원의 답도 셉니다.</p>
+                <p class="stats-section-desc">답이 한쪽으로 몰린 문항은 매칭에 별 도움이 안 됩니다. 끝까지 안 푼 회원의 답도 셉니다. 쏠림 점수는 문항마다 첫 선택지 비율이 50%에서 벗어난 정도(%p)의 평균입니다. 0이면 반반, 50이면 한쪽으로 다 몰렸습니다. 성별 차이는 남녀가 모두 답한 문항에만 보입니다.</p>
                 <p class="alert info" id="questionEmptyNotice" hidden
                    th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (hasConditions ? '조건에 맞는 답이 없습니다.' : '이 회차에 답한 회원이 없습니다.')}">이 회차에 답한 회원이 없습니다.</p>
                 <div id="questionSectionBody">

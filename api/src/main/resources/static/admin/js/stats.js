@@ -240,23 +240,42 @@
         fillRows('chatByTypeRows', activity.rows, (row) => chatTypeCells(row, showsAllSent));
     };
 
-    const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
+    const percentPointText = (value) => `${value.toFixed(1)}%p`;
+
+    // 성별이 둘 이상 답했을 때만 첫 선택지 비율과 차이를 보인다.
+    const genderGapLine = (choices, genderShares) => {
+        if (genderShares.length < 2) return null;
+        const shares = genderShares.map((genderShare) => genderShare.share);
+        const sharesText = genderShares
+            .map((genderShare) => `${genderShare.label} ${genderShare.share.toFixed(1)}%`)
+            .join(' · ');
+        const gap = Math.max(...shares) - Math.min(...shares);
+        return element('p', 'muted', `'${choices[0].label}' 선택 · ${sharesText} · 차이 ${percentPointText(gap)}`);
+    };
+
+    const questionBlock = ({ displayOrder, question, answerCount, choices, genderShares }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
         title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
         const choiceRows = choices
             .map((choice) => shareRow(choice, answerCount, { className: 'share-row wide-label-row stack-on-phone' }));
-        block.append(title, ...choiceRows);
+        const genderGap = genderGapLine(choices, genderShares);
+        block.append(title, ...choiceRows, ...(genderGap ? [genderGap] : []));
         return block;
     };
 
-    const renderQuestionSection = ({ quizMatchingTypeLabels, quizStats }) => {
-        const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts);
+    const quizSetTitle = (matchingTypeLabel, questions, skewScore) => {
+        const skewText = skewScore === null ? '' : ` · 쏠림 점수 ${percentPointText(skewScore)}`;
+        return `${matchingTypeLabel} 퀴즈셋 · 문항 ${questions.length}개${skewText}`;
+    };
+
+    const renderQuestionSection = ({ genderLabels, quizMatchingTypeLabels, quizStats }) => {
+        const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts, genderLabels);
         showSectionIfAny('question', StatsCalc.sumCounts(quizStats.choiceAnswerCounts) > 0);
-        byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions }) => {
+        byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions, skewScore }) => {
             const card = element('div', 'card');
             card.append(
-                element('h3', null, `${quizMatchingTypeLabels[matchingType]} 퀴즈셋 · 문항 ${questions.length}개`),
+                element('h3', null, quizSetTitle(quizMatchingTypeLabels[matchingType], questions, skewScore)),
                 ...questions.map(questionBlock),
             );
             return card;

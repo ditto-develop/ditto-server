@@ -400,7 +400,8 @@ describe('chatActivity', () => {
 });
 
 describe('questionDistributions', () => {
-    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count, gender = 'MALE') => ({
         quizSetId,
         matchingType: quizSetId === 1 ? 'ONE_TO_ONE' : 'GROUP',
         quizId,
@@ -409,30 +410,60 @@ describe('questionDistributions', () => {
         choiceId: quizId * 10 + choiceContent.length,
         choiceDisplayOrder: 1,
         choiceContent,
+        gender,
         count,
     });
 
-    test('퀴즈셋·문항 순서를 지키며 묶고 문항마다 응답 수를 더한다', () => {
+    test('퀴즈셋·문항 순서를 지키며 묶고 선택지는 성별 행을 합친다', () => {
         const distributions = StatsCalc.questionDistributions([
-            choiceRow(1, 11, 1, 'A', 3),
-            choiceRow(1, 11, 1, 'BB', 1),
-            choiceRow(1, 12, 2, 'A', 0),
-            choiceRow(1, 12, 2, 'BB', 0),
+            choiceRow(1, 11, 1, 'A', 2, 'MALE'),
+            choiceRow(1, 11, 1, 'A', 1, 'FEMALE'),
+            choiceRow(1, 11, 1, 'BB', 1, 'FEMALE'),
+            choiceRow(1, 12, 2, 'A', 0, null),
+            choiceRow(1, 12, 2, 'BB', 0, null),
             choiceRow(2, 21, 1, 'A', 2),
-        ]);
+        ], GENDER_LABELS);
 
         assert.deepEqual(distributions.map((quizSet) => quizSet.matchingType), ['ONE_TO_ONE', 'GROUP']);
-        assert.deepEqual(distributions[0].questions[0], {
-            displayOrder: 1,
-            question: '질문11',
-            answerCount: 4,
-            choices: [{ label: 'A', count: 3 }, { label: 'BB', count: 1 }],
-        });
-        assert.equal(distributions[0].questions[1].answerCount, 0);
+        const [first, second] = distributions[0].questions;
+        assert.equal(first.answerCount, 4);
+        assert.deepEqual(first.choices, [{ label: 'A', count: 3 }, { label: 'BB', count: 1 }]);
+        assert.equal(second.answerCount, 0);
+    });
+
+    test('쏠림은 첫 선택지 비율이 50%에서 벗어난 %p 이고 퀴즈셋 점수는 답이 있는 문항의 평균이다', () => {
+        const [quizSet] = StatsCalc.questionDistributions([
+            choiceRow(1, 11, 1, 'A', 3),
+            choiceRow(1, 11, 1, 'BB', 1),
+            choiceRow(1, 12, 2, 'A', 1),
+            choiceRow(1, 12, 2, 'BB', 1),
+            choiceRow(1, 13, 3, 'A', 0, null),
+            choiceRow(1, 13, 3, 'BB', 0, null),
+        ], GENDER_LABELS);
+
+        assert.deepEqual(quizSet.questions.map((question) => question.skew), [25, 0, null]);
+        assert.equal(quizSet.skewScore, 12.5);
+    });
+
+    test('성별마다 첫 선택지 비율을 내고 답이 없는 성별은 빠진다', () => {
+        const [quizSet] = StatsCalc.questionDistributions([
+            choiceRow(1, 11, 1, 'A', 3, 'MALE'),
+            choiceRow(1, 11, 1, 'A', 1, 'FEMALE'),
+            choiceRow(1, 11, 1, 'BB', 1, 'MALE'),
+            choiceRow(1, 11, 1, 'BB', 3, 'FEMALE'),
+            choiceRow(1, 12, 2, 'A', 2, 'FEMALE'),
+            choiceRow(1, 12, 2, 'BB', 0, null),
+        ], GENDER_LABELS);
+
+        assert.deepEqual(quizSet.questions[0].genderShares, [
+            { label: '남성', answerCount: 4, share: 75 },
+            { label: '여성', answerCount: 4, share: 25 },
+        ]);
+        assert.deepEqual(quizSet.questions[1].genderShares, [{ label: '여성', answerCount: 2, share: 100 }]);
     });
 
     test('문항이 없으면 빈 목록이다', () => {
-        assert.deepEqual(StatsCalc.questionDistributions([]), []);
+        assert.deepEqual(StatsCalc.questionDistributions([], GENDER_LABELS), []);
     });
 });
 

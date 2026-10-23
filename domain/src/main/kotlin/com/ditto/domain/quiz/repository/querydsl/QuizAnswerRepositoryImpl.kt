@@ -65,6 +65,7 @@ class QuizAnswerRepositoryImpl(
                 quizChoice.id,
                 quizChoice.displayOrder,
                 quizChoice.content,
+                member.gender,
                 countExpression,
             )
             .from(quizChoice)
@@ -82,6 +83,7 @@ class QuizAnswerRepositoryImpl(
                 quizChoice.id,
                 quizChoice.displayOrder,
                 quizChoice.content,
+                member.gender,
             )
             .orderBy(quizSet.id.asc(), quiz.displayOrder.asc(), quizChoice.displayOrder.asc())
             .fetch()
@@ -96,6 +98,7 @@ class QuizAnswerRepositoryImpl(
                     choiceId = row.get(quizChoice.id) ?: throw IllegalStateException("group by 키 choiceId 가 비었다"),
                     choiceDisplayOrder = row.get(quizChoice.displayOrder) ?: 0,
                     choiceContent = row.get(quizChoice.content).orEmpty(),
+                    gender = row.get(member.gender),
                     count = row.get(countExpression) ?: 0L,
                 )
             }
