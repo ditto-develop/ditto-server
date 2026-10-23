@@ -15,6 +15,7 @@ data class StatsPageData(
     val memberStats: MemberStatsData,
     val quizStats: QuizStatsData,
     val matchStats: MatchStatsData,
+    val chatStats: ChatStatsData,
     val memberReviewStats: MemberReviewStatsData,
     val retentionStats: RetentionStatsData,
     val memberReportStats: MemberReportStatsData,

@@ -2,13 +2,16 @@ package com.ditto.domain.chat.repository.querydsl
 
 import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
+import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.QChatMessage.chatMessage
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.entity.QNotification.notification
+import com.ditto.domain.rematch.entity.QRematch.rematch
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
 import org.springframework.transaction.annotation.Transactional
 
@@ -90,4 +93,59 @@ class ChatRoomRepositoryImpl(
                 chatRoom.status.ne(ChatRoomStatus.ENDED),
             )
             .fetchFirst() != null
+
+    override fun countMembersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomMemberCount> {
+        val countExpression = chatRoomMember.count()
+        return queryFactory
+            .select(chatRoom.id, chatRoom.sourceType, countExpression)
+            .from(chatRoom)
+            .join(chatRoomMember).on(chatRoomMember.roomId.eq(chatRoom.id))
+            .where(openedRoomOfWeek(weekStartedOn))
+            .groupBy(chatRoom.id, chatRoom.sourceType)
+            .fetch()
+            .map { row ->
+                ChatRoomMemberCount(
+                    roomId = row.get(chatRoom.id) ?: throw IllegalStateException("group by 키 id 가 비었다"),
+                    roomType = row.get(chatRoom.sourceType)
+                        ?: throw IllegalStateException("group by 키 sourceType 이 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    override fun countSendersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomSenderCount> {
+        val countExpression = chatMessage.senderId.countDistinct()
+        return queryFactory
+            .select(chatRoom.id, countExpression)
+            .from(chatRoom)
+            .join(chatMessage).on(
+                chatMessage.roomId.eq(chatRoom.id),
+                chatMessage.messageType.ne(ChatMessageType.SYSTEM),
+            )
+            .where(openedRoomOfWeek(weekStartedOn))
+            .groupBy(chatRoom.id)
+            .fetch()
+            .map { row ->
+                ChatRoomSenderCount(
+                    roomId = row.get(chatRoom.id) ?: throw IllegalStateException("group by 키 id 가 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    // 1:1·그룹 방은 매칭 주 금요일에 열린다. 재매칭 방은 나중 주에 열려서 원래 그룹의 주로 센다.
+    private fun openedRoomOfWeek(weekStartedOn: LocalDate): BooleanExpression {
+        val weekStart = weekStartedOn.atStartOfDay()
+        val openedInWeek = chatRoom.sourceType.ne(ChatRoomType.REMATCH)
+            .and(chatRoom.opensAt.goe(weekStart))
+            .and(chatRoom.opensAt.lt(weekStart.plusWeeks(1)))
+        val rematchOfWeek = chatRoom.sourceType.eq(ChatRoomType.REMATCH)
+            .and(
+                queryFactory.selectOne()
+                    .from(rematch)
+                    .where(rematch.id.eq(chatRoom.sourceId), rematch.weekStartedOn.eq(weekStartedOn))
+                    .exists(),
+            )
+        return chatRoom.status.ne(ChatRoomStatus.SCHEDULED).and(openedInWeek.or(rematchOfWeek))
+    }
 }

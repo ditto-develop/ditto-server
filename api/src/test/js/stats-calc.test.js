@@ -254,6 +254,53 @@ describe('unmatchedGenderRows', () => {
     });
 });
 
+describe('chatActivity', () => {
+    const MEMBER_REVIEW_MATCH_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+    const memberCount = (roomId, roomType, count) => ({ roomId, roomType, count });
+    const CHAT_STATS = {
+        chatRoomMemberCounts: [
+            memberCount(1, 'PERSONAL', 2),
+            memberCount(2, 'PERSONAL', 2),
+            memberCount(3, 'GROUP', 4),
+            memberCount(4, 'GROUP', 3),
+            memberCount(5, 'REMATCH', 2),
+        ],
+        // 메시지가 없는 방(2)은 행이 없다.
+        chatRoomSenderCounts: [
+            { roomId: 1, count: 1 },
+            { roomId: 3, count: 2 },
+            { roomId: 4, count: 3 },
+            { roomId: 5, count: 2 },
+        ],
+    };
+
+    test('열린 방을 분모로 시작·2명 이상·전원 발신 방을 센다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, MEMBER_REVIEW_MATCH_TYPE_LABELS);
+
+        assert.deepEqual(activity.countsByType, [
+            { label: '1:1', isGroup: false, openedCount: 2, startedCount: 1, twoWayCount: 0, allSentCount: 0 },
+            { label: '그룹', isGroup: true, openedCount: 2, startedCount: 2, twoWayCount: 2, allSentCount: 1 },
+        ]);
+    });
+
+    test('재매칭은 따로 한 줄이고 합계에 넣지 않는다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, MEMBER_REVIEW_MATCH_TYPE_LABELS);
+
+        assert.equal(activity.openedCount, 4);
+        assert.equal(activity.startedCount, 3);
+        assert.deepEqual(activity.rematch, {
+            label: '재매칭', openedCount: 1, startedCount: 1, twoWayCount: 1, allSentCount: 1,
+        });
+    });
+
+    test('1:1 만 고르면 재매칭 줄이 없다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, { PERSONAL: '1:1' });
+
+        assert.equal(activity.rematch, null);
+        assert.equal(activity.openedCount, 2);
+    });
+});
+
 describe('questionDistributions', () => {
     const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
         quizSetId,

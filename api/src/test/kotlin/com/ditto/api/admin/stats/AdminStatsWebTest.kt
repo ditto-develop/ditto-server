@@ -2,6 +2,12 @@ package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.support.IntegrationTest
+import com.ditto.domain.chat.ChatMessageFixture
+import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.ChatRoomMemberFixture
+import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatRoomMemberRepository
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
@@ -64,6 +70,9 @@ class AdminStatsWebTest(
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    private val chatMessageRepository: ChatMessageRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -152,6 +161,25 @@ class AdminStatsWebTest(
                                 """"personalMatchMemberCounts":[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}]}""",
+                        ),
+                    ),
+                )
+        }
+
+        "채팅 집계를 페이지 JSON 에 넣는다" {
+            val room = chatRoomRepository.save(ChatRoomFixture.personal())
+            listOf(1L, 2L).forEach { chatRoomMemberRepository.save(ChatRoomMemberFixture.create(room.id, it)) }
+            chatMessageRepository.save(ChatMessageFixture.create(roomId = room.id, senderId = 1L))
+
+            // ChatRoomFixture 기본 방은 3/13(금)에 열린다.
+            mockMvc.perform(get("/admin/stats").param("week", "2026-03-11").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"chatStats":{"chatRoomMemberCounts":""" +
+                                """[{"roomId":${room.id},"roomType":"PERSONAL","count":2}],""" +
+                                """"chatRoomSenderCounts":[{"roomId":${room.id},"count":1}]}""",
                         ),
                     ),
                 )

@@ -187,7 +187,32 @@
         });
     };
 
-    const questionBlock =({ displayOrder, question, answerCount, choices }) => {
+    // 두 사람 방은 전원이 곧 양방향이라 그룹만 채운다.
+    const chatTypeCells = (row) => [
+        cell(row.label),
+        countCell(row.openedCount),
+        cell(StatsCalc.percentText(row.startedCount, row.openedCount), 'num'),
+        cell(StatsCalc.percentText(row.twoWayCount, row.openedCount), 'num'),
+        row.isGroup ? cell(StatsCalc.percentText(row.allSentCount, row.openedCount), 'num') : cell('-', 'num empty'),
+    ];
+
+    const renderChatSection = ({ memberReviewMatchTypeLabels, chatStats }) => {
+        const activity = StatsCalc.chatActivity(chatStats, memberReviewMatchTypeLabels);
+        const rematchOpenedCount = activity.rematch ? activity.rematch.openedCount : 0;
+        showSectionIfAny('chat', activity.openedCount + rematchOpenedCount > 0);
+
+        byId('chatOpenedCount').textContent = countText(activity.openedCount, '개');
+        fillRateCard('chatStartedRate', {
+            part: activity.startedCount, whole: activity.openedCount, unit: '개', wholeLabel: '열린 방',
+        });
+        fillRateCard('chatTwoWayRate', {
+            part: activity.twoWayCount, whole: activity.openedCount, unit: '개', wholeLabel: '열린 방',
+        });
+        const typeRows = activity.rematch ? [...activity.countsByType, activity.rematch] : activity.countsByType;
+        fillRows('chatByTypeRows', typeRows, chatTypeCells);
+    };
+
+    const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
         title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
@@ -301,6 +326,7 @@
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
     renderMatchSection(pageData);
+    renderChatSection(pageData);
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);

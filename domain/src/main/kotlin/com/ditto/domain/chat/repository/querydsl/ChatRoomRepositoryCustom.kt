@@ -1,5 +1,6 @@
 package com.ditto.domain.chat.repository.querydsl
 
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
@@ -38,4 +39,10 @@ interface ChatRoomRepositoryCustom {
      * "진행 중"의 판정 근거가 방 상태라서 `chat_room_member`를 조인해 확인한다.
      */
     fun existsUnendedRoomOfMember(memberId: Long): Boolean
+
+    /** 그 회차에 열린 방마다 참여자 수. 나간 사람도 센다. */
+    fun countMembersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomMemberCount>
+
+    /** 그 회차에 열린 방마다 대화 메시지(SYSTEM 제외)를 보낸 사람 수. 메시지가 없는 방은 행이 없다. */
+    fun countSendersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomSenderCount>
 }

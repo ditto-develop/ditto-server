@@ -4,6 +4,7 @@ const StatsCalc = (() => {
     const GENDER_UNKNOWN_LABEL = '미입력';
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
+    const REMATCH_LABEL = '재매칭';
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
     const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
@@ -171,6 +172,37 @@ const StatsCalc = (() => {
         });
     };
 
+    // 분모는 모두 열린 방이다. 전원 발신은 나간 사람까지 참여자로 친다.
+    const chatActivityOf = (rooms) => ({
+        openedCount: rooms.length,
+        startedCount: rooms.filter((room) => room.senderCount >= 1).length,
+        twoWayCount: rooms.filter((room) => room.senderCount >= 2).length,
+        allSentCount: rooms.filter((room) => room.senderCount >= room.memberCount).length,
+    });
+
+    // 재매칭은 그룹에서 이어져서 그룹이 보일 때만 따로 한 줄 둔다. 1:1·그룹 합계에는 넣지 않는다.
+    const chatActivity = (chatStats, memberReviewMatchTypeLabels) => {
+        const senderCountsByRoom = new Map(chatStats.chatRoomSenderCounts.map((row) => [row.roomId, row.count]));
+        const rooms = chatStats.chatRoomMemberCounts.map((row) => ({
+            roomType: row.roomType,
+            memberCount: row.count,
+            senderCount: senderCountsByRoom.get(row.roomId) || 0,
+        }));
+        const roomsOf = (roomType) => rooms.filter((room) => room.roomType === roomType);
+        const shownRoomTypes = Object.keys(memberReviewMatchTypeLabels);
+        return {
+            ...chatActivityOf(rooms.filter((room) => shownRoomTypes.includes(room.roomType))),
+            countsByType: Object.entries(memberReviewMatchTypeLabels).map(([roomType, label]) => ({
+                label,
+                isGroup: roomType === 'GROUP',
+                ...chatActivityOf(roomsOf(roomType)),
+            })),
+            rematch: shownRoomTypes.includes('GROUP')
+                ? { label: REMATCH_LABEL, ...chatActivityOf(roomsOf('REMATCH')) }
+                : null,
+        };
+    };
+
     // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
     const questionDistributions = (choiceAnswerCounts) =>
         [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
@@ -259,6 +291,7 @@ const StatsCalc = (() => {
         participantGenderRows,
         matchFunnel,
         unmatchedGenderRows,
+        chatActivity,
         questionDistributions,
         memberReviewSubmission,
         memberReviewSubmissionByType,
