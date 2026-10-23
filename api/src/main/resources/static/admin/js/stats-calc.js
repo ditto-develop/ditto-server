@@ -5,6 +5,10 @@ const StatsCalc = (() => {
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
     const REMATCH_LABEL = '재매칭';
+    const INVITATION_ACCEPTED = 'ACCEPTED';
+    const GROUP_ROOM_TYPE = 'GROUP';
+    const REMATCH_ROOM_TYPE = 'REMATCH';
+    const MATCHING_BATCH_DAY_OFFSET = 3;
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
     const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
@@ -123,8 +127,8 @@ const StatsCalc = (() => {
         ));
     };
 
-    // 1:1 은 후보·성사 테이블이 따로 있고, 그룹은 초대 한 테이블에서 성사된 그룹을 수락한 사람이 성사다.
-    const matchStageCountRows = (matchStats) => ({
+    // 1:1 은 후보·성사 테이블이 따로 있고, 그룹은 초대 테이블 하나에서 성사된 그룹을 수락한 사람을 성사로 본다.
+    const stageCountRowsByType = (matchStats) => ({
         ONE_TO_ONE: {
             candidate: matchStats.matchCandidateCounts,
             matched: matchStats.personalMatchMemberCounts,
@@ -132,56 +136,65 @@ const StatsCalc = (() => {
         GROUP: {
             candidate: matchStats.groupMatchMemberCounts,
             matched: matchStats.groupMatchMemberCounts
-                .filter((countRow) => countRow.isGroupActive && countRow.status === 'ACCEPTED'),
+                .filter((countRow) => countRow.isGroupActive && countRow.status === INVITATION_ACCEPTED),
         },
     });
 
     const completedCountsOf = (progressCounts, matchingType) =>
         completedOnly(progressCounts).filter((countRow) => countRow.matchingType === matchingType);
 
-    const matchFunnel = (progressCounts, matchStats, quizMatchingTypeLabels) => {
-        const stageCountRows = matchStageCountRows(matchStats);
-        const countsByType = Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => ({
+    // 성사 뒤 진행을 초기화하면 참여에서 빠져 음수가 될 수 있어 성별 칸마다 0 에서 자른다.
+    const unmatchedGenderRow = (label, completedCounts, matchedCounts, genderLabels) => {
+        const completedByGender = sumCountsBy(completedCounts, (countRow) => countRow.gender);
+        const matchedByGender = sumCountsBy(matchedCounts, (countRow) => countRow.gender);
+        const unmatchedCounts = [...Object.keys(genderLabels), null].map((gender) => ({
+            gender,
+            count: Math.max(0, (completedByGender.get(gender) || 0) - (matchedByGender.get(gender) || 0)),
+        }));
+        return genderRow(label, unmatchedCounts, genderLabels);
+    };
+
+    const sumOf = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0);
+
+    // 미매칭 카드는 성별 표 합계와 같은 값이다.
+    const matchFunnel = (progressCounts, matchStats, quizMatchingTypeLabels, genderLabels) => {
+        const countRowsByType = stageCountRowsByType(matchStats);
+        const typeEntries = Object.entries(quizMatchingTypeLabels);
+        const countsByType = typeEntries.map(([matchingType, label]) => ({
             label,
             completedCount: sumCounts(completedCountsOf(progressCounts, matchingType)),
-            candidateCount: sumCounts(stageCountRows[matchingType].candidate),
-            matchedCount: sumCounts(stageCountRows[matchingType].matched),
+            candidateCount: sumCounts(countRowsByType[matchingType].candidate),
+            matchedCount: sumCounts(countRowsByType[matchingType].matched),
         }));
-        const completedCount = countsByType.reduce((sum, row) => sum + row.completedCount, 0);
-        const matchedCount = countsByType.reduce((sum, row) => sum + row.matchedCount, 0);
+        const unmatchedGenderRows = typeEntries.map(([matchingType, label]) => unmatchedGenderRow(
+            label,
+            completedCountsOf(progressCounts, matchingType),
+            countRowsByType[matchingType].matched,
+            genderLabels,
+        ));
         return {
-            completedCount,
-            candidateCount: countsByType.reduce((sum, row) => sum + row.candidateCount, 0),
-            matchedCount,
-            unmatchedCount: Math.max(0, completedCount - matchedCount),
+            completedCount: sumOf(countsByType, 'completedCount'),
+            candidateCount: sumOf(countsByType, 'candidateCount'),
+            matchedCount: sumOf(countsByType, 'matchedCount'),
+            unmatchedCount: sumOf(unmatchedGenderRows, 'totalCount'),
             countsByType,
+            unmatchedGenderRows,
         };
     };
 
-    // 미매칭 = 완주 - 성사. 성사 뒤 진행을 초기화한 회원은 완주에서 빠져 음수가 될 수 있어 0 에서 자른다.
-    const unmatchedGenderRows = (progressCounts, matchStats, quizMatchingTypeLabels, genderLabels) => {
-        const stageCountRows = matchStageCountRows(matchStats);
-        return Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => {
-            const completedByGender = sumCountsBy(completedCountsOf(progressCounts, matchingType), (row) => row.gender);
-            const matchedByGender = sumCountsBy(stageCountRows[matchingType].matched, (row) => row.gender);
-            const unmatchedCounts = [...Object.keys(genderLabels), null].map((gender) => ({
-                gender,
-                count: Math.max(0, (completedByGender.get(gender) || 0) - (matchedByGender.get(gender) || 0)),
-            }));
-            return genderRow(label, unmatchedCounts, genderLabels);
-        });
-    };
+    // 매칭 배치는 그 주 목요일 00:01 에 돈다.
+    const isBeforeMatchingBatch = (weekStartedOn, today) => today < addDays(weekStartedOn, MATCHING_BATCH_DAY_OFFSET);
 
-    // 분모는 모두 열린 방이다. 전원 발신은 나간 사람까지 참여자로 친다.
-    const chatActivityOf = (rooms) => ({
+    // 분모는 모두 열린 방이다. 전원은 나간 사람까지 참여자로 친다.
+    const roomActivityCounts = (rooms) => ({
         openedCount: rooms.length,
         startedCount: rooms.filter((room) => room.senderCount >= 1).length,
         twoWayCount: rooms.filter((room) => room.senderCount >= 2).length,
         allSentCount: rooms.filter((room) => room.senderCount >= room.memberCount).length,
     });
 
-    // 재매칭은 그룹에서 이어져서 그룹이 보일 때만 따로 한 줄 둔다. 1:1·그룹 합계에는 넣지 않는다.
-    const chatActivity = (chatStats, memberReviewMatchTypeLabels) => {
+    // 재매칭은 그룹에서 이어져서 그룹이 보일 때만 마지막 줄로 둔다. 합계에는 넣지 않는다.
+    const chatActivity = (chatStats, roomTypeLabels) => {
         const senderCountsByRoom = new Map(chatStats.chatRoomSenderCounts.map((row) => [row.roomId, row.count]));
         const rooms = chatStats.chatRoomMemberCounts.map((row) => ({
             roomType: row.roomType,
@@ -189,17 +202,24 @@ const StatsCalc = (() => {
             senderCount: senderCountsByRoom.get(row.roomId) || 0,
         }));
         const roomsOf = (roomType) => rooms.filter((room) => room.roomType === roomType);
-        const shownRoomTypes = Object.keys(memberReviewMatchTypeLabels);
+        const shownRoomTypes = Object.keys(roomTypeLabels);
+        const typeRows = Object.entries(roomTypeLabels).map(([roomType, label]) => ({
+            label,
+            isGroup: roomType === GROUP_ROOM_TYPE,
+            isRematch: false,
+            ...roomActivityCounts(roomsOf(roomType)),
+        }));
+        const rematchRows = shownRoomTypes.includes(GROUP_ROOM_TYPE)
+            ? [{
+                label: REMATCH_LABEL,
+                isGroup: false,
+                isRematch: true,
+                ...roomActivityCounts(roomsOf(REMATCH_ROOM_TYPE)),
+            }]
+            : [];
         return {
-            ...chatActivityOf(rooms.filter((room) => shownRoomTypes.includes(room.roomType))),
-            countsByType: Object.entries(memberReviewMatchTypeLabels).map(([roomType, label]) => ({
-                label,
-                isGroup: roomType === 'GROUP',
-                ...chatActivityOf(roomsOf(roomType)),
-            })),
-            rematch: shownRoomTypes.includes('GROUP')
-                ? { label: REMATCH_LABEL, ...chatActivityOf(roomsOf('REMATCH')) }
-                : null,
+            ...roomActivityCounts(rooms.filter((room) => shownRoomTypes.includes(room.roomType))),
+            rows: [...typeRows, ...rematchRows],
         };
     };
 
@@ -290,7 +310,7 @@ const StatsCalc = (() => {
         quizParticipation,
         participantGenderRows,
         matchFunnel,
-        unmatchedGenderRows,
+        isBeforeMatchingBatch,
         chatActivity,
         questionDistributions,
         memberReviewSubmission,
