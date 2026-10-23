@@ -8,8 +8,11 @@ import com.ditto.domain.member.repository.MemberNotificationSettingRepository
 import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.entity.NotificationCategory
 import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -32,6 +35,7 @@ class PushNotifier(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationDeepLinks: NotificationDeepLinks,
     private val pushDeadDeviceCleaner: PushDeadDeviceCleaner,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     private val pushSender: PushSender,
 ) {
 
@@ -49,9 +53,13 @@ class PushNotifier(
         runCatchingExceptions {
             val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
-            notifications
-                .filter { it.memberId !in mutedMemberIds }
-                .forEach { send(it, deepLink) }
+            notifications.forEach { notification ->
+                if (notification.memberId in mutedMemberIds) {
+                    saveHistory(PushSendHistory.skipped(notification, PushSkipReason.MUTED))
+                    return@forEach
+                }
+                send(notification, deepLink)
+            }
         }.onFailure {
             logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
         }
@@ -59,17 +67,30 @@ class PushNotifier(
 
     private fun send(notification: Notification, deepLink: String?) {
         if (!allowsPush(notification)) {
+            saveHistory(PushSendHistory.skipped(notification, PushSkipReason.TOGGLE_OFF))
             return
         }
         val tokens = memberDeviceRepository.findAllByMemberId(notification.memberId).map { it.token }
         if (tokens.isEmpty()) {
-            return // 웹 전용 회원
+            saveHistory(PushSendHistory.skipped(notification, PushSkipReason.NO_DEVICE))
+            return
         }
 
+        // 회원당 기기는 몇 개라 FCM 응답은 한 번 온다(500개를 넘어야 나눠 보낸다).
         pushSender.send(buildMessage(notification, tokens, deepLink)) { result ->
             if (result.deadTokens.isNotEmpty()) {
                 pushDeadDeviceCleaner.clean(result.deadTokens)
             }
+            saveHistory(
+                PushSendHistory.sent(notification, deviceCount = tokens.size, failureCodes = result.failureCodes),
+            )
+        }
+    }
+
+    // 이력을 못 남겨도 발송은 그대로 간다. FCM 응답 스레드에서도 불려서 예외를 밖으로 내지 않는다.
+    private fun saveHistory(history: PushSendHistory) {
+        runCatchingExceptions { pushSendHistoryRepository.save(history) }.onFailure {
+            logger.warn(it) { "푸시 발송 이력 저장 실패 — 무시한다: notificationId=${history.notificationId}" }
         }
     }
 

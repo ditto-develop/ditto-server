@@ -13,8 +13,11 @@ import com.ditto.domain.member.repository.MemberNotificationSettingRepository
 import com.ditto.domain.notification.MemberDeviceFixture
 import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSet
@@ -47,6 +50,7 @@ class PushNotifierTest : FreeSpec({
         val pushSender: PushSender,
         val cleaner: PushDeadDeviceCleaner,
         val chatRoomRepository: ChatRoomRepository,
+        val savedHistories: List<PushSendHistory>,
     )
 
     fun fixture(
@@ -82,6 +86,10 @@ class PushNotifierTest : FreeSpec({
             every { findByRoomId(any()) } returns roomMembers
         }
         val cleaner = mockk<PushDeadDeviceCleaner>(relaxed = true)
+        val savedHistories = mutableListOf<PushSendHistory>()
+        val historyRepository = mockk<PushSendHistoryRepository> {
+            every { save(any()) } answers { firstArg<PushSendHistory>().also { savedHistories.add(it) } }
+        }
         val pushSender = mockk<PushSender>(relaxed = true)
         val notifier = PushNotifier(
             memberNotificationSettingRepository = settingRepository,
@@ -90,9 +98,10 @@ class PushNotifierTest : FreeSpec({
             chatRoomMemberRepository = chatRoomMemberRepository,
             notificationDeepLinks = NotificationDeepLinks(chatRoomRepository, quizSetRepository, rematchRepository),
             pushDeadDeviceCleaner = cleaner,
+            pushSendHistoryRepository = historyRepository,
             pushSender = pushSender,
         )
-        return Fixture(notifier, pushSender, cleaner, chatRoomRepository)
+        return Fixture(notifier, pushSender, cleaner, chatRoomRepository, savedHistories)
     }
 
     fun notification(
@@ -319,6 +328,77 @@ class PushNotifierTest : FreeSpec({
         verify(exactly = 0) { cleaner.clean(any()) }
     }
 
+    "발송 이력" - {
+        "방 알림을 끈 회원은 건너뛴 이유를 남긴다" {
+            val muted = ChatRoomMemberFixture.create(roomId = 100L, memberId = MEMBER_ID).apply { mute(MUTED_AT) }
+            val fixture = fixture(room = ChatRoomFixture.personal(), roomMembers = listOf(muted))
+
+            fixture.notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+
+            fixture.savedHistories.map { it.skipReason } shouldBe listOf(PushSkipReason.MUTED)
+        }
+
+        "알림 토글을 끈 회원은 건너뛴 이유를 남긴다" {
+            val fixture = fixture(
+                setting = MemberNotificationSetting(memberId = MEMBER_ID, matching = true, chat = false, marketing = false),
+            )
+
+            fixture.notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+
+            fixture.savedHistories.map { it.skipReason } shouldBe listOf(PushSkipReason.TOGGLE_OFF)
+        }
+
+        "기기가 없는 회원은 건너뛴 이유를 남긴다" {
+            val fixture = fixture(deviceTokens = emptyList())
+
+            fixture.notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+
+            fixture.savedHistories.map { it.skipReason } shouldBe listOf(PushSkipReason.NO_DEVICE)
+        }
+
+        "FCM 응답이 오면 보낸 기기 수와 실패 코드를 남긴다" {
+            val fixture = fixture(deviceTokens = listOf("token-1", "token-2"), room = ChatRoomFixture.personal())
+            val callbackSlot = slot<(PushSendResult) -> Unit>()
+            every { fixture.pushSender.send(any(), capture(callbackSlot)) } returns Unit
+
+            fixture.notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+            callbackSlot.captured(PushSendResult(failureCodes = listOf("UNAVAILABLE"), deadTokens = emptyList()))
+
+            val history = fixture.savedHistories.single()
+            history.skipReason shouldBe null
+            history.deviceCount shouldBe 2
+            history.failedDeviceCount shouldBe 1
+            history.failureCodes shouldBe "UNAVAILABLE"
+        }
+
+        "이력 저장이 실패해도 푸시는 나가고 예외가 밖으로 나가지 않는다" {
+            val fixture = fixture(room = ChatRoomFixture.personal())
+            val failingRepository = mockk<PushSendHistoryRepository> {
+                every { save(any()) } throws RuntimeException("db down")
+            }
+            val callbackSlot = slot<(PushSendResult) -> Unit>()
+            every { fixture.pushSender.send(any(), capture(callbackSlot)) } returns Unit
+            val notifier = PushNotifier(
+                memberNotificationSettingRepository = mockk { every { findByMemberId(any()) } returns null },
+                memberDeviceRepository = mockk {
+                    every { findAllByMemberId(any()) } returns listOf(MemberDeviceFixture.create(memberId = MEMBER_ID))
+                },
+                notificationRepository = mockk { every { countUnread(any(), any()) } returns 0L },
+                chatRoomMemberRepository = mockk { every { findByRoomId(any()) } returns emptyList() },
+                notificationDeepLinks = mockk { every { deepLinkFor(any()) } returns null },
+                pushDeadDeviceCleaner = fixture.cleaner,
+                pushSendHistoryRepository = failingRepository,
+                pushSender = fixture.pushSender,
+            )
+
+            shouldNotThrowAny {
+                notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+                callbackSlot.captured(PushSendResult(failureCodes = emptyList(), deadTokens = emptyList()))
+            }
+            verify(exactly = 1) { fixture.pushSender.send(any(), any()) }
+        }
+    }
+
     "준비 조회가 실패해도 예외가 밖으로 나가지 않는다" {
         val settingRepository = mockk<MemberNotificationSettingRepository> {
             every { findByMemberId(MEMBER_ID) } throws RuntimeException("db down")
@@ -330,6 +410,7 @@ class PushNotifierTest : FreeSpec({
             chatRoomMemberRepository = mockk(),
             notificationDeepLinks = mockk(),
             pushDeadDeviceCleaner = mockk(),
+            pushSendHistoryRepository = mockk(),
             pushSender = mockk(),
         )
 
