@@ -134,7 +134,7 @@
         renderMemberTotals(totals);
         fillShares(
             'accountStatusShares',
-            StatsCalc.accountStatusCounts(memberStats.countsByStatus, memberStats.currentActiveCountsByStatus),
+            StatsCalc.accountStatusCounts(memberStats.countsByStatus, memberStats.recentlyCompletedActiveStatusCount),
         );
         fillShares('locationShares', StatsCalc.locationCounts(memberStats.locationCounts, locationLabels));
         fillShares('genderShares', StatsCalc.genderCounts(memberStats.genderBirthDateCounts, genderLabels));

@@ -23,7 +23,11 @@ class MemberRepositoryImpl(
         return queryFactory
             .select(member.status, countExpression)
             .from(member)
-            .where(member.nonAdminMatching(filter))
+            // 가입하지 않고 탈퇴(LEFT)된 회원도 있어서 상태가 아니라 joined_at 으로 가입자를 가른다.
+            .where(
+                member.status.eq(MemberStatus.PENDING).or(member.joinedAt.isNotNull),
+                member.nonAdminMatching(filter),
+            )
             .groupBy(member.status)
             .fetch()
             .associate { row ->
@@ -86,6 +90,7 @@ class MemberRepositoryImpl(
             .select(member.leaveReason, countExpression)
             .from(member)
             .where(
+                member.joinedAt.isNotNull,
                 member.leftAt.goe(leftAtRange.start),
                 member.leftAt.lt(leftAtRange.endExclusive),
                 member.nonAdminMatching(filter),

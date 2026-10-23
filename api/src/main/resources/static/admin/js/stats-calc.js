@@ -4,13 +4,16 @@ const StatsCalc = (() => {
     const GENDER_UNKNOWN_LABEL = '미입력';
     const LOCATION_UNKNOWN_LABEL = '미입력';
     const LEAVE_REASON_UNKNOWN_LABEL = '사유 없음';
-    // 탈퇴 사유 코드는 FE 탈퇴 화면(withdrawReasons.ts)이 정해서 서버에 enum 이 없다. 문구도 그 화면과 맞춘다.
+    // 탈퇴 사유는 enum 이 없는 문자열이다. 앞 다섯은 FE 탈퇴 화면(withdrawReasons.ts) 문구 그대로고,
+    // APPLE_ 둘은 애플 서버 알림으로 서버가 탈퇴시킬 때 넣는다(AppleServerNotificationService).
     const LEAVE_REASON_LABELS = {
         no_desired_match: '원하는 매칭이 이루어지지 않아요',
         low_usage: '사용 빈도가 낮아졌어요',
         privacy_concern: '개인정보가 걱정돼요',
         bad_experience: '불편한 경험이 있었어요',
         other: '기타',
+        APPLE_ACCOUNT_DELETED: '애플 계정 삭제',
+        APPLE_CONSENT_REVOKED: '애플 연결 해제',
     };
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
@@ -90,12 +93,11 @@ const StatsCalc = (() => {
     };
 
     // 활성은 ACTIVE 중 최근 회차 완주자, 휴면은 나머지 ACTIVE 다. 정지 회원은 완주했어도 정지로 센다.
-    const accountStatusCounts = (countsByStatus, currentActiveCountsByStatus) => {
-        const activeStatusCount = countsByStatus.ACTIVE || 0;
-        const activeCount = currentActiveCountsByStatus.ACTIVE || 0;
+    const accountStatusCounts = (countsByStatus, recentlyCompletedActiveStatusCount) => {
+        const activeStatusMemberCount = countsByStatus.ACTIVE || 0;
         return [
-            { label: '활성', count: activeCount },
-            { label: '휴면', count: activeStatusCount - activeCount },
+            { label: '활성', count: recentlyCompletedActiveStatusCount },
+            { label: '휴면', count: activeStatusMemberCount - recentlyCompletedActiveStatusCount },
             { label: '정지', count: countsByStatus.SUSPENDED || 0 },
             { label: '영구 차단', count: countsByStatus.BANNED || 0 },
         ];

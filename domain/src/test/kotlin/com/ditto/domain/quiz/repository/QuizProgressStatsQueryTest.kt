@@ -202,8 +202,8 @@ class QuizProgressStatsQueryTest(
         }
     }
 
-    "countMembersCompletedInWeeksByStatus" - {
-        "여러 주에 완주한 회원은 한 번만 세고 지금 상태로 나눈 뒤 유형은 따지지 않는다" {
+    "countActiveStatusMembersCompletedInWeeks" - {
+        "여러 주에 완주한 회원은 한 번만 세고 지금 ACTIVE 가 아닌 회원은 빼고 유형은 따지지 않는다" {
             val previousWeek = WEEK.minusWeeks(1)
             val oneToOne = saveQuizSet()
             val group = saveQuizSet(weekStartedOn = previousWeek, matchingType = MatchingType.GROUP)
@@ -215,15 +215,14 @@ class QuizProgressStatsQueryTest(
             saveProgress(saveMember(), oneToOne, completed = false)
             saveProgress(saveMember(role = MemberRole.ADMIN), oneToOne)
 
-            quizProgressRepository.countMembersCompletedInWeeksByStatus(
+            quizProgressRepository.countActiveStatusMembersCompletedInWeeks(
                 listOf(WEEK, previousWeek),
                 MemberFilter.NONE,
-            ) shouldBe mapOf(MemberStatus.ACTIVE to 2L, MemberStatus.SUSPENDED to 1L)
+            ) shouldBe 2L
         }
 
-        "주 목록이 비면 빈 맵이다" {
-            quizProgressRepository.countMembersCompletedInWeeksByStatus(emptyList(), MemberFilter.NONE) shouldBe
-                emptyMap()
+        "주 목록이 비면 0이다" {
+            quizProgressRepository.countActiveStatusMembersCompletedInWeeks(emptyList(), MemberFilter.NONE) shouldBe 0L
         }
     }
 })

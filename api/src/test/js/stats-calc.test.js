@@ -47,11 +47,8 @@ describe('memberTotals', () => {
 });
 
 describe('accountStatusCounts', () => {
-    test('ACTIVE 를 최근 회차 완주 여부로 활성·휴면으로 나누고 정지 회원은 완주했어도 정지다', () => {
-        const rows = StatsCalc.accountStatusCounts(
-            { ACTIVE: 10, SUSPENDED: 2, BANNED: 1, LEFT: 4 },
-            { ACTIVE: 6, SUSPENDED: 1, LEFT: 3 },
-        );
+    test('ACTIVE 를 최근 회차 완주 여부로 활성·휴면으로 나누고 정지·영구 차단은 상태대로 센다', () => {
+        const rows = StatsCalc.accountStatusCounts({ ACTIVE: 10, SUSPENDED: 2, BANNED: 1, LEFT: 4 }, 6);
 
         assert.deepEqual(rows, [
             { label: '활성', count: 6 },
@@ -101,6 +98,8 @@ describe('leaveReasonCounts', () => {
             { label: '개인정보가 걱정돼요', count: 0 },
             { label: '불편한 경험이 있었어요', count: 0 },
             { label: '기타', count: 1 },
+            { label: '애플 계정 삭제', count: 0 },
+            { label: '애플 연결 해제', count: 0 },
             { label: '사유 없음', count: 1 },
             { label: 'new_reason', count: 1 },
         ]);

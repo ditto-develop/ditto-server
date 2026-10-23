@@ -49,12 +49,13 @@ class MemberStatsQueryTest(
     )
 
     "countMembersByStatus" - {
-        "가입 전 회원까지 상태별로 세고 관리자는 뺀다" {
+        "가입 전 회원까지 상태별로 세고 관리자와 가입하지 않고 탈퇴한 회원은 뺀다" {
             save("a")
             save("b")
             save("left", status = MemberStatus.LEFT)
             save("admin", role = MemberRole.ADMIN)
             save("pending", status = MemberStatus.PENDING, joinedAt = null)
+            save("left-before-join", joinedAt = null, leftAt = JOINED_AT, leaveReason = "APPLE_CONSENT_REVOKED")
 
             memberRepository.countMembersByStatus(MemberFilter.NONE) shouldBe
                 mapOf(MemberStatus.ACTIVE to 2L, MemberStatus.LEFT to 1L, MemberStatus.PENDING to 1L)
@@ -136,6 +137,7 @@ class MemberStatsQueryTest(
             save("c", leftAt = leftAt.plusDays(1))
             save("next-week", leftAt = leftAt.plusDays(7), leaveReason = "low_usage")
             save("admin", role = MemberRole.ADMIN, leftAt = leftAt, leaveReason = "other")
+            save("left-before-join", joinedAt = null, leftAt = leftAt, leaveReason = "APPLE_CONSENT_REVOKED")
 
             val counts = memberRepository.countMembersLeftWithinByLeaveReason(
                 leftAt..<leftAt.plusDays(7),

@@ -8,7 +8,7 @@ interface MemberRepositoryCustom {
     /** 해당 상태인 회원의 ID 전체. 전원 대상 알림(퀴즈 오픈 등)이 쓴다. 엔티티를 올리지 않는다. */
     fun findAllIdsByStatus(status: MemberStatus): List<Long>
 
-    /** 가입을 마치지 않은 회원은 PENDING, 탈퇴한 회원은 LEFT 로 들어 있다. */
+    /** 가입을 마치지 않은 회원은 PENDING, 탈퇴한 회원은 LEFT 로 들어 있다. 가입하지 않고 탈퇴한 회원은 빠진다. */
     fun countMembersByStatus(filter: MemberFilter): Map<MemberStatus, Long>
 
     fun findAllJoinedAtsWithin(joinedAtRange: OpenEndRange<LocalDateTime>, filter: MemberFilter): List<LocalDateTime>
@@ -18,7 +18,7 @@ interface MemberRepositoryCustom {
 
     fun countCurrentMembersByLocation(filter: MemberFilter): List<LocationCount>
 
-    /** 30일 안에 복구한 회원은 left_at 이 지워져 빠진다. */
+    /** 가입하지 않고 탈퇴한 회원과 30일 안에 복구한 회원은 빠진다. */
     fun countMembersLeftWithinByLeaveReason(
         leftAtRange: OpenEndRange<LocalDateTime>,
         filter: MemberFilter,

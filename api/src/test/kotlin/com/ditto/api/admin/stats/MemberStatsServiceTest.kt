@@ -100,7 +100,8 @@ class MemberStatsServiceTest(
 
             val stats = memberStatsService.findStats(StatsFilter(), WEEK.minusWeeks(3), TODAY)
 
-            stats.currentActiveCountsByStatus shouldBe mapOf(MemberStatus.ACTIVE to 1L)
+            stats.currentActiveRoundWeeks shouldBe listOf(WEEK.startedOn)
+            stats.recentlyCompletedActiveStatusCount shouldBe 1L
         }
 
         "탈퇴 사유는 고른 회차 주에 탈퇴한 회원만 센다" {
@@ -110,6 +111,7 @@ class MemberStatsServiceTest(
                     nickname = "left-then",
                     email = "left-then@ditto.pics",
                     status = MemberStatus.ACTIVE,
+                    joinedAt = WEEK.minusWeeks(3).dateTimeRange.start,
                 ).apply { leave("low_usage", selectedWeek.dateTimeRange.start) },
             )
             memberRepository.save(
@@ -117,6 +119,7 @@ class MemberStatsServiceTest(
                     nickname = "left-now",
                     email = "left-now@ditto.pics",
                     status = MemberStatus.ACTIVE,
+                    joinedAt = WEEK.minusWeeks(3).dateTimeRange.start,
                 ).apply { leave("other", WEEK.dateTimeRange.start) },
             )
 

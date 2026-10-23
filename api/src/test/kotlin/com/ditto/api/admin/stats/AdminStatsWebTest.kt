@@ -105,7 +105,7 @@ class AdminStatsWebTest(
                 .andExpect(content().string(containsString("1회차 · 4/6 주")))
                 .andExpect(
                     content().string(
-                        pageJsonContaining(""""countsByStatus":{"ACTIVE":1},"currentActiveCountsByStatus":{}"""),
+                        pageJsonContaining(""""countsByStatus":{"ACTIVE":1},"currentActiveRoundWeeks":["2026-04-06"]"""),
                     ),
                 )
                 .andExpect(content().string(pageJsonContaining(""""recentJoinedAts":["2026-04-07 10:00:00"]""")))

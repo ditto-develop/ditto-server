@@ -16,9 +16,10 @@ import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
@@ -133,7 +134,7 @@ class QuizAnswerStatsQueryTest(
     }
 
     "findCompletedAtsInWeek" - {
-        "완주한 회원마다 마지막 답 시각을 하나씩 주고 중간에 그만둔 회원과 관리자는 뺀다" {
+        "완주한 회원마다 가장 늦은 답 시각을 하나씩 주고 중간에 그만둔 회원과 관리자는 뺀다" {
             val quizSet = saveQuizSet()
             val (firstA, _) = saveQuestion(quizSet, displayOrder = 1)
             val (secondA, _) = saveQuestion(quizSet, displayOrder = 2)
@@ -143,11 +144,24 @@ class QuizAnswerStatsQueryTest(
                 repeat(answeredChoices.size) { progress.recordAnswer() }
                 quizProgressRepository.save(progress)
             }
-            progress(saveMember(), listOf(firstA, secondA))
+            val completed = saveMember()
+            progress(completed, listOf(firstA, secondA))
             progress(saveMember(), listOf(firstA))
             progress(saveMember(role = MemberRole.ADMIN), listOf(firstA, secondA))
+            // created_at 은 auditing 이 찍어서 답마다 날짜를 직접 바꾼다.
+            val jdbcTemplate = JdbcTemplate(dataSource)
+            val firstAnsweredAt = LocalDateTime.of(2026, 10, 19, 9, 0)
+            val lastAnsweredAt = LocalDateTime.of(2026, 10, 21, 22, 0)
+            listOf(firstA to firstAnsweredAt, secondA to lastAnsweredAt).forEach { (choice, answeredAt) ->
+                jdbcTemplate.update(
+                    "UPDATE quiz_answer SET created_at = ? WHERE member_id = ? AND choice_id = ?",
+                    answeredAt,
+                    completed,
+                    choice.id,
+                )
+            }
 
-            quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE) shouldHaveSize 1
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE) shouldBe listOf(lastAnsweredAt)
             quizAnswerRepository.findCompletedAtsInWeek(WEEK, MatchingType.GROUP, MemberFilter.NONE).shouldBeEmpty()
         }
     }

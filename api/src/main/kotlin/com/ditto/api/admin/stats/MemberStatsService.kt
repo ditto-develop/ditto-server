@@ -27,8 +27,9 @@ class MemberStatsService(
         )
         return MemberStatsData(
             countsByStatus = memberRepository.countMembersByStatus(memberFilter),
-            currentActiveCountsByStatus =
-                quizProgressRepository.countMembersCompletedInWeeksByStatus(currentActiveRoundWeeks, memberFilter),
+            currentActiveRoundWeeks = currentActiveRoundWeeks,
+            recentlyCompletedActiveStatusCount =
+                quizProgressRepository.countActiveStatusMembersCompletedInWeeks(currentActiveRoundWeeks, memberFilter),
             recentWeekCount = RECENT_WEEK_COUNT,
             recentJoinedAts = memberRepository.findAllJoinedAtsWithin(recentWeeksRangeUntil(week), memberFilter),
             genderBirthDateCounts = memberRepository.countCurrentMembersByGenderAndBirthDate(memberFilter),
