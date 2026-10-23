@@ -196,6 +196,142 @@ describe('participantGenderRows', () => {
     });
 });
 
+// 1:1 참여 남 3·여 2, 그룹 참여 미입력 1 (PROGRESS_COUNTS)
+const MATCH_STATS = {
+    matchCandidateCounts: [
+        { gender: 'MALE', count: 3 },
+        { gender: 'FEMALE', count: 2 },
+    ],
+    // 같은 성별이 두 행으로 온다.
+    personalMatchMemberCounts: [
+        { gender: 'MALE', count: 1 },
+        { gender: 'FEMALE', count: 1 },
+        { gender: 'MALE', count: 1 },
+    ],
+    groupMatchMemberCounts: [
+        { isGroupActive: true, status: 'ACCEPTED', gender: null, count: 1 },
+        { isGroupActive: true, status: 'DECLINED', gender: 'MALE', count: 1 },
+        { isGroupActive: false, status: 'ACCEPTED', gender: 'FEMALE', count: 1 },
+    ],
+};
+
+describe('matchFunnel', () => {
+    test('유형별 참여·후보·성사를 세고 그룹은 성사된 그룹 수락자만 성사로 친다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, QUIZ_MATCHING_TYPE_LABELS, GENDER_LABELS);
+
+        assert.deepEqual(funnel.countsByType, [
+            { label: '1:1', completedCount: 5, candidateCount: 5, matchedCount: 3 },
+            { label: '그룹', completedCount: 1, candidateCount: 3, matchedCount: 1 },
+        ]);
+    });
+
+    test('합계는 유형별 줄을 더한 값이다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, QUIZ_MATCHING_TYPE_LABELS, GENDER_LABELS);
+
+        assert.equal(funnel.completedCount, 6);
+        assert.equal(funnel.candidateCount, 8);
+        assert.equal(funnel.matchedCount, 4);
+    });
+
+    test('미매칭은 참여에서 성사를 성별마다 빼고 카드는 그 표의 합계다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, QUIZ_MATCHING_TYPE_LABELS, GENDER_LABELS);
+
+        assert.deepEqual(funnel.unmatchedGenderRows, [
+            { label: '1:1', countsInColumnOrder: [1, 1, 0], totalCount: 2 },
+            { label: '그룹', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
+        ]);
+        assert.equal(funnel.unmatchedCount, 2);
+    });
+
+    test('성사가 참여보다 많은 성별 칸은 0으로 자르고 카드도 같은 값을 쓴다', () => {
+        const progressCounts = [{ matchingType: 'ONE_TO_ONE', status: 'COMPLETED', gender: 'MALE', count: 2 }];
+        const matchStats = {
+            matchCandidateCounts: [],
+            personalMatchMemberCounts: [{ gender: 'MALE', count: 1 }, { gender: 'FEMALE', count: 1 }],
+            groupMatchMemberCounts: [],
+        };
+
+        const funnel = StatsCalc.matchFunnel(progressCounts, matchStats, { ONE_TO_ONE: '1:1' }, GENDER_LABELS);
+
+        assert.deepEqual(funnel.unmatchedGenderRows[0].countsInColumnOrder, [1, 0, 0]);
+        assert.equal(funnel.unmatchedCount, 1);
+    });
+
+    test('매칭 유형을 고르면 그 유형 줄만 나온다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, { GROUP: '그룹' }, GENDER_LABELS);
+
+        assert.deepEqual(funnel.countsByType.map((row) => row.label), ['그룹']);
+        assert.equal(funnel.completedCount, 1);
+        assert.equal(funnel.matchedCount, 1);
+    });
+});
+
+describe('isBeforeMatchingBatch', () => {
+    test('그 주 목요일 전이면 참이다', () => {
+        assert.equal(StatsCalc.isBeforeMatchingBatch('2026-10-19', '2026-10-21'), true);
+        assert.equal(StatsCalc.isBeforeMatchingBatch('2026-10-19', '2026-10-22'), false);
+    });
+});
+
+describe('chatActivity', () => {
+    const ROOM_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+    const memberCount = (roomId, roomType, count) => ({ roomId, roomType, count });
+    const CHAT_STATS = {
+        chatRoomMemberCounts: [
+            memberCount(1, 'PERSONAL', 2),
+            memberCount(2, 'PERSONAL', 2),
+            memberCount(3, 'GROUP', 4),
+            memberCount(4, 'GROUP', 3),
+            memberCount(5, 'REMATCH', 2),
+        ],
+        // 메시지가 없는 방(2)은 행이 없다.
+        chatRoomSenderCounts: [
+            { roomId: 1, count: 1 },
+            { roomId: 3, count: 2 },
+            { roomId: 4, count: 3 },
+            { roomId: 5, count: 2 },
+        ],
+    };
+
+    test('열린 방을 분모로 시작·2명 이상·전원 발신 방을 세고 재매칭은 마지막 줄이다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, ROOM_TYPE_LABELS);
+
+        assert.deepEqual(activity.rows, [
+            {
+                label: '1:1', isGroup: false, isRematch: false,
+                openedCount: 2, startedCount: 1, twoWayCount: 0, allSentCount: 0,
+            },
+            {
+                label: '그룹', isGroup: true, isRematch: false,
+                openedCount: 2, startedCount: 2, twoWayCount: 2, allSentCount: 1,
+            },
+            {
+                label: '재매칭',
+                isGroup: false,
+                isRematch: true,
+                openedCount: 1,
+                startedCount: 1,
+                twoWayCount: 1,
+                allSentCount: 1,
+            },
+        ]);
+    });
+
+    test('합계에는 재매칭을 넣지 않는다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, ROOM_TYPE_LABELS);
+
+        assert.equal(activity.openedCount, 4);
+        assert.equal(activity.startedCount, 3);
+    });
+
+    test('1:1 만 고르면 재매칭 줄이 없다', () => {
+        const activity = StatsCalc.chatActivity(CHAT_STATS, { PERSONAL: '1:1' });
+
+        assert.deepEqual(activity.rows.map((row) => row.label), ['1:1']);
+        assert.equal(activity.openedCount, 2);
+    });
+});
+
 describe('questionDistributions', () => {
     const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
         quizSetId,

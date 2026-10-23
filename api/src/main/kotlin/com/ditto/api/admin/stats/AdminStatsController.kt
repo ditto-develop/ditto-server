@@ -18,9 +18,12 @@ class AdminStatsController(
     private val statsRoundFinder: StatsRoundFinder,
     private val memberStatsService: MemberStatsService,
     private val quizStatsService: QuizStatsService,
+    private val matchStatsService: MatchStatsService,
+    private val chatStatsService: ChatStatsService,
     private val memberReviewStatsService: MemberReviewStatsService,
     private val retentionStatsService: RetentionStatsService,
     private val memberReportStatsService: MemberReportStatsService,
+    private val memberBlockStatsService: MemberBlockStatsService,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -34,9 +37,12 @@ class AdminStatsController(
             today = today,
             memberStats = memberStatsService.findStats(filter, week, today),
             quizStats = quizStatsService.findStats(filter, week, today),
+            matchStats = matchStatsService.findStats(filter, week, today),
+            chatStats = chatStatsService.findStats(week),
             memberReviewStats = memberReviewStatsService.findStats(filter, week, today),
             retentionStats = retentionStatsService.findStats(filter, week, today),
             memberReportStats = memberReportStatsService.findStats(filter, week, today),
+            memberBlockCount = memberBlockStatsService.countBlocks(filter, week, today),
             quizMatchingTypeLabels = filter.matchingType.quizMatchingTypeLabels(),
             memberReviewMatchTypeLabels = filter.matchingType.memberReviewMatchTypeLabels(),
         )

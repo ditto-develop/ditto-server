@@ -519,7 +519,8 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     font-size: 13px;
 }
 .qa-bar b { color: var(--text); }
-.qa-bar-links { margin-left: auto; display: flex; gap: 14px; }
+.qa-bar-links { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.qa-bar-links a { white-space: nowrap; }
 .content.qa-console-page { max-width: 1320px; }
 #rooms, #personal, #personal-sent, #group, #report { scroll-margin-top: 80px; }
 .qa-sanction-link { font-size: 12px; }

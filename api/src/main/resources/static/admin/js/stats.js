@@ -156,6 +156,70 @@
         });
     };
 
+    const renderMatchSection = (
+        { weekStartedOn, today, genderLabels, quizMatchingTypeLabels, quizStats, matchStats },
+    ) => {
+        const funnel =
+            StatsCalc.matchFunnel(quizStats.progressCounts, matchStats, quizMatchingTypeLabels, genderLabels);
+        showSectionIfAny('match', funnel.completedCount > 0);
+        byId('matchBeforeBatchNotice').hidden = !StatsCalc.isBeforeMatchingBatch(weekStartedOn, today);
+
+        byId('matchMatchedCount').textContent = countText(funnel.matchedCount, '명');
+        byId('matchMatchedCountBasis').textContent = `후보 ${countText(funnel.candidateCount, '명')}`;
+        fillRateCard('matchRate', {
+            part: funnel.matchedCount, whole: funnel.completedCount, unit: '명', wholeLabel: '참여',
+        });
+        byId('matchUnmatchedCount').textContent = countText(funnel.unmatchedCount, '명');
+        // 매칭 유형을 하나만 고르면 표가 위 카드와 같은 숫자라 숨긴다.
+        byId('matchFunnelCard').hidden = funnel.countsByType.length < 2;
+        fillRows('matchFunnelRows', funnel.countsByType, (row) => [
+            cell(row.label),
+            countCell(row.completedCount),
+            countCell(row.candidateCount),
+            countCell(row.matchedCount),
+            cell(StatsCalc.percentText(row.matchedCount, row.completedCount), 'num'),
+        ]);
+        fillGenderTable({
+            headId: 'matchUnmatchedGenderHead',
+            bodyId: 'matchUnmatchedGenderRows',
+            firstColumnLabel: '매칭 유형',
+            genderLabels,
+            rows: funnel.unmatchedGenderRows,
+        });
+    };
+
+    const rateCell = (part, whole) => cell(StatsCalc.percentText(part, whole), 'num');
+
+    // 두 사람 방은 전원이 곧 양방향이라 그룹만 채운다.
+    const allSentCell = (row) =>
+        (row.isGroup ? rateCell(row.allSentCount, row.openedCount) : cell('-', 'num empty'));
+
+    const chatTypeCells = (row, showsAllSent) => [
+        cell(row.label),
+        countCell(row.openedCount),
+        rateCell(row.startedCount, row.openedCount),
+        rateCell(row.twoWayCount, row.openedCount),
+        ...(showsAllSent ? [allSentCell(row)] : []),
+    ];
+
+    // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.
+    const renderChatSection = ({ memberReviewMatchTypeLabels, chatStats }) => {
+        const activity = StatsCalc.chatActivity(chatStats, memberReviewMatchTypeLabels);
+        showSectionIfAny('chat', activity.rows.some((row) => row.openedCount > 0));
+
+        byId('chatOpenedCount').textContent = countText(activity.openedCount, '개');
+        fillRateCard('chatStartedRate', {
+            part: activity.startedCount, whole: activity.openedCount, unit: '개', wholeLabel: '열린 방',
+        });
+        fillRateCard('chatTwoWayRate', {
+            part: activity.twoWayCount, whole: activity.openedCount, unit: '개', wholeLabel: '열린 방',
+        });
+        const showsAllSent = activity.rows.some((row) => row.isGroup);
+        byId('chatAllSentHead').hidden = !showsAllSent;
+        byId('chatRematchNote').hidden = !activity.rows.some((row) => row.isRematch);
+        fillRows('chatByTypeRows', activity.rows, (row) => chatTypeCells(row, showsAllSent));
+    };
+
     const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
@@ -266,10 +330,18 @@
         fillShares('memberReportStatusShares', counts.statusCounts, statusOptions);
     };
 
+    const renderMemberBlockSection = ({ memberBlockCount }) => {
+        showSectionIfAny('memberBlock', memberBlockCount > 0);
+        byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
+    renderMatchSection(pageData);
+    renderChatSection(pageData);
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
+    renderMemberBlockSection(pageData);
 })();

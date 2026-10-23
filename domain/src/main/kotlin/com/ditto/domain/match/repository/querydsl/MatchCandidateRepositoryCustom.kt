@@ -1,5 +1,8 @@
 package com.ditto.domain.match.repository.querydsl
 
+import com.ditto.domain.member.repository.querydsl.MemberFilter
+import java.time.LocalDate
+
 interface MatchCandidateRepositoryCustom {
 
     /**
@@ -18,4 +21,6 @@ interface MatchCandidateRepositoryCustom {
      * 성사 전 소개노트 열람 권한이 이 판정을 쓴다.
      */
     fun existsPairByQuizSetId(oneMemberId: Long, otherMemberId: Long, quizSetId: Long): Boolean
+
+    fun countCandidateOwnersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchCandidateCount>
 }

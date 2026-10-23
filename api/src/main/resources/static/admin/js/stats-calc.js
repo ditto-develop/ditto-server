@@ -4,6 +4,12 @@ const StatsCalc = (() => {
     const GENDER_UNKNOWN_LABEL = '미입력';
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
+    const REMATCH_LABEL = '재매칭';
+    const INVITATION_ACCEPTED = 'ACCEPTED';
+    const GROUP_ROOM_TYPE = 'GROUP';
+    const REMATCH_ROOM_TYPE = 'REMATCH';
+    // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
+    const MATCHING_BATCH_DAY_OFFSET = 3;
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
     const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
@@ -122,6 +128,101 @@ const StatsCalc = (() => {
         ));
     };
 
+    // 1:1 은 후보·성사 테이블이 따로 있고, 그룹은 초대 테이블 하나에서 성사된 그룹을 수락한 사람을 성사로 본다.
+    const stageCountRowsByType = (matchStats) => ({
+        ONE_TO_ONE: {
+            candidate: matchStats.matchCandidateCounts,
+            matched: matchStats.personalMatchMemberCounts,
+        },
+        GROUP: {
+            candidate: matchStats.groupMatchMemberCounts,
+            matched: matchStats.groupMatchMemberCounts
+                .filter((countRow) => countRow.isGroupActive && countRow.status === INVITATION_ACCEPTED),
+        },
+    });
+
+    const completedCountsOf = (progressCounts, matchingType) =>
+        completedOnly(progressCounts).filter((countRow) => countRow.matchingType === matchingType);
+
+    // 성사 뒤 진행을 초기화하면 참여에서 빠져 음수가 될 수 있어 성별 칸마다 0 에서 자른다.
+    const unmatchedGenderRow = (label, completedCounts, matchedCounts, genderLabels) => {
+        const completedByGender = sumCountsBy(completedCounts, (countRow) => countRow.gender);
+        const matchedByGender = sumCountsBy(matchedCounts, (countRow) => countRow.gender);
+        const unmatchedCounts = [...Object.keys(genderLabels), null].map((gender) => ({
+            gender,
+            count: Math.max(0, (completedByGender.get(gender) || 0) - (matchedByGender.get(gender) || 0)),
+        }));
+        return genderRow(label, unmatchedCounts, genderLabels);
+    };
+
+    const sumField = (rows, key) => rows.reduce((sum, row) => sum + row[key], 0);
+
+    // 미매칭 카드는 성별 표 합계와 같은 값이다.
+    const matchFunnel = (progressCounts, matchStats, quizMatchingTypeLabels, genderLabels) => {
+        const countRowsByType = stageCountRowsByType(matchStats);
+        const typeEntries = Object.entries(quizMatchingTypeLabels);
+        const countsByType = typeEntries.map(([matchingType, label]) => ({
+            label,
+            completedCount: sumCounts(completedCountsOf(progressCounts, matchingType)),
+            candidateCount: sumCounts(countRowsByType[matchingType].candidate),
+            matchedCount: sumCounts(countRowsByType[matchingType].matched),
+        }));
+        const unmatchedGenderRows = typeEntries.map(([matchingType, label]) => unmatchedGenderRow(
+            label,
+            completedCountsOf(progressCounts, matchingType),
+            countRowsByType[matchingType].matched,
+            genderLabels,
+        ));
+        return {
+            completedCount: sumField(countsByType, 'completedCount'),
+            candidateCount: sumField(countsByType, 'candidateCount'),
+            matchedCount: sumField(countsByType, 'matchedCount'),
+            unmatchedCount: sumField(unmatchedGenderRows, 'totalCount'),
+            countsByType,
+            unmatchedGenderRows,
+        };
+    };
+
+    const isBeforeMatchingBatch = (weekStartedOn, today) => today < addDays(weekStartedOn, MATCHING_BATCH_DAY_OFFSET);
+
+    // 분모는 모두 열린 방이다. 전원은 나간 사람까지 참여자로 친다.
+    const roomActivityCounts = (rooms) => ({
+        openedCount: rooms.length,
+        startedCount: rooms.filter((room) => room.senderCount >= 1).length,
+        twoWayCount: rooms.filter((room) => room.senderCount >= 2).length,
+        allSentCount: rooms.filter((room) => room.senderCount >= room.memberCount).length,
+    });
+
+    // 재매칭은 그룹에서 이어져서 그룹이 보일 때만 마지막 줄로 둔다. 합계에는 넣지 않는다.
+    const chatActivity = (chatStats, roomTypeLabels) => {
+        const senderCountsByRoom = new Map(chatStats.chatRoomSenderCounts.map((row) => [row.roomId, row.count]));
+        const rooms = chatStats.chatRoomMemberCounts.map((row) => ({
+            roomType: row.roomType,
+            memberCount: row.count,
+            senderCount: senderCountsByRoom.get(row.roomId) || 0,
+        }));
+        const roomsOf = (roomType) => rooms.filter((room) => room.roomType === roomType);
+        const shownRoomTypes = Object.keys(roomTypeLabels);
+        const typeRows = Object.entries(roomTypeLabels).map(([roomType, label]) => ({
+            label,
+            isGroup: roomType === GROUP_ROOM_TYPE,
+            isRematch: false,
+            ...roomActivityCounts(roomsOf(roomType)),
+        }));
+        const rematchRows = shownRoomTypes.includes(GROUP_ROOM_TYPE)
+            ? [{
+                label: REMATCH_LABEL,
+                isGroup: false,
+                isRematch: true,
+                ...roomActivityCounts(roomsOf(REMATCH_ROOM_TYPE)),
+            }]
+            : [];
+        return {
+            ...roomActivityCounts(rooms.filter((room) => shownRoomTypes.includes(room.roomType))),
+            rows: [...typeRows, ...rematchRows],
+        };
+    };
+
     // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
     const questionDistributions = (choiceAnswerCounts) =>
         [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
@@ -208,6 +309,9 @@ const StatsCalc = (() => {
         ageGenderRows,
         quizParticipation,
         participantGenderRows,
+        matchFunnel,
+        isBeforeMatchingBatch,
+        chatActivity,
         questionDistributions,
         memberReviewSubmission,
         memberReviewSubmissionByType,

@@ -3,7 +3,11 @@ package com.ditto.domain.match.repository.querydsl
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
+import com.ditto.domain.member.entity.QMember.member
+import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.nonAdminMatching
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
+import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -76,4 +80,35 @@ class PersonalMatchRepositoryImpl(
                 quizSet.weekStartedOn.eq(weekStartedOn),
             )
             .fetchFirst() != null
+
+    // 한 행에 회원이 둘이라 두 쪽을 따로 센다. 성별로 더하는 건 화면이 한다.
+    override fun countAcceptedMembersInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchMemberCount> =
+        countAcceptedMembersJoinedOn(member.id.eq(personalMatch.memberId1), weekStartedOn, filter) +
+            countAcceptedMembersJoinedOn(member.id.eq(personalMatch.memberId2), weekStartedOn, filter)
+
+    private fun countAcceptedMembersJoinedOn(
+        memberJoinCondition: BooleanExpression,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchMemberCount> {
+        val countExpression = personalMatch.count()
+        return queryFactory
+            .select(member.gender, countExpression)
+            .from(personalMatch)
+            .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(memberJoinCondition)
+            .where(
+                personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(member.gender)
+            .fetch()
+            .map { row ->
+                PersonalMatchMemberCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L)
+            }
+    }
 }

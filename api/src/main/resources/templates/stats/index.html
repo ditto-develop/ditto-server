@@ -66,7 +66,7 @@
                 <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
             </div>
 
-            <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·평가·리텐션은 비어 있습니다.</p>
+            <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·매칭·채팅·평가·리텐션은 비어 있습니다.</p>
 
             <div class="qa-bar">
                 <span>회차 <b th:text="${roundLabel}">2회차 · 10/19 주</b></span>
@@ -78,9 +78,12 @@
                     <a href="#members">회원</a>
                     <a href="#quiz-participation">퀴즈</a>
                     <a href="#questions">문항</a>
+                    <a href="#matches">매칭</a>
+                    <a href="#chats">채팅</a>
                     <a href="#member-reviews">평가</a>
                     <a href="#retention">리텐션</a>
                     <a href="#member-reports">신고</a>
+                    <a href="#member-blocks">차단</a>
                 </span>
             </div>
 
@@ -197,6 +200,89 @@
                 </div>
             </section>
 
+            <section class="stats-section" id="matches">
+                <h2 class="stats-section-title">매칭</h2>
+                <p class="stats-section-desc">매칭은 성사 기준입니다. 1:1 은 신청이 수락된 두 사람, 그룹은 3명 이상 모인 그룹을 수락한 사람입니다. 후보는 목요일 00:01 매칭에서 상대를 받은 회원이고, 미매칭은 퀴즈에 참여했지만 성사되지 않은 회원입니다.</p>
+                <p class="alert info" id="matchEmptyNotice" hidden
+                   th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (hasConditions ? '조건에 맞는 퀴즈 참여가 없습니다.' : '이 회차에 퀴즈를 끝까지 푼 회원이 없습니다.')}">이 회차에 퀴즈를 끝까지 푼 회원이 없습니다.</p>
+                <div id="matchSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준</p>
+                    <p class="alert info" id="matchBeforeBatchNotice" hidden>아직 이 회차 매칭(목요일 00:01) 전이라 후보·성사가 0 입니다.</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">성사</span>
+                            <span class="value" id="matchMatchedCount">-</span>
+                            <span class="basis" id="matchMatchedCountBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">매칭률</span>
+                            <span class="value" id="matchRate">-</span>
+                            <span class="basis" id="matchRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">미매칭</span>
+                            <span class="value" id="matchUnmatchedCount">-</span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card" id="matchFunnelCard">
+                            <h3>매칭 유형별 참여 → 후보 → 성사</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 유형</th><th class="num">참여(명)</th><th class="num">후보(명)</th><th class="num">성사(명)</th><th class="num">매칭률</th></tr></thead>
+                                    <tbody id="matchFunnelRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>미매칭 성별 구성</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="matchUnmatchedGenderHead"></thead>
+                                    <tbody id="matchUnmatchedGenderRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section" id="chats">
+                <h2 class="stats-section-title">채팅</h2>
+                <p class="stats-section-desc">방 단위라 성별·연령대·가입 주차 조건은 걸지 않고 관리자가 든 방도 셉니다. 시스템 메시지는 세지 않고, 양방향은 2명 이상, 전원은 나간 사람까지 모두 말한 방입니다. 재매칭 방은 원래 그룹 회차에 따로 한 줄로 세며, 뒤늦게 성사되면 지난 회차 숫자가 늘 수 있습니다.</p>
+                <p class="alert info" id="chatEmptyNotice" hidden
+                   th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (filter.hasMatchingTypeCondition() ? '조건에 맞는 채팅방이 없습니다.' : '이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.')}">이 회차에 열린 채팅방이 없습니다. 채팅방은 금요일 00:00 에 열립니다.</p>
+                <div id="chatSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준<span th:if="${filter.hasMemberConditions()}"> · 회원 조건 미적용</span></p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">열린 방</span>
+                            <span class="value" id="chatOpenedCount">-</span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">대화 시작률</span>
+                            <span class="value" id="chatStartedRate">-</span>
+                            <span class="basis" id="chatStartedRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">양방향 대화율</span>
+                            <span class="value" id="chatTwoWayRate">-</span>
+                            <span class="basis" id="chatTwoWayRateBasis"></span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>방 유형별</h3>
+                        <div class="tbl-scroll">
+                            <table class="tbl">
+                                <thead><tr><th>유형</th><th class="num">열린 방(개)</th><th class="num">시작률</th><th class="num">양방향률</th><th class="num" id="chatAllSentHead">전원률</th></tr></thead>
+                                <tbody id="chatByTypeRows"></tbody>
+                            </table>
+                        </div>
+                        <p class="muted" id="chatRematchNote" hidden>재매칭은 위 열린 방·비율 합계에 넣지 않습니다.</p>
+                    </div>
+                </div>
+            </section>
+
             <section class="stats-section" id="member-reviews">
                 <h2 class="stats-section-title">평가</h2>
                 <p class="stats-section-desc">채팅이 끝나면 참여자마다 평가지가 하나씩 열립니다. 재매칭 채팅은 평가가 없습니다. 회원 조건은 평가를 쓴 사람 기준입니다.</p>
@@ -305,6 +391,22 @@
                         <div class="card">
                             <h3>처리 상태</h3>
                             <div id="memberReportStatusShares"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section" id="member-blocks">
+                <h2 class="stats-section-title">차단</h2>
+                <p class="stats-section-desc">회원 조건은 차단된 사람 기준이고, 매칭 유형은 차단된 사람이 그 회차에 푼 퀴즈셋 유형으로 봅니다. 신고하며 함께 건 차단도 셉니다. 차단 시각은 시각 조정과 상관없이 실제 시각입니다.</p>
+                <p class="alert info" id="memberBlockEmptyNotice" hidden
+                   th:text="${hasConditions ? '조건에 맞는 차단이 없습니다.' : '이 주에 생긴 차단이 없습니다.'}">이 주에 생긴 차단이 없습니다.</p>
+                <div id="memberBlockSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 월~일에 생긴 차단 · 푼 차단은 기록이 지워져 빠집니다</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">차단 수</span>
+                            <span class="value" id="memberBlockCount">-</span>
                         </div>
                     </div>
                 </div>

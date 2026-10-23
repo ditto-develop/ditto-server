@@ -2,6 +2,7 @@ package com.ditto.domain.match.repository.querydsl
 
 import com.ditto.domain.match.entity.PersonalMatch
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.member.repository.querydsl.MemberFilter
 import java.time.LocalDate
 
 interface PersonalMatchRepositoryCustom {
@@ -30,4 +31,6 @@ interface PersonalMatchRepositoryCustom {
     ): List<PersonalMatch>
 
     fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
+
+    fun countAcceptedMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
 }

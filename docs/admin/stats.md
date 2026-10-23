@@ -4,14 +4,14 @@
 
 ## 공통
 
-- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다.
+- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다.
 - **기준일**: `ServerTimeProvider.now()`의 날짜. QA 시각 조정을 따른다. 화면 "오늘(…) 기준" 줄에 보인다.
 - **회차**: 그 주 월요일 00:00 ~ 다음 월요일 00:00. 번호는 활성 퀴즈셋이 있는 주를 오래된 순으로 센 값이라, 퀴즈셋을 지우거나 비활성으로 돌리거나 과거 주에 만들면 번호가 밀린다. 같은 주에 QA 용 비활성 셋이 있어도 매칭처럼 활성 셋만 본다.
 - **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
 - **가입 주차**: 고른 날이 속한 주(월~일)에 `joined_at`이 있는 회원.
 - **더미**: dev 의 더미 회원(닉네임 `dummy-`)도 일반 회원처럼 센다. 운영은 QA 도구가 꺼져 있어 더미가 없다. 더미는 만들 때 고른 나이가 그날(실제 날짜) 만 나이가 되는 생년월일을 무작위로 받는다. 시각 조정을 몇 주 앞으로 걸면 기준일이 달라 연령대가 고른 나이와 한 칸 어긋날 수 있다.
 - **탈퇴·삭제**: 그때의 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 탈퇴 30일 뒤 완전 삭제된 회원은 행이 없어 빠진다(지금은 삭제가 dry-run).
-- **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·평가·리텐션)은 "회차가 아닌 주"로 비운다.
+- **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·매칭·채팅·평가·리텐션)은 "회차가 아닌 주"로 비운다.
 
 ## 회원 현황
 
@@ -47,6 +47,37 @@
 - 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
 - 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
 
+## 매칭
+
+| 블록 | 세는 것 |
+|---|---|
+| 완주 | 퀴즈 참여 장의 회차 참여자와 같다 |
+| 후보 | 1:1 은 `match_candidate`에 후보가 생긴 회원(`owner_member_id`). 그룹은 후보 그룹(`group_match_member`)에 들어간 회원이고 거절·미성사도 센다 |
+| 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
+| 매칭률 | 성사 ÷ 완주 |
+| 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
+
+- 기획서의 매칭은 "짝을 정해 준다"지만 디토는 후보를 보여 주고 신청·수락으로 성사된다. 그래서 매칭 = 성사로 세고 후보는 참고로 보여 준다(#329). 1:1 후보는 자격 상대만 있으면 누구나 받아서(ADR 0040) 거의 100%다.
+- 배치는 목요일 00:01 에 돈다. 그 전에는 후보·성사가 0 이다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다.
+- 서버는 테이블마다 센 값만 내리고 후보·성사로 나누는 건 `stats-calc.js`가 한다. 1:1 성사는 한 행에 회원이 둘이라 `member_id_1` 쪽과 `member_id_2` 쪽을 따로 세서 내린다.
+- 매칭 유형 조건은 화면이 그 유형 줄만 그려서 건다. 회원 조건은 세는 회원에게 건다.
+- 성사 뒤 진행을 초기화하면 완주에서 빠져 성사가 완주보다 클 수 있다. 미매칭은 0 에서 자른다.
+
+## 채팅
+
+| 블록 | 세는 것 |
+|---|---|
+| 열린 방 | 그 회차의 방 중 `SCHEDULED`가 아닌 방(열린 방·끝난 방) |
+| 대화 시작률 | 대화 메시지(`TEXT`·`IMAGE`, `SYSTEM` 제외)가 하나라도 있는 방 ÷ 열린 방 |
+| 양방향 대화율 | 2명 이상이 대화 메시지를 보낸 방 ÷ 열린 방 |
+| 전원 (그룹만) | 참여자(`chat_room_member`, 나간 사람 포함) 전원이 대화 메시지를 보낸 방 ÷ 열린 방. 두 사람 방은 양방향과 같아 비운다 |
+
+- 회차: 원본 매칭(1:1 `personal_match`, 그룹 `group_match`, 재매칭 `rematch`)의 퀴즈셋이 그 주 활성 셋인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열리지만 원래 그룹의 퀴즈셋으로 센다. 그래서 매칭 장과 같은 회차에 잡히고 비활성 셋의 방은 빠진다.
+- 관리자가 든 방도 센다. 방을 빼면 상대 회원의 대화까지 빠지고, 관리자만 빼면 1:1 방이 한 사람 방이 되기 때문이다(#329). 운영에서 팀원 계정이 관리자로 매칭에 참여하고 있어 다른 장과 숫자가 어긋날 수 있다.
+- 재매칭은 따로 한 줄이고 1:1·그룹 합계에 넣지 않는다. 서로 원한 두 사람이라 수치가 높게 나온다. 매칭 유형 "전체"·"그룹"에서 보인다. 재매칭은 평가 제출로 뒤늦게 성사되어 지난 회차 숫자가 나중에 늘 수 있다.
+- 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
+- 다른 장과 달리 서버가 방마다 한 행(참여자 수·보낸 사람 수)을 내린다. 방별 두 수를 묶은 분포는 쿼리가 복잡해져서, 비율은 `stats-calc.js`가 방 행으로 계산한다. 방 수는 회차당 많아야 수백이다.
+
 ## 평가
 
 | 블록 | 세는 것 |
@@ -74,6 +105,13 @@
 - 회원 조건은 피신고자에게 건다. 관리자가 피신고자인 신고는 뺀다.
 - 신고에는 어느 매칭에서 나왔는지가 없다. 매칭 유형을 고르면 피신고자가 그 회차에 그 유형 퀴즈셋을 완주한 신고만 센다. 한 주에 한 유형만 풀 수 있어 근사가 크게 어긋나지 않지만, 프로필 화면에서 들어온 신고처럼 매칭과 상관없는 신고도 섞인다. "전체"는 퀴즈에 참여하지 않은 피신고자의 신고도 센다.
 - 사유는 여러 개 고를 수 있어 사유별 수를 더하면 신고 건수보다 클 수 있다.
+
+## 차단
+
+- 고른 회차 주(월~일)에 생긴(`member_block.created_at`) 차단 수. 차단 시각은 실제 시각이다.
+- 차단을 풀면 행이 지워진다(`MemberBlockService.unblock`). 그래서 지금 유지 중인 차단만 센다. 해제를 소프트 삭제로 바꾸지 않기로 했다(#329). 해제가 잦아지면 다시 본다.
+- 신고하면서 함께 건 차단(`UserReportService`)도 같은 테이블이라 센다.
+- 회원 조건과 매칭 유형은 신고와 같이 차단된 사람에게 건다. 관리자가 차단된 건은 뺀다.
 
 ## 손으로 대조하기
 
@@ -118,6 +156,45 @@ JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED';
 
+-- 1:1 후보
+SELECT m.gender, COUNT(DISTINCT c.owner_member_id) FROM match_candidate c
+JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY m.gender;
+
+-- 1:1 성사 (두 사람을 각각)
+SELECT m.gender, COUNT(*) FROM personal_match pm
+JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
+JOIN member m ON m.id IN (pm.member_id_1, pm.member_id_2) AND m.role = 'USER'
+WHERE qs.week_started_on = :monday AND pm.status = 'ACCEPTED'
+GROUP BY m.gender;
+
+-- 그룹 후보 = 전부, 성사 = is_active 이고 ACCEPTED
+SELECT gm.is_active, gmm.status, m.gender, COUNT(*) FROM group_match_member gmm
+JOIN group_match gm ON gm.id = gmm.room_id
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY gm.is_active, gmm.status, m.gender;
+
+-- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋)
+SELECT source_type, COUNT(*) AS opened,
+    SUM(senders >= 1) AS started, SUM(senders >= 2) AS two_way, SUM(senders >= members) AS all_sent
+FROM (
+    SELECT r.source_type,
+        (SELECT COUNT(*) FROM chat_room_member crm WHERE crm.room_id = r.id) AS members,
+        (SELECT COUNT(DISTINCT msg.sender_id) FROM chat_message msg
+         WHERE msg.room_id = r.id AND msg.message_type <> 'SYSTEM') AS senders
+    FROM chat_room r
+    LEFT JOIN personal_match pm ON r.source_type = 'PERSONAL' AND pm.id = r.source_id
+    LEFT JOIN group_match gm ON r.source_type = 'GROUP' AND gm.id = r.source_id
+    LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
+    JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id, rm.quiz_set_id) AND qs.is_active
+    WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
+) rooms
+GROUP BY source_type;
+
 -- 평가지 상태 (쓴 사람 기준)
 SELECT r.match_type, r.status, COUNT(*) FROM member_review r
 JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
@@ -157,6 +234,11 @@ FROM member_report r
 JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
 WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY;
 
+-- 차단 수 (차단된 사람 기준)
+SELECT COUNT(*) FROM member_block b
+JOIN member m ON m.id = b.blocked_member_id AND m.role = 'USER'
+WHERE b.created_at >= :monday AND b.created_at < :monday + INTERVAL 7 DAY;
+
 -- 회차 일별 신규 (:monday 는 고른 회차의 월요일)
 SELECT DATE(joined_at), COUNT(*) FROM member
 WHERE role = 'USER' AND joined_at >= :monday AND joined_at < :monday + INTERVAL 7 DAY
@@ -165,16 +247,21 @@ GROUP BY DATE(joined_at);
 
 ## dev 에서 재현하기
 
+테스트 계정은 `USER` 계정을 쓴다. 어드민 로그인 계정(`ADMIN`)으로 앱을 쓰면 채팅을 뺀 모든 장에서 빠진다.
+
 | 장 | 쓸 도구 | 주의 |
 |---|---|---|
 | 회원 현황 | 더미 생성 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다) |
 | 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨) |
 | 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다 |
+| 매칭 | 시각 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 생성 → "퀴즈 마감 직후"로 옮겨 매칭 실행(더미를 나중에 더했으면 퀴즈셋별 재생성) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 재생성할 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다 |
+| 채팅 | 매칭 성사 → QA 콘솔 시각 조정 "채팅방 열린 직후" → 앱이나 QA 콘솔로 메시지 보내기 | 열리기 전(`SCHEDULED`) 방은 세지 않는다. 회차는 원본 매칭의 퀴즈셋이라 매칭 장과 같은 회차에 잡힌다. 재매칭 방은 성사 뒤 다음 금요일에 열린다. 재매칭 방 화면의 [옮기기]나 "채팅방 열린 직후"로 연 뒤 원래 그룹 회차를 연다 |
 | 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
 | 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333) |
+| 차단 | QA 콘솔 신고에서 "더미가 이 회원도 사용자 차단"을 체크해 신고, 또는 앱에서 테스트 계정으로 차단 | 콘솔로 하면 신고 장도 같이 는다. 같은 상대에게 검토 대기 신고가 있으면 다시 신고할 수 없어 다른 더미로 한다. 이미 차단한 쌍이면 차단 수는 그대로다. 차단 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다. 매칭 유형 조건까지 보려면 실제 날짜 주의 활성 셋으로 더미를 만든다 |
 | 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
 
-더미 정리를 하면 더미의 진행·답·평가·신고와 함께 더미가 낀 방의 테스트 계정 평가, 테스트 계정이 더미를 신고한 건도 지워져 지난 회차 숫자가 바뀐다.
+더미 정리를 하면 더미의 진행·답·평가·신고와 함께 더미가 낀 방의 테스트 계정 평가, 테스트 계정이 더미를 신고한 건도 지워져 지난 회차 숫자가 바뀐다. 매칭·채팅·차단도 줄어든다. 더미가 낀 후보·1:1 매칭, 더미가 초대된 그룹(테스트 계정 초대까지), 그 매칭에서 나온 방, 더미가 하거나 받은 차단이 지워진다.
 
 ## 알아 둘 것
 
