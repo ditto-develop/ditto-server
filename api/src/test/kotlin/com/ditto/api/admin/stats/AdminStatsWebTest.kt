@@ -354,7 +354,8 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
                                 """"completedAgainCounts":[],"matchedPreviousCompletionCounts":[],""" +
-                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],"completionsWithJoinedAt":[]}""",
+                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],""" +
+                                """"completionsWithJoinedAt":[]}""",
                         ),
                     ),
                 )
