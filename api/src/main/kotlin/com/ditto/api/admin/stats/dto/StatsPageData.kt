@@ -19,6 +19,7 @@ data class StatsPageData(
     val memberReviewStats: MemberReviewStatsData,
     val retentionStats: RetentionStatsData,
     val memberReportStats: MemberReportStatsData,
+    val memberBlockCount: Long,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,
     val memberReviewMatchTypeLabels: Map<String, String>,

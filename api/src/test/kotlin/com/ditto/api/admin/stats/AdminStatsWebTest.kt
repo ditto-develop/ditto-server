@@ -18,7 +18,9 @@ import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberBlock
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.MemberReportFixture
 import com.ditto.domain.memberreport.entity.MemberReportReason
@@ -73,6 +75,7 @@ class AdminStatsWebTest(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
+    private val memberBlockRepository: MemberBlockRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -258,6 +261,17 @@ class AdminStatsWebTest(
                         ),
                     ),
                 )
+        }
+
+        "이번 회차에 생긴 차단을 페이지 JSON 에 넣는다" {
+            val (blocker, blocked) = listOf("blocker", "blocked").map { nickname ->
+                memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics"))
+            }
+            memberBlockRepository.save(MemberBlock.create(blockerId = blocker.id, blockedMemberId = blocked.id))
+
+            mockMvc.perform(get("/admin/stats").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(content().string(pageJsonContaining(""""memberBlockCount":1""")))
         }
 
         "비활성 퀴즈셋만 있는 주는 회차 번호가 없고 회차가 아니라고 알린다" {

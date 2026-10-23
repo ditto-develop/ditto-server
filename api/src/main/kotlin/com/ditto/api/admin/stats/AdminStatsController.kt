@@ -23,6 +23,7 @@ class AdminStatsController(
     private val memberReviewStatsService: MemberReviewStatsService,
     private val retentionStatsService: RetentionStatsService,
     private val memberReportStatsService: MemberReportStatsService,
+    private val memberBlockStatsService: MemberBlockStatsService,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -41,6 +42,7 @@ class AdminStatsController(
             memberReviewStats = memberReviewStatsService.findStats(filter, week, today),
             retentionStats = retentionStatsService.findStats(filter, week, today),
             memberReportStats = memberReportStatsService.findStats(filter, week, today),
+            memberBlockCount = memberBlockStatsService.countBlocks(filter, week, today),
             quizMatchingTypeLabels = filter.matchingType.quizMatchingTypeLabels(),
             memberReviewMatchTypeLabels = filter.matchingType.memberReviewMatchTypeLabels(),
         )

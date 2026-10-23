@@ -322,6 +322,11 @@
         fillShares('memberReportStatusShares', counts.statusCounts, statusOptions);
     };
 
+    const renderMemberBlockSection = ({ memberBlockCount }) => {
+        showSectionIfAny('memberBlock', memberBlockCount > 0);
+        byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
@@ -330,4 +335,5 @@
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
+    renderMemberBlockSection(pageData);
 })();

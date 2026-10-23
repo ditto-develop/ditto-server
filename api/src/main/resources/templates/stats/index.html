@@ -83,6 +83,7 @@
                     <a href="#member-reviews">평가</a>
                     <a href="#retention">리텐션</a>
                     <a href="#member-reports">신고</a>
+                    <a href="#member-blocks">차단</a>
                 </span>
             </div>
 
@@ -388,6 +389,22 @@
                         <div class="card">
                             <h3>처리 상태</h3>
                             <div id="memberReportStatusShares"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section" id="member-blocks">
+                <h2 class="stats-section-title">차단</h2>
+                <p class="stats-section-desc">차단을 풀면 기록이 지워져서 지금도 유지 중인 차단만 셉니다. 회원 조건은 차단된 사람 기준이고, 매칭 유형은 차단된 사람이 그 회차에 푼 퀴즈셋 유형으로 봅니다. 신고하면서 함께 건 차단도 셉니다. 차단 시각은 시각 조정과 상관없이 실제 시각입니다.</p>
+                <p class="alert info" id="memberBlockEmptyNotice" hidden
+                   th:text="${hasConditions ? '조건에 맞는 차단이 없습니다.' : '이 주에 생긴 차단이 없습니다.'}">이 주에 생긴 차단이 없습니다.</p>
+                <div id="memberBlockSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 월~일에 생긴 차단 · 해제된 차단은 빠짐</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">차단 수</span>
+                            <span class="value" id="memberBlockCount">-</span>
                         </div>
                     </div>
                 </div>
