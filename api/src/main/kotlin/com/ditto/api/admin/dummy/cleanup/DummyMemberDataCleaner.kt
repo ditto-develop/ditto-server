@@ -7,6 +7,7 @@ import com.ditto.domain.member.repository.NicknameReservationRepository
 import com.ditto.domain.memberreport.repository.MemberReportImageRepository
 import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.notification.repository.MemberDeviceRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.sanction.entity.Sanction
 import com.ditto.domain.sanction.repository.SanctionRepository
@@ -22,6 +23,7 @@ class DummyMemberDataCleaner(
     private val memberNotificationSettingRepository: MemberNotificationSettingRepository,
     private val nicknameReservationRepository: NicknameReservationRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val introNoteRepository: IntroNoteRepository,
 ) {
@@ -40,7 +42,7 @@ class DummyMemberDataCleaner(
         sanctionRepository.deleteAllByIdInBatch(sanctionIds)
     }
 
-    /** 차단·알림 설정·닉네임 예약·기기·리프레시 토큰·소개노트. */
+    /** 차단·알림 설정·닉네임 예약·기기·푸시 발송 이력·리프레시 토큰·소개노트. */
     fun deleteAccountDataOf(dummyIds: Collection<Long>) {
         val blockIds = memberBlockRepository.findByBlockerIdInOrBlockedMemberIdIn(dummyIds, dummyIds).map { it.id }
         memberBlockRepository.deleteAllByIdInBatch(blockIds)
@@ -50,6 +52,8 @@ class DummyMemberDataCleaner(
         nicknameReservationRepository.deleteAllByIdInBatch(reservationIds)
         val deviceIds = memberDeviceRepository.findByMemberIdIn(dummyIds).map { it.id }
         memberDeviceRepository.deleteAllByIdInBatch(deviceIds)
+        val pushSendHistoryIds = pushSendHistoryRepository.findByMemberIdIn(dummyIds).map { it.id }
+        pushSendHistoryRepository.deleteAllByIdInBatch(pushSendHistoryIds)
         val refreshTokenIds = refreshTokenRepository.findByMemberIdIn(dummyIds).map { it.id }
         refreshTokenRepository.deleteAllByIdInBatch(refreshTokenIds)
         val introNoteIds = introNoteRepository.findByMemberIdIn(dummyIds).map { it.id }

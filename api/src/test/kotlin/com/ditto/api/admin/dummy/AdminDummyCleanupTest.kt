@@ -31,8 +31,11 @@ import com.ditto.domain.memberreport.repository.MemberReportRepository
 import com.ditto.domain.notification.MemberDeviceFixture
 import com.ditto.domain.notification.NotificationFixture
 import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.MemberReviewFixture
@@ -71,6 +74,7 @@ class AdminDummyCleanupTest(
     private val memberBlockRepository: MemberBlockRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -201,13 +205,16 @@ class AdminDummyCleanupTest(
     }
 
     "더미를 상대로 한 행동과 더미 본인 데이터" - {
-        "신고·제재·차단과 더미의 기기·알림을 지운다" {
+        "신고·제재·차단과 더미의 기기·알림·발송 이력을 지운다" {
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
             val report = memberReportRepository.save(MemberReportFixture.create(tester.id, reportedMemberId = dummy.id))
             val sanction = sanctionRepository.save(SanctionFixture.create(dummy.id, memberReportId = report.id))
             memberBlockRepository.save(MemberBlock.create(blockerId = tester.id, blockedMemberId = dummy.id))
             memberDeviceRepository.save(MemberDeviceFixture.create(memberId = dummy.id))
+            pushSendHistoryRepository.save(
+                PushSendHistory.skipped(NotificationFixture.create(memberId = dummy.id), PushSkipReason.NO_DEVICE),
+            )
             notify(tester, NotificationType.REPORT_ACTIONED, report.id)
             notify(dummy, NotificationType.SANCTION_IMPOSED, sanction.id)
 
@@ -217,6 +224,7 @@ class AdminDummyCleanupTest(
             sanctionRepository.count() shouldBe 0
             memberBlockRepository.count() shouldBe 0
             memberDeviceRepository.count() shouldBe 0
+            pushSendHistoryRepository.count() shouldBe 0
             notificationRepository.count() shouldBe 0
             memberRepository.findAll().map { it.id } shouldBe listOf(tester.id)
         }
