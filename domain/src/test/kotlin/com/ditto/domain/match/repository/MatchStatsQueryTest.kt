@@ -111,6 +111,36 @@ class MatchStatsQueryTest(
         }
     }
 
+    "countCandidatesPerOwnerInWeek" - {
+        "그 주 활성 퀴즈셋에서 후보를 받은 회원마다 받은 후보 수를 낸다" {
+            val quizSet = saveQuizSet()
+            val popular = saveMember(Gender.FEMALE)
+            val men = (1..3).map { saveMember(Gender.MALE) }
+            men.forEach { man -> saveCandidatePair(quizSet, popular, man) }
+            saveCandidatePair(saveQuizSet(isActive = false), popular, saveMember())
+            saveCandidatePair(saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)), popular, saveMember())
+
+            val counts = matchCandidateRepository.countCandidatesPerOwnerInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(3L, 1L, 1L, 1L)
+        }
+
+        "관리자는 빼고 회원 조건을 받은 회원에게 건다" {
+            val quizSet = saveQuizSet()
+            val woman = saveMember(Gender.FEMALE)
+            val admin = saveMember(Gender.FEMALE, MemberRole.ADMIN)
+            saveCandidatePair(quizSet, woman, saveMember(Gender.MALE))
+            saveCandidatePair(quizSet, admin, saveMember(Gender.MALE))
+
+            val counts = matchCandidateRepository.countCandidatesPerOwnerInWeek(
+                WEEK,
+                MemberFilter(gender = Gender.FEMALE),
+            )
+
+            counts shouldContainExactlyInAnyOrder listOf(1L)
+        }
+    }
+
     "countAcceptedMembersInWeek" - {
         "성사된 매칭의 두 사람을 각각 성별로 센다" {
             val quizSet = saveQuizSet()

@@ -180,6 +180,7 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"matchStats":{"matchCandidateCounts":[{"gender":null,"count":1}],""" +
+                                """"candidateCountsPerOwner":[1],""" +
                                 """"personalMatchMemberCounts":""" +
                                 """[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +

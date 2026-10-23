@@ -525,6 +525,20 @@ const StatsCalc = (() => {
         };
     };
 
+    // 회원마다 상위 5명을 고르고 한쪽만 골라도 남겨서(ADR 0040) 5명을 넘게 받은 회원은 여러 사람이 고른 회원이다.
+    const BASE_CANDIDATE_COUNT = 5;
+    const CANDIDATE_COUNT_BINS = [
+        { label: '1~5명', max: BASE_CANDIDATE_COUNT },
+        { label: '6~10명', max: 10 },
+        { label: '11명 이상', max: Infinity },
+    ];
+
+    const candidateExposure = (candidateCountsPerOwner) => ({
+        memberCount: candidateCountsPerOwner.length,
+        overBaseMemberCount: candidateCountsPerOwner.filter((count) => count > BASE_CANDIDATE_COUNT).length,
+        bins: binCounts(candidateCountsPerOwner, CANDIDATE_COUNT_BINS),
+    });
+
     // 후보를 다시 만들면 성사 쌍의 후보 행이 지워져 점수가 null 로 온다.
     const matchScores = ({ pairScores, acceptedPairScores, groupScores }) => ({
         pair: scoreSummary(pairScores),
@@ -722,6 +736,7 @@ const StatsCalc = (() => {
         cohortRetention,
         chatMessageStats,
         scoreSummary,
+        candidateExposure,
         matchScores,
         activeGroupSizeRows,
         memberReportCounts,

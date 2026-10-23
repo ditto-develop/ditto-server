@@ -25,6 +25,8 @@ class MatchStatsService(
         val memberFilter = filter.toMemberFilter(today)
         return MatchStatsData(
             matchCandidateCounts = matchCandidateRepository.countCandidateOwnersInWeek(week.startedOn, memberFilter),
+            candidateCountsPerOwner =
+                matchCandidateRepository.countCandidatesPerOwnerInWeek(week.startedOn, memberFilter),
             personalMatchMemberCounts =
                 personalMatchRepository.countAcceptedMembersInWeek(week.startedOn, memberFilter),
             groupMatchMemberCounts =

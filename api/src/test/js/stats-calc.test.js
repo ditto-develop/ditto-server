@@ -932,3 +932,20 @@ describe('givenRatingRetention', () => {
         ]);
     });
 });
+
+describe('candidateExposure', () => {
+    test('받은 후보 수를 구간으로 묶고 5명을 넘게 받은 회원을 센다', () => {
+        const exposure = StatsCalc.candidateExposure([1, 5, 6, 10, 11, 20]);
+
+        assert.deepEqual(exposure, {
+            memberCount: 6,
+            overBaseMemberCount: 4,
+            bins: [
+                { label: '1~5명', count: 2 },
+                { label: '6~10명', count: 2 },
+                { label: '11명 이상', count: 2 },
+            ],
+        });
+    });
+});
+

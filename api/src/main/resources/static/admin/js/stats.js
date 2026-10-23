@@ -235,7 +235,24 @@
             genderLabels,
             rows: funnel.unmatchedGenderRows,
         });
+        renderCandidateExposure(matchStats, quizMatchingTypeLabels);
         renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const renderCandidateExposure = ({ candidateCountsPerOwner }, quizMatchingTypeLabels) => {
+        byId('matchCandidateExposureCard').hidden = !Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
+        const exposure = StatsCalc.candidateExposure(candidateCountsPerOwner);
+        if (exposure.memberCount === 0) {
+            byId('matchCandidateExposureSummary').textContent = '이 회차 1:1 후보가 없습니다.';
+            byId('matchCandidateExposureShares').replaceChildren();
+            return;
+        }
+        const overBasePercent = StatsCalc.percentText(exposure.overBaseMemberCount, exposure.memberCount);
+        fillNowrapPieces('matchCandidateExposureSummary', [
+            `후보를 받은 회원 ${countText(exposure.memberCount, '명')}`,
+            `6명 이상 받은 회원 ${countText(exposure.overBaseMemberCount, '명')}(${overBasePercent})`,
+        ]);
+        fillShares('matchCandidateExposureShares', exposure.bins, { unit: '명' });
     };
 
     const scoreText = (score) => `${score.toFixed(1)}점`;

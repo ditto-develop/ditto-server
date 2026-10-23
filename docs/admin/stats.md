@@ -70,6 +70,7 @@
 | 후보 | 1:1 은 `match_candidate`에 후보가 생긴 회원(`owner_member_id`). 그룹은 후보 그룹(`group_match_member`)에 들어간 회원이고 거절·미성사도 센다 |
 | 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
 | 매칭률 | 성사 ÷ 완주 |
+| 1:1 후보 노출 쏠림 | 1:1 후보를 받은 회원마다 받은 후보 수(`match_candidate`의 `owner_member_id`별 행 수)를 1~5명·6~10명·11명 이상으로 묶고, 6명 이상 받은 회원 수와 비율. 회원마다 5명을 고르고 한쪽만 골라도 남기는 규칙(ADR 0040)이라 6명 이상은 여러 사람이 고른 회원이다. 회원 조건은 받은 회원에게 걸고, 받은 후보에는 관리자도 들어간다 |
 | 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
 | 1:1 후보 점수 | 그 회차 후보 쌍의 `match_candidate.score`(0~100). 쌍은 두 방향 행으로 저장되어 `owner_member_id < other_member_id` 쪽만 센다. 평균·중앙값과 10점 구간, 옆에 성사(ACCEPTED) 쌍의 평균. 후보를 다시 만들면 이미 성사된 회원은 새 후보에서 빠져 그 쌍의 후보 행이 없어서, "점수 없는 성사 N쌍"으로 따로 보인다 |
 | 그룹 후보 점수 | 그 회차 후보 그룹의 `group_match.score`. 평균·중앙값과 10점 구간, 옆에 성사(`is_active`) 그룹의 평균 |
@@ -253,6 +254,13 @@ JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY m.gender;
+
+-- 1:1 후보 노출 쏠림 (회원마다 받은 후보 수)
+SELECT c.owner_member_id, COUNT(*) FROM match_candidate c
+JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY c.owner_member_id;
 
 -- 1:1 성사 (두 사람을 각각)
 SELECT m.gender, COUNT(*) FROM personal_match pm

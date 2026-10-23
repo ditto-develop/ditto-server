@@ -8,6 +8,7 @@ import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
 
 data class MatchStatsData(
     val matchCandidateCounts: List<MatchCandidateCount>,
+    val candidateCountsPerOwner: List<Long>,
     val personalMatchMemberCounts: List<PersonalMatchMemberCount>,
     val groupMatchMemberCounts: List<GroupMatchMemberCount>,
     val pairScores: List<Double>,

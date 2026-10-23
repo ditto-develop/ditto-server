@@ -51,6 +51,19 @@ class MatchCandidateRepositoryImpl(
             .map { row -> MatchCandidateCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L) }
     }
 
+    override fun countCandidatesPerOwnerInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<Long> =
+        queryFactory
+            .select(matchCandidate.count())
+            .from(matchCandidate)
+            .join(quizSet).on(quizSet.id.eq(matchCandidate.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(matchCandidate.ownerMemberId)
+            .fetch()
+
     override fun findPairScoresInWeek(weekStartedOn: LocalDate): List<Double> =
         queryFactory
             .select(matchCandidate.score)
