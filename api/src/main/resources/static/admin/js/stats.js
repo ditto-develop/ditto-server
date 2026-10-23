@@ -83,6 +83,7 @@
 
     const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
+        byId('memberJoinedCountBasis').textContent = `가입 미완료 ${countText(totals.pending, '명')}은 빠짐`;
         byId('memberCurrentCount').textContent = countText(totals.current, '명');
         byId('memberLeftCount').textContent = countText(totals.left, '명');
     };
@@ -114,14 +115,32 @@
         ]);
     };
 
-    const renderMemberSection = ({ weekStartedOn, today, genderLabels, ageBandRanges, memberStats }) => {
+    const renderLeaveReasons = ({ leaveReasonCounts }) => {
+        const counts = StatsCalc.leaveReasonCounts(leaveReasonCounts);
+        byId('leaveReasonTitle').textContent = `탈퇴 사유 · ${countText(counts.leftCount, '명')}`;
+        const options = { className: 'share-row wide-label-row stack-on-phone', unit: '명' };
+        byId('leaveReasonShares').replaceChildren(
+            ...counts.reasonCounts.map((row) => shareRow(row, counts.leftCount, options)),
+        );
+    };
+
+    const renderMemberSection = ({
+        weekStartedOn, today, genderLabels, locationLabels, ageBandRanges, memberStats, quizStats,
+    }) => {
         const totals = StatsCalc.memberTotals(memberStats.countsByStatus);
         showSectionIfAny('member', totals.joined > 0);
         byId('statsToday').textContent = today;
+        byId('memberActiveRoundCount').textContent = quizStats.activeRoundCount;
         renderMemberTotals(totals);
+        fillShares(
+            'accountStatusShares',
+            StatsCalc.accountStatusCounts(memberStats.countsByStatus, memberStats.currentActiveCountsByStatus),
+        );
+        fillShares('locationShares', StatsCalc.locationCounts(memberStats.locationCounts, locationLabels));
         fillShares('genderShares', StatsCalc.genderCounts(memberStats.genderBirthDateCounts, genderLabels));
         renderAgeGenderTable(memberStats, genderLabels, ageBandRanges, today);
         renderJoinTables(memberStats, weekStartedOn, today);
+        renderLeaveReasons(memberStats);
     };
 
     const renderQuizRates = ({ participantCount, startedCount }, activeMemberCount) => {

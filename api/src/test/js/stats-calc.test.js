@@ -36,7 +36,74 @@ describe('memberTotals', () => {
     test('누적 가입은 탈퇴를 포함하고 현재 회원은 탈퇴를 뺀다', () => {
         const totals = StatsCalc.memberTotals({ ACTIVE: 5, SUSPENDED: 1, LEFT: 2 });
 
-        assert.deepEqual(totals, { joined: 8, current: 6, left: 2 });
+        assert.deepEqual(totals, { joined: 8, current: 6, left: 2, pending: 0 });
+    });
+
+    test('가입을 마치지 않은 회원은 누적 가입에서 빼고 따로 센다', () => {
+        const totals = StatsCalc.memberTotals({ ACTIVE: 5, LEFT: 2, PENDING: 3 });
+
+        assert.deepEqual(totals, { joined: 7, current: 5, left: 2, pending: 3 });
+    });
+});
+
+describe('accountStatusCounts', () => {
+    test('ACTIVE 를 최근 회차 완주 여부로 활성·휴면으로 나누고 정지 회원은 완주했어도 정지다', () => {
+        const rows = StatsCalc.accountStatusCounts(
+            { ACTIVE: 10, SUSPENDED: 2, BANNED: 1, LEFT: 4 },
+            { ACTIVE: 6, SUSPENDED: 1, LEFT: 3 },
+        );
+
+        assert.deepEqual(rows, [
+            { label: '활성', count: 6 },
+            { label: '휴면', count: 4 },
+            { label: '정지', count: 2 },
+            { label: '영구 차단', count: 1 },
+        ]);
+    });
+});
+
+describe('locationCounts', () => {
+    const LOCATION_LABELS = { SEOUL: '서울', BUSAN: '부산', JEJU: '제주' };
+
+    test('회원이 있는 지역만 많은 순이고 미입력은 맨 뒤다', () => {
+        const rows = StatsCalc.locationCounts(
+            [{ location: 'BUSAN', count: 1 }, { location: null, count: 2 }, { location: 'SEOUL', count: 3 }],
+            LOCATION_LABELS,
+        );
+
+        assert.deepEqual(rows, [
+            { label: '서울', count: 3 },
+            { label: '부산', count: 1 },
+            { label: '미입력', count: 2 },
+        ]);
+    });
+
+    test('미입력이 없으면 줄을 만들지 않는다', () => {
+        const rows = StatsCalc.locationCounts([{ location: 'JEJU', count: 1 }], LOCATION_LABELS);
+
+        assert.deepEqual(rows, [{ label: '제주', count: 1 }]);
+    });
+});
+
+describe('leaveReasonCounts', () => {
+    test('사유는 탈퇴 화면 순서대로 0이어도 나오고 사유 없음과 모르는 코드는 뒤에 붙는다', () => {
+        const counts = StatsCalc.leaveReasonCounts([
+            { leaveReason: 'other', count: 1 },
+            { leaveReason: 'low_usage', count: 2 },
+            { leaveReason: null, count: 1 },
+            { leaveReason: 'new_reason', count: 1 },
+        ]);
+
+        assert.equal(counts.leftCount, 5);
+        assert.deepEqual(counts.reasonCounts, [
+            { label: '원하는 매칭이 이루어지지 않아요', count: 0 },
+            { label: '사용 빈도가 낮아졌어요', count: 2 },
+            { label: '개인정보가 걱정돼요', count: 0 },
+            { label: '불편한 경험이 있었어요', count: 0 },
+            { label: '기타', count: 1 },
+            { label: '사유 없음', count: 1 },
+            { label: 'new_reason', count: 1 },
+        ]);
     });
 });
 

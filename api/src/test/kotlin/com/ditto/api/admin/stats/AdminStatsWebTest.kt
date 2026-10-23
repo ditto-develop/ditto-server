@@ -103,11 +103,20 @@ class AdminStatsWebTest(
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("1회차 · 4/6 주")))
-                .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":1}""")))
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(""""countsByStatus":{"ACTIVE":1},"currentActiveCountsByStatus":{}"""),
+                    ),
+                )
                 .andExpect(content().string(pageJsonContaining(""""recentJoinedAts":["2026-04-07 10:00:00"]""")))
                 .andExpect(
                     content().string(
                         pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(""""locationCounts":[{"location":null,"count":1}],"leaveReasonCounts":[]"""),
                     ),
                 )
         }

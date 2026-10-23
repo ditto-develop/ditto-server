@@ -39,4 +39,9 @@ class StatsRoundFinder(
             .sortedDescending()
             .map { StatsWeekOption(it, roundsByWeek[it]) }
     }
+
+    companion object {
+        // 기준 회차까지 이 수의 회차 안에서 한 번이라도 완주하면 활성 회원이다.
+        const val ACTIVE_ROUND_COUNT = 4
+    }
 }

@@ -1,5 +1,6 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.member.repository.querydsl.nonAdminMatching
@@ -117,6 +118,28 @@ class QuizProgressRepositoryImpl(
                     .exists(),
             )
             .fetchOne() ?: 0L
+    }
+
+    override fun countMembersCompletedInWeeksByStatus(
+        roundWeeks: Collection<LocalDate>,
+        filter: MemberFilter,
+    ): Map<MemberStatus, Long> {
+        if (roundWeeks.isEmpty()) return emptyMap()
+        val countExpression = quizProgress.memberId.countDistinct()
+        return queryFactory
+            .select(member.status, countExpression)
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.`in`(roundWeeks),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(member.status)
+            .fetch()
+            .associate { row ->
+                val status = row.get(member.status) ?: throw IllegalStateException("group by 키 status 가 비었다")
+                status to (row.get(countExpression) ?: 0L)
+            }
     }
 
     override fun countMembersCompletedAgain(

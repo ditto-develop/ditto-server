@@ -19,13 +19,21 @@
 
 | 블록 | 세는 것 |
 |---|---|
-| 누적 가입자 | `joined_at` 있는 회원. 탈퇴(LEFT) 포함. 가입을 마치지 않은 PENDING 은 `joined_at`이 없어 빠진다 |
+| 누적 가입자 | PENDING 이 아닌 회원. 탈퇴(LEFT) 포함. 가입을 마치지 않은 PENDING 은 "가입 미완료"로 카드 아래에 따로 보인다 |
 | 현재 회원 | 누적 가입자 중 LEFT 가 아닌 회원. 정지(SUSPENDED·BANNED) 포함 |
 | 탈퇴 | 누적 가입자 중 LEFT |
+| 계정 상태 | 현재 회원을 활성·휴면·정지(SUSPENDED)·영구 차단(BANNED)으로 나눈다. 활성은 ACTIVE 중 지금 회차까지 최근 4회차 안에 한 번이라도 완주한 회원, 휴면은 나머지 ACTIVE 다 |
+| 지역 | 현재 회원의 `location`. 회원이 있는 지역만 많은 순으로 보이고 비었으면 "미입력" |
+| 탈퇴 사유 | 고른 회차 주(월~일)에 `left_at`이 있는 회원을 `leave_reason`별로 센다. 자유 서술(`leave_reason_detail`)은 보여 주지 않는다 |
 | 성비·연령대 × 성별 | 현재 회원 |
 | 회차 일별·주별(고른 주까지 8주) 신규 | 그 기간 `joined_at`. 나중에 탈퇴한 회원도 가입한 날에 센다 |
 
 매칭 유형(1:1·그룹) 조건은 이 장에 걸리지 않는다.
+
+- 계정 상태는 `member.status`에 이력이 없어 지금 상태로만 센다. 그래서 활성도 고른 회차가 아니라 지금 회차 기준이다. 퀴즈 참여 장의 활성 회원은 고른 회차 기준이라 지난 회차를 보면 두 숫자가 다르다.
+- 정지 회원은 최근에 완주했어도 정지로 센다.
+- 탈퇴 사유 코드는 FE 탈퇴 화면(`withdrawReasons.ts`)이 정한 문자열이라 서버에 enum 이 없다. 라벨은 `stats-calc.js`에 그 화면 문구대로 두고, 모르는 코드는 코드 그대로 보인다. 사유 없이 탈퇴하면 "사유 없음"이다.
+- 탈퇴 시각은 `ServerTimeProvider` 시각이라 QA 시각 조정을 따른다. 30일 안에 복구하면 `left_at`과 사유가 지워져 빠진다.
 
 ## 퀴즈 참여
 
@@ -135,10 +143,27 @@
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
 
 ```sql
--- 누적 가입자·현재 회원·탈퇴
+-- 누적 가입자·현재 회원·탈퇴·계정 상태 (PENDING 은 가입 미완료)
 SELECT status, COUNT(*) FROM member
-WHERE role = 'USER' AND joined_at IS NOT NULL
+WHERE role = 'USER'
 GROUP BY status;
+
+-- 계정 상태의 활성 (:recent_rounds 는 지금 회차까지 최근 4회차의 월요일들)
+SELECT m.status, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qs.week_started_on IN (:recent_rounds) AND qp.status = 'COMPLETED'
+GROUP BY m.status;
+
+-- 지역 (현재 회원)
+SELECT location, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL AND status <> 'LEFT'
+GROUP BY location;
+
+-- 탈퇴 사유 (고른 회차 주)
+SELECT leave_reason, COUNT(*) FROM member
+WHERE role = 'USER' AND left_at >= :monday AND left_at < :monday + INTERVAL 7 DAY
+GROUP BY leave_reason;
 
 -- 성비 (현재 회원)
 SELECT gender, COUNT(*) FROM member
@@ -292,7 +317,7 @@ GROUP BY DATE(joined_at);
 
 | 장 | 쓸 도구 | 주의 |
 |---|---|---|
-| 회원 현황 | 더미 생성 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다) |
+| 회원 현황 | 더미 생성(지역은 무작위, 직접 만들기에서 고를 수 있다). 정지는 신고 검토에서 제재, 탈퇴 사유는 테스트 계정으로 앱에서 탈퇴 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다). 탈퇴 시각은 조정된 시각이라 조정된 주에 잡힌다. 가입 미완료는 소셜 로그인만 하고 가입 화면을 닫으면 생긴다 |
 | 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨) |
 | 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다 |
 | 매칭 | 시각 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 생성 → "퀴즈 마감 직후"로 옮겨 매칭 실행(더미를 나중에 더했으면 퀴즈셋별 재생성) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 재생성할 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다 |

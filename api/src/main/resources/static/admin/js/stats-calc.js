@@ -2,6 +2,16 @@
 const StatsCalc = (() => {
     const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
     const GENDER_UNKNOWN_LABEL = '미입력';
+    const LOCATION_UNKNOWN_LABEL = '미입력';
+    const LEAVE_REASON_UNKNOWN_LABEL = '사유 없음';
+    // 탈퇴 사유 코드는 FE 탈퇴 화면(withdrawReasons.ts)이 정해서 서버에 enum 이 없다. 문구도 그 화면과 맞춘다.
+    const LEAVE_REASON_LABELS = {
+        no_desired_match: '원하는 매칭이 이루어지지 않아요',
+        low_usage: '사용 빈도가 낮아졌어요',
+        privacy_concern: '개인정보가 걱정돼요',
+        bad_experience: '불편한 경험이 있었어요',
+        other: '기타',
+    };
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
     const REMATCH_LABEL = '재매칭';
@@ -71,10 +81,49 @@ const StatsCalc = (() => {
     const percent = (part, whole) => (whole === 0 ? 0 : (part * 100) / whole);
     const percentText = (part, whole) => (whole === 0 ? '-' : `${percent(part, whole).toFixed(1)}%`);
 
+    // 가입을 마치지 않은 PENDING 은 누적 가입자에 넣지 않는다.
     const memberTotals = (countsByStatus) => {
-        const joined = Object.values(countsByStatus).reduce((sum, count) => sum + count, 0);
+        const pending = countsByStatus.PENDING || 0;
+        const joined = Object.values(countsByStatus).reduce((sum, count) => sum + count, 0) - pending;
         const left = countsByStatus.LEFT || 0;
-        return { joined, current: joined - left, left };
+        return { joined, current: joined - left, left, pending };
+    };
+
+    // 활성은 ACTIVE 중 최근 회차 완주자, 휴면은 나머지 ACTIVE 다. 정지 회원은 완주했어도 정지로 센다.
+    const accountStatusCounts = (countsByStatus, currentActiveCountsByStatus) => {
+        const activeStatusCount = countsByStatus.ACTIVE || 0;
+        const activeCount = currentActiveCountsByStatus.ACTIVE || 0;
+        return [
+            { label: '활성', count: activeCount },
+            { label: '휴면', count: activeStatusCount - activeCount },
+            { label: '정지', count: countsByStatus.SUSPENDED || 0 },
+            { label: '영구 차단', count: countsByStatus.BANNED || 0 },
+        ];
+    };
+
+    // 지역은 많아서 회원이 있는 곳만 많은 순으로 보인다.
+    const locationCounts = (countRows, locationLabels) => {
+        const unknownCount = sumCounts(countRows.filter((countRow) => countRow.location === null));
+        const knownRows = countRows
+            .filter((countRow) => countRow.location !== null)
+            .map((countRow) => ({
+                label: locationLabels[countRow.location] || countRow.location,
+                count: countRow.count,
+            }))
+            .sort((one, other) => other.count - one.count);
+        return unknownCount > 0 ? [...knownRows, { label: LOCATION_UNKNOWN_LABEL, count: unknownCount }] : knownRows;
+    };
+
+    // 사유는 탈퇴 화면 순서대로 0이어도 나온다. 모르는 코드는 코드 그대로 뒤에 붙는다.
+    const leaveReasonCounts = (countRows) => {
+        const countsByReason = sumCountsBy(countRows, (countRow) => countRow.leaveReason);
+        const extraRows = [...countsByReason.entries()]
+            .filter(([reason]) => !(reason in LEAVE_REASON_LABELS))
+            .map(([reason, count]) => ({ label: reason === null ? LEAVE_REASON_UNKNOWN_LABEL : reason, count }));
+        return {
+            leftCount: sumCounts(countRows),
+            reasonCounts: [...labeledCounts(countsByReason, LEAVE_REASON_LABELS), ...extraRows],
+        };
     };
 
     // 오늘 이후 날짜는 아직 오지 않아 count 가 null 이다.
@@ -356,6 +405,9 @@ const StatsCalc = (() => {
         percent,
         percentText,
         memberTotals,
+        accountStatusCounts,
+        locationCounts,
+        leaveReasonCounts,
         dailyJoins,
         weeklyJoins,
         ageOn,

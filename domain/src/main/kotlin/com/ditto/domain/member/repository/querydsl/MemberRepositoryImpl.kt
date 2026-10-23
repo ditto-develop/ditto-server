@@ -18,12 +18,12 @@ class MemberRepositoryImpl(
             .where(member.status.eq(status))
             .fetch()
 
-    override fun countJoinedMembersByStatus(filter: MemberFilter): Map<MemberStatus, Long> {
+    override fun countMembersByStatus(filter: MemberFilter): Map<MemberStatus, Long> {
         val countExpression = member.count()
         return queryFactory
             .select(member.status, countExpression)
             .from(member)
-            .where(member.joinedAt.isNotNull, member.nonAdminMatching(filter))
+            .where(member.nonAdminMatching(filter))
             .groupBy(member.status)
             .fetch()
             .associate { row ->
@@ -61,6 +61,39 @@ class MemberRepositoryImpl(
                     birthDate = row.get(member.birthDate)?.toLocalDate(),
                     count = row.get(countExpression) ?: 0L,
                 )
+            }
+    }
+
+    override fun countCurrentMembersByLocation(filter: MemberFilter): List<LocationCount> {
+        val countExpression = member.count()
+        return queryFactory
+            .select(member.location, countExpression)
+            .from(member)
+            .where(member.joinedAt.isNotNull, member.status.ne(MemberStatus.LEFT), member.nonAdminMatching(filter))
+            .groupBy(member.location)
+            .fetch()
+            .map { row ->
+                LocationCount(location = row.get(member.location), count = row.get(countExpression) ?: 0L)
+            }
+    }
+
+    override fun countMembersLeftWithinByLeaveReason(
+        leftAtRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+    ): List<LeaveReasonCount> {
+        val countExpression = member.count()
+        return queryFactory
+            .select(member.leaveReason, countExpression)
+            .from(member)
+            .where(
+                member.leftAt.goe(leftAtRange.start),
+                member.leftAt.lt(leftAtRange.endExclusive),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(member.leaveReason)
+            .fetch()
+            .map { row ->
+                LeaveReasonCount(leaveReason = row.get(member.leaveReason), count = row.get(countExpression) ?: 0L)
             }
     }
 }

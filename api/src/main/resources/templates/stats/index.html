@@ -90,7 +90,7 @@
 
             <section class="stats-section" id="members">
                 <h2 class="stats-section-title">회원 현황</h2>
-                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다.</p>
+                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다. 계정 상태는 지금 상태로 셉니다. 활성은 지금 회차까지 최근 <span id="memberActiveRoundCount">4</span>회차 안에 퀴즈를 끝까지 푼 회원이고 휴면은 나머지입니다.</p>
                 <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
                 <div id="memberSectionBody">
                     <p class="stats-basis">오늘(<span id="statsToday">-</span>) 기준</p>
@@ -98,6 +98,7 @@
                         <div class="card stat">
                             <span class="label">누적 가입자 (탈퇴 포함)</span>
                             <span class="value" id="memberJoinedCount">-</span>
+                            <span class="basis" id="memberJoinedCountBasis"></span>
                         </div>
                         <div class="card stat">
                             <span class="label">현재 회원 (정지 포함)</span>
@@ -106,6 +107,17 @@
                         <div class="card stat">
                             <span class="label">탈퇴</span>
                             <span class="value" id="memberLeftCount">-</span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>계정 상태 (현재 회원)</h3>
+                            <div id="accountStatusShares"></div>
+                            <p class="muted">퀴즈 참여 장의 활성 회원은 고른 회차 기준이라 지난 회차를 보면 다를 수 있습니다.</p>
+                        </div>
+                        <div class="card">
+                            <h3>지역 (현재 회원)</h3>
+                            <div id="locationShares"></div>
                         </div>
                     </div>
                     <div class="grid cols-2 stats-align-start">
@@ -144,6 +156,12 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 월~일에 탈퇴한 회원 · 30일 안에 복구하면 빠집니다</p>
+                    <div class="card">
+                        <h3 id="leaveReasonTitle">탈퇴 사유</h3>
+                        <div id="leaveReasonShares"></div>
                     </div>
                 </div>
             </section>

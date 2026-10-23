@@ -1,5 +1,6 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
@@ -42,4 +43,10 @@ interface QuizProgressRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): Long
+
+    /** countMembersCompletedInWeeks 를 지금 회원 상태별로 나눈 것. 매칭 유형은 따지지 않는다. */
+    fun countMembersCompletedInWeeksByStatus(
+        roundWeeks: Collection<LocalDate>,
+        filter: MemberFilter,
+    ): Map<MemberStatus, Long>
 }

@@ -20,14 +20,14 @@ class QuizStatsService(
     fun findStats(filter: StatsFilter, week: OperationWeek, today: LocalDate): QuizStatsData {
         val memberFilter = filter.toMemberFilter(today)
         val quizMatchingType = filter.matchingType.quizMatchingType
-        val activeRoundWeeks = statsRoundFinder.findRecentRoundWeeksUntil(week, ACTIVE_ROUND_COUNT)
+        val activeRoundWeeks = statsRoundFinder.findRecentRoundWeeksUntil(week, StatsRoundFinder.ACTIVE_ROUND_COUNT)
         return QuizStatsData(
             progressCounts = quizProgressRepository.countProgressesInWeek(
                 week.startedOn,
                 quizMatchingType,
                 memberFilter,
             ),
-            activeRoundCount = ACTIVE_ROUND_COUNT,
+            activeRoundCount = StatsRoundFinder.ACTIVE_ROUND_COUNT,
             activeRoundWeeks = activeRoundWeeks,
             activeMemberCount = quizProgressRepository.countMembersCompletedInWeeks(
                 activeRoundWeeks,
@@ -45,10 +45,5 @@ class QuizStatsService(
                 memberFilter,
             ),
         )
-    }
-
-    companion object {
-        // 고른 회차까지 이 수의 회차 안에서 한 번이라도 완주하면 활성 회원이다.
-        private const val ACTIVE_ROUND_COUNT = 4
     }
 }

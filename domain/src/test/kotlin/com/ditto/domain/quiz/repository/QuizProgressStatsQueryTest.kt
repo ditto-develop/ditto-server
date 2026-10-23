@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.notification.MemberDeviceFixture
@@ -32,11 +33,21 @@ class QuizProgressStatsQueryTest(
 
     var memberIndex = 0
 
-    fun saveMember(gender: Gender? = Gender.MALE, role: MemberRole = MemberRole.USER): Long {
+    fun saveMember(
+        gender: Gender? = Gender.MALE,
+        role: MemberRole = MemberRole.USER,
+        status: MemberStatus = MemberStatus.ACTIVE,
+    ): Long {
         memberIndex += 1
         val nickname = "m$memberIndex"
         return memberRepository.save(
-            MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", gender = gender, role = role),
+            MemberFixture.create(
+                nickname = nickname,
+                email = "$nickname@ditto.pics",
+                gender = gender,
+                role = role,
+                status = status,
+            ),
         ).id
     }
 
@@ -183,6 +194,31 @@ class QuizProgressStatsQueryTest(
                 null,
                 MemberFilter.NONE,
             ) shouldBe 0L
+        }
+    }
+
+    "countMembersCompletedInWeeksByStatus" - {
+        "여러 주에 완주한 회원은 한 번만 세고 지금 상태로 나눈 뒤 유형은 따지지 않는다" {
+            val previousWeek = WEEK.minusWeeks(1)
+            val oneToOne = saveQuizSet()
+            val group = saveQuizSet(weekStartedOn = previousWeek, matchingType = MatchingType.GROUP)
+            val twice = saveMember()
+            saveProgress(twice, oneToOne)
+            saveProgress(twice, group)
+            saveProgress(saveMember(), group)
+            saveProgress(saveMember(status = MemberStatus.SUSPENDED), oneToOne)
+            saveProgress(saveMember(), oneToOne, completed = false)
+            saveProgress(saveMember(role = MemberRole.ADMIN), oneToOne)
+
+            quizProgressRepository.countMembersCompletedInWeeksByStatus(
+                listOf(WEEK, previousWeek),
+                MemberFilter.NONE,
+            ) shouldBe mapOf(MemberStatus.ACTIVE to 2L, MemberStatus.SUSPENDED to 1L)
+        }
+
+        "주 목록이 비면 빈 맵이다" {
+            quizProgressRepository.countMembersCompletedInWeeksByStatus(emptyList(), MemberFilter.NONE) shouldBe
+                emptyMap()
         }
     }
 })

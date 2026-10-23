@@ -8,6 +8,11 @@ import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.member.repository.querydsl.GenderBirthDateCount
+import com.ditto.domain.member.repository.querydsl.LeaveReasonCount
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -21,6 +26,8 @@ private val WEEK = OperationWeek.containing(TODAY)
 class MemberStatsServiceTest(
     private val memberStatsService: MemberStatsService,
     private val memberRepository: MemberRepository,
+    private val quizSetRepository: QuizSetRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -75,6 +82,47 @@ class MemberStatsServiceTest(
             val stats = memberStatsService.findStats(StatsFilter(ageBand = AgeBand.EARLY_20S), WEEK, TODAY)
 
             stats.countsByStatus shouldBe mapOf(MemberStatus.ACTIVE to 1L)
+        }
+    }
+
+    "계정 상태와 탈퇴 사유" - {
+        "활성은 고른 회차가 아니라 지금 회차까지 최근 회차의 완주자로 센다" {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = WEEK.dateTimeRange.start,
+                    endDate = WEEK.dateTimeRange.start.plusDays(2),
+                ),
+            )
+            val completed = save("completed", joinedAt = WEEK.dateTimeRange.start)
+            val progress = QuizProgressFixture.create(memberId = completed.id, quizSetId = quizSet.id, totalCount = 1)
+            progress.recordAnswer()
+            quizProgressRepository.save(progress)
+
+            val stats = memberStatsService.findStats(StatsFilter(), WEEK.minusWeeks(3), TODAY)
+
+            stats.currentActiveCountsByStatus shouldBe mapOf(MemberStatus.ACTIVE to 1L)
+        }
+
+        "탈퇴 사유는 고른 회차 주에 탈퇴한 회원만 센다" {
+            val selectedWeek = WEEK.minusWeeks(1)
+            memberRepository.save(
+                MemberFixture.create(
+                    nickname = "left-then",
+                    email = "left-then@ditto.pics",
+                    status = MemberStatus.ACTIVE,
+                ).apply { leave("low_usage", selectedWeek.dateTimeRange.start) },
+            )
+            memberRepository.save(
+                MemberFixture.create(
+                    nickname = "left-now",
+                    email = "left-now@ditto.pics",
+                    status = MemberStatus.ACTIVE,
+                ).apply { leave("other", WEEK.dateTimeRange.start) },
+            )
+
+            val stats = memberStatsService.findStats(StatsFilter(), selectedWeek, TODAY)
+
+            stats.leaveReasonCounts shouldContainExactly listOf(LeaveReasonCount("low_usage", 1L))
         }
     }
 })
