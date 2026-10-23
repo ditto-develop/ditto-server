@@ -66,7 +66,11 @@ class PushNotifier(
             return // 웹 전용 회원
         }
 
-        pushSender.send(buildMessage(notification, tokens, deepLink), pushDeadDeviceCleaner::clean)
+        pushSender.send(buildMessage(notification, tokens, deepLink)) { result ->
+            if (result.deadTokens.isNotEmpty()) {
+                pushDeadDeviceCleaner.clean(result.deadTokens)
+            }
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.ditto.infrastructure.fcm.PushMessage
+import com.ditto.infrastructure.fcm.PushSendResult
 import com.google.api.core.ApiFutures
 import com.google.api.core.SettableApiFuture
 import com.google.firebase.messaging.BatchResponse
@@ -48,7 +49,7 @@ class FirebaseFcmSenderTest : FreeSpec({
     fun capturedLogs(block: () -> Unit): List<String> {
         val appender = ListAppender<ILoggingEvent>()
         appender.start()
-        val logger = LoggerFactory.getLogger(DeadTokenCallback::class.java) as Logger
+        val logger = LoggerFactory.getLogger(SendResultCallback::class.java) as Logger
         logger.addAppender(appender)
         try {
             block()
@@ -59,20 +60,21 @@ class FirebaseFcmSenderTest : FreeSpec({
     }
 
     "발송 결과 처리" - {
-        "무효 토큰(UNREGISTERED)만 골라 onDeadTokens 로 돌려준다" {
+        "실패한 기기마다 실패 코드를 주고 무효 토큰(UNREGISTERED)은 따로 골라 준다" {
             val firebaseMessaging = mockk<FirebaseMessaging> {
                 // 응답 순서 = 요청 토큰 순서: alive(성공), dead(무효), flaky(일시 실패)
                 every { sendEachForMulticastAsync(any()) } returns ApiFutures.immediateFuture(
                     batchOf(success(), failure(MessagingErrorCode.UNREGISTERED), failure(MessagingErrorCode.UNAVAILABLE)),
                 )
             }
-            var deadTokens = emptyList<String>()
+            var result: PushSendResult? = null
 
             FirebaseFcmSender(firebaseMessaging)
-                .send(message(listOf("alive", "dead", "flaky"))) { deadTokens = it }
+                .send(message(listOf("alive", "dead", "flaky"))) { result = it }
 
+            result?.failureCodes shouldBe listOf("UNREGISTERED", "UNAVAILABLE")
             // 일시 실패(UNAVAILABLE)는 지우면 안 된다 — 다음 발송에서 성공할 수 있다.
-            deadTokens shouldBe listOf("dead")
+            result?.deadTokens shouldBe listOf("dead")
         }
 
         "무효 토큰이 아닌 실패는 에러코드·알림 유형과 함께 남긴다" {
@@ -119,15 +121,26 @@ class FirebaseFcmSenderTest : FreeSpec({
             logs shouldBe emptyList()
         }
 
-        "전부 성공이면 onDeadTokens 를 부르지 않는다" {
+        "전부 성공이면 실패 코드와 무효 토큰이 비어 있다" {
             val firebaseMessaging = mockk<FirebaseMessaging> {
                 every { sendEachForMulticastAsync(any()) } returns ApiFutures.immediateFuture(batchOf(success()))
             }
-            var called = false
+            var result: PushSendResult? = null
 
-            FirebaseFcmSender(firebaseMessaging).send(message(listOf("alive"))) { called = true }
+            FirebaseFcmSender(firebaseMessaging).send(message(listOf("alive"))) { result = it }
 
-            called shouldBe false
+            result shouldBe PushSendResult(failureCodes = emptyList(), deadTokens = emptyList())
+        }
+
+        "에러코드가 없는 실패는 실패 코드도 UNKNOWN 이다" {
+            val firebaseMessaging = mockk<FirebaseMessaging> {
+                every { sendEachForMulticastAsync(any()) } returns ApiFutures.immediateFuture(batchOf(failure(null)))
+            }
+            var result: PushSendResult? = null
+
+            FirebaseFcmSender(firebaseMessaging).send(message(listOf("token-bad"))) { result = it }
+
+            result?.failureCodes shouldBe listOf("UNKNOWN")
         }
 
         "발송 자체가 실패해도 예외가 밖으로 나가지 않는다" {
@@ -140,6 +153,19 @@ class FirebaseFcmSenderTest : FreeSpec({
             shouldNotThrowAny {
                 FirebaseFcmSender(firebaseMessaging).send(message(listOf("alive")))
             }
+        }
+
+        "발송 자체가 실패하면 보낸 기기 모두 실패로 돌려준다" {
+            val failedFuture = SettableApiFuture.create<BatchResponse>()
+            failedFuture.setException(RuntimeException("fcm down"))
+            val firebaseMessaging = mockk<FirebaseMessaging> {
+                every { sendEachForMulticastAsync(any()) } returns failedFuture
+            }
+            var result: PushSendResult? = null
+
+            FirebaseFcmSender(firebaseMessaging).send(message(listOf("one", "two"))) { result = it }
+
+            result shouldBe PushSendResult(failureCodes = listOf("UNKNOWN", "UNKNOWN"), deadTokens = emptyList())
         }
     }
 

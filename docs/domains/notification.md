@@ -18,7 +18,7 @@
 - `MemberDevice` — 푸시 주소록 한 줄. 앱이 FCM 에서 받은 디바이스 토큰의 소유 회원. 회원 1명이 여러 행(폰·태블릿).
 - `PushNotifier` — 적재된 알림 한 행을 푸시로 변환·발송. 토글 게이트·뱃지가 여기 있다.
 - `NotificationDeepLinks` — 알림을 눌렀을 때 갈 FE 경로. 푸시와 알림 목록 응답이 같이 쓴다.
-- `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 무효 토큰(`UNREGISTERED`)을 콜백으로 돌려준다.
+- `PushSender` — FCM 어댑터(infrastructure). 비동기 발송, 결과(실패한 기기마다의 실패 코드와 무효 토큰 `UNREGISTERED`)를 콜백으로 돌려준다.
 - `SystemNotice` — 어드민이 보낸 시스템 공지 한 건의 이력(제목·본문·발송자·대상 수·수신 수). 수신자별 행은 `Notification`이다.
 
 ## 유형 표 (FE 계약)

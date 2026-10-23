@@ -7,10 +7,8 @@ package com.ditto.infrastructure.fcm
 interface PushSender {
 
     /**
-     * [message]를 담긴 토큰 전체에 보낸다.
-     *
-     * @param onDeadTokens 무효 판정(`UNREGISTERED` — 앱 삭제 등)된 토큰들. 호출부가 주소록에서
-     *        지워야 한다. 방치하면 실패율이 쌓여 FCM 이 프로젝트 발송량을 제한한다
+     * [message]를 담긴 토큰 전체에 보낸다. [onResult]는 FCM 응답이 올 때 불리고, 토큰이 500개를 넘으면 나눠 보낸 조각마다 불린다.
+     * 무효 토큰을 방치하면 실패율이 쌓여 FCM 이 프로젝트 발송량을 제한하므로 호출부가 지워야 한다.
      */
-    fun send(message: PushMessage, onDeadTokens: (List<String>) -> Unit = {})
+    fun send(message: PushMessage, onResult: (PushSendResult) -> Unit = {})
 }

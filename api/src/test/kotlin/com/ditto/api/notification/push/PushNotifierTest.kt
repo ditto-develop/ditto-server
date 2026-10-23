@@ -23,6 +23,7 @@ import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.entity.Rematch
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.infrastructure.fcm.PushMessage
+import com.ditto.infrastructure.fcm.PushSendResult
 import com.ditto.infrastructure.fcm.PushSender
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.FreeSpec
@@ -298,13 +299,24 @@ class PushNotifierTest : FreeSpec({
 
     "죽은 토큰 콜백이 오면 정리 빈으로 넘긴다" {
         val (notifier, pushSender, cleaner, _) = fixture(room = ChatRoomFixture.personal())
-        val callbackSlot = slot<(List<String>) -> Unit>()
+        val callbackSlot = slot<(PushSendResult) -> Unit>()
         every { pushSender.send(any(), capture(callbackSlot)) } returns Unit
 
         notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
-        callbackSlot.captured(listOf("dead-token"))
+        callbackSlot.captured(PushSendResult(failureCodes = listOf("UNREGISTERED"), deadTokens = listOf("dead-token")))
 
         verify(exactly = 1) { cleaner.clean(listOf("dead-token")) }
+    }
+
+    "무효 토큰이 없으면 정리 빈을 부르지 않는다" {
+        val (notifier, pushSender, cleaner, _) = fixture(room = ChatRoomFixture.personal())
+        val callbackSlot = slot<(PushSendResult) -> Unit>()
+        every { pushSender.send(any(), capture(callbackSlot)) } returns Unit
+
+        notifier.pushAll(listOf(notification(NotificationType.CHAT_MESSAGE)))
+        callbackSlot.captured(PushSendResult(failureCodes = listOf("UNAVAILABLE"), deadTokens = emptyList()))
+
+        verify(exactly = 0) { cleaner.clean(any()) }
     }
 
     "준비 조회가 실패해도 예외가 밖으로 나가지 않는다" {
