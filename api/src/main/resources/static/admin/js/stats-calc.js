@@ -520,9 +520,11 @@ const StatsCalc = (() => {
         };
     };
 
+    // 후보를 다시 만들면 성사 쌍의 후보 행이 지워져 점수가 null 로 온다.
     const matchScores = ({ pairScores, acceptedPairScores, groupScores }) => ({
         pair: scoreSummary(pairScores),
-        acceptedPair: scoreSummary(acceptedPairScores),
+        acceptedPair: scoreSummary(acceptedPairScores.filter((score) => score !== null)),
+        unscoredAcceptedPairCount: acceptedPairScores.filter((score) => score === null).length,
         group: scoreSummary(groupScores.map((groupScore) => groupScore.score)),
         activeGroup: scoreSummary(
             groupScores.filter((groupScore) => groupScore.isGroupActive).map((groupScore) => groupScore.score),

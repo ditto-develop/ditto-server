@@ -217,6 +217,15 @@ class MatchStatsQueryTest(
 
             matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(91.0)
         }
+
+        "후보를 다시 만들어 후보 행이 없는 성사 쌍은 null 로 준다" {
+            val quizSet = saveQuizSet()
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(), saveMember(), quizSet.id, PersonalMatchStatus.ACCEPTED),
+            )
+
+            matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(null)
+        }
     }
 
     "findGroupScoresInWeek" - {

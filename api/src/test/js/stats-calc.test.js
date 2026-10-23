@@ -729,8 +729,19 @@ describe('matchScores', () => {
 
         assert.equal(scores.pair.count, 1);
         assert.equal(scores.acceptedPair.count, 0);
+        assert.equal(scores.unscoredAcceptedPairCount, 0);
         assert.equal(scores.group.average, 63);
         assert.equal(scores.activeGroup.average, 66);
+    });
+});
+
+describe('matchScores 의 점수 없는 성사 쌍', () => {
+    test('후보 행이 사라져 점수가 null 인 성사 쌍은 평균에서 빼고 따로 센다', () => {
+        const scores = StatsCalc.matchScores({ pairScores: [70], acceptedPairScores: [80, null], groupScores: [] });
+
+        assert.equal(scores.acceptedPair.count, 1);
+        assert.equal(scores.acceptedPair.average, 80);
+        assert.equal(scores.unscoredAcceptedPairCount, 1);
     });
 });
 

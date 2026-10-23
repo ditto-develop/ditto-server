@@ -63,12 +63,12 @@ class MatchCandidateRepositoryImpl(
             .fetch()
             .filterNotNull()
 
-    override fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double> =
+    override fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double?> =
         queryFactory
             .select(matchCandidate.score)
             .from(personalMatch)
             .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
-            .join(matchCandidate).on(
+            .leftJoin(matchCandidate).on(
                 matchCandidate.quizSetId.eq(personalMatch.quizSetId),
                 matchCandidate.ownerMemberId.eq(personalMatch.memberId1),
                 matchCandidate.otherMemberId.eq(personalMatch.memberId2),
@@ -78,7 +78,6 @@ class MatchCandidateRepositoryImpl(
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
             )
             .fetch()
-            .filterNotNull()
 
     /** (owner=one, other=other) 또는 그 반대 — 방향 무관 페어 조건 */
     private fun pairInEitherDirection(oneMemberId: Long, otherMemberId: Long) =

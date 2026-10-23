@@ -27,6 +27,6 @@ interface MatchCandidateRepositoryCustom {
     /** 그 주 활성 셋의 후보 쌍마다 점수 하나. 후보는 늘 두 방향으로 생겨서 id 가 작은 쪽 행만 센다. */
     fun findPairScoresInWeek(weekStartedOn: LocalDate): List<Double>
 
-    /** 그 주 1:1 성사(ACCEPTED) 쌍의 후보 점수. */
-    fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double>
+    /** 그 주 1:1 성사(ACCEPTED) 쌍마다 후보 점수. 후보를 다시 만들어 후보 행이 없는 쌍은 null 이다. */
+    fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double?>
 }

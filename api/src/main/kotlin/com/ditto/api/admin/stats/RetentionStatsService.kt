@@ -20,9 +20,9 @@ class RetentionStatsService(
             ?: return RetentionStatsData.NO_PREVIOUS_ROUND
         val memberFilter = filter.toMemberFilter(today)
         val quizMatchingType = filter.matchingType.quizMatchingType
-        val cohortRange = MemberStatsService.recentWeeksRangeUntil(week)
+        val cohortRange = StatsRoundFinder.recentWeeksRangeUntil(week)
         val cohortRoundWeeks = statsRoundFinder
-            .findRecentRoundWeeksUntil(week, MemberStatsService.RECENT_WEEK_COUNT)
+            .findRecentRoundWeeksUntil(week, StatsRoundFinder.RECENT_WEEK_COUNT)
             .filter { it >= cohortRange.start.toLocalDate() }
         return RetentionStatsData(
             previousRoundWeek = previousRoundWeek,
