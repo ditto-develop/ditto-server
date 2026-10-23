@@ -817,6 +817,7 @@ describe('chatMessageStats', () => {
         const stats = StatsCalc.chatMessageStats(shifted, ROOM_TYPE_LABELS, GENDER_LABELS);
 
         assert.deepEqual(stats.firstMessageBins[0], { label: '열린 시각 전(시각 조정)', count: 1 });
+        assert.equal(stats.beforeOpenRoomCount, 1);
     });
 });
 

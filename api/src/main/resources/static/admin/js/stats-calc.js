@@ -385,6 +385,7 @@ const StatsCalc = (() => {
             messageCountBins: binCounts(messageCounts, MESSAGE_COUNT_BINS),
             medianFirstMessageHours: median(firstMessageHours),
             firstMessageBins: binCounts(firstMessageHours, FIRST_MESSAGE_HOUR_BINS),
+            beforeOpenRoomCount: firstMessageHours.filter((hours) => hours < 0).length,
             firstSenderGenderCounts: [
                 ...labeledCounts(firstSenderCounts, genderLabels),
                 { label: GENDER_UNKNOWN_LABEL, count: firstSenderCounts.get(null) || 0 },

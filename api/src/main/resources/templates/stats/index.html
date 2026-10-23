@@ -272,7 +272,7 @@
                         </div>
                     </div>
 
-                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 쌍·그룹 단위라 회원 조건은 걸지 않고 관리자가 낀 쌍·그룹도 셉니다</p>
+                    <p class="stats-basis">쌍·그룹 단위라 회원 조건은 걸지 않고 관리자가 낀 쌍·그룹도 셉니다</p>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card" id="matchPairScoreCard">
                             <h3 id="matchPairScoreTitle">1:1 후보 점수</h3>
@@ -330,7 +330,7 @@
                         </div>
                         <p class="muted" id="chatRematchNote" hidden>재매칭은 위 열린 방·비율 합계에 넣지 않습니다.</p>
                     </div>
-                    <p class="stats-basis">열린 방 기준 · 메시지 시각은 실제 시각이라 시각 조정 중이면 걸린 시간이 어긋납니다</p>
+                    <p class="stats-basis">방당 메시지 수는 열린 방, 나머지는 대화가 있는 방 기준 · 재매칭 방 제외 · 메시지 시각은 실제 시각이라 시각 조정 중이면 걸린 시간이 어긋납니다</p>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card">
                             <h3 id="chatMessageCountTitle">방당 메시지 수</h3>
@@ -338,16 +338,18 @@
                             <div id="chatMessageCountShares"></div>
                         </div>
                         <div class="card">
+                            <h3 id="chatFirstSenderTitle">첫 발신자 성별</h3>
+                            <div id="chatFirstSenderShares"></div>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
                             <h3 id="chatFirstMessageTitle">첫 메시지까지</h3>
                             <p class="muted" id="chatFirstMessageSummary"></p>
                             <div id="chatFirstMessageShares"></div>
                         </div>
                         <div class="card">
-                            <h3>첫 발신자 성별</h3>
-                            <div id="chatFirstSenderShares"></div>
-                        </div>
-                        <div class="card">
-                            <h3>마지막 메시지 시점</h3>
+                            <h3 id="chatLastMessageTitle">마지막 메시지 시점</h3>
                             <div id="chatLastMessageShares"></div>
                         </div>
                     </div>
@@ -432,20 +434,18 @@
                             </div>
                         </div>
                         <div class="card">
-                            <h3>유형 전환 (다시 참여한 회원)</h3>
-                            <div id="retentionTrackSwitchShares"></div>
-                        </div>
-                    </div>
-                    <div class="grid cols-2 stats-align-start">
-                        <div class="card">
                             <h3>매칭 결과별 재참여</h3>
                             <div class="tbl-scroll">
                                 <table class="tbl">
-                                    <thead><tr><th>지난 회차</th><th class="num">참여(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
+                                    <thead><tr><th>매칭 결과</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
                                     <tbody id="retentionMatchResultRows"></tbody>
                                 </table>
                             </div>
                         </div>
+                    </div>
+                    <div class="card">
+                        <h3>유형 전환 (다시 참여한 회원)</h3>
+                        <div id="retentionTrackSwitchShares"></div>
                     </div>
                     <div class="card">
                         <h3>가입 주차별 리텐션</h3>
@@ -455,7 +455,7 @@
                                 <tbody id="retentionCohortRows"></tbody>
                             </table>
                         </div>
-                        <p class="muted" id="retentionCohortNote">가입한 주(월~일)로 묶고, 가입 뒤 N번째 회차에 퀴즈를 끝까지 푼 비율입니다. 매칭 유형은 따지지 않습니다.</p>
+                        <p class="muted" id="retentionCohortNote">가입한 주(월~일)로 묶고, 가입 뒤 N번째 회차에 퀴즈를 끝까지 푼 비율과 인원입니다. 매칭 유형은 따지지 않습니다. '-'는 아직 오지 않은 회차이거나 가입한 주에 퀴즈가 없던 경우입니다.</p>
                     </div>
                 </div>
             </section>
