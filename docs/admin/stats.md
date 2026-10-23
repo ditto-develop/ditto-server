@@ -4,7 +4,7 @@
 
 ## 공통
 
-- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다.
+- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다. 팀원이 관리자 계정으로 실제 퀴즈·매칭에 참여하면 숫자가 작게 보여서, 페이지 위에 탈퇴하지 않은 관리자 계정 수와 고른 회차에 퀴즈를 완주한 관리자 수를 알린다(#343). 이 둘은 회원 조건·매칭 유형을 걸지 않는다.
 - **기준일**: `ServerTimeProvider.now()`의 날짜. QA 시각 조정을 따른다. 화면 "오늘(…) 기준" 줄에 보인다.
 - **회차**: 그 주 월요일 00:00 ~ 다음 월요일 00:00. 번호는 활성 퀴즈셋이 있는 주를 오래된 순으로 센 값이라, 퀴즈셋을 지우거나 비활성으로 돌리거나 과거 주에 만들면 번호가 밀린다. 같은 주에 QA 용 비활성 셋이 있어도 매칭처럼 활성 셋만 본다.
 - **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
@@ -19,13 +19,23 @@
 
 | 블록 | 세는 것 |
 |---|---|
-| 누적 가입자 | `joined_at` 있는 회원. 탈퇴(LEFT) 포함. 가입을 마치지 않은 PENDING 은 `joined_at`이 없어 빠진다 |
-| 현재 회원 | 누적 가입자 중 LEFT 가 아닌 회원. 정지(SUSPENDED·BANNED) 포함 |
+| 누적 가입자 | `joined_at` 있는 회원. 탈퇴(LEFT) 포함. 가입을 마치지 않은 PENDING 은 "가입 미완료 N명 제외"로 카드 아래에 따로 보인다(0명이면 숨김) |
+| 현재 회원 | 누적 가입자 중 LEFT 가 아닌 회원. 정지(SUSPENDED)·영구 차단(BANNED) 포함 |
 | 탈퇴 | 누적 가입자 중 LEFT |
+| 계정 상태 | 현재 회원을 활성·휴면·정지(SUSPENDED)·영구 차단(BANNED)으로 나눈다. 활성은 ACTIVE 중 지금 회차까지 최근 4회차 안에 한 번이라도 완주한 회원, 휴면은 나머지 ACTIVE 다. 쓴 회차는 카드 아래에 보인다 |
+| 지역 | 현재 회원의 `location`. 회원이 있는 지역만 많은 순으로 보이고 비었으면 "미입력" |
+| 탈퇴 사유 | 고른 회차 주(월~일)에 `left_at`이 있는 가입자를 `leave_reason`별로 센다. 자유 서술(`leave_reason_detail`)은 보여 주지 않는다 |
 | 성비·연령대 × 성별 | 현재 회원 |
 | 회차 일별·주별(고른 주까지 8주) 신규 | 그 기간 `joined_at`. 나중에 탈퇴한 회원도 가입한 날에 센다 |
 
 매칭 유형(1:1·그룹) 조건은 이 장에 걸리지 않는다.
+
+- 계정 상태는 `member.status`에 이력이 없어 지금 상태로만 센다. 그래서 활성도 고른 회차가 아니라 지금 회차 기준이다.
+- 퀴즈 참여 장의 활성 회원과는 이번 회차에서도 숫자가 다를 수 있다. 퀴즈 장은 고른 회차 기준이고, 정지·탈퇴 회원도 완주했으면 세고, 매칭 유형 조건이 걸린다. 계정 상태 활성은 지금 ACTIVE 인 회원만 센다.
+- 정지 회원은 최근에 완주했어도 정지로 센다.
+- 탈퇴 사유는 enum 이 없는 문자열이다. FE 탈퇴 화면(`withdrawReasons.ts`)이 보내는 다섯 코드와, 애플 서버 알림으로 서버가 탈퇴시킬 때 넣는 `APPLE_ACCOUNT_DELETED`·`APPLE_CONSENT_REVOKED`가 있다. 라벨은 `stats-calc.js`에 두고, 모르는 코드는 코드 그대로 보인다. 사유 없이 탈퇴하면 "사유 없음"이다.
+- 가입을 마치지 않은 회원도 애플 연결 해제로 탈퇴될 수 있다(#342). 이 회원은 `joined_at`이 없어 누적 가입자·탈퇴·탈퇴 사유에서 모두 빠진다.
+- 탈퇴 시각은 `ServerTimeProvider` 시각이라 QA 시각 조정을 따른다. 30일 안에 복구하면 `left_at`과 사유가 지워져 빠진다.
 
 ## 퀴즈 참여
 
@@ -36,16 +46,21 @@
 | 참여율 | 참여자 ÷ 활성 회원. 활성 회원은 고른 회차까지 최근 4회차 안에 한 번이라도 완주한 회원(겹치면 한 명) |
 | 완료율 | 참여자 ÷ 시작 |
 | 매칭 유형별 참여자·성비 | 참여자를 1:1·그룹으로 나눈 것 |
+| 요일별 완주 | 참여자가 마지막으로 답한 요일. `quiz_progress`에 완주 시각이 없어 그 셋에 낸 답의 `created_at` 최댓값으로 본다. 응답 기간인 월~수는 늘 보이고 다른 요일은 완주가 있을 때만 붙는다. 요일 합은 회차 참여자와 같다 |
 
-- 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다.
+- 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다. 한 회원이 같은 주에 두 셋을 푸는 것은 앱이 조회 때 오류로 다루는 불변식 위반이라 지표는 이 전제를 따른다.
 - 그때 참여한 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 분자와 분모가 같은 기준이라 참여율이 100%를 넘지 않는다.
+- 답 시각은 JPA auditing 이 찍는 실제 시각이라 QA 시각 조정을 따르지 않는다. 답을 바꾸면 `updated_at`만 바뀌어 완주 요일은 그대로다.
 
 ## 문항 분포
 
 - 그 회차 활성 퀴즈셋의 문항마다 선택지별 답 수와 비율. 매칭 유형을 고르면 그 유형 퀴즈셋만 나온다.
 - 성별·연령대·가입 주차 조건은 답한 회원에게 건다. 답이 없는 선택지도 0으로 나온다.
 - 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
-- 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
+- 쏠림 기준선(몇 점부터 나쁜지)은 기획서에 없어 화면에 표시하지 않는다. 비율과 쏠림 점수만 보여 준다.
+- 쏠림 점수: 문항마다 첫 선택지 비율이 50%에서 벗어난 %p(|첫 선택지 비율 − 50|)를 구한다. 문항 제목 옆에 문항 값이, 퀴즈셋 제목 옆에 답이 있는 문항끼리의 평균이 보인다. 선택지는 어드민 폼에서 둘로 고정이라 첫 선택지 하나로 본다.
+- 성별 차이: 문항마다 성별로 첫 선택지를 고른 비율(인원)과 그 차이(%p). 두 성별 이상이 답한 문항에만 보여서, 성별 조건을 걸면 사라진다. 성별 미입력 회원은 차이에 넣지 않는다.
+- 서버는 선택지마다 성별로 나눈 답 수를 내리고 합치기·비율은 `stats-calc.js`가 한다.
 
 ## 매칭
 
@@ -94,7 +109,8 @@
 
 - 주간 재참여율 = 지난 회차 참여자 중 고른 회차에도 완주한 회원 ÷ 지난 회차 참여자.
 - 지난 회차는 고른 회차 바로 앞의 회차(활성 퀴즈셋이 있는 주)다. 퀴즈를 쉰 주는 건너뛴다. 앞에 회차가 없거나 고른 주가 회차가 아니면 비운다.
-- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함). 유형 전환 수는 P1 이라 따로 보여 주지 않는다.
+- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함).
+- 유형 전환(기획서의 "트랙 전환")은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
 
 ## 신고
@@ -135,10 +151,38 @@
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
 
 ```sql
--- 누적 가입자·현재 회원·탈퇴
+-- 지표에서 빠진 관리자 (계정 수, 고른 회차 완주자)
+SELECT COUNT(*) FROM member WHERE role = 'ADMIN' AND status <> 'LEFT';
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN member m ON m.id = qp.member_id AND m.role = 'ADMIN'
+WHERE qp.status = 'COMPLETED';
+
+-- 누적 가입자·현재 회원·탈퇴·계정 상태 (PENDING 은 가입 미완료)
 SELECT status, COUNT(*) FROM member
-WHERE role = 'USER' AND joined_at IS NOT NULL
+WHERE role = 'USER' AND (status = 'PENDING' OR joined_at IS NOT NULL)
 GROUP BY status;
+
+-- 계정 상태의 활성에 쓰는 회차 (:this_monday 는 실제 오늘이 아니라 서버 기준일의 월요일)
+SELECT DISTINCT week_started_on FROM quiz_set
+WHERE is_active AND week_started_on <= :this_monday
+ORDER BY week_started_on DESC LIMIT 4;
+
+-- 계정 상태의 활성 (:recent_rounds 는 위 회차들)
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE' AND m.joined_at IS NOT NULL
+WHERE qs.week_started_on IN (:recent_rounds) AND qp.status = 'COMPLETED';
+
+-- 지역 (현재 회원)
+SELECT location, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL AND status <> 'LEFT'
+GROUP BY location;
+
+-- 탈퇴 사유 (고른 회차 주)
+SELECT leave_reason, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at IS NOT NULL AND left_at >= :monday AND left_at < :monday + INTERVAL 7 DAY
+GROUP BY leave_reason;
 
 -- 성비 (현재 회원)
 SELECT gender, COUNT(*) FROM member
@@ -157,14 +201,25 @@ JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY qs.matching_type, qp.status;
 
--- 문항 분포
-SELECT q.display_order, q.question, c.content, COUNT(m.id) FROM quiz_choice c
+-- 요일별 완주 (1 = 일요일). 회원마다 그 셋에 낸 마지막 답 시각
+SELECT DAYOFWEEK(completed_at) AS day_of_week, COUNT(*) FROM (
+  SELECT MAX(qa.created_at) AS completed_at FROM quiz_answer qa
+  JOIN quiz q ON q.id = qa.quiz_id
+  JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+  JOIN quiz_progress qp ON qp.member_id = qa.member_id AND qp.quiz_set_id = qs.id AND qp.status = 'COMPLETED'
+  JOIN member m ON m.id = qa.member_id AND m.role = 'USER'
+  GROUP BY qa.member_id
+) completed
+GROUP BY day_of_week;
+
+-- 문항 분포·성별 차이 (성별로 나뉜 행을 선택지마다 더하면 분포다)
+SELECT q.display_order, q.question, c.content, m.gender, COUNT(m.id) FROM quiz_choice c
 JOIN quiz q ON q.id = c.quiz_id
 JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active
 LEFT JOIN quiz_answer a ON a.choice_id = c.id
 LEFT JOIN member m ON m.id = a.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
-GROUP BY qs.id, q.id, c.id
+GROUP BY qs.id, q.id, c.id, m.gender
 ORDER BY qs.id, q.display_order, c.display_order;
 
 -- 활성 회원 (:rounds 는 화면 퀴즈 참여 장 기준 줄에 나온 회차 월요일들)
@@ -225,14 +280,15 @@ JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
 WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
 GROUP BY a.meeting_status, a.rating;
 
--- 주간 재참여 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
-SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+-- 주간 재참여·유형 전환 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
+SELECT qs.matching_type AS previous_type, again_set.matching_type AS again_type, COUNT(DISTINCT qp.member_id)
+FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'COMPLETED'
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
 WHERE qp.status = 'COMPLETED'
-GROUP BY qs.matching_type;
+GROUP BY qs.matching_type, again_set.matching_type;
 
 -- 신고 처리 상태 (피신고자 기준)
 SELECT r.status, COUNT(*) FROM member_report r
@@ -292,13 +348,13 @@ GROUP BY DATE(joined_at);
 
 | 장 | 쓸 도구 | 주의 |
 |---|---|---|
-| 회원 현황 | 더미 생성 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다) |
-| 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨) |
-| 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다 |
+| 회원 현황 | 더미 생성(지역은 무작위, 직접 만들기에서 고를 수 있다). 정지·영구 차단은 회원 상세의 직권 제재(`/admin/members/{id}/sanctions`)나 신고 검토 제재. 탈퇴 사유는 테스트 계정으로 앱에서 탈퇴 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다). 탈퇴 시각은 조정된 시각이라 조정된 주에 잡힌다. 진행 중인 매칭·채팅이 있으면 탈퇴가 막히고, 탈퇴한 계정으로 30일 안에 다시 로그인하면 복구되어 사유가 빠진다. 앱은 사유를 늘 보내서 "사유 없음"·모르는 코드는 `POST /api/v1/users/{id}/leave`를 바디 없이나 아무 `reason`으로 불러야 생긴다. 더미를 탈퇴시키는 도구는 없어 탈퇴 한 건마다 소셜 계정이 하나 필요하다. 정지는 끝난 뒤에도 목요일 매칭 배치나 그 회원의 다음 로그인 전까지 SUSPENDED 로 남아 정지로 센다. 가입 미완료는 소셜 로그인만 하고 가입 화면을 닫으면 생기고, 성별·생년월일이 없어 회원 조건을 걸면 0명이 된다 |
+| 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨). 요일별 완주는 답 시각이 실제 시각이라 늘 실제 오늘 요일에만 쌓인다. 여러 요일은 실제 날짜가 다른 날에 만들어야 하고, 시각 조정으로 미래 회차를 풀면 회차 주보다 앞선 실제 요일이 찍힌다 |
+| 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다. 예: 남성 더미 둘은 첫 선택지, 여성 더미 둘은 둘째 선택지를 고르면 성별 차이 100%p, 쏠림 0 이다 |
 | 매칭 | 시각 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 생성 → "퀴즈 마감 직후"로 옮겨 매칭 실행(더미를 나중에 더했으면 퀴즈셋별 재생성) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 재생성할 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다 |
 | 채팅 | 매칭 성사 → QA 콘솔 시각 조정 "채팅방 열린 직후" → 앱이나 QA 콘솔로 메시지 보내기 | 열리기 전(`SCHEDULED`) 방은 세지 않는다. 회차는 원본 매칭의 퀴즈셋이라 매칭 장과 같은 회차에 잡힌다. 재매칭 방은 성사 뒤 다음 금요일에 열린다. 재매칭 방 화면의 [옮기기]나 "채팅방 열린 직후"로 연 뒤 원래 그룹 회차를 연다 |
 | 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
-| 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333) |
+| 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333). 유형 전환은 테스트 계정이 지난 회차와 고른 회차에 다른 유형을 풀어서 만든다. 두 회차 모두 두 유형의 활성 셋이 있어야 하고, 네 줄을 다 보려면 줄마다 계정이 하나씩 필요하다 |
 | 차단 | QA 콘솔 신고에서 "더미가 이 회원도 사용자 차단"을 체크해 신고, 또는 앱에서 테스트 계정으로 차단 | 콘솔로 하면 신고 장도 같이 는다. 같은 상대에게 검토 대기 신고가 있으면 다시 신고할 수 없어 다른 더미로 한다. 이미 차단한 쌍이면 차단 수는 그대로다. 차단 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다. 매칭 유형 조건까지 보려면 실제 날짜 주의 활성 셋으로 더미를 만든다 |
 | 알림 | 테스트 계정(USER, 앱에 로그인해 푸시 토큰 등록)과 더미에게 알림이 가는 동작을 한다. 예: 매칭 실행, QA 콘솔에서 테스트 계정에게 1:1 신청, QA 콘솔 방에서 더미로 메시지 보내기, 공지 발송(`/admin/notices`, 활성 회원 전원에게 감). 퀴즈 오픈 알림은 실제 시각 월 00:00 배치에서만 나가서 재현되지 않는다 | 더미는 푸시 토큰이 없어 "등록된 기기 없음"으로 남는다. 방 알림 꺼짐: 테스트 계정이 앱에서 그 방 알림을 끄고 더미로 메시지를 보낸다(채팅 알림만 해당). 알림 설정 꺼짐: 앱 설정에서 채팅·매칭 알림을 끄고 더미 메시지나 1:1 신청을 받는다. 공지는 설정과 상관없이 늘 보내서 이 경우를 못 만든다. 방 알림을 먼저 보므로 둘 다 꺼져 있으면 방 알림 꺼짐으로 남는다. 실패: 테스트 계정으로 아무 문자열을 푸시 토큰으로 등록(`POST /api/v1/notifications/devices`)하면 FCM 이 거절해 실패로 남는다. 이 토큰은 자동으로 지워지지 않으니 끝나면 `DELETE /api/v1/notifications/devices/{token}`으로 지운다. 안 지우면 그 계정 알림이 계속 실패로 잡힌다. 로컬(`local` 프로필)은 가짜 발송기라 늘 성공으로 남아 실패를 재현할 수 없다. 이력 시각은 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
 | 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |

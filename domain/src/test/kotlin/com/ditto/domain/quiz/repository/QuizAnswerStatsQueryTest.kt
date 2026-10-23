@@ -8,14 +8,18 @@ import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
@@ -26,6 +30,7 @@ class QuizAnswerStatsQueryTest(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val memberRepository: MemberRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -103,6 +108,21 @@ class QuizAnswerStatsQueryTest(
             counts.map { it.choiceContent to it.count } shouldBe listOf("A" to 1L, "B" to 0L)
         }
 
+        "같은 선택지의 답을 성별로 나눈다" {
+            val (choiceA, _) = saveQuestion(saveQuizSet())
+            answer(saveMember(Gender.FEMALE), choiceA)
+            answer(saveMember(Gender.FEMALE), choiceA)
+            answer(saveMember(Gender.MALE), choiceA)
+
+            val counts = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, MemberFilter.NONE)
+
+            counts.map { Triple(it.choiceContent, it.gender, it.count) } shouldContainExactlyInAnyOrder listOf(
+                Triple("A", Gender.FEMALE, 2L),
+                Triple("A", Gender.MALE, 1L),
+                Triple("B", null, 0L),
+            )
+        }
+
         "비활성 셋·다른 주·다른 매칭 유형의 문항은 나오지 않는다" {
             saveQuestion(saveQuizSet(isActive = false))
             saveQuestion(saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)))
@@ -110,6 +130,39 @@ class QuizAnswerStatsQueryTest(
 
             quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, MatchingType.ONE_TO_ONE, MemberFilter.NONE)
                 .shouldBeEmpty()
+        }
+    }
+
+    "findCompletedAtsInWeek" - {
+        "완주한 회원마다 가장 늦은 답 시각을 하나씩 주고 중간에 그만둔 회원과 관리자는 뺀다" {
+            val quizSet = saveQuizSet()
+            val (firstA, _) = saveQuestion(quizSet, displayOrder = 1)
+            val (secondA, _) = saveQuestion(quizSet, displayOrder = 2)
+            fun progress(memberId: Long, answeredChoices: List<QuizChoice>) {
+                answeredChoices.forEach { answer(memberId, it) }
+                val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 2)
+                repeat(answeredChoices.size) { progress.recordAnswer() }
+                quizProgressRepository.save(progress)
+            }
+            val completed = saveMember()
+            progress(completed, listOf(firstA, secondA))
+            progress(saveMember(), listOf(firstA))
+            progress(saveMember(role = MemberRole.ADMIN), listOf(firstA, secondA))
+            // created_at 은 auditing 이 찍어서 답마다 날짜를 직접 바꾼다.
+            val jdbcTemplate = JdbcTemplate(dataSource)
+            val firstAnsweredAt = LocalDateTime.of(2026, 10, 19, 9, 0)
+            val lastAnsweredAt = LocalDateTime.of(2026, 10, 21, 22, 0)
+            listOf(firstA to firstAnsweredAt, secondA to lastAnsweredAt).forEach { (choice, answeredAt) ->
+                jdbcTemplate.update(
+                    "UPDATE quiz_answer SET created_at = ? WHERE member_id = ? AND choice_id = ?",
+                    answeredAt,
+                    completed,
+                    choice.id,
+                )
+            }
+
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE) shouldBe listOf(lastAnsweredAt)
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, MatchingType.GROUP, MemberFilter.NONE).shouldBeEmpty()
         }
     }
 })

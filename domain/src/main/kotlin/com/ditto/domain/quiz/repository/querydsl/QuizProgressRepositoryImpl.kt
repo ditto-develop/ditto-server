@@ -1,5 +1,7 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.member.repository.querydsl.nonAdminMatching
@@ -119,6 +121,32 @@ class QuizProgressRepositoryImpl(
             .fetchOne() ?: 0L
     }
 
+    override fun countAdminMembersCompletedInWeek(weekStartedOn: LocalDate): Long =
+        queryFactory
+            .select(quizProgress.memberId.countDistinct())
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.role.eq(MemberRole.ADMIN),
+            )
+            .fetchOne() ?: 0L
+
+    override fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long {
+        if (roundWeeks.isEmpty()) return 0L
+        return queryFactory
+            .select(quizProgress.memberId.countDistinct())
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.`in`(roundWeeks),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.status.eq(MemberStatus.ACTIVE),
+                member.joinedAt.isNotNull,
+                member.nonAdminMatching(filter),
+            )
+            .fetchOne() ?: 0L
+    }
+
     override fun countMembersCompletedAgain(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
@@ -128,7 +156,7 @@ class QuizProgressRepositoryImpl(
         val againSet = QQuizSet("againSet")
         val countExpression = quizProgress.memberId.countDistinct()
         return queryFactory
-            .select(quizSet.matchingType, countExpression)
+            .select(quizSet.matchingType, againSet.matchingType, countExpression)
             .fromProgressOfActiveSetsWithMember()
             .join(againProgress).on(
                 againProgress.memberId.eq(quizProgress.memberId),
@@ -144,12 +172,14 @@ class QuizProgressRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.nonAdminMatching(filter),
             )
-            .groupBy(quizSet.matchingType)
+            .groupBy(quizSet.matchingType, againSet.matchingType)
             .fetch()
             .map { row ->
                 CompletedAgainCount(
                     previousMatchingType = row.get(quizSet.matchingType)
                         ?: throw IllegalStateException("group by 키 matchingType 이 비었다"),
+                    againMatchingType = row.get(againSet.matchingType)
+                        ?: throw IllegalStateException("group by 키 againSet.matchingType 이 비었다"),
                     count = row.get(countExpression) ?: 0L,
                 )
             }

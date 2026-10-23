@@ -36,7 +36,82 @@ describe('memberTotals', () => {
     test('누적 가입은 탈퇴를 포함하고 현재 회원은 탈퇴를 뺀다', () => {
         const totals = StatsCalc.memberTotals({ ACTIVE: 5, SUSPENDED: 1, LEFT: 2 });
 
-        assert.deepEqual(totals, { joined: 8, current: 6, left: 2 });
+        assert.deepEqual(totals, { joined: 8, current: 6, left: 2, pending: 0 });
+    });
+
+    test('가입을 마치지 않은 회원은 누적 가입에서 빼고 따로 센다', () => {
+        const totals = StatsCalc.memberTotals({ ACTIVE: 5, LEFT: 2, PENDING: 3 });
+
+        assert.deepEqual(totals, { joined: 7, current: 5, left: 2, pending: 3 });
+    });
+});
+
+describe('accountStatusCounts', () => {
+    test('ACTIVE 를 최근 회차 완주 여부로 활성·휴면으로 나누고 정지·영구 차단은 상태대로 센다', () => {
+        const rows = StatsCalc.accountStatusCounts({ ACTIVE: 10, SUSPENDED: 2, BANNED: 1, LEFT: 4 }, 6);
+
+        assert.deepEqual(rows, [
+            { label: '활성', count: 6 },
+            { label: '휴면', count: 4 },
+            { label: '정지', count: 2 },
+            { label: '영구 차단', count: 1 },
+        ]);
+    });
+});
+
+describe('locationCounts', () => {
+    const LOCATION_LABELS = { SEOUL: '서울', BUSAN: '부산', JEJU: '제주' };
+
+    test('회원이 있는 지역만 많은 순이고 미입력은 맨 뒤다', () => {
+        const rows = StatsCalc.locationCounts(
+            [{ location: 'BUSAN', count: 1 }, { location: null, count: 2 }, { location: 'SEOUL', count: 3 }],
+            LOCATION_LABELS,
+        );
+
+        assert.deepEqual(rows, [
+            { label: '서울', count: 3 },
+            { label: '부산', count: 1 },
+            { label: '미입력', count: 2 },
+        ]);
+    });
+
+    test('같은 수면 라벨 순이다', () => {
+        const rows = StatsCalc.locationCounts(
+            [{ location: 'JEJU', count: 1 }, { location: 'BUSAN', count: 1 }],
+            LOCATION_LABELS,
+        );
+
+        assert.deepEqual(rows.map((row) => row.label), ['부산', '제주']);
+    });
+
+    test('미입력이 없으면 줄을 만들지 않는다', () => {
+        const rows = StatsCalc.locationCounts([{ location: 'JEJU', count: 1 }], LOCATION_LABELS);
+
+        assert.deepEqual(rows, [{ label: '제주', count: 1 }]);
+    });
+});
+
+describe('leaveReasonCounts', () => {
+    test('사유는 탈퇴 화면 순서대로 0이어도 나오고 사유 없음과 모르는 코드는 뒤에 붙는다', () => {
+        const counts = StatsCalc.leaveReasonCounts([
+            { leaveReason: 'other', count: 1 },
+            { leaveReason: 'low_usage', count: 2 },
+            { leaveReason: null, count: 1 },
+            { leaveReason: 'new_reason', count: 1 },
+        ]);
+
+        assert.equal(counts.leftCount, 5);
+        assert.deepEqual(counts.reasonCounts, [
+            { label: '원하는 매칭이 이루어지지 않아요', count: 0 },
+            { label: '사용 빈도가 낮아졌어요', count: 2 },
+            { label: '개인정보가 걱정돼요', count: 0 },
+            { label: '불편한 경험이 있었어요', count: 0 },
+            { label: '기타', count: 1 },
+            { label: '애플 계정 삭제', count: 0 },
+            { label: '애플 연결 해제', count: 0 },
+            { label: '사유 없음', count: 1 },
+            { label: 'new_reason', count: 1 },
+        ]);
     });
 });
 
@@ -333,7 +408,8 @@ describe('chatActivity', () => {
 });
 
 describe('questionDistributions', () => {
-    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+    const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count, gender = 'MALE') => ({
         quizSetId,
         matchingType: quizSetId === 1 ? 'ONE_TO_ONE' : 'GROUP',
         quizId,
@@ -342,30 +418,60 @@ describe('questionDistributions', () => {
         choiceId: quizId * 10 + choiceContent.length,
         choiceDisplayOrder: 1,
         choiceContent,
+        gender,
         count,
     });
 
-    test('퀴즈셋·문항 순서를 지키며 묶고 문항마다 응답 수를 더한다', () => {
+    test('퀴즈셋·문항 순서를 지키며 묶고 선택지는 성별 행을 합친다', () => {
         const distributions = StatsCalc.questionDistributions([
-            choiceRow(1, 11, 1, 'A', 3),
-            choiceRow(1, 11, 1, 'BB', 1),
-            choiceRow(1, 12, 2, 'A', 0),
-            choiceRow(1, 12, 2, 'BB', 0),
+            choiceRow(1, 11, 1, 'A', 2, 'MALE'),
+            choiceRow(1, 11, 1, 'A', 1, 'FEMALE'),
+            choiceRow(1, 11, 1, 'BB', 1, 'FEMALE'),
+            choiceRow(1, 12, 2, 'A', 0, null),
+            choiceRow(1, 12, 2, 'BB', 0, null),
             choiceRow(2, 21, 1, 'A', 2),
-        ]);
+        ], GENDER_LABELS);
 
         assert.deepEqual(distributions.map((quizSet) => quizSet.matchingType), ['ONE_TO_ONE', 'GROUP']);
-        assert.deepEqual(distributions[0].questions[0], {
-            displayOrder: 1,
-            question: '질문11',
-            answerCount: 4,
-            choices: [{ label: 'A', count: 3 }, { label: 'BB', count: 1 }],
-        });
-        assert.equal(distributions[0].questions[1].answerCount, 0);
+        const [first, second] = distributions[0].questions;
+        assert.equal(first.answerCount, 4);
+        assert.deepEqual(first.choices, [{ label: 'A', count: 3 }, { label: 'BB', count: 1 }]);
+        assert.equal(second.answerCount, 0);
+    });
+
+    test('쏠림은 첫 선택지 비율이 50%에서 벗어난 %p 이고 퀴즈셋 점수는 답이 있는 문항의 평균이다', () => {
+        const [quizSet] = StatsCalc.questionDistributions([
+            choiceRow(1, 11, 1, 'A', 3),
+            choiceRow(1, 11, 1, 'BB', 1),
+            choiceRow(1, 12, 2, 'A', 1),
+            choiceRow(1, 12, 2, 'BB', 1),
+            choiceRow(1, 13, 3, 'A', 0, null),
+            choiceRow(1, 13, 3, 'BB', 0, null),
+        ], GENDER_LABELS);
+
+        assert.deepEqual(quizSet.questions.map((question) => question.skew), [25, 0, null]);
+        assert.equal(quizSet.skewScore, 12.5);
+    });
+
+    test('성별마다 첫 선택지 비율을 내고 답이 없는 성별은 빠진다', () => {
+        const [quizSet] = StatsCalc.questionDistributions([
+            choiceRow(1, 11, 1, 'A', 3, 'MALE'),
+            choiceRow(1, 11, 1, 'A', 1, 'FEMALE'),
+            choiceRow(1, 11, 1, 'BB', 1, 'MALE'),
+            choiceRow(1, 11, 1, 'BB', 3, 'FEMALE'),
+            choiceRow(1, 12, 2, 'A', 2, 'FEMALE'),
+            choiceRow(1, 12, 2, 'BB', 0, null),
+        ], GENDER_LABELS);
+
+        assert.deepEqual(quizSet.questions[0].genderShares, [
+            { label: '남성', answerCount: 4, share: 75 },
+            { label: '여성', answerCount: 4, share: 25 },
+        ]);
+        assert.deepEqual(quizSet.questions[1].genderShares, [{ label: '여성', answerCount: 2, share: 100 }]);
     });
 
     test('문항이 없으면 빈 목록이다', () => {
-        assert.deepEqual(StatsCalc.questionDistributions([]), []);
+        assert.deepEqual(StatsCalc.questionDistributions([], GENDER_LABELS), []);
     });
 });
 
@@ -546,5 +652,49 @@ describe('memberReportCounts', () => {
 describe('sumCounts', () => {
     test('행의 count 를 더한다', () => {
         assert.equal(StatsCalc.sumCounts([{ count: 2 }, { count: 3 }]), 5);
+    });
+});
+
+describe('completionDayCounts', () => {
+    test('응답 기간인 월~수는 0이어도 나오고 그 밖의 요일은 완주가 있을 때만 붙는다', () => {
+        const days = StatsCalc.completionDayCounts(
+            ['2026-10-19 00:00:00', '2026-10-19 23:59:59', '2026-10-21 12:00:00', '2026-10-25 09:00:00'],
+        );
+
+        assert.deepEqual(days, [
+            { label: '월', count: 2 },
+            { label: '화', count: 0 },
+            { label: '수', count: 1 },
+            { label: '일', count: 1 },
+        ]);
+    });
+});
+
+describe('trackSwitchCounts', () => {
+    const ALL_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
+    const COMPLETED_AGAIN_COUNTS = [
+        { previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'ONE_TO_ONE', count: 3 },
+        { previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'GROUP', count: 1 },
+        { previousMatchingType: 'GROUP', againMatchingType: 'ONE_TO_ONE', count: 2 },
+    ];
+
+    test('지난 회차 유형 → 고른 회차 유형 네 줄을 0이어도 낸다', () => {
+        const rows = StatsCalc.trackSwitchCounts(COMPLETED_AGAIN_COUNTS, ALL_LABELS, ALL_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '1:1 → 1:1', count: 3 },
+            { label: '1:1 → 그룹', count: 1 },
+            { label: '그룹 → 1:1', count: 2 },
+            { label: '그룹 → 그룹', count: 0 },
+        ]);
+    });
+
+    test('매칭 유형을 고르면 지난 회차 쪽만 걸러지고 고른 회차 쪽은 두 유형이 다 나온다', () => {
+        const rows = StatsCalc.trackSwitchCounts(COMPLETED_AGAIN_COUNTS, { GROUP: '그룹' }, ALL_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '그룹 → 1:1', count: 2 },
+            { label: '그룹 → 그룹', count: 0 },
+        ]);
     });
 });

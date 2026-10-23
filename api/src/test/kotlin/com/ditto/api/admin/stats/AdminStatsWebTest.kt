@@ -103,11 +103,23 @@ class AdminStatsWebTest(
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("1회차 · 4/6 주")))
-                .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":1}""")))
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(""""countsByStatus":{"ACTIVE":1},"currentActiveRoundWeeks":["2026-04-06"]"""),
+                    ),
+                )
                 .andExpect(content().string(pageJsonContaining(""""recentJoinedAts":["2026-04-07 10:00:00"]""")))
                 .andExpect(
                     content().string(
                         pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"locationCounts":[{"location":null,"count":1}],"leaveReasonCounts":[],""" +
+                                """"adminMemberCount":0""",
+                        ),
                     ),
                 )
         }
@@ -136,13 +148,15 @@ class AdminStatsWebTest(
                         ),
                     ),
                 )
+                .andExpect(content().string(pageJsonContaining(""""completedAts":["""")))
+                .andExpect(content().string(pageJsonContaining(""""adminCompletedCount":0""")))
                 .andExpect(
                     content().string(
                         pageJsonContaining(
                             """"choiceAnswerCounts":[{"quizSetId":${quizSet.id},"matchingType":"ONE_TO_ONE",""" +
                                 """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
                                 """"choiceId":${choice.id},""" +
-                                """"choiceDisplayOrder":1,"choiceContent":"A","count":1}]""",
+                                """"choiceDisplayOrder":1,"choiceContent":"A","gender":null,"count":1}]""",
                         ),
                     ),
                 )
@@ -248,7 +262,9 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":"2026-04-06","previousProgressCounts":""" +
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
-                                """"completedAgainCounts":[{"previousMatchingType":"ONE_TO_ONE","count":1}]}""",
+                                """"completedAgainCounts":""" +
+                                """[{"previousMatchingType":"ONE_TO_ONE",""" +
+                                """"againMatchingType":"ONE_TO_ONE","count":1}]}""",
                         ),
                     ),
                 )

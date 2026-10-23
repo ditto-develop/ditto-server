@@ -66,6 +66,7 @@
                 <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
             </div>
 
+            <p class="alert info" id="adminExcludedNotice" hidden></p>
             <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·매칭·채팅·평가·리텐션은 비어 있습니다.</p>
 
             <div class="qa-bar">
@@ -90,22 +91,34 @@
 
             <section class="stats-section" id="members">
                 <h2 class="stats-section-title">회원 현황</h2>
-                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다.</p>
+                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다. 계정 상태는 지금 상태로 셉니다.</p>
                 <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
                 <div id="memberSectionBody">
                     <p class="stats-basis">오늘(<span id="statsToday">-</span>) 기준</p>
                     <div class="grid stats-totals">
                         <div class="card stat">
-                            <span class="label">누적 가입자 (탈퇴 포함)</span>
+                            <span class="label">누적 가입자 <span class="nowrap">(탈퇴 포함)</span></span>
                             <span class="value" id="memberJoinedCount">-</span>
+                            <span class="basis" id="memberJoinedCountBasis"></span>
                         </div>
                         <div class="card stat">
-                            <span class="label">현재 회원 (정지 포함)</span>
+                            <span class="label">현재 회원 <span class="nowrap">(정지·차단 포함)</span></span>
                             <span class="value" id="memberCurrentCount">-</span>
                         </div>
                         <div class="card stat">
                             <span class="label">탈퇴</span>
                             <span class="value" id="memberLeftCount">-</span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>계정 상태 (현재 회원)</h3>
+                            <div id="accountStatusShares"></div>
+                            <p class="muted" id="accountStatusNote"></p>
+                        </div>
+                        <div class="card">
+                            <h3>지역 (현재 회원)</h3>
+                            <div id="locationShares"></div>
                         </div>
                     </div>
                     <div class="grid cols-2 stats-align-start">
@@ -144,6 +157,14 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 월~일에 탈퇴한 회원 · 탈퇴 시각은 시각 조정을 따르고 30일 안에 복구하면 빠집니다</p>
+                    <div class="card">
+                        <h3 id="leaveReasonTitle">탈퇴 사유</h3>
+                        <div id="leaveReasonShares"></div>
+                        <p class="muted" id="leaveReasonEmpty" hidden
+                           th:text="${hasConditions ? '조건에 맞는 탈퇴 회원이 없습니다.' : '이 주에 탈퇴한 회원이 없습니다.'}">이 주에 탈퇴한 회원이 없습니다.</p>
                     </div>
                 </div>
             </section>
@@ -186,13 +207,18 @@
                                 </table>
                             </div>
                         </div>
+                        <div class="card">
+                            <h3>요일별 완주</h3>
+                            <div id="quizCompletionDayShares"></div>
+                            <p class="muted">마지막으로 답한 요일입니다. 시각 조정은 따르지 않고 실제로 답한 때로 셉니다.</p>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <section class="stats-section" id="questions">
                 <h2 class="stats-section-title">문항 분포</h2>
-                <p class="stats-section-desc">답이 한쪽으로 몰린 문항은 매칭에 별 도움이 안 됩니다. 끝까지 안 푼 회원의 답도 셉니다.</p>
+                <p class="stats-section-desc">답이 한쪽으로 몰린 문항은 매칭에 별 도움이 안 됩니다. 끝까지 안 푼 회원의 답도 셉니다. 쏠림 점수는 문항마다 첫 선택지 비율이 50%에서 벗어난 정도(%p)의 평균입니다. 0이면 반반, 50이면 한쪽으로 다 몰렸습니다. 성별 차이는 두 성별 이상이 답한 문항에만 보입니다.</p>
                 <p class="alert info" id="questionEmptyNotice" hidden
                    th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (hasConditions ? '조건에 맞는 답이 없습니다.' : '이 회차에 답한 회원이 없습니다.')}">이 회차에 답한 회원이 없습니다.</p>
                 <div id="questionSectionBody">
@@ -331,7 +357,7 @@
 
             <section class="stats-section" id="retention">
                 <h2 class="stats-section-title">리텐션</h2>
-                <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞 회차입니다. 매칭 유형은 지난 회차에 푼 유형입니다. 고른 회차에 어떤 유형이든 끝까지 풀면 다시 참여로 셉니다.</p>
+                <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞 회차입니다. 매칭 유형은 지난 회차에 푼 유형입니다. 고른 회차에 어떤 유형이든 끝까지 풀면 다시 참여로 셉니다. 유형 전환은 다시 참여한 회원을 지난 회차 유형 → 고른 회차 유형으로 나눠 셉니다.</p>
                 <p class="alert info" id="retentionEmptyNotice" hidden
                    th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (selectedWeekOption.round == 1 ? '첫 회차라 지난 회차가 없습니다.' : (hasConditions ? '조건에 맞는 지난 회차 참여자가 없습니다.' : '지난 회차 참여자가 없습니다.'))}">지난 회차 참여자가 없습니다.</p>
                 <div id="retentionSectionBody">
@@ -351,13 +377,19 @@
                             <span class="value" id="retentionCompletedAgainCount">-</span>
                         </div>
                     </div>
-                    <div class="card">
-                        <h3>매칭 유형별 재참여율</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead><tr><th>매칭 유형</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
-                                <tbody id="retentionByTypeRows"></tbody>
-                            </table>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>매칭 유형별 재참여율</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 유형</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
+                                    <tbody id="retentionByTypeRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>유형 전환 (다시 참여한 회원)</h3>
+                            <div id="retentionTrackSwitchShares"></div>
                         </div>
                     </div>
                 </div>

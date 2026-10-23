@@ -7,10 +7,13 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuiz.quiz
 import com.ditto.domain.quiz.entity.QQuizAnswer.quizAnswer
 import com.ditto.domain.quiz.entity.QQuizChoice.quizChoice
+import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
+import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Transactional
 class QuizAnswerRepositoryImpl(
@@ -62,6 +65,7 @@ class QuizAnswerRepositoryImpl(
                 quizChoice.id,
                 quizChoice.displayOrder,
                 quizChoice.content,
+                member.gender,
                 countExpression,
             )
             .from(quizChoice)
@@ -79,6 +83,7 @@ class QuizAnswerRepositoryImpl(
                 quizChoice.id,
                 quizChoice.displayOrder,
                 quizChoice.content,
+                member.gender,
             )
             .orderBy(quizSet.id.asc(), quiz.displayOrder.asc(), quizChoice.displayOrder.asc())
             .fetch()
@@ -93,8 +98,34 @@ class QuizAnswerRepositoryImpl(
                     choiceId = row.get(quizChoice.id) ?: throw IllegalStateException("group by 키 choiceId 가 비었다"),
                     choiceDisplayOrder = row.get(quizChoice.displayOrder) ?: 0,
                     choiceContent = row.get(quizChoice.content).orEmpty(),
+                    gender = row.get(member.gender),
                     count = row.get(countExpression) ?: 0L,
                 )
             }
     }
+
+    override fun findCompletedAtsInWeek(
+        weekStartedOn: LocalDate,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): List<LocalDateTime> =
+        queryFactory
+            .select(quizAnswer.createdAt.max())
+            .from(quizAnswer)
+            .join(quiz).on(quiz.id.eq(quizAnswer.quizId))
+            .join(quizSet).on(quizSet.id.eq(quiz.quizSetId), quizSet.isActive.isTrue)
+            .join(quizProgress).on(
+                quizProgress.memberId.eq(quizAnswer.memberId),
+                quizProgress.quizSetId.eq(quizSet.id),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+            )
+            .join(member).on(member.id.eq(quizAnswer.memberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                matchingType?.let { quizSet.matchingType.eq(it) },
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(quizAnswer.memberId)
+            .fetch()
+            .filterNotNull()
 }

@@ -2,6 +2,19 @@
 const StatsCalc = (() => {
     const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
     const GENDER_UNKNOWN_LABEL = '미입력';
+    const LOCATION_UNKNOWN_LABEL = '미입력';
+    const LEAVE_REASON_UNKNOWN_LABEL = '사유 없음';
+    // 탈퇴 사유는 enum 이 없는 문자열이다. 앞 다섯은 FE 탈퇴 화면(withdrawReasons.ts) 문구 그대로고,
+    // APPLE_ 둘은 애플 서버 알림으로 서버가 탈퇴시킬 때 넣는다(AppleServerNotificationService).
+    const LEAVE_REASON_LABELS = {
+        no_desired_match: '원하는 매칭이 이루어지지 않아요',
+        low_usage: '사용 빈도가 낮아졌어요',
+        privacy_concern: '개인정보가 걱정돼요',
+        bad_experience: '불편한 경험이 있었어요',
+        other: '기타',
+        APPLE_ACCOUNT_DELETED: '애플 계정 삭제',
+        APPLE_CONSENT_REVOKED: '애플 연결 해제',
+    };
     const AGE_OUTSIDE_BANDS_LABEL = '그 외';
     const BIRTH_DATE_UNKNOWN_LABEL = '생년월일 없음';
     const REMATCH_LABEL = '재매칭';
@@ -10,6 +23,8 @@ const StatsCalc = (() => {
     const REMATCH_ROOM_TYPE = 'REMATCH';
     // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
     const MATCHING_BATCH_DAY_OFFSET = 3;
+    // 퀴즈 응답 기간(월~수, QuizResponsePeriod)과 맞춘다. 응답 기간을 바꾸면 같이 바꾼다.
+    const RESPONSE_DAY_COUNT = 3;
     // 알림 유형 라벨은 어드민 화면에서만 써서 서버 enum 이 아니라 여기 둔다. 없는 유형은 enum 이름 그대로 보인다.
     const NOTIFICATION_TYPE_LABELS = {
         QUIZ_OPENED: '퀴즈 열림',
@@ -71,10 +86,48 @@ const StatsCalc = (() => {
     const percent = (part, whole) => (whole === 0 ? 0 : (part * 100) / whole);
     const percentText = (part, whole) => (whole === 0 ? '-' : `${percent(part, whole).toFixed(1)}%`);
 
+    // 가입을 마치지 않은 PENDING 은 누적 가입자에 넣지 않는다.
     const memberTotals = (countsByStatus) => {
-        const joined = Object.values(countsByStatus).reduce((sum, count) => sum + count, 0);
+        const pending = countsByStatus.PENDING || 0;
+        const joined = Object.values(countsByStatus).reduce((sum, count) => sum + count, 0) - pending;
         const left = countsByStatus.LEFT || 0;
-        return { joined, current: joined - left, left };
+        return { joined, current: joined - left, left, pending };
+    };
+
+    // 활성은 ACTIVE 중 최근 회차 완주자, 휴면은 나머지 ACTIVE 다. 정지 회원은 완주했어도 정지로 센다.
+    const accountStatusCounts = (countsByStatus, recentlyCompletedActiveStatusCount) => {
+        const activeStatusMemberCount = countsByStatus.ACTIVE || 0;
+        return [
+            { label: '활성', count: recentlyCompletedActiveStatusCount },
+            { label: '휴면', count: activeStatusMemberCount - recentlyCompletedActiveStatusCount },
+            { label: '정지', count: countsByStatus.SUSPENDED || 0 },
+            { label: '영구 차단', count: countsByStatus.BANNED || 0 },
+        ];
+    };
+
+    // 지역은 많아서 회원이 있는 곳만 많은 순으로 보인다.
+    const locationCounts = (countRows, locationLabels) => {
+        const unknownRow = countRows.find((countRow) => countRow.location === null);
+        const knownRows = countRows
+            .filter((countRow) => countRow.location !== null)
+            .map((countRow) => ({
+                label: locationLabels[countRow.location] || countRow.location,
+                count: countRow.count,
+            }))
+            .sort((one, other) => other.count - one.count || one.label.localeCompare(other.label, 'ko'));
+        return unknownRow ? [...knownRows, { label: LOCATION_UNKNOWN_LABEL, count: unknownRow.count }] : knownRows;
+    };
+
+    // 사유는 탈퇴 화면 순서대로 0이어도 나온다. 모르는 코드는 코드 그대로 뒤에 붙는다.
+    const leaveReasonCounts = (countRows) => {
+        const countsByReason = sumCountsBy(countRows, (countRow) => countRow.leaveReason);
+        const unlabeledReasonRows = [...countsByReason.entries()]
+            .filter(([reason]) => reason === null || !Object.hasOwn(LEAVE_REASON_LABELS, reason))
+            .map(([reason, count]) => ({ label: reason === null ? LEAVE_REASON_UNKNOWN_LABEL : reason, count }));
+        return {
+            leftCount: sumCounts(countRows),
+            reasonCounts: [...labeledCounts(countsByReason, LEAVE_REASON_LABELS), ...unlabeledReasonRows],
+        };
     };
 
     // 오늘 이후 날짜는 아직 오지 않아 count 가 null 이다.
@@ -249,18 +302,49 @@ const StatsCalc = (() => {
         };
     };
 
+    const choiceShare = (answerRows, choiceId) => {
+        const choiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === choiceId));
+        return percent(choiceCount, sumCounts(answerRows));
+    };
+
+    // 답한 성별만 나온다.
+    const choiceSharesByGender = (questionRows, choiceId, genderLabels) =>
+        Object.entries(genderLabels)
+            .map(([gender, label]) => {
+                const genderRows = questionRows.filter((countRow) => countRow.gender === gender);
+                return { label, answerCount: sumCounts(genderRows), share: choiceShare(genderRows, choiceId) };
+            })
+            .filter((genderShare) => genderShare.answerCount > 0);
+
+    // 문항은 선택지가 둘이라 첫 선택지 비율 하나로 쏠림과 성별 차이를 본다. 행은 선택지 순서로 온다.
+    // 쏠림은 첫 선택지 비율이 50%에서 벗어난 %p 다. 0 이면 반반, 50 이면 한쪽으로 다 몰렸다.
+    const questionSummary = (questionRows, genderLabels) => {
+        const answerCount = sumCounts(questionRows);
+        const firstChoiceId = questionRows[0].choiceId;
+        return {
+            displayOrder: questionRows[0].quizDisplayOrder,
+            question: questionRows[0].question,
+            answerCount,
+            choices: [...groupBy(questionRows, (countRow) => countRow.choiceId).values()]
+                .map((choiceRows) => ({ label: choiceRows[0].choiceContent, count: sumCounts(choiceRows) })),
+            skew: answerCount === 0 ? null : Math.abs(choiceShare(questionRows, firstChoiceId) - 50),
+            genderShares: choiceSharesByGender(questionRows, firstChoiceId, genderLabels),
+        };
+    };
+
+    // 퀴즈셋의 쏠림 점수는 답이 있는 문항의 쏠림 평균이다.
+    const averageSkew = (questions) => {
+        const skews = questions.map((question) => question.skew).filter((skew) => skew !== null);
+        return skews.length === 0 ? null : skews.reduce((sum, skew) => sum + skew, 0) / skews.length;
+    };
+
     // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
-    const questionDistributions = (choiceAnswerCounts) =>
-        [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
-            matchingType: quizSetRows[0].matchingType,
-            questions: [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()].map((choiceRows) => ({
-                displayOrder: choiceRows[0].quizDisplayOrder,
-                question: choiceRows[0].question,
-                answerCount: sumCounts(choiceRows),
-                choices: choiceRows
-                    .map((choiceRow) => ({ label: choiceRow.choiceContent, count: choiceRow.count })),
-            })),
-        }));
+    const questionDistributions = (choiceAnswerCounts, genderLabels) =>
+        [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => {
+            const questions = [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()]
+                .map((questionRows) => questionSummary(questionRows, genderLabels));
+            return { matchingType: quizSetRows[0].matchingType, questions, skewScore: averageSkew(questions) };
+        });
 
     const memberReviewSubmission = (memberReviewCounts) => {
         const countsByStatus = sumCountsBy(memberReviewCounts, (countRow) => countRow.status);
@@ -286,6 +370,24 @@ const StatsCalc = (() => {
         const countsByRating = sumCountsBy(reviewAnswerCounts, (countRow) => countRow.rating);
         return ratingScores.map((rating) => ({ label: `${rating}점`, count: countsByRating.get(rating) || 0 }));
     };
+
+    // 응답 기간인 월~수는 0이어도 칸을 채우고, 그 밖의 요일은 완주가 있을 때만 붙는다(QA 시각 조정 등).
+    const completionDayCounts = (completedAts) => {
+        const mondayFirstDayIndexOf = (dateTime) => (toUtcDate(dateOf(dateTime)).getUTCDay() + 6) % 7;
+        const countsByDay = countBy(completedAts, mondayFirstDayIndexOf);
+        return DAY_LABELS
+            .map((label, index) => ({ label, count: countsByDay.get(index) || 0 }))
+            .filter((day, index) => index < RESPONSE_DAY_COUNT || day.count > 0);
+    };
+
+    // 지난 회차 유형은 조건으로 거른 라벨, 고른 회차 유형은 늘 두 유형 다 나온다.
+    const trackSwitchCounts = (completedAgainCounts, previousTypeLabels, allQuizMatchingTypeLabels) =>
+        Object.entries(previousTypeLabels).flatMap(([previousType, previousLabel]) =>
+            Object.entries(allQuizMatchingTypeLabels).map(([againType, againLabel]) => ({
+                label: `${previousLabel} → ${againLabel}`,
+                count: sumCounts(completedAgainCounts.filter((countRow) =>
+                    countRow.previousMatchingType === previousType && countRow.againMatchingType === againType)),
+            })));
 
     const retentionCounts = (previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels) => {
         const previousCountsByType =
@@ -356,6 +458,9 @@ const StatsCalc = (() => {
         percent,
         percentText,
         memberTotals,
+        accountStatusCounts,
+        locationCounts,
+        leaveReasonCounts,
         dailyJoins,
         weeklyJoins,
         ageOn,
@@ -373,6 +478,8 @@ const StatsCalc = (() => {
         meetingStatusCounts,
         ratingCounts,
         retentionCounts,
+        completionDayCounts,
+        trackSwitchCounts,
         memberReportCounts,
         pushSendCounts,
     };

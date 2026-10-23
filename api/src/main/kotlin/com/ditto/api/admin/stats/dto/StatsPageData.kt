@@ -1,7 +1,9 @@
 package com.ditto.api.admin.stats.dto
 
 import com.ditto.api.admin.stats.AgeBand
+import com.ditto.api.admin.stats.MatchingTypeFilter
 import com.ditto.domain.member.entity.Gender
+import com.ditto.domain.member.entity.Location
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.notification.entity.PushSkipReason
@@ -24,7 +26,9 @@ data class StatsPageData(
     val memberBlockCount: Long,
     val pushSendHistoryCounts: List<PushSendHistoryCount>,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
+    val locationLabels: Map<String, String> = Location.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,
+    val allQuizMatchingTypeLabels: Map<String, String> = MatchingTypeFilter.ALL.quizMatchingTypeLabels(),
     val memberReviewMatchTypeLabels: Map<String, String>,
     val meetingStatusLabels: Map<String, String> = MeetingStatus.entries.associate { it.name to it.description },
     val ratingScores: List<Int> = (ReviewAnswerContent.RATING_MAX downTo ReviewAnswerContent.RATING_MIN).toList(),

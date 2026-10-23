@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.notification.MemberDeviceFixture
@@ -18,6 +19,7 @@ import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
@@ -32,11 +34,23 @@ class QuizProgressStatsQueryTest(
 
     var memberIndex = 0
 
-    fun saveMember(gender: Gender? = Gender.MALE, role: MemberRole = MemberRole.USER): Long {
+    fun saveMember(
+        gender: Gender? = Gender.MALE,
+        role: MemberRole = MemberRole.USER,
+        status: MemberStatus = MemberStatus.ACTIVE,
+        joinedAt: LocalDateTime? = LocalDateTime.of(2026, 10, 1, 12, 0),
+    ): Long {
         memberIndex += 1
         val nickname = "m$memberIndex"
         return memberRepository.save(
-            MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics", gender = gender, role = role),
+            MemberFixture.create(
+                nickname = nickname,
+                email = "$nickname@ditto.pics",
+                gender = gender,
+                role = role,
+                status = status,
+                joinedAt = joinedAt,
+            ),
         ).id
     }
 
@@ -99,7 +113,7 @@ class QuizProgressStatsQueryTest(
     }
 
     "countMembersCompletedAgain" - {
-        "이전 주 완주자 중 이번 주에도 완주한 회원을 이전 주 유형별로 센다" {
+        "이전 주 완주자 중 이번 주에도 완주한 회원을 이전 주 유형과 이번 주 유형별로 센다" {
             val previousOneToOne = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
             val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
             val thisOneToOne = saveQuizSet()
@@ -117,7 +131,10 @@ class QuizProgressStatsQueryTest(
 
             val counts = quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE)
 
-            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 2L))
+            counts shouldContainExactlyInAnyOrder listOf(
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.GROUP, 1L),
+            )
         }
 
         "회원 조건은 이전 주 완주자에게 건다" {
@@ -135,7 +152,9 @@ class QuizProgressStatsQueryTest(
                 MemberFilter(gender = Gender.FEMALE),
             )
 
-            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 1L))
+            counts shouldContainExactlyInAnyOrder listOf(
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
+            )
         }
     }
 
@@ -183,6 +202,44 @@ class QuizProgressStatsQueryTest(
                 null,
                 MemberFilter.NONE,
             ) shouldBe 0L
+        }
+    }
+
+    "countAdminMembersCompletedInWeek" - {
+        "그 주 활성 셋을 완주한 관리자만 센다" {
+            val quizSet = saveQuizSet()
+            saveProgress(saveMember(role = MemberRole.ADMIN), quizSet)
+            saveProgress(saveMember(role = MemberRole.ADMIN), quizSet, completed = false)
+            saveProgress(saveMember(role = MemberRole.ADMIN), saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)))
+            saveProgress(saveMember(role = MemberRole.ADMIN), saveQuizSet(isActive = false))
+            saveProgress(saveMember(), quizSet)
+
+            quizProgressRepository.countAdminMembersCompletedInWeek(WEEK) shouldBe 1L
+        }
+    }
+
+    "countActiveStatusMembersCompletedInWeeks" - {
+        "여러 주에 완주한 회원은 한 번만 세고 지금 ACTIVE 가 아니거나 가입하지 않은 회원은 빼고 유형은 따지지 않는다" {
+            val previousWeek = WEEK.minusWeeks(1)
+            val oneToOne = saveQuizSet()
+            val group = saveQuizSet(weekStartedOn = previousWeek, matchingType = MatchingType.GROUP)
+            val twice = saveMember()
+            saveProgress(twice, oneToOne)
+            saveProgress(twice, group)
+            saveProgress(saveMember(), group)
+            saveProgress(saveMember(status = MemberStatus.SUSPENDED), oneToOne)
+            saveProgress(saveMember(), oneToOne, completed = false)
+            saveProgress(saveMember(role = MemberRole.ADMIN), oneToOne)
+            saveProgress(saveMember(joinedAt = null), oneToOne)
+
+            quizProgressRepository.countActiveStatusMembersCompletedInWeeks(
+                listOf(WEEK, previousWeek),
+                MemberFilter.NONE,
+            ) shouldBe 2L
+        }
+
+        "주 목록이 비면 0이다" {
+            quizProgressRepository.countActiveStatusMembersCompletedInWeeks(emptyList(), MemberFilter.NONE) shouldBe 0L
         }
     }
 })

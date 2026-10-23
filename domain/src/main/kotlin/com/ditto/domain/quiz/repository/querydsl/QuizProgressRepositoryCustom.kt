@@ -22,7 +22,7 @@ interface QuizProgressRepositoryCustom {
         filter: MemberFilter,
     ): List<QuizProgressCount>
 
-    /** 이전 주 완주자 중 이번 주에도 완주한 회원 수를 이전 주에 푼 유형별로 센다. 이번 주 유형은 따지지 않는다. */
+    /** 이전 주 완주자 중 이번 주에도 완주한 회원 수를 이전 주에 푼 유형과 이번 주에 푼 유형별로 센다. */
     fun countMembersCompletedAgain(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
@@ -42,4 +42,10 @@ interface QuizProgressRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): Long
+
+    /** 그 주 활성 셋을 완주한 관리자 계정 수. 지표에서 빠진 인원을 보여 주는 데 쓰고 회원 조건은 걸지 않는다. */
+    fun countAdminMembersCompletedInWeek(weekStartedOn: LocalDate): Long
+
+    /** countMembersCompletedInWeeks 와 같은 회원 중 지금 ACTIVE 인 가입자 수. 매칭 유형은 따지지 않는다. */
+    fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long
 }

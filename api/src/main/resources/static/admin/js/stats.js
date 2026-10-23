@@ -83,6 +83,9 @@
 
     const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
+        const pendingBasis = byId('memberJoinedCountBasis');
+        pendingBasis.hidden = totals.pending === 0;
+        pendingBasis.textContent = `가입 미완료 ${countText(totals.pending, '명')} 제외`;
         byId('memberCurrentCount').textContent = countText(totals.current, '명');
         byId('memberLeftCount').textContent = countText(totals.left, '명');
     };
@@ -114,14 +117,60 @@
         ]);
     };
 
-    const renderMemberSection = ({ weekStartedOn, today, genderLabels, ageBandRanges, memberStats }) => {
+    const renderLeaveReasons = ({ leaveReasonCounts }) => {
+        const { leftCount, reasonCounts } = StatsCalc.leaveReasonCounts(leaveReasonCounts);
+        byId('leaveReasonTitle').textContent = `탈퇴 사유 · ${countText(leftCount, '명')}`;
+        byId('leaveReasonEmpty').hidden = leftCount > 0;
+        if (leftCount === 0) {
+            byId('leaveReasonShares').replaceChildren();
+            return;
+        }
+        const options = { className: 'share-row wide-label-row stack-on-phone', unit: '명' };
+        byId('leaveReasonShares').replaceChildren(...reasonCounts.map((row) => shareRow(row, leftCount, options)));
+    };
+
+    const activeRoundWeeksText = (roundWeeks) => {
+        if (roundWeeks.length === 0) return '최근 회차 없음';
+        return `최근 ${roundWeeks.length}회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
+    };
+
+    const renderAccountStatus = ({ countsByStatus, currentActiveRoundWeeks, recentlyCompletedActiveStatusCount }) => {
+        fillShares(
+            'accountStatusShares',
+            StatsCalc.accountStatusCounts(countsByStatus, recentlyCompletedActiveStatusCount),
+        );
+        byId('accountStatusNote').textContent =
+            `활성 = ${activeRoundWeeksText(currentActiveRoundWeeks)} 완주자. ` +
+            '퀴즈 참여 장의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
+            '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
+    };
+
+    // 팀원이 관리자 계정으로 실제 참여하면 숫자가 작게 보여서 빠진 인원을 알린다.
+    const renderAdminExcludedNotice = ({ memberStats, quizStats }) => {
+        const { adminMemberCount } = memberStats;
+        const { adminCompletedCount } = quizStats;
+        const notice = byId('adminExcludedNotice');
+        notice.hidden = adminMemberCount === 0;
+        const completedText = adminCompletedCount === 0
+            ? ''
+            : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
+        notice.textContent =
+            `관리자 계정 ${countText(adminMemberCount, '명')}은 채팅 장을 뺀 모든 지표에서 빠집니다.${completedText}`;
+    };
+
+    const renderMemberSection = (
+        { weekStartedOn, today, genderLabels, locationLabels, ageBandRanges, memberStats },
+    ) => {
         const totals = StatsCalc.memberTotals(memberStats.countsByStatus);
         showSectionIfAny('member', totals.joined > 0);
         byId('statsToday').textContent = today;
         renderMemberTotals(totals);
+        renderAccountStatus(memberStats);
+        fillShares('locationShares', StatsCalc.locationCounts(memberStats.locationCounts, locationLabels));
         fillShares('genderShares', StatsCalc.genderCounts(memberStats.genderBirthDateCounts, genderLabels));
         renderAgeGenderTable(memberStats, genderLabels, ageBandRanges, today);
         renderJoinTables(memberStats, weekStartedOn, today);
+        renderLeaveReasons(memberStats);
     };
 
     const renderQuizRates = ({ participantCount, startedCount }, activeMemberCount) => {
@@ -141,8 +190,7 @@
         showSectionIfAny('quiz', participation.startedCount > 0);
 
         byId('quizActiveRoundCount').textContent = activeRoundCount;
-        const activeRoundDates = activeRoundWeeks.map(shortDate).reverse().join('·');
-        byId('quizActiveRounds').textContent = `최근 ${activeRoundWeeks.length}회차(${activeRoundDates} 주)`;
+        byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
         renderQuizRates(participation, activeMemberCount);
         // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
         byId('quizMatchingTypeSharesCard').hidden = Object.keys(quizMatchingTypeLabels).length < 2;
@@ -154,6 +202,7 @@
             genderLabels,
             rows: StatsCalc.participantGenderRows(progressCounts, quizMatchingTypeLabels, genderLabels),
         });
+        fillShares('quizCompletionDayShares', StatsCalc.completionDayCounts(quizStats.completedAts));
     };
 
     const renderMatchSection = (
@@ -220,23 +269,53 @@
         fillRows('chatByTypeRows', activity.rows, (row) => chatTypeCells(row, showsAllSent));
     };
 
-    const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
+    const percentPointText = (value) => `${value.toFixed(1)}%p`;
+
+    // 응답이 적어도 차이가 커 보여서 성별마다 응답자 수를 붙인다. 조각마다 줄이 갈리지 않게 묶는다.
+    const genderGapLine = (choices, genderShares) => {
+        const shares = genderShares.map((genderShare) => genderShare.share);
+        const pieces = [
+            `'${choices[0].label}' 선택`,
+            ...genderShares.map(({ label, share, answerCount }) =>
+                `${label} ${countText(answerCount, '명')} 중 ${share.toFixed(1)}%`),
+            `차이 ${percentPointText(Math.max(...shares) - Math.min(...shares))}`,
+        ];
+        const line = element('p', 'muted');
+        pieces.forEach((piece, index) => {
+            if (index > 0) line.append(' · ');
+            line.append(element('span', 'nowrap', piece));
+        });
+        return line;
+    };
+
+    const questionCountText = (answerCount, skew) => {
+        const skewText = skew === null ? '' : ` · 쏠림 ${percentPointText(skew)}`;
+        return `응답 ${countText(answerCount, '명')}${skewText}`;
+    };
+
+    const questionBlock = ({ displayOrder, question, answerCount, choices, skew, genderShares }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
-        title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
+        title.append(element('span', 'question-count', questionCountText(answerCount, skew)));
         const choiceRows = choices
             .map((choice) => shareRow(choice, answerCount, { className: 'share-row wide-label-row stack-on-phone' }));
         block.append(title, ...choiceRows);
+        if (genderShares.length >= 2) block.append(genderGapLine(choices, genderShares));
         return block;
     };
 
-    const renderQuestionSection = ({ quizMatchingTypeLabels, quizStats }) => {
-        const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts);
+    const quizSetTitle = (matchingTypeLabel, questions, skewScore) => {
+        const skewText = skewScore === null ? '' : ` · 쏠림 점수 ${percentPointText(skewScore)}`;
+        return `${matchingTypeLabel} 퀴즈셋 · 문항 ${questions.length}개${skewText}`;
+    };
+
+    const renderQuestionSection = ({ genderLabels, quizMatchingTypeLabels, quizStats }) => {
+        const distributions = StatsCalc.questionDistributions(quizStats.choiceAnswerCounts, genderLabels);
         showSectionIfAny('question', StatsCalc.sumCounts(quizStats.choiceAnswerCounts) > 0);
-        byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions }) => {
+        byId('questionDistributions').replaceChildren(...distributions.map(({ matchingType, questions, skewScore }) => {
             const card = element('div', 'card');
             card.append(
-                element('h3', null, `${quizMatchingTypeLabels[matchingType]} 퀴즈셋 · 문항 ${questions.length}개`),
+                element('h3', null, quizSetTitle(quizMatchingTypeLabels[matchingType], questions, skewScore)),
                 ...questions.map(questionBlock),
             );
             return card;
@@ -286,7 +365,9 @@
         renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
     };
 
-    const renderRetentionSection = ({ weekStartedOn, quizMatchingTypeLabels, retentionStats }) => {
+    const renderRetentionSection = (
+        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, retentionStats },
+    ) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         const { previousCount, completedAgainCount, countsByType } =
             StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels);
@@ -306,6 +387,11 @@
             countCell(row.completedAgainCount),
             cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
         ]);
+        fillShares(
+            'retentionTrackSwitchShares',
+            StatsCalc.trackSwitchCounts(completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels),
+            { className: 'share-row wide-label-row' },
+        );
     };
 
     const renderMemberReportSection = ({ memberReportReasonLabels, memberReportStatusLabels, memberReportStats }) => {
@@ -369,6 +455,7 @@
         ]);
     };
 
+    renderAdminExcludedNotice(pageData);
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
