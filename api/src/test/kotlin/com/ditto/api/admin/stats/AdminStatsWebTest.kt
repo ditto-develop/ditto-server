@@ -25,6 +25,10 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.memberreport.MemberReportFixture
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.repository.MemberReportRepository
+import com.ditto.domain.notification.NotificationFixture
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
@@ -76,6 +80,7 @@ class AdminStatsWebTest(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val memberBlockRepository: MemberBlockRepository,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -282,6 +287,24 @@ class AdminStatsWebTest(
             mockMvc.perform(get("/admin/stats").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(pageJsonContaining(""""memberBlockCount":1""")))
+        }
+
+        "푸시 발송 이력을 페이지 JSON 에 넣는다" {
+            val member = memberRepository.save(MemberFixture.create())
+            pushSendHistoryRepository.save(
+                PushSendHistory.skipped(NotificationFixture.create(memberId = member.id), PushSkipReason.NO_DEVICE),
+            )
+
+            mockMvc.perform(get("/admin/stats").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"pushSendHistoryCounts":[{"notificationType":"MATCH_RESULT",""" +
+                                """"skipReason":"NO_DEVICE","failedDeviceCount":0,"count":1}]""",
+                        ),
+                    ),
+                )
         }
 
         "비활성 퀴즈셋만 있는 주는 회차 번호가 없고 회차가 아니라고 알린다" {

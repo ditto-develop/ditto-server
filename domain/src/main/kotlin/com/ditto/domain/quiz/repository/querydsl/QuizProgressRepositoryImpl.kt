@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository.querydsl
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.notification.entity.QMemberDevice.memberDevice
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuizProgress
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
@@ -92,6 +93,28 @@ class QuizProgressRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 matchingTypeIs(matchingType),
                 member.nonAdminMatching(filter),
+            )
+            .fetchOne() ?: 0L
+    }
+
+    override fun countMembersCompletedInWeeksWithPushDevice(
+        roundWeeks: Collection<LocalDate>,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): Long {
+        if (roundWeeks.isEmpty()) return 0L
+        return queryFactory
+            .select(quizProgress.memberId.countDistinct())
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.`in`(roundWeeks),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                matchingTypeIs(matchingType),
+                member.nonAdminMatching(filter),
+                queryFactory.selectOne()
+                    .from(memberDevice)
+                    .where(memberDevice.memberId.eq(quizProgress.memberId))
+                    .exists(),
             )
             .fetchOne() ?: 0L
     }

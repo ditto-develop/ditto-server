@@ -26,8 +26,12 @@ import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.MemberDeviceFixture
+import com.ditto.domain.notification.NotificationFixture
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
@@ -70,6 +74,7 @@ class MemberLeaveTest(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val notificationRepository: NotificationRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     private val rematchRepository: RematchRepository,
     private val quizSetRepository: QuizSetRepository,
     private val groupMatchRepository: GroupMatchRepository,
@@ -501,6 +506,9 @@ class MemberLeaveTest(
             memberRepository.save(member)
             // 탈퇴 시점 삭제를 지나온 토큰(레거시 행)도 완전 삭제가 거둔다.
             memberDeviceRepository.save(MemberDeviceFixture.create(memberId = member.id, token = "purge-phone"))
+            pushSendHistoryRepository.save(
+                PushSendHistory.skipped(NotificationFixture.create(memberId = member.id), PushSkipReason.NO_DEVICE),
+            )
 
             val purgeService = LeftMemberPurgeService(
                 memberRepository = memberRepository,
@@ -508,6 +516,7 @@ class MemberLeaveTest(
                 refreshTokenRepository = refreshTokenRepository,
                 notificationRepository = notificationRepository,
                 memberDeviceRepository = memberDeviceRepository,
+                pushSendHistoryRepository = pushSendHistoryRepository,
                 serverTimeProvider = serverTimeProvider,
                 dryRun = false,
                 batchLimit = 100,
@@ -520,6 +529,7 @@ class MemberLeaveTest(
             memberRepository.findById(member.id).isPresent shouldBe false
             socialAccountRepository.findByMemberId(member.id) shouldBe null
             memberDeviceRepository.findAllByMemberId(member.id) shouldBe emptyList()
+            pushSendHistoryRepository.findByMemberIdIn(listOf(member.id)) shouldBe emptyList()
         }
 
         "삭제 대상이 없으면 0을 반환한다" {

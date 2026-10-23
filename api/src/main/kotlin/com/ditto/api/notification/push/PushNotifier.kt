@@ -8,8 +8,11 @@ import com.ditto.domain.member.repository.MemberNotificationSettingRepository
 import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.entity.NotificationCategory
 import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.entity.PushSendHistory
+import com.ditto.domain.notification.entity.PushSkipReason
 import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.infrastructure.fcm.PushMessage
 import com.ditto.infrastructure.fcm.PushSender
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -32,6 +35,7 @@ class PushNotifier(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val notificationDeepLinks: NotificationDeepLinks,
     private val pushDeadDeviceCleaner: PushDeadDeviceCleaner,
+    private val pushSendHistoryRepository: PushSendHistoryRepository,
     private val pushSender: PushSender,
 ) {
 
@@ -49,24 +53,80 @@ class PushNotifier(
         runCatchingExceptions {
             val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
-            notifications
-                .filter { it.memberId !in mutedMemberIds }
-                .forEach { send(it, deepLink) }
+            val plans = notifications.mapNotNull { planOrNullOf(it, mutedMemberIds) }
+            val (sendPlans, skipPlans) = plans.partition { it.skipReason == null }
+            saveHistories(
+                skipPlans.mapNotNull { plan -> plan.skipReason?.let { PushSendHistory.skipped(plan.notification, it) } },
+            )
+            sendAll(sendPlans, deepLink)
         }.onFailure {
             logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
         }
     }
 
-    private fun send(notification: Notification, deepLink: String?) {
+    // 한 명 조회가 실패해도 나머지 수신자에게는 보낸다.
+    private fun planOrNullOf(notification: Notification, mutedMemberIds: Set<Long>): PushPlan? =
+        runCatchingExceptions { planOf(notification, mutedMemberIds) }
+            .onFailure { logger.warn(it) { "푸시 준비 실패 — 이 알림만 건너뛴다: notificationId=${notification.id}" } }
+            .getOrNull()
+
+    // 방 알림 → 알림 토글 → 기기 순서로 본다. 앞에서 걸리면 뒤는 조회하지 않는다.
+    private fun planOf(notification: Notification, mutedMemberIds: Set<Long>): PushPlan {
+        if (notification.memberId in mutedMemberIds) {
+            return PushPlan(notification, PushSkipReason.MUTED)
+        }
         if (!allowsPush(notification)) {
-            return
+            return PushPlan(notification, PushSkipReason.TOGGLE_OFF)
         }
         val tokens = memberDeviceRepository.findAllByMemberId(notification.memberId).map { it.token }
         if (tokens.isEmpty()) {
-            return // 웹 전용 회원
+            return PushPlan(notification, PushSkipReason.NO_DEVICE)
         }
+        return PushPlan(notification, skipReason = null, tokens = tokens)
+    }
 
-        pushSender.send(buildMessage(notification, tokens, deepLink), pushDeadDeviceCleaner::clean)
+    // 응답마다 저장하면 전원 발송 때 FCM 스레드가 알림 수만큼 커넥션을 잡아서, 응답을 모아 한 번에 저장한다.
+    private fun sendAll(sendPlans: List<PushPlan>, deepLink: String?) {
+        if (sendPlans.isEmpty()) {
+            return
+        }
+        val collector = PushSendHistoryCollector(sendPlans.size, ::saveHistories)
+        sendPlans.forEach { plan -> send(plan, deepLink, collector) }
+    }
+
+    // 보내기 전에 실패해도 수집기의 응답 수는 채워야 나머지 이력이 저장된다. 그래서 모든 기기 실패로 남긴다.
+    private fun send(plan: PushPlan, deepLink: String?, collector: PushSendHistoryCollector) {
+        runCatchingExceptions {
+            pushSender.send(buildMessage(plan.notification, plan.tokens, deepLink)) { result ->
+                cleanDeadTokens(result.deadTokens)
+                collector.add(PushSendHistory.sent(plan.notification, plan.tokens.size, result.failureCodes))
+            }
+        }.onFailure {
+            logger.warn(it) { "푸시 발송 실패 — 모든 기기 실패로 남긴다: notificationId=${plan.notification.id}" }
+            collector.add(
+                PushSendHistory.sent(plan.notification, plan.tokens.size, plan.tokens.map { SEND_ERROR_CODE }),
+            )
+        }
+    }
+
+    // FCM 응답 스레드에서 불리므로 예외를 밖으로 내지 않는다.
+    private fun cleanDeadTokens(deadTokens: List<String>) {
+        if (deadTokens.isEmpty()) {
+            return
+        }
+        runCatchingExceptions { pushDeadDeviceCleaner.clean(deadTokens) }.onFailure {
+            logger.warn(it) { "무효 토큰 정리 실패 — 무시한다: ${deadTokens.size}개" }
+        }
+    }
+
+    // 이력을 못 남겨도 발송은 그대로 간다.
+    private fun saveHistories(histories: List<PushSendHistory>) {
+        if (histories.isEmpty()) {
+            return
+        }
+        runCatchingExceptions { pushSendHistoryRepository.saveAll(histories) }.onFailure {
+            logger.warn(it) { "푸시 발송 이력 저장 실패 — 무시한다: ${histories.size}건" }
+        }
     }
 
     /**
@@ -122,7 +182,14 @@ class PushNotifier(
         else -> null
     }
 
+    private data class PushPlan(
+        val notification: Notification,
+        val skipReason: PushSkipReason?,
+        val tokens: List<String> = emptyList(),
+    )
+
     companion object {
+        private const val SEND_ERROR_CODE = "SEND_ERROR"
         private val logger = KotlinLogging.logger {}
     }
 }

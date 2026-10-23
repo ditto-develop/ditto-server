@@ -335,6 +335,40 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
+    // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
+    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
+        if (activeMemberCount === 0) {
+            byId('pushDeviceRate').textContent = '활성 회원 없음';
+            byId('pushDeviceRateBasis').textContent = '';
+            return;
+        }
+        fillRateCard('pushDeviceRate', {
+            part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
+        });
+    };
+
+    const renderPushSendSection = ({ quizStats, pushSendHistoryCounts, pushSkipReasonLabels }) => {
+        renderPushDeviceRate(quizStats);
+        const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);
+        showSectionIfAny('pushSend', counts.notificationCount > 0);
+
+        byId('pushNotificationCount').textContent = countText(counts.notificationCount, '건');
+        byId('pushNotificationCountBasis').textContent =
+            `보냄 ${countText(counts.sentCount, '건')} · 건너뜀 ${countText(counts.skippedCount, '건')}`;
+        fillRateCard('pushFailureRate', {
+            part: counts.failedCount, whole: counts.sentCount, unit: '건', wholeLabel: '보냄',
+        });
+        const skipReasonOptions = { className: 'share-row wide-label-row', unit: '건' };
+        fillShares('pushSkipReasonShares', counts.skipReasonCounts, skipReasonOptions);
+        fillRows('pushSendByTypeRows', counts.typeRows, (row) => [
+            cell(row.label),
+            countCell(row.sentCount),
+            countCell(row.failedCount),
+            rateCell(row.failedCount, row.sentCount),
+            countCell(row.skippedCount),
+        ]);
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
@@ -344,4 +378,5 @@
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
     renderMemberBlockSection(pageData);
+    renderPushSendSection(pageData);
 })();

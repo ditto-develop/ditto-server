@@ -4,6 +4,8 @@ import com.ditto.api.admin.stats.AgeBand
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportStatus
+import com.ditto.domain.notification.entity.PushSkipReason
+import com.ditto.domain.notification.repository.querydsl.PushSendHistoryCount
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswerContent
 import java.time.LocalDate
@@ -20,6 +22,7 @@ data class StatsPageData(
     val retentionStats: RetentionStatsData,
     val memberReportStats: MemberReportStatsData,
     val memberBlockCount: Long,
+    val pushSendHistoryCounts: List<PushSendHistoryCount>,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,
     val memberReviewMatchTypeLabels: Map<String, String>,
@@ -30,6 +33,7 @@ data class StatsPageData(
     val memberReportStatusLabels: Map<String, String> =
         MemberReportStatus.entries.associate { it.name to it.description },
     val ageBandRanges: List<AgeBandRange> = AgeBand.entries.map { it.toRange() },
+    val pushSkipReasonLabels: Map<String, String> = PushSkipReason.entries.associate { it.name to it.description },
 )
 
 data class AgeBandRange(

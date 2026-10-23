@@ -35,4 +35,11 @@ interface QuizProgressRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): Long
+
+    /** countMembersCompletedInWeeks 와 같은 회원 중 지금 푸시 토큰이 하나라도 있는 회원 수. */
+    fun countMembersCompletedInWeeksWithPushDevice(
+        roundWeeks: Collection<LocalDate>,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): Long
 }

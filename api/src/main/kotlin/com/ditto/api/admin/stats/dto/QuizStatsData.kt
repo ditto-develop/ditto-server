@@ -9,5 +9,6 @@ data class QuizStatsData(
     val activeRoundCount: Int,
     val activeRoundWeeks: List<LocalDate>,
     val activeMemberCount: Long,
+    val activeMemberWithPushDeviceCount: Long,
     val choiceAnswerCounts: List<ChoiceAnswerCount>,
 )
