@@ -8,8 +8,6 @@ import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
-import com.ditto.domain.member.entity.MemberRole
-import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.entity.QNotification.notification
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
@@ -109,7 +107,6 @@ class ChatRoomRepositoryImpl(
             .where(
                 chatRoom.status.ne(ChatRoomStatus.SCHEDULED),
                 sourceQuizSetActiveInWeek(weekStartedOn),
-                noAdminMember(),
             )
             .groupBy(chatRoom.id, chatRoom.sourceType)
             .fetch()
@@ -135,7 +132,6 @@ class ChatRoomRepositoryImpl(
             .where(
                 chatRoom.status.ne(ChatRoomStatus.SCHEDULED),
                 sourceQuizSetActiveInWeek(weekStartedOn),
-                noAdminMember(),
             )
             .groupBy(chatRoom.id)
             .fetch()
@@ -175,12 +171,4 @@ class ChatRoomRepositoryImpl(
 
     private fun activeQuizSetInWeek(weekStartedOn: LocalDate): BooleanExpression =
         quizSet.isActive.isTrue.and(quizSet.weekStartedOn.eq(weekStartedOn))
-
-    // 다른 장처럼 관리자를 빼려고 관리자가 든 방은 통째로 뺀다.
-    private fun noAdminMember(): BooleanExpression =
-        queryFactory.selectOne()
-            .from(chatRoomMember)
-            .join(member).on(member.id.eq(chatRoomMember.memberId))
-            .where(chatRoomMember.roomId.eq(chatRoom.id), member.role.eq(MemberRole.ADMIN))
-            .notExists()
 }

@@ -4,7 +4,7 @@
 
 ## 공통
 
-- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다.
+- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다.
 - **기준일**: `ServerTimeProvider.now()`의 날짜. QA 시각 조정을 따른다. 화면 "오늘(…) 기준" 줄에 보인다.
 - **회차**: 그 주 월요일 00:00 ~ 다음 월요일 00:00. 번호는 활성 퀴즈셋이 있는 주를 오래된 순으로 센 값이라, 퀴즈셋을 지우거나 비활성으로 돌리거나 과거 주에 만들면 번호가 밀린다. 같은 주에 QA 용 비활성 셋이 있어도 매칭처럼 활성 셋만 본다.
 - **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
@@ -73,7 +73,7 @@
 | 전원 (그룹만) | 참여자(`chat_room_member`, 나간 사람 포함) 전원이 대화 메시지를 보낸 방 ÷ 열린 방. 두 사람 방은 양방향과 같아 비운다 |
 
 - 회차: 원본 매칭(1:1 `personal_match`, 그룹 `group_match`, 재매칭 `rematch`)의 퀴즈셋이 그 주 활성 셋인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열리지만 원래 그룹의 퀴즈셋으로 센다. 그래서 매칭 장과 같은 회차에 잡히고 비활성 셋의 방은 빠진다.
-- 관리자가 참여자로 든 방은 통째로 뺀다. 다른 장이 관리자를 빼는 것과 맞추려는 것이다.
+- 관리자가 든 방도 센다. 방을 빼면 상대 회원의 대화까지 빠지고, 관리자만 빼면 1:1 방이 한 사람 방이 되기 때문이다(#329). 운영에서 팀원 계정이 관리자로 매칭에 참여하고 있어 다른 장과 숫자가 어긋날 수 있다.
 - 재매칭은 따로 한 줄이고 1:1·그룹 합계에 넣지 않는다. 서로 원한 두 사람이라 수치가 높게 나온다. 매칭 유형 "전체"·"그룹"에서 보인다. 재매칭은 평가 제출로 뒤늦게 성사되어 지난 회차 숫자가 나중에 늘 수 있다.
 - 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
 - 다른 장과 달리 서버가 방마다 한 행(참여자 수·보낸 사람 수)을 내린다. 방별 두 수를 묶은 분포는 쿼리가 복잡해져서, 비율은 `stats-calc.js`가 방 행으로 계산한다. 방 수는 회차당 많아야 수백이다.
@@ -178,7 +178,7 @@ JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY gm.is_active, gmm.status, m.gender;
 
--- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋, 관리자가 든 방 제외)
+-- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋)
 SELECT source_type, COUNT(*) AS opened,
     SUM(senders >= 1) AS started, SUM(senders >= 2) AS two_way, SUM(senders >= members) AS all_sent
 FROM (
@@ -192,8 +192,6 @@ FROM (
     LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
     JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id, rm.quiz_set_id) AND qs.is_active
     WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
-      AND NOT EXISTS (SELECT 1 FROM chat_room_member crm JOIN member m ON m.id = crm.member_id
-                      WHERE crm.room_id = r.id AND m.role = 'ADMIN')
 ) rooms
 GROUP BY source_type;
 

@@ -129,17 +129,15 @@ class ChatRoomStatsQueryTest(
             )
         }
 
-        "관리자가 든 방은 뺀다" {
-            val quizSet = saveQuizSet()
+        "관리자가 든 방도 센다" {
             val admin = memberRepository.save(
                 MemberFixture.create(nickname = "admin", email = "admin@ditto.pics", role = MemberRole.ADMIN),
             )
-            val userRoomId = savePersonalRoom(quizSet, listOf(admin.id + 1, admin.id + 2))
-            savePersonalRoom(quizSet, listOf(admin.id + 1, admin.id))
+            val roomId = savePersonalRoom(saveQuizSet(), listOf(admin.id, admin.id + 1))
 
             val counts = chatRoomRepository.countMembersPerOpenedRoomInWeek(WEEK)
 
-            counts shouldContainExactlyInAnyOrder listOf(ChatRoomMemberCount(userRoomId, ChatRoomType.PERSONAL, 2L))
+            counts shouldContainExactlyInAnyOrder listOf(ChatRoomMemberCount(roomId, ChatRoomType.PERSONAL, 2L))
         }
     }
 
