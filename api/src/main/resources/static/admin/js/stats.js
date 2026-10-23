@@ -335,7 +335,6 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
-    // 토큰 등록률의 분모는 퀴즈 참여 장의 활성 회원과 같다.
     const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
         fillRateCard('pushDeviceRate', {
             part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
@@ -353,14 +352,15 @@
         fillRateCard('pushFailureRate', {
             part: counts.failedCount, whole: counts.sentCount, unit: '건', wholeLabel: '보냄',
         });
+        const skipReasonOptions = { className: 'share-row wide-label-row', unit: '건' };
+        fillShares('pushSkipReasonShares', counts.skipReasonCounts, skipReasonOptions);
         fillRows('pushSendByTypeRows', counts.typeRows, (row) => [
             cell(row.label),
-            countCell(row.notificationCount),
             countCell(row.sentCount),
             countCell(row.failedCount),
+            rateCell(row.failedCount, row.sentCount),
             countCell(row.skippedCount),
         ]);
-        fillShares('pushSkipReasonShares', counts.skipReasonCounts, { className: 'share-row wide-label-row', unit: '건' });
     };
 
     renderMemberSection(pageData);
