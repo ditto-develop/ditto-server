@@ -16,7 +16,7 @@ class PushSendHistoryPurgeScheduler(
     private val pushSendHistoryRepository: PushSendHistoryRepository,
 ) {
 
-    /** 매일 04:30 — 출시 알림 신청 파기(04:20) 뒤로 둔다. */
+    /** 매일 04:30. 출시 알림 신청 파기(04:20) 뒤에 돈다. */
     @Scheduled(cron = "\${push-send-history.purge.scheduler.cron:0 30 4 * * *}")
     fun purgeExpired() {
         val threshold = PushSendHistory.retentionFrom()

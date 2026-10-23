@@ -82,7 +82,7 @@ class PushSendHistory private constructor(
             failureCodes = null,
         )
 
-        /** 기기마다의 실패 코드를 받는다. 성공한 기기는 목록에 없다. */
+        /** 실패한 기기 수만큼 실패 코드가 온다. */
         fun sent(notification: Notification, deviceCount: Int, failureCodes: List<String>): PushSendHistory =
             PushSendHistory(
                 notificationId = notification.id,
