@@ -82,7 +82,10 @@ class PersonalMatchRepositoryImpl(
             .fetchFirst() != null
 
     // 한 행에 회원이 둘이라 두 쪽을 따로 센다. 성별로 더하는 건 화면이 한다.
-    override fun countAcceptedMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount> =
+    override fun countAcceptedMembersInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchMemberCount> =
         countAcceptedMembersJoinedOn(member.id.eq(personalMatch.memberId1), weekStartedOn, filter) +
             countAcceptedMembersJoinedOn(member.id.eq(personalMatch.memberId2), weekStartedOn, filter)
 

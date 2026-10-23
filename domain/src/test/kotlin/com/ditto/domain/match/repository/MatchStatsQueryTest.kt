@@ -78,7 +78,7 @@ class MatchStatsQueryTest(
     }
 
     "countCandidateOwnersInWeek" - {
-        "그 주 활성 셋에서 후보를 받은 회원을 성별로 한 번씩 센다" {
+        "그 주 활성 퀴즈셋에서 후보를 받은 회원을 성별로 한 번씩 센다" {
             val quizSet = saveQuizSet()
             val man = saveMember(Gender.MALE)
             val woman = saveMember(Gender.FEMALE)
@@ -141,7 +141,7 @@ class MatchStatsQueryTest(
 
             val counts = personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter.NONE)
 
-            // 두 쪽을 따로 세서 같은 성별이 두 행으로 올 수 있다.
+            // 같은 성별이 두 행으로 올 수 있다.
             counts shouldContainExactlyInAnyOrder listOf(
                 PersonalMatchMemberCount(Gender.MALE, 1L),
                 PersonalMatchMemberCount(Gender.FEMALE, 1L),
@@ -166,7 +166,7 @@ class MatchStatsQueryTest(
         }
     }
 
-    "countMembersInWeek" - {
+    "countInvitedMembersInWeek" - {
         "그 주 그룹 초대를 그룹 성사 여부·상태·성별로 묶는다" {
             val quizSet = saveQuizSet(matchingType = MatchingType.GROUP)
             val formedGroupId = saveGroup(quizSet, acceptedCount = 3)
@@ -177,7 +177,7 @@ class MatchStatsQueryTest(
             saveInvitation(unformedGroupId, saveMember(Gender.FEMALE, MemberRole.ADMIN), InvitationStatus.ACCEPTED)
             saveInvitation(saveGroup(saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))), saveMember())
 
-            val counts = groupMatchMemberRepository.countMembersInWeek(WEEK, MemberFilter.NONE)
+            val counts = groupMatchMemberRepository.countInvitedMembersInWeek(WEEK, MemberFilter.NONE)
 
             counts shouldContainExactlyInAnyOrder listOf(
                 GroupMatchMemberCount(true, InvitationStatus.ACCEPTED, Gender.MALE, 3L),

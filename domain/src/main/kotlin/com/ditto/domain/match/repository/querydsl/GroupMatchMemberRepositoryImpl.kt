@@ -109,7 +109,10 @@ class GroupMatchMemberRepositoryImpl(
             .fetchFirst() != null
     }
 
-    override fun countMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<GroupMatchMemberCount> {
+    override fun countInvitedMembersInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<GroupMatchMemberCount> {
         val countExpression = groupMatchMember.count()
         return queryFactory
             .select(groupMatch.isActive, groupMatchMember.status, member.gender, countExpression)

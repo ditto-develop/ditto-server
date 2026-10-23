@@ -273,7 +273,7 @@ class AdminStatsWebTest(
                 )
         }
 
-        "이번 회차에 생긴 차단을 페이지 JSON 에 넣는다" {
+        "차단 수를 페이지 JSON 에 넣는다" {
             val (blocker, blocked) = listOf("blocker", "blocked").map { nickname ->
                 memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics"))
             }
