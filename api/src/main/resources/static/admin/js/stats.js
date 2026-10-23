@@ -240,7 +240,6 @@
 
     const scoreText = (score) => `${score.toFixed(1)}점`;
 
-    // 성사 쪽 평균을 옆에 둬서 점수가 높을수록 성사되는지 본다.
     // 조각마다 줄이 갈리지 않게 묶어 ' · ' 로 잇는다.
     const fillNowrapPieces = (id, pieces) => {
         const container = byId(id);
@@ -251,8 +250,10 @@
         });
     };
 
+    // 성사 쪽 평균을 옆에 둬서 점수가 높을수록 성사되는지 본다. 후보가 다 지워져도 점수 없는 성사는 보인다.
     const scoreSummaryPieces = (summary, matchedSummary, unitLabel, unscoredMatchedCount) => {
-        if (summary.count === 0) return ['이 회차 후보가 없습니다.'];
+        const unscoredPieces = unscoredMatchedCount > 0 ? [`점수 없는 성사 ${unscoredMatchedCount}${unitLabel}`] : [];
+        if (summary.count === 0) return ['이 회차 후보가 없습니다.', ...unscoredPieces];
         const matchedPiece = matchedSummary.count === 0
             ? '성사 없음'
             : `성사 ${matchedSummary.count}${unitLabel} 평균 ${scoreText(matchedSummary.average)}`;
@@ -260,7 +261,7 @@
             `평균 ${scoreText(summary.average)}`,
             `중앙값 ${scoreText(summary.median)}`,
             matchedPiece,
-            ...(unscoredMatchedCount > 0 ? [`점수 없는 성사 ${unscoredMatchedCount}${unitLabel}`] : []),
+            ...unscoredPieces,
         ];
     };
 
@@ -273,12 +274,15 @@
         fillShares(`${idPrefix}Shares`, summary.bins, { className: 'share-row wide-label-row', unit: unitLabel });
     };
 
+    // 표마다 칸 수가 달라 넉넉히 잡아 한 줄 전체를 덮는다.
+    const FULL_ROW_COLUMN_SPAN = 99;
+
     // 표에 행이 없으면 안내 한 줄을 넣는다.
     const fillEmptyRowIfNone = (bodyId, message) => {
         const body = byId(bodyId);
         if (body.children.length > 0) return;
         const emptyCell = element('td', 'empty', message);
-        emptyCell.colSpan = 99;
+        emptyCell.colSpan = FULL_ROW_COLUMN_SPAN;
         const row = document.createElement('tr');
         row.append(emptyCell);
         body.append(row);
@@ -340,12 +344,15 @@
         byId('chatFirstMessageTitle').textContent = `첫 메시지까지 · ${messagedRoomsText}`;
         byId('chatFirstSenderTitle').textContent = `첫 발신자 성별 · ${messagedRoomsText}`;
         byId('chatLastMessageTitle').textContent = `마지막 메시지 시점 · ${messagedRoomsText}`;
-        const beforeOpenText = messages.beforeOpenRoomCount > 0
-            ? ` · 시각 조정으로 ${countText(messages.beforeOpenRoomCount, '개')} 방은 열린 시각 전`
-            : '';
-        byId('chatFirstMessageSummary').textContent = messages.medianFirstMessageHours === null
-            ? '대화가 있는 방이 없습니다.'
-            : `중앙값 ${hourText(messages.medianFirstMessageHours)}${beforeOpenText}`;
+        const firstMessagePieces = messages.medianFirstMessageHours === null
+            ? ['대화가 있는 방이 없습니다.']
+            : [
+                `중앙값 ${hourText(messages.medianFirstMessageHours)}`,
+                ...(messages.beforeOpenRoomCount > 0
+                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시각 조정)`]
+                    : []),
+            ];
+        fillNowrapPieces('chatFirstMessageSummary', firstMessagePieces);
         fillShares('chatFirstMessageShares', messages.firstMessageBins, options);
         fillShares('chatFirstSenderShares', messages.firstSenderGenderCounts, options);
         fillShares('chatLastMessageShares', messages.lastMessageBins, options);
