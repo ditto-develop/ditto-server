@@ -335,7 +335,13 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
+    // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
     const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
+        if (activeMemberCount === 0) {
+            byId('pushDeviceRate').textContent = '활성 회원 없음';
+            byId('pushDeviceRateBasis').textContent = '';
+            return;
+        }
         fillRateCard('pushDeviceRate', {
             part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
         });

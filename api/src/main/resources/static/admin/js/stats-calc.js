@@ -323,7 +323,7 @@ const StatsCalc = (() => {
                 label: NOTIFICATION_TYPE_LABELS[notificationType] || notificationType,
                 ...pushSendTotals(rows),
             }))
-            .sort((one, other) => other.notificationCount - one.notificationCount);
+            .sort((one, other) => other.sentCount - one.sentCount);
         const skippedRows = historyCounts.filter(isSkipped);
         return {
             ...pushSendTotals(historyCounts),

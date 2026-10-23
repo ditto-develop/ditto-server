@@ -471,13 +471,22 @@ describe('pushSendCounts', () => {
         assert.equal(counts.skippedCount, 5);
     });
 
-    test('유형별 줄은 알림이 많은 순이고 라벨이 붙는다', () => {
+    test('유형별 줄은 보낸 알림이 많은 순이고 라벨이 붙는다', () => {
         const counts = StatsCalc.pushSendCounts(HISTORY_COUNTS, SKIP_REASON_LABELS);
 
         assert.deepEqual(counts.typeRows, [
             { label: '새 메시지', notificationCount: 8, sentCount: 6, failedCount: 1, skippedCount: 2 },
             { label: '매칭 결과', notificationCount: 4, sentCount: 1, failedCount: 1, skippedCount: 3 },
         ]);
+    });
+
+    test('건너뛴 알림이 많아도 보낸 알림이 적으면 아래로 간다', () => {
+        const counts = StatsCalc.pushSendCounts(
+            [historyCount('QUIZ_OPENED', 'NO_DEVICE', 0, 10), historyCount('CHAT_MESSAGE', null, 0, 2)],
+            SKIP_REASON_LABELS,
+        );
+
+        assert.deepEqual(counts.typeRows.map((row) => row.label), ['새 메시지', '퀴즈 열림']);
     });
 
     test('건너뛴 이유는 라벨 순서대로 0이어도 나온다', () => {
