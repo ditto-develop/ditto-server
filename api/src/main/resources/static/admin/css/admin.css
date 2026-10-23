@@ -180,6 +180,8 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section table.tbl td.empty { color: var(--text-muted); }
 /* 알림 표는 칸이 많아 폰 폭에서 "25.0 / %"처럼 갈린다. 넘치면 가로 스크롤로 받는다. */
 .stats-section .push-type-table td.num { white-space: nowrap; }
+/* 회차 칸이 계속 늘어나서 줄바꿈 없이 가로 스크롤로 받는다. */
+.stats-section .cohort-table :is(th, td) { white-space: nowrap; }
 .stats-section table.tbl tr.today td { font-weight: 700; }
 /* 값 칸 폭을 고정해야 행마다 막대 길이가 같다. */
 .share-row { display: grid; grid-template-columns: 56px 1fr 128px; gap: 12px; align-items: center; margin-bottom: 10px; }

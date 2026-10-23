@@ -538,6 +538,53 @@ const StatsCalc = (() => {
             .map(([size, groups]) => genderRow(`${size}명 · ${groups.length}개`, groups.flat(), genderLabels));
     };
 
+    // 지난 회차 완주자를 성사 여부로 나눈다. 성사 안 됨은 전체에서 성사를 뺀 값이다.
+    const matchResultRetention = (retentionTotals, matchedPreviousCounts, matchedCompletedAgainCounts) => {
+        const matchedPreviousCount = sumCounts(matchedPreviousCounts);
+        const matchedAgainCount = sumCounts(matchedCompletedAgainCounts);
+        return [
+            { label: '성사됨', previousCount: matchedPreviousCount, completedAgainCount: matchedAgainCount },
+            {
+                label: '성사 안 됨',
+                previousCount: retentionTotals.previousCount - matchedPreviousCount,
+                completedAgainCount: retentionTotals.completedAgainCount - matchedAgainCount,
+            },
+        ];
+    };
+
+    // 가입한 주마다 가입 뒤 N번째 회차에 완주한 수. 가입한 주가 회차면 그 회차는 "가입한 주" 칸이다.
+    // 아직 오지 않은 회차 칸은 null 이다.
+    const cohortRetention = ({ recentJoinedAts, recentWeekCount }, retentionStats, weekStartedOn) => {
+        const roundWeeks = [...retentionStats.cohortRoundWeeks].sort();
+        const cohortWeeks = Array.from({ length: recentWeekCount }, (_, index) =>
+            addDays(weekStartedOn, -7 * (recentWeekCount - 1 - index)));
+        const joinedCountsByWeek = countBy(recentJoinedAts, (joinedAt) => mondayOf(dateOf(joinedAt)));
+        const completionKey = (cohortWeek, roundWeek) => `${cohortWeek}|${roundWeek}`;
+        const completionCounts = countBy(
+            retentionStats.joinedAtCompletions,
+            (completion) => completionKey(mondayOf(dateOf(completion.joinedAt)), completion.weekStartedOn),
+        );
+        const columnCount = roundWeeks.filter((roundWeek) => roundWeek > cohortWeeks[0]).length;
+        const cellOf = (cohortWeek, roundWeek) => (roundWeek === undefined
+            ? null
+            : { completedCount: completionCounts.get(completionKey(cohortWeek, roundWeek)) || 0 });
+        const rows = cohortWeeks
+            .map((cohortWeek) => {
+                const roundsAfter = roundWeeks.filter((roundWeek) => roundWeek > cohortWeek);
+                return {
+                    cohortWeek,
+                    joinedCount: joinedCountsByWeek.get(cohortWeek) || 0,
+                    joinWeekCell: roundWeeks.includes(cohortWeek) ? cellOf(cohortWeek, cohortWeek) : null,
+                    afterCells: Array.from(
+                        { length: columnCount },
+                        (_, index) => cellOf(cohortWeek, roundsAfter[index]),
+                    ),
+                };
+            })
+            .filter((row) => row.joinedCount > 0);
+        return { columnCount, rows };
+    };
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -612,6 +659,8 @@ const StatsCalc = (() => {
         retentionCounts,
         completionDayCounts,
         trackSwitchCounts,
+        matchResultRetention,
+        cohortRetention,
         chatMessageStats,
         scoreSummary,
         matchScores,

@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository.querydsl
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 interface QuizProgressRepositoryCustom {
     fun deleteByMemberIdAndQuizSetIds(memberId: Long, quizSetIds: List<Long>)
@@ -21,6 +22,23 @@ interface QuizProgressRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): List<QuizProgressCount>
+
+    /** countMembersCompletedAgain 중 이전 주에 성사된 회원만 센다. */
+    fun countMatchedMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<CompletedAgainCount>
+
+    /** 그 주 완주자 중 그 셋에서 성사된 회원 수를 유형별로 센다. 성사는 매칭 장과 같다. */
+    fun countMatchedMembersCompletedInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchedCompletionCount>
+
+    /** 가입 시각이 그 범위인 회원의 완주마다 (가입 시각, 완주한 회차). 가입 주차별 리텐션이 쓴다. */
+    fun findJoinedAtsOfCompletionsInWeeks(
+        roundWeeks: Collection<LocalDate>,
+        joinedAtRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+    ): List<JoinedAtCompletion>
 
     /** 이전 주 완주자 중 이번 주에도 완주한 회원 수를 이전 주에 푼 유형과 이번 주에 푼 유형별로 센다. */
     fun countMembersCompletedAgain(

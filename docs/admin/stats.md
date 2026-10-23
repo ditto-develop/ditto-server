@@ -123,6 +123,9 @@
 - 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함).
 - 유형 전환(기획서의 "트랙 전환")은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
+- 매칭 결과별 재참여: 지난 회차 완주자를 그 셋에서 성사됐는지로 나눈 재참여율. 성사는 매칭 장과 같다(1:1 ACCEPTED 쌍, 성사 그룹 수락자). 성사 안 됨은 전체에서 성사를 뺀 값이다.
+- 가입 주차별 리텐션(기획서의 "가입 코호트 잔존"): 고른 회차까지 8주 동안 가입한 회원을 가입한 주(월~일)로 묶고, 가입 뒤 N번째 회차에 퀴즈를 완주한 비율을 계단 표로 보인다. 가입한 주가 회차면 그 회차를 "가입한 주" 칸에 따로 둔다. 회차는 활성 퀴즈셋이 있는 주라 퀴즈를 쉰 주는 건너뛴다. 가입자 수는 회원 장의 주별 신규 가입과 같은 값이다(탈퇴한 회원 포함). 매칭 유형은 따지지 않는다.
+- 지난 회차가 없으면(첫 회차, 회차 아닌 주) 장 전체가 비어 두 표도 보이지 않는다.
 
 ## 신고
 
@@ -332,6 +335,25 @@ JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'C
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
 WHERE qp.status = 'COMPLETED'
 GROUP BY qs.matching_type, again_set.matching_type;
+
+-- 매칭 결과별 재참여의 성사됨 (지난 회차 완주자 중 성사, 그중 고른 회차 완주는 위 SQL 에 같은 EXISTS 를 더한다)
+SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qp.status = 'COMPLETED' AND (
+    EXISTS (SELECT 1 FROM personal_match pm WHERE pm.quiz_set_id = qp.quiz_set_id AND pm.status = 'ACCEPTED'
+            AND (pm.member_id_1 = qp.member_id OR pm.member_id_2 = qp.member_id))
+    OR EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
+               WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id AND gmm.status = 'ACCEPTED'))
+GROUP BY qs.matching_type;
+
+-- 가입 주차별 리텐션의 완주 (:first_monday 는 고른 회차 7주 전 월요일). 가입자 수는 주별 신규 가입 SQL 과 같다
+SELECT m.joined_at, qs.week_started_on FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qp.status = 'COMPLETED'
+  AND qs.week_started_on BETWEEN :first_monday AND :monday
+  AND m.joined_at >= :first_monday AND m.joined_at < :monday + INTERVAL 7 DAY;
 
 -- 신고 처리 상태 (피신고자 기준)
 SELECT r.status, COUNT(*) FROM member_report r

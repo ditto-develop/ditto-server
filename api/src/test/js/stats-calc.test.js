@@ -808,3 +808,67 @@ describe('chatMessageStats', () => {
         assert.deepEqual(stats.firstMessageBins[0], { label: '열린 시각 전(시각 조정)', count: 1 });
     });
 });
+
+describe('matchResultRetention', () => {
+    test('성사 안 됨은 전체 재참여에서 성사를 뺀다', () => {
+        const rows = StatsCalc.matchResultRetention(
+            { previousCount: 10, completedAgainCount: 6 },
+            [{ matchingType: 'ONE_TO_ONE', count: 3 }, { matchingType: 'GROUP', count: 1 }],
+            [{ previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'GROUP', count: 3 }],
+        );
+
+        assert.deepEqual(rows, [
+            { label: '성사됨', previousCount: 4, completedAgainCount: 3 },
+            { label: '성사 안 됨', previousCount: 6, completedAgainCount: 3 },
+        ]);
+    });
+});
+
+describe('cohortRetention', () => {
+    test('가입한 주로 묶고 가입한 주 회차와 가입 뒤 N번째 회차의 완주 수를 낸다', () => {
+        const memberStats = {
+            recentWeekCount: 3,
+            recentJoinedAts: ['2026-10-06 10:00:00', '2026-10-08 22:00:00', '2026-10-14 09:00:00'],
+        };
+        const retentionStats = {
+            cohortRoundWeeks: ['2026-10-19', '2026-10-05'],
+            joinedAtCompletions: [
+                { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-05' },
+                { joinedAt: '2026-10-08 22:00:00', weekStartedOn: '2026-10-05' },
+                { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-19' },
+                { joinedAt: '2026-10-14 09:00:00', weekStartedOn: '2026-10-19' },
+            ],
+        };
+
+        const { columnCount, rows } = StatsCalc.cohortRetention(memberStats, retentionStats, '2026-10-19');
+
+        assert.equal(columnCount, 1);
+        assert.deepEqual(rows, [
+            {
+                cohortWeek: '2026-10-05',
+                joinedCount: 2,
+                joinWeekCell: { completedCount: 2 },
+                afterCells: [{ completedCount: 1 }],
+            },
+            {
+                cohortWeek: '2026-10-12',
+                joinedCount: 1,
+                joinWeekCell: null,
+                afterCells: [{ completedCount: 1 }],
+            },
+        ]);
+    });
+
+    test('아직 오지 않은 회차 칸은 null 이고 가입자가 없는 주는 줄이 없다', () => {
+        const { columnCount, rows } = StatsCalc.cohortRetention(
+            { recentWeekCount: 2, recentJoinedAts: ['2026-10-19 10:00:00'] },
+            { cohortRoundWeeks: ['2026-10-12', '2026-10-19'], joinedAtCompletions: [] },
+            '2026-10-19',
+        );
+
+        assert.equal(columnCount, 1);
+        assert.deepEqual(rows, [
+            { cohortWeek: '2026-10-19', joinedCount: 1, joinWeekCell: { completedCount: 0 }, afterCells: [null] },
+        ]);
+    });
+});

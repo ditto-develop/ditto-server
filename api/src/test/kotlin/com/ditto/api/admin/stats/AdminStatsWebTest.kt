@@ -269,7 +269,9 @@ class AdminStatsWebTest(
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
                                 """"completedAgainCounts":""" +
                                 """[{"previousMatchingType":"ONE_TO_ONE",""" +
-                                """"againMatchingType":"ONE_TO_ONE","count":1}]}""",
+                                """"againMatchingType":"ONE_TO_ONE","count":1}],""" +
+                                """"matchedPreviousCounts":[],"matchedCompletedAgainCounts":[],""" +
+                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"joinedAtCompletions":[]}""",
                         ),
                     ),
                 )
@@ -351,7 +353,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
-                                """"completedAgainCounts":[]}""",
+                                """"completedAgainCounts":[],"matchedPreviousCounts":[],""" +
+                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],"joinedAtCompletions":[]}""",
                         ),
                     ),
                 )

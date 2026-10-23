@@ -41,12 +41,13 @@ class MemberStatsService(
         )
     }
 
-    private fun recentWeeksRangeUntil(week: OperationWeek): OpenEndRange<LocalDateTime> {
-        val firstWeek = week.minusWeeks(RECENT_WEEK_COUNT - 1L)
-        return firstWeek.dateTimeRange.start..<week.dateTimeRange.endExclusive
-    }
-
     companion object {
-        private const val RECENT_WEEK_COUNT = 8
+        // 주별 신규 가입 표와 가입 주차별 리텐션이 같은 8주를 본다.
+        const val RECENT_WEEK_COUNT = 8
+
+        fun recentWeeksRangeUntil(week: OperationWeek): OpenEndRange<LocalDateTime> {
+            val firstWeek = week.minusWeeks(RECENT_WEEK_COUNT - 1L)
+            return firstWeek.dateTimeRange.start..<week.dateTimeRange.endExclusive
+        }
     }
 }

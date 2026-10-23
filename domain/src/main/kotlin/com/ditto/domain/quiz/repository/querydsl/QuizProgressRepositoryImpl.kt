@@ -1,5 +1,10 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.match.entity.InvitationStatus
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.entity.QGroupMatch.groupMatch
+import com.ditto.domain.match.entity.QGroupMatchMember.groupMatchMember
+import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
@@ -13,10 +18,12 @@ import com.ditto.domain.quiz.entity.QQuizSet
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.querydsl.core.types.dsl.BooleanExpression
+import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Transactional
 class QuizProgressRepositoryImpl(
@@ -151,6 +158,70 @@ class QuizProgressRepositoryImpl(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
+    ): List<CompletedAgainCount> = countCompletedAgain(previousWeekStartedOn, weekStartedOn, filter, condition = null)
+
+    override fun countMatchedMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<CompletedAgainCount> =
+        countCompletedAgain(previousWeekStartedOn, weekStartedOn, filter, condition = matchedInProgressSet())
+
+    override fun countMatchedMembersCompletedInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<MatchedCompletionCount> {
+        val countExpression = quizProgress.memberId.countDistinct()
+        return queryFactory
+            .select(quizSet.matchingType, countExpression)
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.nonAdminMatching(filter),
+                matchedInProgressSet(),
+            )
+            .groupBy(quizSet.matchingType)
+            .fetch()
+            .map { row ->
+                MatchedCompletionCount(
+                    matchingType = row.get(quizSet.matchingType)
+                        ?: throw IllegalStateException("group by 키 matchingType 이 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    override fun findJoinedAtsOfCompletionsInWeeks(
+        roundWeeks: Collection<LocalDate>,
+        joinedAtRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+    ): List<JoinedAtCompletion> {
+        if (roundWeeks.isEmpty()) return emptyList()
+        return queryFactory
+            .select(member.joinedAt, quizSet.weekStartedOn)
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.`in`(roundWeeks),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.joinedAt.goe(joinedAtRange.start),
+                member.joinedAt.lt(joinedAtRange.endExclusive),
+                member.nonAdminMatching(filter),
+            )
+            .fetch()
+            .map { row ->
+                JoinedAtCompletion(
+                    joinedAt = row.get(member.joinedAt) ?: throw IllegalStateException("가입 시각이 비었다"),
+                    weekStartedOn = row.get(quizSet.weekStartedOn) ?: throw IllegalStateException("회차 주가 비었다"),
+                )
+            }
+    }
+
+    private fun countCompletedAgain(
+        previousWeekStartedOn: LocalDate,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+        condition: BooleanExpression?,
     ): List<CompletedAgainCount> {
         val againProgress = QQuizProgress("againProgress")
         val againSet = QQuizSet("againSet")
@@ -171,6 +242,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.eq(previousWeekStartedOn),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.nonAdminMatching(filter),
+                condition,
             )
             .groupBy(quizSet.matchingType, againSet.matchingType)
             .fetch()
@@ -184,6 +256,29 @@ class QuizProgressRepositoryImpl(
                 )
             }
     }
+
+    // 매칭 장의 성사와 같다. 1:1 은 ACCEPTED 쌍, 그룹은 성사된 그룹을 수락한 회원이다.
+    private fun matchedInProgressSet(): BooleanExpression =
+        Expressions.anyOf(
+            queryFactory.selectOne()
+                .from(personalMatch)
+                .where(
+                    personalMatch.quizSetId.eq(quizProgress.quizSetId),
+                    personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+                    personalMatch.memberId1.eq(quizProgress.memberId)
+                        .or(personalMatch.memberId2.eq(quizProgress.memberId)),
+                )
+                .exists(),
+            queryFactory.selectOne()
+                .from(groupMatchMember)
+                .join(groupMatch).on(groupMatch.id.eq(groupMatchMember.roomId), groupMatch.isActive.isTrue)
+                .where(
+                    groupMatch.quizSetId.eq(quizProgress.quizSetId),
+                    groupMatchMember.memberId.eq(quizProgress.memberId),
+                    groupMatchMember.status.eq(InvitationStatus.ACCEPTED),
+                )
+                .exists(),
+        )
 
     // 같은 주에 QA 용 비활성 셋이 있을 수 있어 매칭과 같이 활성 셋만 본다.
     private fun <T> JPAQuery<T>.fromProgressOfActiveSetsWithMember(): JPAQuery<T> =

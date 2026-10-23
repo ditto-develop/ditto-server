@@ -426,8 +426,40 @@
         renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
     };
 
+    const retentionRateCells = (row) => [
+        cell(row.label),
+        countCell(row.previousCount),
+        countCell(row.completedAgainCount),
+        cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
+    ];
+
+    // 아직 오지 않은 회차는 비우고, 비율 옆에 완주자 수를 붙인다.
+    const cohortCell = (roundCell, joinedCount) => {
+        if (roundCell === null) return cell('-', 'num empty');
+        const { completedCount } = roundCell;
+        return cell(`${StatsCalc.percentText(completedCount, joinedCount)}(${completedCount})`, 'num');
+    };
+
+    const renderCohortRetention = (memberStats, retentionStats, weekStartedOn) => {
+        const { columnCount, rows } = StatsCalc.cohortRetention(memberStats, retentionStats, weekStartedOn);
+        const headRow = document.createElement('tr');
+        headRow.append(
+            headerCell('가입 주차'),
+            headerCell('가입자(명)', 'num'),
+            headerCell('가입한 주', 'num'),
+            ...Array.from({ length: columnCount }, (_, index) => headerCell(`${index + 1}회차 뒤`, 'num')),
+        );
+        byId('retentionCohortHead').replaceChildren(headRow);
+        fillRows('retentionCohortRows', rows, (row) => [
+            cell(`${shortDate(row.cohortWeek)} 주`),
+            countCell(row.joinedCount),
+            cohortCell(row.joinWeekCell, row.joinedCount),
+            ...row.afterCells.map((afterCell) => cohortCell(afterCell, row.joinedCount)),
+        ]);
+    };
+
     const renderRetentionSection = (
-        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, retentionStats },
+        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, memberStats, retentionStats },
     ) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         const { previousCount, completedAgainCount, countsByType } =
@@ -442,12 +474,17 @@
         });
         byId('retentionPreviousCount').textContent = countText(previousCount, '명');
         byId('retentionCompletedAgainCount').textContent = countText(completedAgainCount, '명');
-        fillRows('retentionByTypeRows', countsByType, (row) => [
-            cell(row.label),
-            countCell(row.previousCount),
-            countCell(row.completedAgainCount),
-            cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
-        ]);
+        fillRows('retentionByTypeRows', countsByType, retentionRateCells);
+        fillRows(
+            'retentionMatchResultRows',
+            StatsCalc.matchResultRetention(
+                { previousCount, completedAgainCount },
+                retentionStats.matchedPreviousCounts,
+                retentionStats.matchedCompletedAgainCounts,
+            ),
+            retentionRateCells,
+        );
+        renderCohortRetention(memberStats, retentionStats, weekStartedOn);
         fillShares(
             'retentionTrackSwitchShares',
             StatsCalc.trackSwitchCounts(completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels),
