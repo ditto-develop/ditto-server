@@ -66,7 +66,7 @@ class PushSendHistoryRepositoryTest(
             }
         }
 
-        "그 주 이력을 유형·건너뛴 이유·기기 수·실패 기기 수로 묶고 관리자와 다른 주는 뺀다" {
+        "그 주 USER 이력만 유형·건너뛴 이유·실패 기기 수로 묶어 센다" {
             val user = saveMember("user")
             repeat(2) { pushSendHistoryRepository.save(PushSendHistory.sent(notificationFor(user), 1, emptyList())) }
             pushSendHistoryRepository.save(PushSendHistory.sent(notificationFor(user), 2, listOf("UNAVAILABLE")))
@@ -83,9 +83,9 @@ class PushSendHistoryRepositoryTest(
             val counts = pushSendHistoryRepository.countHistoriesInWeek(week, MemberFilter.NONE)
 
             counts shouldContainExactlyInAnyOrder listOf(
-                PushSendHistoryCount(NotificationType.CHAT_MESSAGE, null, 1, 0, 2L),
-                PushSendHistoryCount(NotificationType.CHAT_MESSAGE, null, 2, 1, 1L),
-                PushSendHistoryCount(NotificationType.MATCH_RESULT, PushSkipReason.NO_DEVICE, 0, 0, 1L),
+                PushSendHistoryCount(NotificationType.CHAT_MESSAGE, null, 0, 2L),
+                PushSendHistoryCount(NotificationType.CHAT_MESSAGE, null, 1, 1L),
+                PushSendHistoryCount(NotificationType.MATCH_RESULT, PushSkipReason.NO_DEVICE, 0, 1L),
             )
         }
     }

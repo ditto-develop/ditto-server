@@ -6,7 +6,6 @@ import com.ditto.domain.notification.entity.PushSkipReason
 data class PushSendHistoryCount(
     val notificationType: NotificationType,
     val skipReason: PushSkipReason?,
-    val deviceCount: Int,
     val failedDeviceCount: Int,
     val count: Long,
 )

@@ -29,7 +29,6 @@ class PushSendHistoryRepositoryImpl(
             .select(
                 pushSendHistory.notificationType,
                 pushSendHistory.skipReason,
-                pushSendHistory.deviceCount,
                 pushSendHistory.failedDeviceCount,
                 countExpression,
             )
@@ -43,7 +42,6 @@ class PushSendHistoryRepositoryImpl(
             .groupBy(
                 pushSendHistory.notificationType,
                 pushSendHistory.skipReason,
-                pushSendHistory.deviceCount,
                 pushSendHistory.failedDeviceCount,
             )
             .fetch()
@@ -52,7 +50,6 @@ class PushSendHistoryRepositoryImpl(
                     notificationType = row.get(pushSendHistory.notificationType)
                         ?: throw IllegalStateException("group by 키 notificationType 이 비었다"),
                     skipReason = row.get(pushSendHistory.skipReason),
-                    deviceCount = row.get(pushSendHistory.deviceCount) ?: 0,
                     failedDeviceCount = row.get(pushSendHistory.failedDeviceCount) ?: 0,
                     count = row.get(countExpression) ?: 0L,
                 )

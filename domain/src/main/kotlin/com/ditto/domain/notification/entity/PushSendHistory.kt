@@ -25,6 +25,8 @@ import java.time.LocalDateTime
     indexes = [
         // 기간 집계와 보관 기간 정리가 읽는 경로.
         Index(name = "push_send_history_index_1", columnList = "created_at"),
+        // 미수신 문의 때 한 회원의 최근 이력을 찾는 경로.
+        Index(name = "push_send_history_index_2", columnList = "member_id, created_at"),
     ],
 )
 class PushSendHistory private constructor(

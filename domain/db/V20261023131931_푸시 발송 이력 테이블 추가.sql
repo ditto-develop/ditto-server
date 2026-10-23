@@ -15,3 +15,5 @@ CREATE TABLE push_send_history
 );
 
 CREATE INDEX push_send_history_index_1 ON push_send_history (created_at);
+
+CREATE INDEX push_send_history_index_2 ON push_send_history (member_id, created_at);

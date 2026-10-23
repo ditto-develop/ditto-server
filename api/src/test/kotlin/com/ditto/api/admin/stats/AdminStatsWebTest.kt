@@ -301,7 +301,7 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"pushSendHistoryCounts":[{"notificationType":"MATCH_RESULT",""" +
-                                """"skipReason":"NO_DEVICE","deviceCount":0,"failedDeviceCount":0,"count":1}]""",
+                                """"skipReason":"NO_DEVICE","failedDeviceCount":0,"count":1}]""",
                         ),
                     ),
                 )

@@ -452,14 +452,14 @@ describe('retentionCounts', () => {
 
 describe('pushSendCounts', () => {
     const SKIP_REASON_LABELS = { MUTED: '채팅방 알림 꺼짐', TOGGLE_OFF: '알림 설정 꺼짐', NO_DEVICE: '등록된 기기 없음' };
-    const historyCount = (notificationType, skipReason, deviceCount, failedDeviceCount, count) =>
-        ({ notificationType, skipReason, deviceCount, failedDeviceCount, count });
+    const historyCount = (notificationType, skipReason, failedDeviceCount, count) =>
+        ({ notificationType, skipReason, failedDeviceCount, count });
     const HISTORY_COUNTS = [
-        historyCount('CHAT_MESSAGE', null, 1, 0, 5),
-        historyCount('CHAT_MESSAGE', null, 2, 1, 1),
-        historyCount('CHAT_MESSAGE', 'MUTED', 0, 0, 2),
-        historyCount('MATCH_RESULT', null, 1, 1, 1),
-        historyCount('MATCH_RESULT', 'NO_DEVICE', 0, 0, 3),
+        historyCount('CHAT_MESSAGE', null, 0, 5),
+        historyCount('CHAT_MESSAGE', null, 1, 1),
+        historyCount('CHAT_MESSAGE', 'MUTED', 0, 2),
+        historyCount('MATCH_RESULT', null, 1, 1),
+        historyCount('MATCH_RESULT', 'NO_DEVICE', 0, 3),
     ];
 
     test('건너뛴 이유가 없으면 보냄이고 실패 기기가 하나라도 있으면 실패다', () => {
@@ -491,7 +491,7 @@ describe('pushSendCounts', () => {
     });
 
     test('라벨이 없는 유형은 enum 이름 그대로 보인다', () => {
-        const counts = StatsCalc.pushSendCounts([historyCount('NEW_TYPE', null, 1, 0, 1)], SKIP_REASON_LABELS);
+        const counts = StatsCalc.pushSendCounts([historyCount('NEW_TYPE', null, 0, 1)], SKIP_REASON_LABELS);
 
         assert.equal(counts.typeRows[0].label, 'NEW_TYPE');
     });
