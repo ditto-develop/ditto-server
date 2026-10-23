@@ -47,7 +47,7 @@ class GroupMatchRepositoryImpl(
             .fetch()
             .map { row ->
                 GroupMatchScore(
-                    isGroupActive = row.get(groupMatch.isActive) ?: false,
+                    isActive = row.get(groupMatch.isActive) ?: false,
                     score = row.get(groupMatch.score) ?: 0.0,
                 )
             }

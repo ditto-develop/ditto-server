@@ -294,12 +294,12 @@
         fillScoreCard('matchPairScore', {
             title: '1:1 후보 점수',
             summary: scores.pair,
-            matchedSummary: scores.acceptedPair,
+            matchedSummary: scores.matchedPair,
             unitLabel: '쌍',
-            unscoredMatchedCount: scores.unscoredAcceptedPairCount,
+            unscoredMatchedCount: scores.unscoredMatchedPairCount,
         });
         fillScoreCard('matchGroupScore', {
-            title: '그룹 후보 점수', summary: scores.group, matchedSummary: scores.activeGroup, unitLabel: '개',
+            title: '그룹 후보 점수', summary: scores.group, matchedSummary: scores.matchedGroup, unitLabel: '개',
         });
         fillGenderTable({
             headId: 'matchGroupSizeHead',
@@ -326,7 +326,6 @@
         ...(showsAllSent ? [allSentCell(row)] : []),
     ];
 
-    // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.
     const hourText = (hours) => `${hours.toFixed(1)}시간`;
 
     const renderChatMessages = (chatStats, roomTypeLabels, genderLabels) => {
@@ -352,6 +351,7 @@
         fillShares('chatLastMessageShares', messages.lastMessageBins, options);
     };
 
+    // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.
     const renderChatSection = ({ genderLabels, memberReviewMatchTypeLabels, chatStats }) => {
         const activity = StatsCalc.chatActivity(chatStats, memberReviewMatchTypeLabels);
         showSectionIfAny('chat', activity.rows.some((row) => row.openedCount > 0));
@@ -473,7 +473,7 @@
         cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
     ];
 
-    // 아직 오지 않은 회차는 비우고, 비율 옆에 완주자 수를 붙인다.
+    // 칸이 없으면 '-', 있으면 비율 옆에 완주자 수를 붙인다.
     const cohortCell = (roundCell, joinedCount) => {
         if (roundCell === null) return cell('-', 'num empty');
         const { completedCount } = roundCell;
@@ -520,7 +520,7 @@
             'retentionMatchResultRows',
             StatsCalc.matchResultRetention(
                 { previousCount, completedAgainCount },
-                retentionStats.matchedPreviousCounts,
+                retentionStats.matchedPreviousCompletionCounts,
                 retentionStats.matchedCompletedAgainCounts,
             ),
             retentionRateCells,

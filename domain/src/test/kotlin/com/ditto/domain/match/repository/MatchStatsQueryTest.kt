@@ -236,8 +236,8 @@ class MatchStatsQueryTest(
             saveGroup(saveQuizSet(matchingType = MatchingType.GROUP, isActive = false))
 
             groupMatchRepository.findGroupScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(
-                GroupMatchScore(isGroupActive = true, score = 66.0),
-                GroupMatchScore(isGroupActive = false, score = 61.0),
+                GroupMatchScore(isActive = true, score = 66.0),
+                GroupMatchScore(isActive = false, score = 61.0),
             )
         }
     }

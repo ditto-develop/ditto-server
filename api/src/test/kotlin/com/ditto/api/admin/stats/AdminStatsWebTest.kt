@@ -185,7 +185,7 @@ class AdminStatsWebTest(
                                 """"groupMatchMemberCounts":""" +
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
                                 """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +
-                                """"groupScores":[{"isGroupActive":false,"score":80.0}],""" +
+                                """"groupScores":[{"isActive":false,"score":80.0}],""" +
                                 """"activeGroupMemberCounts":[]}""",
                         ),
                     ),
@@ -270,8 +270,8 @@ class AdminStatsWebTest(
                                 """"completedAgainCounts":""" +
                                 """[{"previousMatchingType":"ONE_TO_ONE",""" +
                                 """"againMatchingType":"ONE_TO_ONE","count":1}],""" +
-                                """"matchedPreviousCounts":[],"matchedCompletedAgainCounts":[],""" +
-                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"joinedAtCompletions":[]}""",
+                                """"matchedPreviousCompletionCounts":[],"matchedCompletedAgainCounts":[],""" +
+                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[]}""",
                         ),
                     ),
                 )
@@ -353,8 +353,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
-                                """"completedAgainCounts":[],"matchedPreviousCounts":[],""" +
-                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],"joinedAtCompletions":[]}""",
+                                """"completedAgainCounts":[],"matchedPreviousCompletionCounts":[],""" +
+                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],"completionsWithJoinedAt":[]}""",
                         ),
                     ),
                 )

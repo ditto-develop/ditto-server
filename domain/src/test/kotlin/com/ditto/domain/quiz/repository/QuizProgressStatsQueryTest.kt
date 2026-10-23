@@ -21,7 +21,7 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.querydsl.CompletedAgainCount
-import com.ditto.domain.quiz.repository.querydsl.JoinedAtCompletion
+import com.ditto.domain.quiz.repository.querydsl.CompletionWithJoinedAt
 import com.ditto.domain.quiz.repository.querydsl.MatchedCompletionCount
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressCount
 import com.ditto.domain.support.IntegrationTest
@@ -295,7 +295,7 @@ class QuizProgressStatsQueryTest(
         }
     }
 
-    "findJoinedAtsOfCompletionsInWeeks" - {
+    "findCompletionsWithJoinedAtInWeeks" - {
         "가입 시각이 범위 안인 회원의 완주마다 가입 시각과 회차를 준다" {
             val previous = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
             val current = saveQuizSet()
@@ -306,13 +306,13 @@ class QuizProgressStatsQueryTest(
             saveProgress(saveMember(joinedAt = joinedAt), current, completed = false)
             saveProgress(saveMember(joinedAt = LocalDateTime.of(2026, 9, 1, 9, 0)), current)
 
-            quizProgressRepository.findJoinedAtsOfCompletionsInWeeks(
+            quizProgressRepository.findCompletionsWithJoinedAtInWeeks(
                 listOf(WEEK.minusWeeks(1), WEEK),
                 LocalDateTime.of(2026, 10, 12, 0, 0)..<LocalDateTime.of(2026, 10, 26, 0, 0),
                 MemberFilter.NONE,
             ) shouldContainExactlyInAnyOrder listOf(
-                JoinedAtCompletion(joinedAt, WEEK.minusWeeks(1)),
-                JoinedAtCompletion(joinedAt, WEEK),
+                CompletionWithJoinedAt(joinedAt, WEEK.minusWeeks(1)),
+                CompletionWithJoinedAt(joinedAt, WEEK),
             )
         }
     }

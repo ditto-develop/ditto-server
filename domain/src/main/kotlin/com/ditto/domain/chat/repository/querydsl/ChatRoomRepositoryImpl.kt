@@ -7,8 +7,8 @@ import com.ditto.domain.chat.entity.QChatMessage.chatMessage
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
-import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
+import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.entity.QNotification.notification
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet

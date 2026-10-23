@@ -23,7 +23,7 @@ class RetentionStatsService(
         val cohortRange = StatsRoundFinder.recentWeeksRangeUntil(week)
         val cohortRoundWeeks = statsRoundFinder
             .findRecentRoundWeeksUntil(week, StatsRoundFinder.RECENT_WEEK_COUNT)
-            .filter { it >= cohortRange.start.toLocalDate() }
+            .filter { roundWeek -> roundWeek >= cohortRange.start.toLocalDate() }
         return RetentionStatsData(
             previousRoundWeek = previousRoundWeek,
             previousProgressCounts = quizProgressRepository.countProgressesInWeek(
@@ -34,15 +34,15 @@ class RetentionStatsService(
             completedAgainCounts = quizProgressRepository
                 .countMembersCompletedAgain(previousRoundWeek, week.startedOn, memberFilter)
                 .filter { quizMatchingType == null || it.previousMatchingType == quizMatchingType },
-            matchedPreviousCounts = quizProgressRepository
+            matchedPreviousCompletionCounts = quizProgressRepository
                 .countMatchedMembersCompletedInWeek(previousRoundWeek, memberFilter)
                 .filter { quizMatchingType == null || it.matchingType == quizMatchingType },
             matchedCompletedAgainCounts = quizProgressRepository
                 .countMatchedMembersCompletedAgain(previousRoundWeek, week.startedOn, memberFilter)
                 .filter { quizMatchingType == null || it.previousMatchingType == quizMatchingType },
             cohortRoundWeeks = cohortRoundWeeks,
-            joinedAtCompletions =
-                quizProgressRepository.findJoinedAtsOfCompletionsInWeeks(cohortRoundWeeks, cohortRange, memberFilter),
+            completionsWithJoinedAt =
+                quizProgressRepository.findCompletionsWithJoinedAtInWeeks(cohortRoundWeeks, cohortRange, memberFilter),
         )
     }
 }

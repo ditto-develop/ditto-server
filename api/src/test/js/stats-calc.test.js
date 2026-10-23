@@ -724,14 +724,14 @@ describe('matchScores', () => {
         const scores = StatsCalc.matchScores({
             pairScores: [70],
             acceptedPairScores: [],
-            groupScores: [{ isGroupActive: true, score: 66 }, { isGroupActive: false, score: 60 }],
+            groupScores: [{ isActive: true, score: 66 }, { isActive: false, score: 60 }],
         });
 
         assert.equal(scores.pair.count, 1);
-        assert.equal(scores.acceptedPair.count, 0);
-        assert.equal(scores.unscoredAcceptedPairCount, 0);
+        assert.equal(scores.matchedPair.count, 0);
+        assert.equal(scores.unscoredMatchedPairCount, 0);
         assert.equal(scores.group.average, 63);
-        assert.equal(scores.activeGroup.average, 66);
+        assert.equal(scores.matchedGroup.average, 66);
     });
 });
 
@@ -739,9 +739,9 @@ describe('matchScores 의 점수 없는 성사 쌍', () => {
     test('후보 행이 사라져 점수가 null 인 성사 쌍은 평균에서 빼고 따로 센다', () => {
         const scores = StatsCalc.matchScores({ pairScores: [70], acceptedPairScores: [80, null], groupScores: [] });
 
-        assert.equal(scores.acceptedPair.count, 1);
-        assert.equal(scores.acceptedPair.average, 80);
-        assert.equal(scores.unscoredAcceptedPairCount, 1);
+        assert.equal(scores.matchedPair.count, 1);
+        assert.equal(scores.matchedPair.average, 80);
+        assert.equal(scores.unscoredMatchedPairCount, 1);
     });
 });
 
@@ -844,7 +844,7 @@ describe('cohortRetention', () => {
         };
         const retentionStats = {
             cohortRoundWeeks: ['2026-10-19', '2026-10-05'],
-            joinedAtCompletions: [
+            completionsWithJoinedAt: [
                 { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-05' },
                 { joinedAt: '2026-10-08 22:00:00', weekStartedOn: '2026-10-05' },
                 { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-19' },
@@ -874,7 +874,7 @@ describe('cohortRetention', () => {
     test('아직 오지 않은 회차 칸은 null 이고 가입자가 없는 주는 줄이 없다', () => {
         const { columnCount, rows } = StatsCalc.cohortRetention(
             { recentWeekCount: 2, recentJoinedAts: ['2026-10-19 10:00:00'] },
-            { cohortRoundWeeks: ['2026-10-12', '2026-10-19'], joinedAtCompletions: [] },
+            { cohortRoundWeeks: ['2026-10-12', '2026-10-19'], completionsWithJoinedAt: [] },
             '2026-10-19',
         );
 

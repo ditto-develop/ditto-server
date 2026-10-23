@@ -158,14 +158,20 @@ class QuizProgressRepositoryImpl(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
-    ): List<CompletedAgainCount> = countCompletedAgain(previousWeekStartedOn, weekStartedOn, filter, condition = null)
+    ): List<CompletedAgainCount> =
+        countCompletedAgain(previousWeekStartedOn, weekStartedOn, filter, previousProgressCondition = null)
 
     override fun countMatchedMembersCompletedAgain(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
     ): List<CompletedAgainCount> =
-        countCompletedAgain(previousWeekStartedOn, weekStartedOn, filter, condition = matchedInProgressSet())
+        countCompletedAgain(
+            previousWeekStartedOn,
+            weekStartedOn,
+            filter,
+            previousProgressCondition = matchedInProgressSet(),
+        )
 
     override fun countMatchedMembersCompletedInWeek(
         weekStartedOn: LocalDate,
@@ -192,11 +198,11 @@ class QuizProgressRepositoryImpl(
             }
     }
 
-    override fun findJoinedAtsOfCompletionsInWeeks(
+    override fun findCompletionsWithJoinedAtInWeeks(
         roundWeeks: Collection<LocalDate>,
         joinedAtRange: OpenEndRange<LocalDateTime>,
         filter: MemberFilter,
-    ): List<JoinedAtCompletion> {
+    ): List<CompletionWithJoinedAt> {
         if (roundWeeks.isEmpty()) return emptyList()
         return queryFactory
             .select(member.joinedAt, quizSet.weekStartedOn)
@@ -210,7 +216,7 @@ class QuizProgressRepositoryImpl(
             )
             .fetch()
             .map { row ->
-                JoinedAtCompletion(
+                CompletionWithJoinedAt(
                     joinedAt = row.get(member.joinedAt) ?: throw IllegalStateException("가입 시각이 비었다"),
                     weekStartedOn = row.get(quizSet.weekStartedOn) ?: throw IllegalStateException("회차 주가 비었다"),
                 )
@@ -221,7 +227,7 @@ class QuizProgressRepositoryImpl(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
-        condition: BooleanExpression?,
+        previousProgressCondition: BooleanExpression?,
     ): List<CompletedAgainCount> {
         val againProgress = QQuizProgress("againProgress")
         val againSet = QQuizSet("againSet")
@@ -242,7 +248,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.eq(previousWeekStartedOn),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.nonAdminMatching(filter),
-                condition,
+                previousProgressCondition,
             )
             .groupBy(quizSet.matchingType, againSet.matchingType)
             .fetch()

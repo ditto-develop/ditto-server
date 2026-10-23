@@ -352,19 +352,19 @@ const StatsCalc = (() => {
     // 발신자 성별로 나뉜 행을 방마다 합치고, 가장 이른 행의 성별을 첫 발신자로 본다.
     const roomMessageSummaries = (messageSummaries) =>
         [...groupBy(messageSummaries, (summary) => summary.roomId).values()].map((genderRows) => {
-            const firstRow = genderRows
+            const earliestRow = genderRows
                 .reduce((earliest, row) => (row.firstMessageAt < earliest.firstMessageAt ? row : earliest));
             const lastMessageAt = genderRows.map((row) => row.lastMessageAt).sort().at(-1);
             return {
-                roomId: firstRow.roomId,
+                roomId: earliestRow.roomId,
                 messageCount: genderRows.reduce((sum, row) => sum + row.messageCount, 0),
-                firstSenderGender: firstRow.senderGender,
-                firstMessageHours: hoursBetween(firstRow.opensAt, firstRow.firstMessageAt),
-                lastMessageHours: hoursBetween(firstRow.opensAt, lastMessageAt),
+                firstSenderGender: earliestRow.senderGender,
+                firstMessageHours: hoursBetween(earliestRow.opensAt, earliestRow.firstMessageAt),
+                lastMessageHours: hoursBetween(earliestRow.opensAt, lastMessageAt),
             };
         });
 
-    // 열린 방 기준이고 메시지가 없는 방은 0개로 센다. 재매칭 방은 대화 활동 합계처럼 넣지 않는다.
+    // roomTypeLabels 에 있는 유형의 열린 방만 본다(재매칭 제외). 메시지가 없는 방은 0개로 센다.
     const chatMessageStats = (chatStats, roomTypeLabels, genderLabels) => {
         const shownRoomIds = new Set(chatStats.chatRoomMemberCounts
             .filter((row) => Object.hasOwn(roomTypeLabels, row.roomType))
@@ -499,18 +499,18 @@ const StatsCalc = (() => {
     };
 
     const SCORE_BIN_SIZE = 10;
-    const LAST_SCORE_BIN = 9;
+    const LAST_SCORE_BIN_INDEX = 9;
 
     // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다. 값이 있는 구간 사이만 보인다.
     const scoreSummary = (scores) => {
         if (scores.length === 0) return { count: 0, average: null, median: null, bins: [] };
-        const binIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN);
+        const binIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN_INDEX);
         const countsByBin = countBy(scores, binIndexOf);
         const firstBin = Math.min(...countsByBin.keys());
         const lastBin = Math.max(...countsByBin.keys());
         const bins = Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => {
             const binIndex = firstBin + offset;
-            const label = binIndex === LAST_SCORE_BIN ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`;
+            const label = binIndex === LAST_SCORE_BIN_INDEX ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`;
             return { label, count: countsByBin.get(binIndex) || 0 };
         });
         return {
@@ -524,11 +524,11 @@ const StatsCalc = (() => {
     // 후보를 다시 만들면 성사 쌍의 후보 행이 지워져 점수가 null 로 온다.
     const matchScores = ({ pairScores, acceptedPairScores, groupScores }) => ({
         pair: scoreSummary(pairScores),
-        acceptedPair: scoreSummary(acceptedPairScores.filter((score) => score !== null)),
-        unscoredAcceptedPairCount: acceptedPairScores.filter((score) => score === null).length,
+        matchedPair: scoreSummary(acceptedPairScores.filter((score) => score !== null)),
+        unscoredMatchedPairCount: acceptedPairScores.filter((score) => score === null).length,
         group: scoreSummary(groupScores.map((groupScore) => groupScore.score)),
-        activeGroup: scoreSummary(
-            groupScores.filter((groupScore) => groupScore.isGroupActive).map((groupScore) => groupScore.score),
+        matchedGroup: scoreSummary(
+            groupScores.filter((groupScore) => groupScore.isActive).map((groupScore) => groupScore.score),
         ),
     });
 
@@ -542,8 +542,8 @@ const StatsCalc = (() => {
     };
 
     // 지난 회차 완주자를 성사 여부로 나눈다. 성사 안 됨은 전체에서 성사를 뺀 값이다.
-    const matchResultRetention = (retentionTotals, matchedPreviousCounts, matchedCompletedAgainCounts) => {
-        const matchedPreviousCount = sumCounts(matchedPreviousCounts);
+    const matchResultRetention = (retentionTotals, matchedPreviousCompletionCounts, matchedCompletedAgainCounts) => {
+        const matchedPreviousCount = sumCounts(matchedPreviousCompletionCounts);
         const matchedAgainCount = sumCounts(matchedCompletedAgainCounts);
         return [
             { label: '성사됨', previousCount: matchedPreviousCount, completedAgainCount: matchedAgainCount },
@@ -564,7 +564,7 @@ const StatsCalc = (() => {
         const joinedCountsByWeek = countBy(recentJoinedAts, (joinedAt) => mondayOf(dateOf(joinedAt)));
         const completionKey = (cohortWeek, roundWeek) => `${cohortWeek}|${roundWeek}`;
         const completionCounts = countBy(
-            retentionStats.joinedAtCompletions,
+            retentionStats.completionsWithJoinedAt,
             (completion) => completionKey(mondayOf(dateOf(completion.joinedAt)), completion.weekStartedOn),
         );
         const columnCount = roundWeeks.filter((roundWeek) => roundWeek > cohortWeeks[0]).length;

@@ -1,6 +1,6 @@
 package com.ditto.domain.match.repository.querydsl
 
 data class GroupMatchScore(
-    val isGroupActive: Boolean,
+    val isActive: Boolean,
     val score: Double,
 )
