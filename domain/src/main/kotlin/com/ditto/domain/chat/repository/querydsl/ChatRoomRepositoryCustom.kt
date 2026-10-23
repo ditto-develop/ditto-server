@@ -40,9 +40,9 @@ interface ChatRoomRepositoryCustom {
      */
     fun existsUnendedRoomOfMember(memberId: Long): Boolean
 
-    /** 그 회차에 열린 방마다 참여자 수. 나간 사람도 센다. */
-    fun countMembersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomMemberCount>
+    /** 그 회차에 열린 방마다 참여자 수. 나간 사람도 센다. 관리자가 든 방과 비활성 퀴즈셋의 방은 뺀다. */
+    fun countMembersPerOpenedRoomInWeek(weekStartedOn: LocalDate): List<ChatRoomMemberCount>
 
-    /** 그 회차에 열린 방마다 대화 메시지(SYSTEM 제외)를 보낸 사람 수. 메시지가 없는 방은 행이 없다. */
-    fun countSendersPerOpenedRoomOfWeek(weekStartedOn: LocalDate): List<ChatRoomSenderCount>
+    /** 같은 방들에서 대화 메시지(SYSTEM 제외)를 보낸 사람 수. 메시지가 없는 방은 행이 없다. */
+    fun countSendersPerOpenedRoomInWeek(weekStartedOn: LocalDate): List<ChatRoomSenderCount>
 }

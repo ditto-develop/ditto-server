@@ -15,7 +15,7 @@ class ChatStatsService(
     @Transactional(readOnly = true)
     fun findStats(week: OperationWeek): ChatStatsData =
         ChatStatsData(
-            chatRoomMemberCounts = chatRoomRepository.countMembersPerOpenedRoomOfWeek(week.startedOn),
-            chatRoomSenderCounts = chatRoomRepository.countSendersPerOpenedRoomOfWeek(week.startedOn),
+            chatRoomMemberCounts = chatRoomRepository.countMembersPerOpenedRoomInWeek(week.startedOn),
+            chatRoomSenderCounts = chatRoomRepository.countSendersPerOpenedRoomInWeek(week.startedOn),
         )
 }

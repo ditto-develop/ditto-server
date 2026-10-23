@@ -72,10 +72,11 @@
 | 양방향 대화율 | 2명 이상이 대화 메시지를 보낸 방 ÷ 열린 방 |
 | 전원 (그룹만) | 참여자(`chat_room_member`, 나간 사람 포함) 전원이 대화 메시지를 보낸 방 ÷ 열린 방. 두 사람 방은 양방향과 같아 비운다 |
 
-- 회차: 1:1·그룹 방은 매칭 주 금요일에 열려서 `opens_at`이 그 주(월~일)인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열려 원래 그룹의 주(`rematch.week_started_on`)로 센다.
+- 회차: 원본 매칭(1:1 `personal_match`, 그룹 `group_match`, 재매칭 `rematch`)의 퀴즈셋이 그 주 활성 셋인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열리지만 원래 그룹의 퀴즈셋으로 센다. 그래서 매칭 장과 같은 회차에 잡히고 비활성 셋의 방은 빠진다.
+- 관리자가 참여자로 든 방은 통째로 뺀다. 다른 장이 관리자를 빼는 것과 맞추려는 것이다.
 - 재매칭은 따로 한 줄이고 1:1·그룹 합계에 넣지 않는다. 서로 원한 두 사람이라 수치가 높게 나온다. 매칭 유형 "전체"·"그룹"에서 보인다. 재매칭은 평가 제출로 뒤늦게 성사되어 지난 회차 숫자가 나중에 늘 수 있다.
-- 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 그려서 건다.
-- 서버는 방마다 참여자 수와 보낸 사람 수만 내리고 비율은 `stats-calc.js`가 센다.
+- 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
+- 다른 장과 달리 서버가 방마다 한 행(참여자 수·보낸 사람 수)을 내린다. 방별 두 수를 묶은 분포는 쿼리가 복잡해져서, 비율은 `stats-calc.js`가 방 행으로 계산한다. 방 수는 회차당 많아야 수백이다.
 
 ## 평가
 
@@ -177,16 +178,24 @@ JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY gm.is_active, gmm.status, m.gender;
 
--- 채팅방별 참여자 수·보낸 사람 수 (:monday 회차)
-SELECT r.id, r.source_type,
-    (SELECT COUNT(*) FROM chat_room_member crm WHERE crm.room_id = r.id) AS members,
-    (SELECT COUNT(DISTINCT msg.sender_id) FROM chat_message msg
-     WHERE msg.room_id = r.id AND msg.message_type <> 'SYSTEM') AS senders
-FROM chat_room r
-LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
-WHERE r.status <> 'SCHEDULED'
-  AND ((r.source_type <> 'REMATCH' AND r.opens_at >= :monday AND r.opens_at < :monday + INTERVAL 7 DAY)
-    OR rm.week_started_on = :monday);
+-- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋, 관리자가 든 방 제외)
+SELECT source_type, COUNT(*) AS opened,
+    SUM(senders >= 1) AS started, SUM(senders >= 2) AS two_way, SUM(senders >= members) AS all_sent
+FROM (
+    SELECT r.source_type,
+        (SELECT COUNT(*) FROM chat_room_member crm WHERE crm.room_id = r.id) AS members,
+        (SELECT COUNT(DISTINCT msg.sender_id) FROM chat_message msg
+         WHERE msg.room_id = r.id AND msg.message_type <> 'SYSTEM') AS senders
+    FROM chat_room r
+    LEFT JOIN personal_match pm ON r.source_type = 'PERSONAL' AND pm.id = r.source_id
+    LEFT JOIN group_match gm ON r.source_type = 'GROUP' AND gm.id = r.source_id
+    LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
+    JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id, rm.quiz_set_id) AND qs.is_active
+    WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
+      AND NOT EXISTS (SELECT 1 FROM chat_room_member crm JOIN member m ON m.id = crm.member_id
+                      WHERE crm.room_id = r.id AND m.role = 'ADMIN')
+) rooms
+GROUP BY source_type;
 
 -- 평가지 상태 (쓴 사람 기준)
 SELECT r.match_type, r.status, COUNT(*) FROM member_review r

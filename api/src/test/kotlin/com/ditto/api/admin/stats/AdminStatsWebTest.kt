@@ -161,7 +161,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"matchStats":{"matchCandidateCounts":[{"gender":null,"count":1}],""" +
-                                """"personalMatchMemberCounts":[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
+                                """"personalMatchMemberCounts":""" +
+                                """[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}]}""",
                         ),
@@ -170,11 +171,20 @@ class AdminStatsWebTest(
         }
 
         "채팅 집계를 페이지 JSON 에 넣는다" {
-            val room = chatRoomRepository.save(ChatRoomFixture.personal())
+            // ChatRoomFixture 기본 방은 이 퀴즈셋 주의 금요일(3/13)에 열린다.
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = LocalDateTime.of(2026, 3, 9, 0, 0),
+                    endDate = LocalDateTime.of(2026, 3, 11, 23, 59, 59),
+                ),
+            )
+            val personalMatch = personalMatchRepository.save(
+                PersonalMatchFixture.create(1L, 2L, quizSet.id, PersonalMatchStatus.ACCEPTED),
+            )
+            val room = chatRoomRepository.save(ChatRoomFixture.personal(personalMatch.id))
             listOf(1L, 2L).forEach { chatRoomMemberRepository.save(ChatRoomMemberFixture.create(room.id, it)) }
             chatMessageRepository.save(ChatMessageFixture.create(roomId = room.id, senderId = 1L))
 
-            // ChatRoomFixture 기본 방은 3/13(금)에 열린다.
             mockMvc.perform(get("/admin/stats").param("week", "2026-03-11").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(
