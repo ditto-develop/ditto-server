@@ -110,7 +110,7 @@ class QuizProgressStatsQueryTest(
     }
 
     "countMembersCompletedAgain" - {
-        "이전 주 완주자 중 이번 주에도 완주한 회원을 이전 주 유형별로 센다" {
+        "이전 주 완주자 중 이번 주에도 완주한 회원을 이전 주 유형과 이번 주 유형별로 센다" {
             val previousOneToOne = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
             val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
             val thisOneToOne = saveQuizSet()
@@ -128,7 +128,10 @@ class QuizProgressStatsQueryTest(
 
             val counts = quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE)
 
-            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 2L))
+            counts shouldContainExactlyInAnyOrder listOf(
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.GROUP, 1L),
+            )
         }
 
         "회원 조건은 이전 주 완주자에게 건다" {
@@ -146,7 +149,9 @@ class QuizProgressStatsQueryTest(
                 MemberFilter(gender = Gender.FEMALE),
             )
 
-            counts shouldContainExactlyInAnyOrder listOf(CompletedAgainCount(MatchingType.ONE_TO_ONE, 1L))
+            counts shouldContainExactlyInAnyOrder listOf(
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
+            )
         }
     }
 

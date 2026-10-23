@@ -8,12 +8,14 @@ import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.QuizAnswerFixture
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
+import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import javax.sql.DataSource
@@ -26,6 +28,7 @@ class QuizAnswerStatsQueryTest(
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val memberRepository: MemberRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -110,6 +113,26 @@ class QuizAnswerStatsQueryTest(
 
             quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, MatchingType.ONE_TO_ONE, MemberFilter.NONE)
                 .shouldBeEmpty()
+        }
+    }
+
+    "findCompletedAtsInWeek" - {
+        "완주한 회원마다 마지막 답 시각을 하나씩 주고 중간에 그만둔 회원과 관리자는 뺀다" {
+            val quizSet = saveQuizSet()
+            val (firstA, _) = saveQuestion(quizSet, displayOrder = 1)
+            val (secondA, _) = saveQuestion(quizSet, displayOrder = 2)
+            fun progress(memberId: Long, answeredChoices: List<QuizChoice>) {
+                answeredChoices.forEach { answer(memberId, it) }
+                val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 2)
+                repeat(answeredChoices.size) { progress.recordAnswer() }
+                quizProgressRepository.save(progress)
+            }
+            progress(saveMember(), listOf(firstA, secondA))
+            progress(saveMember(), listOf(firstA))
+            progress(saveMember(role = MemberRole.ADMIN), listOf(firstA, secondA))
+
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE) shouldHaveSize 1
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, MatchingType.GROUP, MemberFilter.NONE).shouldBeEmpty()
         }
     }
 })

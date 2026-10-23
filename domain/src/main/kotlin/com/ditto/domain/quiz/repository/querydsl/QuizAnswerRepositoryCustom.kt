@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository.querydsl
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 interface QuizAnswerRepositoryCustom {
     fun deleteByMemberIdAndQuizIds(memberId: Long, quizIds: List<Long>)
@@ -16,4 +17,11 @@ interface QuizAnswerRepositoryCustom {
         matchingType: MatchingType?,
         filter: MemberFilter,
     ): List<ChoiceAnswerCount>
+
+    /** 그 주 활성 퀴즈셋을 완주한 회원마다 마지막 답을 낸 시각. quiz_progress 에 완주 시각이 없어 답 시각으로 본다. */
+    fun findCompletedAtsInWeek(
+        weekStartedOn: LocalDate,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): List<LocalDateTime>
 }

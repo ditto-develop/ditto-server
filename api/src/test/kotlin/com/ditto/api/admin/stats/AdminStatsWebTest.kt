@@ -145,6 +145,7 @@ class AdminStatsWebTest(
                         ),
                     ),
                 )
+                .andExpect(content().string(pageJsonContaining(""""completedAts":["""")))
                 .andExpect(
                     content().string(
                         pageJsonContaining(
@@ -257,7 +258,8 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":"2026-04-06","previousProgressCounts":""" +
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
-                                """"completedAgainCounts":[{"previousMatchingType":"ONE_TO_ONE","count":1}]}""",
+                                """"completedAgainCounts":""" +
+                                """[{"previousMatchingType":"ONE_TO_ONE","matchingType":"ONE_TO_ONE","count":1}]}""",
                         ),
                     ),
                 )

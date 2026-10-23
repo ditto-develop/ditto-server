@@ -615,3 +615,43 @@ describe('sumCounts', () => {
         assert.equal(StatsCalc.sumCounts([{ count: 2 }, { count: 3 }]), 5);
     });
 });
+
+describe('completionDayCounts', () => {
+    test('완주 시각을 월요일부터 일요일까지 요일별로 세고 없는 요일은 0이다', () => {
+        const days = StatsCalc.completionDayCounts(
+            ['2026-10-19 00:00:00', '2026-10-19 23:59:59', '2026-10-21 12:00:00', '2026-10-25 09:00:00'],
+        );
+
+        assert.deepEqual(days.map((day) => day.label), ['월', '화', '수', '목', '금', '토', '일']);
+        assert.deepEqual(days.map((day) => day.count), [2, 0, 1, 0, 0, 0, 1]);
+    });
+});
+
+describe('trackSwitchCounts', () => {
+    const ALL_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
+    const COMPLETED_AGAIN_COUNTS = [
+        { previousMatchingType: 'ONE_TO_ONE', matchingType: 'ONE_TO_ONE', count: 3 },
+        { previousMatchingType: 'ONE_TO_ONE', matchingType: 'GROUP', count: 1 },
+        { previousMatchingType: 'GROUP', matchingType: 'ONE_TO_ONE', count: 2 },
+    ];
+
+    test('지난 회차 유형 → 고른 회차 유형 네 줄을 0이어도 낸다', () => {
+        const rows = StatsCalc.trackSwitchCounts(COMPLETED_AGAIN_COUNTS, ALL_LABELS, ALL_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '1:1 → 1:1', count: 3 },
+            { label: '1:1 → 그룹', count: 1 },
+            { label: '그룹 → 1:1', count: 2 },
+            { label: '그룹 → 그룹', count: 0 },
+        ]);
+    });
+
+    test('매칭 유형을 고르면 지난 회차 쪽만 걸러지고 고른 회차 쪽은 두 유형이 다 나온다', () => {
+        const rows = StatsCalc.trackSwitchCounts(COMPLETED_AGAIN_COUNTS, { GROUP: '그룹' }, ALL_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '그룹 → 1:1', count: 2 },
+            { label: '그룹 → 그룹', count: 0 },
+        ]);
+    });
+});

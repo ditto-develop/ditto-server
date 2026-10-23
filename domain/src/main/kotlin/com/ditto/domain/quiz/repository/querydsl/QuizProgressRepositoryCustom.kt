@@ -23,7 +23,7 @@ interface QuizProgressRepositoryCustom {
         filter: MemberFilter,
     ): List<QuizProgressCount>
 
-    /** 이전 주 완주자 중 이번 주에도 완주한 회원 수를 이전 주에 푼 유형별로 센다. 이번 주 유형은 따지지 않는다. */
+    /** 이전 주 완주자 중 이번 주에도 완주한 회원 수를 이전 주에 푼 유형과 이번 주에 푼 유형별로 센다. */
     fun countMembersCompletedAgain(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,

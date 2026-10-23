@@ -39,6 +39,7 @@ class QuizStatsService(
                 quizMatchingType,
                 memberFilter,
             ),
+            completedAts = quizAnswerRepository.findCompletedAtsInWeek(week.startedOn, quizMatchingType, memberFilter),
             choiceAnswerCounts = quizAnswerRepository.countAnswersPerChoiceInWeek(
                 week.startedOn,
                 quizMatchingType,

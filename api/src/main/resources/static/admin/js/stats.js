@@ -173,6 +173,7 @@
             genderLabels,
             rows: StatsCalc.participantGenderRows(progressCounts, quizMatchingTypeLabels, genderLabels),
         });
+        fillShares('quizCompletionDayShares', StatsCalc.completionDayCounts(quizStats.completedAts));
     };
 
     const renderMatchSection = (
@@ -305,7 +306,9 @@
         renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
     };
 
-    const renderRetentionSection = ({ weekStartedOn, quizMatchingTypeLabels, retentionStats }) => {
+    const renderRetentionSection = (
+        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, retentionStats },
+    ) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         const { previousCount, completedAgainCount, countsByType } =
             StatsCalc.retentionCounts(previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels);
@@ -325,6 +328,11 @@
             countCell(row.completedAgainCount),
             cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
         ]);
+        fillShares(
+            'retentionTrackSwitchShares',
+            StatsCalc.trackSwitchCounts(completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels),
+            { className: 'share-row wide-label-row' },
+        );
     };
 
     const renderMemberReportSection = ({ memberReportReasonLabels, memberReportStatusLabels, memberReportStats }) => {

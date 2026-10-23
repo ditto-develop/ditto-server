@@ -151,7 +151,7 @@ class QuizProgressRepositoryImpl(
         val againSet = QQuizSet("againSet")
         val countExpression = quizProgress.memberId.countDistinct()
         return queryFactory
-            .select(quizSet.matchingType, countExpression)
+            .select(quizSet.matchingType, againSet.matchingType, countExpression)
             .fromProgressOfActiveSetsWithMember()
             .join(againProgress).on(
                 againProgress.memberId.eq(quizProgress.memberId),
@@ -167,12 +167,14 @@ class QuizProgressRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.nonAdminMatching(filter),
             )
-            .groupBy(quizSet.matchingType)
+            .groupBy(quizSet.matchingType, againSet.matchingType)
             .fetch()
             .map { row ->
                 CompletedAgainCount(
                     previousMatchingType = row.get(quizSet.matchingType)
                         ?: throw IllegalStateException("group by 키 matchingType 이 비었다"),
+                    matchingType = row.get(againSet.matchingType)
+                        ?: throw IllegalStateException("group by 키 againSet.matchingType 이 비었다"),
                     count = row.get(countExpression) ?: 0L,
                 )
             }

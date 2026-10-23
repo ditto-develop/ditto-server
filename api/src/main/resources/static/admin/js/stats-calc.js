@@ -336,6 +336,22 @@ const StatsCalc = (() => {
         return ratingScores.map((rating) => ({ label: `${rating}점`, count: countsByRating.get(rating) || 0 }));
     };
 
+    // 완주 시각은 마지막 답을 낸 시각이다. 월요일부터 일요일까지 0이어도 칸을 채운다.
+    const completionDayCounts = (completedAts) => {
+        const mondayFirstDayIndexOf = (dateTime) => (toUtcDate(dateOf(dateTime)).getUTCDay() + 6) % 7;
+        const countsByDay = countBy(completedAts, mondayFirstDayIndexOf);
+        return DAY_LABELS.map((label, index) => ({ label, count: countsByDay.get(index) || 0 }));
+    };
+
+    // 지난 회차 유형은 조건으로 거른 라벨, 고른 회차 유형은 늘 두 유형 다 나온다.
+    const trackSwitchCounts = (completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels) =>
+        Object.entries(quizMatchingTypeLabels).flatMap(([previousType, previousLabel]) =>
+            Object.entries(allQuizMatchingTypeLabels).map(([matchingType, label]) => ({
+                label: `${previousLabel} → ${label}`,
+                count: sumCounts(completedAgainCounts.filter((countRow) =>
+                    countRow.previousMatchingType === previousType && countRow.matchingType === matchingType)),
+            })));
+
     const retentionCounts = (previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels) => {
         const previousCountsByType =
             sumCountsBy(completedOnly(previousProgressCounts), (countRow) => countRow.matchingType);
@@ -425,6 +441,8 @@ const StatsCalc = (() => {
         meetingStatusCounts,
         ratingCounts,
         retentionCounts,
+        completionDayCounts,
+        trackSwitchCounts,
         memberReportCounts,
         pushSendCounts,
     };

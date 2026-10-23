@@ -44,9 +44,11 @@
 | 참여율 | 참여자 ÷ 활성 회원. 활성 회원은 고른 회차까지 최근 4회차 안에 한 번이라도 완주한 회원(겹치면 한 명) |
 | 완료율 | 참여자 ÷ 시작 |
 | 매칭 유형별 참여자·성비 | 참여자를 1:1·그룹으로 나눈 것 |
+| 요일별 완주 | 참여자가 마지막 문항에 답한 요일(월~일). `quiz_progress`에 완주 시각이 없어 그 셋에 낸 답의 `created_at` 최댓값으로 본다 |
 
 - 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다.
 - 그때 참여한 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 분자와 분모가 같은 기준이라 참여율이 100%를 넘지 않는다.
+- 답 시각은 JPA auditing 이 찍는 실제 시각이라 QA 시각 조정을 따르지 않는다. 답을 바꾸면 `updated_at`만 바뀌어 완주 요일은 그대로다.
 
 ## 문항 분포
 
@@ -102,7 +104,8 @@
 
 - 주간 재참여율 = 지난 회차 참여자 중 고른 회차에도 완주한 회원 ÷ 지난 회차 참여자.
 - 지난 회차는 고른 회차 바로 앞의 회차(활성 퀴즈셋이 있는 주)다. 퀴즈를 쉰 주는 건너뛴다. 앞에 회차가 없거나 고른 주가 회차가 아니면 비운다.
-- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함). 유형 전환 수는 P1 이라 따로 보여 주지 않는다.
+- 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함).
+- 트랙 전환은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
 
 ## 신고
@@ -182,6 +185,17 @@ JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY qs.matching_type, qp.status;
 
+-- 요일별 완주 (1 = 일요일). 회원마다 그 셋에 낸 마지막 답 시각
+SELECT DAYOFWEEK(completed_at) AS day_of_week, COUNT(*) FROM (
+  SELECT MAX(qa.created_at) AS completed_at FROM quiz_answer qa
+  JOIN quiz q ON q.id = qa.quiz_id
+  JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+  JOIN quiz_progress qp ON qp.member_id = qa.member_id AND qp.quiz_set_id = qs.id AND qp.status = 'COMPLETED'
+  JOIN member m ON m.id = qa.member_id AND m.role = 'USER'
+  GROUP BY qa.member_id
+) completed
+GROUP BY day_of_week;
+
 -- 문항 분포
 SELECT q.display_order, q.question, c.content, COUNT(m.id) FROM quiz_choice c
 JOIN quiz q ON q.id = c.quiz_id
@@ -250,14 +264,14 @@ JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
 WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
 GROUP BY a.meeting_status, a.rating;
 
--- 주간 재참여 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
+-- 주간 재참여·트랙 전환 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
 SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'COMPLETED'
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
 WHERE qp.status = 'COMPLETED'
-GROUP BY qs.matching_type;
+GROUP BY qs.matching_type, again_set.matching_type;
 
 -- 신고 처리 상태 (피신고자 기준)
 SELECT r.status, COUNT(*) FROM member_report r

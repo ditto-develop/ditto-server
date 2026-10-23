@@ -205,6 +205,11 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card">
+                        <h3>요일별 완주</h3>
+                        <div id="quizCompletionDayShares"></div>
+                        <p class="muted">마지막 문항에 답한 요일입니다. 답 시각은 시각 조정과 상관없이 실제 시각입니다.</p>
+                    </div>
                 </div>
             </section>
 
@@ -349,7 +354,7 @@
 
             <section class="stats-section" id="retention">
                 <h2 class="stats-section-title">리텐션</h2>
-                <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞 회차입니다. 매칭 유형은 지난 회차에 푼 유형입니다. 고른 회차에 어떤 유형이든 끝까지 풀면 다시 참여로 셉니다.</p>
+                <p class="stats-section-desc">지난 회차는 고른 회차 바로 앞 회차입니다. 매칭 유형은 지난 회차에 푼 유형입니다. 고른 회차에 어떤 유형이든 끝까지 풀면 다시 참여로 셉니다. 트랙 전환은 다시 참여한 회원이 지난 회차와 고른 회차에 푼 유형입니다.</p>
                 <p class="alert info" id="retentionEmptyNotice" hidden
                    th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (selectedWeekOption.round == 1 ? '첫 회차라 지난 회차가 없습니다.' : (hasConditions ? '조건에 맞는 지난 회차 참여자가 없습니다.' : '지난 회차 참여자가 없습니다.'))}">지난 회차 참여자가 없습니다.</p>
                 <div id="retentionSectionBody">
@@ -369,13 +374,19 @@
                             <span class="value" id="retentionCompletedAgainCount">-</span>
                         </div>
                     </div>
-                    <div class="card">
-                        <h3>매칭 유형별 재참여율</h3>
-                        <div class="tbl-scroll">
-                            <table class="tbl">
-                                <thead><tr><th>매칭 유형</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
-                                <tbody id="retentionByTypeRows"></tbody>
-                            </table>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>매칭 유형별 재참여율</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 유형</th><th class="num">지난 회차(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
+                                    <tbody id="retentionByTypeRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>트랙 전환 (다시 참여한 회원)</h3>
+                            <div id="retentionTrackSwitchShares"></div>
                         </div>
                     </div>
                 </div>
