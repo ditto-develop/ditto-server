@@ -46,10 +46,10 @@ interface ReviewAnswerRepositoryCustom {
         filter: MemberFilter,
     ): List<Double>
 
-    /** findAverageGivenRatingsInWeek 중 다음 회차에도 퀴즈를 완주한 회원만. */
+    /** 지난 회차 findAverageGivenRatingsInWeek 중 고른 회차에 유형과 상관없이 퀴즈를 완주한 회원만. */
     fun findAverageGivenRatingsOfMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
-        againWeekStartedOn: LocalDate,
         matchType: ChatRoomType?,
         filter: MemberFilter,
     ): List<Double>

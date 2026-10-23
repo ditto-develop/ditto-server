@@ -24,6 +24,16 @@
         return cell(StatsCalc.formatCount(count), count === 0 ? 'num empty' : 'num');
     };
 
+    const memberLinkCell = ({ memberId, nickname }) => {
+        const link = element('a', 'text-link', nickname);
+        link.href = StatsCalc.memberSearchPath(memberId);
+        const linkCell = cell();
+        linkCell.append(link);
+        return linkCell;
+    };
+
+    const memberIdCell = ({ memberId }) => cell(`#${memberId}`, 'num');
+
     const headerCell = (text, className) => element('th', className, text);
 
     const fillRows = (tbodyId, rows, cellsOf, classNameOf = () => '') => {
@@ -236,35 +246,8 @@
             rows: funnel.unmatchedGenderRows,
         });
         renderCandidateExposure(matchStats, quizMatchingTypeLabels);
-        renderMembersUnmatchedInEveryRound(matchStats);
+        renderMembersUnmatchedInEveryRound(matchStats, weekStartedOn, today);
         renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
-    };
-
-    const memberLinkCell = ({ memberId, nickname }) => {
-        const link = element('a', null, nickname);
-        link.href = StatsCalc.memberSearchPath(memberId);
-        const linkCell = cell();
-        linkCell.append(link);
-        return linkCell;
-    };
-
-    const memberIdCell = ({ memberId }) => cell(`#${memberId}`, 'num');
-
-    const renderMembersUnmatchedInEveryRound = ({ unmatchedRoundWeeks, membersUnmatchedInEveryRound }) => {
-        byId('matchUnmatchedMembersTitle').textContent =
-            `연속 미매칭 회원 · ${countText(membersUnmatchedInEveryRound.length, '명')}`;
-        const roundText = [...unmatchedRoundWeeks].reverse()
-            .map((roundWeek) => `${shortDate(roundWeek)} 주`)
-            .join(' · ');
-        byId('matchUnmatchedMembersBasis').textContent = unmatchedRoundWeeks.length < 2
-            ? '앞 회차가 없어 연속 여부를 볼 수 없습니다.'
-            : `${roundText} 모두 완주했는데 한 번도 성사되지 않은 활성 회원`;
-        fillRows(
-            'matchUnmatchedMembersRows',
-            membersUnmatchedInEveryRound,
-            (row) => [memberLinkCell(row), memberIdCell(row)],
-        );
-        fillEmptyRowIfNone('matchUnmatchedMembersRows', '연속 미매칭 회원이 없습니다.');
     };
 
     const renderCandidateExposure = ({ candidateCountsPerOwner }, quizMatchingTypeLabels) => {
@@ -278,9 +261,47 @@
         const overBasePercent = StatsCalc.percentText(exposure.overBaseMemberCount, exposure.memberCount);
         fillNowrapPieces('matchCandidateExposureSummary', [
             `후보를 받은 회원 ${countText(exposure.memberCount, '명')}`,
-            `6명 이상 받은 회원 ${countText(exposure.overBaseMemberCount, '명')}(${overBasePercent})`,
+            `${exposure.overBaseMinimumCount}명 이상 받은 회원 `
+                + `${countText(exposure.overBaseMemberCount, '명')}(${overBasePercent})`,
         ]);
         fillShares('matchCandidateExposureShares', exposure.bins, { unit: '명' });
+    };
+
+    // 매칭 전에는 이번 회차 성사가 없어 지난 회차 미매칭 완주자가 모두 잡히므로 목록을 보여 주지 않는다.
+    const renderMembersUnmatchedInEveryRound = (
+        { unmatchedRoundWeeks, membersUnmatchedInEveryRound },
+        weekStartedOn,
+        today,
+    ) => {
+        const showNoticeOnly = (notice) => {
+            byId('matchUnmatchedMembersTitle').textContent = '연속 미매칭 회원';
+            byId('matchUnmatchedMembersBasis').textContent = notice;
+            byId('matchUnmatchedMembersTable').hidden = true;
+            byId('matchUnmatchedMembersNote').hidden = true;
+        };
+        if (unmatchedRoundWeeks.length === 0) {
+            showNoticeOnly('앞 회차가 없어 연속 여부를 볼 수 없습니다.');
+            return;
+        }
+        if (StatsCalc.isBeforeMatchingBatch(weekStartedOn, today)) {
+            showNoticeOnly('이 회차 매칭(목요일 00:01) 전이라 아직 볼 수 없습니다.');
+            return;
+        }
+        byId('matchUnmatchedMembersTitle').textContent =
+            `연속 미매칭 회원 · ${countText(membersUnmatchedInEveryRound.length, '명')}`;
+        const roundText = [...unmatchedRoundWeeks].reverse()
+            .map((roundWeek) => `${shortDate(roundWeek)} 주`)
+            .join(' · ');
+        byId('matchUnmatchedMembersBasis').textContent =
+            `${roundText} 모두 완주했는데 한 번도 성사되지 않은 회원(정지·탈퇴 제외)`;
+        byId('matchUnmatchedMembersTable').hidden = false;
+        byId('matchUnmatchedMembersNote').hidden = false;
+        fillRows(
+            'matchUnmatchedMembersRows',
+            membersUnmatchedInEveryRound,
+            (row) => [memberLinkCell(row), memberIdCell(row)],
+        );
+        fillEmptyRowIfNone('matchUnmatchedMembersRows', '연속 미매칭 회원이 없습니다.');
     };
 
     const scoreText = (score) => `${score.toFixed(1)}점`;
@@ -521,12 +542,14 @@
 
     const renderMemberReviewOutcomes = ({ mutualRatingCounts, ratingsWithMatchScore }, memberReviewMatchTypeLabels) => {
         const mutualRows = StatsCalc.mutualPositiveRows(mutualRatingCounts, memberReviewMatchTypeLabels);
-        fillRows('memberReviewMutualRows', mutualRows, (row) => [
+        const hasMutualPair = mutualRows.some((row) => row.pairCount > 0);
+        fillRows('memberReviewMutualRows', hasMutualPair ? mutualRows : [], (row) => [
             cell(row.label),
             countCell(row.pairCount),
             countCell(row.bothPositivePairCount),
             cell(StatsCalc.percentText(row.bothPositivePairCount, row.pairCount), 'num'),
         ]);
+        fillEmptyRowIfNone('memberReviewMutualRows', '서로 확정한 쌍이 없습니다.');
         fillRows('memberReviewScoreRows', StatsCalc.ratingsByScoreBin(ratingsWithMatchScore), (row) => [
             cell(row.label),
             countCell(row.ratingCount),
@@ -595,14 +618,13 @@
             ),
             retentionRateCells,
         );
-        fillRows(
-            'retentionGivenRatingRows',
-            StatsCalc.givenRatingRetention(
-                retentionStats.averageGivenRatings,
-                retentionStats.averageGivenRatingsOfMembersCompletedAgain,
-            ),
-            retentionRateCells,
+        const givenRatingRows = StatsCalc.givenRatingRetention(
+            retentionStats.averageGivenRatings,
+            retentionStats.averageGivenRatingsOfMembersCompletedAgain,
         );
+        const hasGivenRating = givenRatingRows.some((row) => row.previousCount > 0);
+        fillRows('retentionGivenRatingRows', hasGivenRating ? givenRatingRows : [], retentionRateCells);
+        fillEmptyRowIfNone('retentionGivenRatingRows', '지난 회차에 확정된 평가가 없습니다.');
         renderCohortRetention(memberStats, retentionStats, weekStartedOn);
         fillShares(
             'retentionTrackSwitchShares',
@@ -611,7 +633,9 @@
         );
     };
 
-    const renderMemberReportSection = ({ memberReportReasonLabels, memberReportStatusLabels, memberReportStats }) => {
+    const renderMemberReportSection = (
+        { weekStartedOn, memberReportReasonLabels, memberReportStatusLabels, memberReportStats },
+    ) => {
         const counts = StatsCalc.memberReportCounts(
             memberReportStats.memberReportCounts,
             memberReportReasonLabels,
@@ -632,12 +656,14 @@
         const statusOptions = { className: 'share-row wide-label-row', unit: '건' };
         fillShares('memberReportStatusShares', counts.statusCounts, statusOptions);
 
+        byId('memberReportRepeatedBasis').textContent =
+            `${shortDate(memberReportStats.mostReportedFirstWeek)} 주 ~ ${shortDate(weekStartedOn)} 주에 접수된 신고`;
         fillRows(
             'memberReportRepeatedRows',
             StatsCalc.repeatedlyReportedMembers(memberReportStats.mostReportedMembers),
             (row) => [memberLinkCell(row), memberIdCell(row), countCell(row.count)],
         );
-        fillEmptyRowIfNone('memberReportRepeatedRows', '최근 4주에 신고를 2건 이상 받은 회원이 없습니다.');
+        fillEmptyRowIfNone('memberReportRepeatedRows', '이 기간에 신고를 2건 이상 받은 회원이 없습니다.');
     };
 
     const renderMemberBlockSection = ({ memberBlockCount }) => {

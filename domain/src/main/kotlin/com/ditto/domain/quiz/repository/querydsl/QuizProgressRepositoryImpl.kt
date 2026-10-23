@@ -241,6 +241,7 @@ class QuizProgressRepositoryImpl(
                 matchedInProgressSet().not(),
             )
             .groupBy(member.id, member.nickname)
+            // 한 주에 진행은 하나라 성사되지 않은 완주가 있는 회차 수로 센다.
             .having(quizSet.weekStartedOn.countDistinct().eq(roundWeeks.distinct().size.toLong()))
             .orderBy(member.id.asc())
             .fetch()

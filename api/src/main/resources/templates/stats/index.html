@@ -281,12 +281,13 @@
                         <div class="card">
                             <h3 id="matchUnmatchedMembersTitle">연속 미매칭 회원</h3>
                             <p class="muted" id="matchUnmatchedMembersBasis"></p>
-                            <div class="tbl-scroll stats-member-list">
+                            <div class="tbl-scroll stats-member-list" id="matchUnmatchedMembersTable">
                                 <table class="tbl">
                                     <thead><tr><th>닉네임</th><th class="num">회원 id</th></tr></thead>
                                     <tbody id="matchUnmatchedMembersRows"></tbody>
                                 </table>
                             </div>
+                            <p class="muted" id="matchUnmatchedMembersNote">그룹은 금요일 00:00 마감까지 성사가 늘 수 있습니다.</p>
                         </div>
                     </div>
 
@@ -422,7 +423,7 @@
                             <h3>상호 긍정</h3>
                             <div class="tbl-scroll">
                                 <table class="tbl">
-                                    <thead><tr><th>매칭 유형</th><th class="num">서로 평가한 쌍(개)</th><th class="num">둘 다 긍정(개)</th><th class="num">비율</th></tr></thead>
+                                    <thead><tr><th>매칭 유형</th><th class="num">서로 평가한 쌍(개)</th><th class="num">둘 다 긍정(개)</th><th class="num">상호 긍정률</th></tr></thead>
                                     <tbody id="memberReviewMutualRows"></tbody>
                                 </table>
                             </div>
@@ -545,15 +546,16 @@
                         </div>
                     </div>
                 </div>
+                <p class="stats-basis" id="memberReportRepeatedBasis"></p>
                 <div class="card">
-                    <h3>신고 상위 회원 · 최근 4주</h3>
-                    <div class="tbl-scroll">
+                    <h3>신고 상위 회원</h3>
+                    <div class="tbl-scroll stats-member-list">
                         <table class="tbl">
                             <thead><tr><th>닉네임</th><th class="num">회원 id</th><th class="num">신고(건)</th></tr></thead>
                             <tbody id="memberReportRepeatedRows"></tbody>
                         </table>
                     </div>
-                    <p class="muted">고른 회차 주까지 4주 동안 신고를 2건 이상 받은 회원을 많은 순으로 10명까지 보여 줍니다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않습니다.</p>
+                    <p class="muted">고른 회차 주까지 4주 동안 신고를 2건 이상 받은 회원을 많은 순으로 10명까지 보여 줍니다. 처리 상태와 상관없이 세고, 접수 시각은 실제 시각입니다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않습니다.</p>
                 </div>
             </section>
 

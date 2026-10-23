@@ -164,15 +164,15 @@ class ReviewAnswerRepositoryImpl(
     ): List<Double> = findAverageGivenRatings(weekStartedOn, matchType, filter, authorCondition = null)
 
     override fun findAverageGivenRatingsOfMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,
-        againWeekStartedOn: LocalDate,
         matchType: ChatRoomType?,
         filter: MemberFilter,
     ): List<Double> = findAverageGivenRatings(
-        weekStartedOn,
+        previousWeekStartedOn,
         matchType,
         filter,
-        authorCondition = authorCompletedQuizInWeek(againWeekStartedOn),
+        authorCondition = authorCompletedAnyQuizInWeek(weekStartedOn),
     )
 
     private fun findAverageGivenRatings(
@@ -197,7 +197,7 @@ class ReviewAnswerRepositoryImpl(
             .fetch()
             .filterNotNull()
 
-    private fun authorCompletedQuizInWeek(weekStartedOn: LocalDate): BooleanExpression =
+    private fun authorCompletedAnyQuizInWeek(weekStartedOn: LocalDate): BooleanExpression =
         queryFactory.selectOne()
             .from(quizProgress)
             .join(quizSet).on(quizSet.id.eq(quizProgress.quizSetId), quizSet.isActive.isTrue)

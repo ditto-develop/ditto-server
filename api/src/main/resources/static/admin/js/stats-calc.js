@@ -507,6 +507,7 @@ const StatsCalc = (() => {
         (binIndex === LAST_SCORE_BIN_INDEX ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`);
     // 값이 있는 가장 낮은 구간부터 가장 높은 구간까지 0이어도 칸을 채운다.
     const scoreBinIndexesBetween = (binIndexes) => {
+        if (binIndexes.length === 0) return [];
         const firstBin = Math.min(...binIndexes);
         const lastBin = Math.max(...binIndexes);
         return Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => firstBin + offset);
@@ -525,16 +526,18 @@ const StatsCalc = (() => {
         };
     };
 
-    // 회원마다 상위 5명을 고르고 한쪽만 골라도 남겨서(ADR 0040) 5명을 넘게 받은 회원은 여러 사람이 고른 회원이다.
+    // 회원마다 고르는 후보 수다(ADR 0040).
     const BASE_CANDIDATE_COUNT = 5;
+    const MANY_CANDIDATE_COUNT = 10;
     const CANDIDATE_COUNT_BINS = [
-        { label: '1~5명', max: BASE_CANDIDATE_COUNT },
-        { label: '6~10명', max: 10 },
-        { label: '11명 이상', max: Infinity },
+        { label: `1~${BASE_CANDIDATE_COUNT}명`, max: BASE_CANDIDATE_COUNT },
+        { label: `${BASE_CANDIDATE_COUNT + 1}~${MANY_CANDIDATE_COUNT}명`, max: MANY_CANDIDATE_COUNT },
+        { label: `${MANY_CANDIDATE_COUNT + 1}명 이상`, max: Infinity },
     ];
 
     const candidateExposure = (candidateCountsPerOwner) => ({
         memberCount: candidateCountsPerOwner.length,
+        overBaseMinimumCount: BASE_CANDIDATE_COUNT + 1,
         overBaseMemberCount: candidateCountsPerOwner.filter((count) => count > BASE_CANDIDATE_COUNT).length,
         bins: binCounts(candidateCountsPerOwner, CANDIDATE_COUNT_BINS),
     });
@@ -628,34 +631,23 @@ const StatsCalc = (() => {
             ratingCount: rows.length,
             positiveCount: rows.filter((row) => isPositiveRating(row.rating)).length,
         });
-        const scoredBinRows = scoredRows.length === 0
-            ? []
-            : scoreBinIndexesBetween([...rowsByBin.keys()])
-                .map((binIndex) => binRow(scoreBinLabel(binIndex), rowsByBin.get(binIndex) || []));
+        const scoredBinRows = scoreBinIndexesBetween([...rowsByBin.keys()])
+            .map((binIndex) => binRow(scoreBinLabel(binIndex), rowsByBin.get(binIndex) || []));
         const unscoredRows = ratingsWithMatchScore.filter((row) => row.score === null);
         return unscoredRows.length === 0 ? scoredBinRows : [...scoredBinRows, binRow(UNSCORED_LABEL, unscoredRows)];
     };
 
     // 지난 회차 평가자를 준 별점 평균이 긍정 기준 이상인지로 나눈다.
-    const givenRatingRetention = (averageGivenRatings, averageGivenRatingsOfMembersCompletedAgain) => {
-        const countWhere = (averages, matches) => averages.filter(matches).length;
-        const isPositiveAverage = (averageRating) => averageRating >= POSITIVE_RATING;
-        return [
-            {
-                label: '평균 4점 이상',
-                previousCount: countWhere(averageGivenRatings, isPositiveAverage),
-                completedAgainCount: countWhere(averageGivenRatingsOfMembersCompletedAgain, isPositiveAverage),
-            },
-            {
-                label: '평균 4점 미만',
-                previousCount: countWhere(averageGivenRatings, (average) => !isPositiveAverage(average)),
-                completedAgainCount:
-                    countWhere(averageGivenRatingsOfMembersCompletedAgain, (average) => !isPositiveAverage(average)),
-            },
-        ];
-    };
+    const givenRatingRetention = (averageGivenRatings, averageGivenRatingsOfMembersCompletedAgain) =>
+        [
+            { label: `평균 ${POSITIVE_RATING}점 이상`, matches: isPositiveRating },
+            { label: `평균 ${POSITIVE_RATING}점 미만`, matches: (averageRating) => !isPositiveRating(averageRating) },
+        ].map(({ label, matches }) => ({
+            label,
+            previousCount: averageGivenRatings.filter(matches).length,
+            completedAgainCount: averageGivenRatingsOfMembersCompletedAgain.filter(matches).length,
+        }));
 
-    // 운영자가 찾아가 볼 회원 목록이다(ADR 0047). 닉네임을 누르면 회원 관리 검색으로 그 회원만 찾는다.
     const memberSearchPath = (memberId) => `/admin/members?q=${encodeURIComponent(`#${memberId}`)}`;
 
     const MIN_REPEATED_REPORT_COUNT = 2;

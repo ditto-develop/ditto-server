@@ -939,6 +939,7 @@ describe('candidateExposure', () => {
 
         assert.deepEqual(exposure, {
             memberCount: 6,
+            overBaseMinimumCount: 6,
             overBaseMemberCount: 4,
             bins: [
                 { label: '1~5명', count: 2 },

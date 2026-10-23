@@ -6,9 +6,7 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
-import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.repository.QuizProgressRepository
-import com.ditto.domain.quiz.repository.querydsl.UnmatchedMember
 import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,7 +27,10 @@ class MatchStatsService(
     @Transactional(readOnly = true)
     fun findStats(filter: StatsFilter, week: OperationWeek, today: LocalDate): MatchStatsData {
         val memberFilter = filter.toMemberFilter(today)
+        // 회차가 모자라면 연속을 볼 수 없어 회차도 목록도 비운다.
         val unmatchedRoundWeeks = statsRoundFinder.findRecentRoundWeeksUntil(week, UNMATCHED_ROUND_COUNT)
+            .takeIf { it.size == UNMATCHED_ROUND_COUNT }
+            .orEmpty()
         return MatchStatsData(
             matchCandidateCounts = matchCandidateRepository.countCandidateOwnersInWeek(week.startedOn, memberFilter),
             candidateCountsPerOwner =
@@ -44,21 +45,11 @@ class MatchStatsService(
             activeGroupMemberCounts =
                 groupMatchMemberRepository.countAcceptedMembersPerActiveGroupInWeek(week.startedOn),
             unmatchedRoundWeeks = unmatchedRoundWeeks,
-            membersUnmatchedInEveryRound = findMembersUnmatchedInEveryRound(unmatchedRoundWeeks, filter, memberFilter),
-        )
-    }
-
-    // 회차가 모자라면 한 회차만 보고 연속이라고 할 수 없어 비운다.
-    private fun findMembersUnmatchedInEveryRound(
-        roundWeeks: List<LocalDate>,
-        filter: StatsFilter,
-        memberFilter: MemberFilter,
-    ): List<UnmatchedMember> {
-        if (roundWeeks.size < UNMATCHED_ROUND_COUNT) return emptyList()
-        return quizProgressRepository.findMembersUnmatchedInEveryRound(
-            roundWeeks,
-            filter.matchingType.quizMatchingType,
-            memberFilter,
+            membersUnmatchedInEveryRound = quizProgressRepository.findMembersUnmatchedInEveryRound(
+                unmatchedRoundWeeks,
+                filter.matchingType.quizMatchingType,
+                memberFilter,
+            ),
         )
     }
 
