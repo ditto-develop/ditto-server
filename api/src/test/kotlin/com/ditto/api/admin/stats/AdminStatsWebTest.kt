@@ -45,6 +45,7 @@ import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswerContent
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.string.shouldContain
 import org.hamcrest.CoreMatchers.containsString
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -55,6 +56,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -293,6 +295,7 @@ class AdminStatsWebTest(
                     reason = MemberReportReason.MONEY_DEMAND,
                 ),
             )
+            val mostReportedFirstWeek = OperationWeek.containing(LocalDate.now()).minusWeeks(3).startedOn
 
             mockMvc.perform(get("/admin/stats").with(authentication(admin)))
                 .andExpect(status().isOk)
@@ -303,7 +306,7 @@ class AdminStatsWebTest(
                                 """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}],""" +
                                 """"mostReportedMembers":""" +
                                 """[{"memberId":${reported.id},"nickname":"reported","count":1}],""" +
-                                """"mostReportedFirstWeek":"""",
+                                """"mostReportedFirstWeek":"$mostReportedFirstWeek"}""",
                         ),
                     ),
                 )
