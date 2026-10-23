@@ -6,7 +6,9 @@ import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.querydsl.ActiveGroupMemberCount
 import com.ditto.domain.match.repository.querydsl.GroupMatchMemberCount
+import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
 import com.ditto.domain.member.MemberFixture
@@ -59,13 +61,15 @@ class MatchStatsQueryTest(
     )
 
     // 후보 행은 두 방향으로 저장된다.
-    fun saveCandidatePair(quizSet: QuizSet, oneMemberId: Long, otherMemberId: Long) {
-        matchCandidateRepository.save(MatchCandidateFixture.create(oneMemberId, otherMemberId, quizSet.id))
-        matchCandidateRepository.save(MatchCandidateFixture.create(otherMemberId, oneMemberId, quizSet.id))
+    fun saveCandidatePair(quizSet: QuizSet, oneMemberId: Long, otherMemberId: Long, score: Double = 80.0) {
+        matchCandidateRepository.save(MatchCandidateFixture.create(oneMemberId, otherMemberId, quizSet.id, score))
+        matchCandidateRepository.save(MatchCandidateFixture.create(otherMemberId, oneMemberId, quizSet.id, score))
     }
 
-    fun saveGroup(quizSet: QuizSet, acceptedCount: Int = 0): Long =
-        groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = acceptedCount)).id
+    fun saveGroup(quizSet: QuizSet, acceptedCount: Int = 0, score: Double = 80.0): Long =
+        groupMatchRepository.save(
+            GroupMatchFixture.create(quizSetId = quizSet.id, score = score, acceptedCount = acceptedCount),
+        ).id
 
     fun saveInvitation(groupMatchId: Long, memberId: Long, status: InvitationStatus = InvitationStatus.PENDING) {
         val invitation = GroupMatchMember.candidate(groupMatchId, memberId)
@@ -184,6 +188,76 @@ class MatchStatsQueryTest(
                 GroupMatchMemberCount(true, InvitationStatus.DECLINED, Gender.FEMALE, 1L),
                 GroupMatchMemberCount(false, InvitationStatus.ACCEPTED, Gender.FEMALE, 1L),
             )
+        }
+    }
+
+    "findPairScoresInWeek" - {
+        "두 방향 행 중 한 번만 세고 비활성 셋과 다른 주는 뺀다" {
+            val quizSet = saveQuizSet()
+            saveCandidatePair(quizSet, saveMember(), saveMember(), score = 70.0)
+            saveCandidatePair(quizSet, saveMember(), saveMember(), score = 55.5)
+            saveCandidatePair(saveQuizSet(isActive = false), saveMember(), saveMember())
+            saveCandidatePair(saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)), saveMember(), saveMember())
+
+            matchCandidateRepository.findPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0, 55.5)
+        }
+    }
+
+    "findAcceptedPairScoresInWeek" - {
+        "성사된 1:1 쌍의 후보 점수만 준다" {
+            val quizSet = saveQuizSet()
+            val (one, other) = saveMember() to saveMember()
+            saveCandidatePair(quizSet, one, other, score = 91.0)
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(other, one, quizSet.id, PersonalMatchStatus.ACCEPTED),
+            )
+            val (pending, partner) = saveMember() to saveMember()
+            saveCandidatePair(quizSet, pending, partner, score = 40.0)
+            personalMatchRepository.save(PersonalMatchFixture.create(pending, partner, quizSet.id))
+
+            matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(91.0)
+        }
+
+        "후보를 다시 만들어 후보 행이 없는 성사 쌍은 null 로 준다" {
+            val quizSet = saveQuizSet()
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(), saveMember(), quizSet.id, PersonalMatchStatus.ACCEPTED),
+            )
+
+            matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(null)
+        }
+    }
+
+    "findGroupScoresInWeek" - {
+        "후보 그룹마다 점수와 성사 여부를 준다" {
+            val quizSet = saveQuizSet(matchingType = MatchingType.GROUP)
+            saveGroup(quizSet, acceptedCount = 3, score = 66.0)
+            saveGroup(quizSet, score = 61.0)
+            saveGroup(saveQuizSet(matchingType = MatchingType.GROUP, isActive = false))
+
+            groupMatchRepository.findGroupScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(
+                GroupMatchScore(isActive = true, score = 66.0),
+                GroupMatchScore(isActive = false, score = 61.0),
+            )
+        }
+    }
+
+    "countAcceptedMembersPerActiveGroupInWeek" - {
+        "성사된 그룹의 수락자만 그룹·성별로 세고 관리자도 센다" {
+            val quizSet = saveQuizSet(matchingType = MatchingType.GROUP)
+            val active = saveGroup(quizSet, acceptedCount = 3)
+            saveInvitation(active, saveMember(Gender.MALE), InvitationStatus.ACCEPTED)
+            saveInvitation(active, saveMember(Gender.FEMALE), InvitationStatus.ACCEPTED)
+            saveInvitation(active, saveMember(Gender.FEMALE, MemberRole.ADMIN), InvitationStatus.ACCEPTED)
+            saveInvitation(active, saveMember(Gender.MALE), InvitationStatus.DECLINED)
+            val unformed = saveGroup(quizSet)
+            saveInvitation(unformed, saveMember(Gender.MALE), InvitationStatus.ACCEPTED)
+
+            groupMatchMemberRepository.countAcceptedMembersPerActiveGroupInWeek(WEEK) shouldContainExactlyInAnyOrder
+                listOf(
+                    ActiveGroupMemberCount(active, Gender.MALE, 1L),
+                    ActiveGroupMemberCount(active, Gender.FEMALE, 2L),
+                )
         }
     }
 })

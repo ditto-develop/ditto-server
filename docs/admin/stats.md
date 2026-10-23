@@ -71,12 +71,18 @@
 | 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
 | 매칭률 | 성사 ÷ 완주 |
 | 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
+| 1:1 후보 점수 | 그 회차 후보 쌍의 `match_candidate.score`(0~100). 쌍은 두 방향 행으로 저장되어 `owner_member_id < other_member_id` 쪽만 센다. 평균·중앙값과 10점 구간, 옆에 성사(ACCEPTED) 쌍의 평균. 후보를 다시 만들면 이미 성사된 회원은 새 후보에서 빠져 그 쌍의 후보 행이 없어서, "점수 없는 성사 N쌍"으로 따로 보인다 |
+| 그룹 후보 점수 | 그 회차 후보 그룹의 `group_match.score`. 평균·중앙값과 10점 구간, 옆에 성사(`is_active`) 그룹의 평균 |
+| 성사 그룹 크기·성비 | 성사 그룹마다 수락(ACCEPTED)한 인원을 세서 인원수별 그룹 수와 성별 구성 |
 
 - 기획서의 매칭은 "짝을 정해 준다"지만 디토는 후보를 보여 주고 신청·수락으로 성사된다. 그래서 매칭 = 성사로 세고 후보는 참고로 보여 준다(#329). 1:1 후보는 자격 상대만 있으면 누구나 받아서(ADR 0040) 거의 100%다.
 - 배치는 목요일 00:01 에 돈다. 그 전에는 후보·성사가 0 이다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다.
 - 서버는 테이블마다 센 값만 내리고 후보·성사로 나누는 건 `stats-calc.js`가 한다. 1:1 성사는 한 행에 회원이 둘이라 `member_id_1` 쪽과 `member_id_2` 쪽을 따로 세서 내린다.
 - 매칭 유형 조건은 화면이 그 유형 줄만 그려서 건다. 회원 조건은 세는 회원에게 건다.
 - 성사 뒤 진행을 초기화하면 완주에서 빠져 성사가 완주보다 클 수 있다. 미매칭은 0 에서 자른다.
+- 점수·그룹 크기는 쌍·그룹 단위라 회원 조건을 걸지 않고 관리자가 낀 쌍·그룹도 센다. 매칭 유형을 고르면 그 유형 카드만 보인다.
+- 상위 20% 컷 라인은 지금 매칭 규칙(ADR 0040)에 없어 보여 주지 않는다.
+- 점수·그룹 크기는 회원 조건을 걸지 않고 센다. 다만 표시는 장 단위라, 회원 조건을 걸어 완주자가 0 이면 장이 비면서 점수 카드도 함께 숨는다.
 
 ## 채팅
 
@@ -86,11 +92,17 @@
 | 대화 시작률 | 대화 메시지(`TEXT`·`IMAGE`, `SYSTEM` 제외)가 하나라도 있는 방 ÷ 열린 방 |
 | 양방향 대화율 | 2명 이상이 대화 메시지를 보낸 방 ÷ 열린 방 |
 | 전원 (그룹만) | 참여자(`chat_room_member`, 나간 사람 포함) 전원이 대화 메시지를 보낸 방 ÷ 열린 방. 두 사람 방은 양방향과 같아 비운다 |
+| 방당 메시지 수 | 열린 방마다 대화 메시지 수. 메시지가 없는 방은 0개. 평균·중앙값과 구간(0, 1~9, 10~49, 50~99, 100개 이상) |
+| 첫 메시지까지 | 대화가 있는 방에서 방이 열린 때(`opens_at`)부터 첫 대화 메시지까지 걸린 시간. 중앙값과 구간 |
+| 첫 발신자 성별 | 대화가 있는 방에서 첫 대화 메시지를 보낸 사람의 성별 |
+| 마지막 메시지 시점 | 방이 열린 때부터 마지막 대화 메시지까지를 첫째·둘째·셋째 날(24시간씩)로 나눈 것. 방은 열린 뒤 72시간이면 닫혀 "72시간 뒤"는 보통 비고, 시각을 옮긴 dev 에서 나온다 |
 
 - 회차: 원본 매칭(1:1 `personal_match`, 그룹 `group_match`, 재매칭 `rematch`)의 퀴즈셋이 그 주 활성 셋인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열리지만 원래 그룹의 퀴즈셋으로 센다. 그래서 매칭 장과 같은 회차에 잡히고 비활성 셋의 방은 빠진다.
 - 관리자가 든 방도 센다. 방을 빼면 상대 회원의 대화까지 빠지고, 관리자만 빼면 1:1 방이 한 사람 방이 되기 때문이다(#329). 운영에서 팀원 계정이 관리자로 매칭에 참여하고 있어 다른 장과 숫자가 어긋날 수 있다.
 - 재매칭은 따로 한 줄이고 1:1·그룹 합계에 넣지 않는다. 서로 원한 두 사람이라 수치가 높게 나온다. 매칭 유형 "전체"·"그룹"에서 보인다. 재매칭은 평가 제출로 뒤늦게 성사되어 지난 회차 숫자가 나중에 늘 수 있다.
 - 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
+- 메시지 지표는 대화 활동 합계처럼 재매칭 방을 넣지 않는다. 서버는 (방, 발신자 성별)마다 메시지 수와 첫·마지막 시각을 내린다. `stats-calc.js`가 방마다 행을 더하고, 첫 메시지가 가장 이른 행의 성별을 첫 발신자로 본다. 시각은 초 단위라 두 성별의 첫 메시지가 같은 1초 안이면 어느 쪽이 첫 발신자가 될지 정해져 있지 않다.
+- 메시지 시각(`created_at`)은 실제 시각이고, 방 열린 시각(`opens_at`)은 회차 주 금요일 00:00 으로 정해진 값이다. 운영에서는 둘이 같은 시계라 맞지만, dev 에서 시각 조정으로 그 주말에 들어가 보내면 실제 시각이 찍혀 어긋난다. 실제 월~목에 보내면 음수가 되어 "열린 시각 전(시각 조정)" 칸에 따로 세고, 실제 다음 주에 지난 주말로 되돌려 보내면 값이 크게 나와 "48시간 넘게"·"72시간 뒤" 칸에 섞인다.
 - 다른 장과 달리 서버가 방마다 한 행(참여자 수·보낸 사람 수)을 내린다. 방별 두 수를 묶은 분포는 쿼리가 복잡해져서, 비율은 `stats-calc.js`가 방 행으로 계산한다. 방 수는 회차당 많아야 수백이다.
 
 ## 평가
@@ -112,6 +124,9 @@
 - 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함).
 - 유형 전환(기획서의 "트랙 전환")은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
+- 매칭 결과별 재참여: 지난 회차 완주자를 그 셋에서 성사됐는지로 나눈 재참여율. 성사는 매칭 장과 같다(1:1 ACCEPTED 쌍, 성사 그룹 수락자). 성사 안 됨은 전체에서 성사를 뺀 값이다.
+- 가입 주차별 리텐션(기획서의 "가입 코호트 잔존"): 고른 회차까지 8주 동안 가입한 회원을 가입한 주(월~일)로 묶고, 가입 뒤 N번째 회차에 퀴즈를 완주한 비율을 계단 표로 보인다. 가입한 주가 회차면 그 회차를 "가입한 주" 칸에 따로 둔다. 회차는 활성 퀴즈셋이 있는 주라 퀴즈를 쉰 주는 건너뛴다. 가입자 수는 회원 장의 주별 신규 가입과 같은 값이다(탈퇴한 회원 포함). 매칭 유형은 따지지 않는다.
+- 지난 회차가 없으면(첫 회차, 회차 아닌 주) 장 전체가 비어 두 표도 보이지 않는다.
 
 ## 신고
 
@@ -250,6 +265,26 @@ JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY gm.is_active, gmm.status, m.gender;
 
+-- 1:1 후보 점수 (쌍마다 한 번) · 성사 쌍 점수
+SELECT mc.score FROM match_candidate mc
+JOIN quiz_set qs ON qs.id = mc.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+WHERE mc.owner_member_id < mc.other_member_id;
+SELECT mc.score FROM personal_match pm
+JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN match_candidate mc ON mc.quiz_set_id = pm.quiz_set_id
+    AND mc.owner_member_id = pm.member_id_1 AND mc.other_member_id = pm.member_id_2
+WHERE pm.status = 'ACCEPTED';
+
+-- 그룹 후보 점수 · 성사 그룹 크기·성비
+SELECT gm.is_active, gm.score FROM group_match gm
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday;
+SELECT gm.id, m.gender, COUNT(*) FROM group_match_member gmm
+JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN member m ON m.id = gmm.member_id
+WHERE gmm.status = 'ACCEPTED'
+GROUP BY gm.id, m.gender;
+
 -- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋)
 SELECT source_type, COUNT(*) AS opened,
     SUM(senders >= 1) AS started, SUM(senders >= 2) AS two_way, SUM(senders >= members) AS all_sent
@@ -266,6 +301,30 @@ FROM (
     WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
 ) rooms
 GROUP BY source_type;
+
+-- 방마다 발신자 성별로 대화 메시지 수·첫·마지막 시각 (서버가 내리는 모양, 재매칭은 화면에서 뺀다)
+SELECT r.id, r.source_type, r.opens_at, m.gender, COUNT(*), MIN(msg.created_at), MAX(msg.created_at)
+FROM chat_room r
+LEFT JOIN personal_match pm ON r.source_type = 'PERSONAL' AND pm.id = r.source_id
+LEFT JOIN group_match gm ON r.source_type = 'GROUP' AND gm.id = r.source_id
+LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
+JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id, rm.quiz_set_id) AND qs.is_active
+JOIN chat_message msg ON msg.room_id = r.id AND msg.message_type <> 'SYSTEM'
+LEFT JOIN member m ON m.id = msg.sender_id
+WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
+GROUP BY r.id, r.source_type, r.opens_at, m.gender;
+
+-- 방 단위로 바로 보기 (메시지 0개 방 포함, 재매칭 제외, 첫·마지막 메시지까지 걸린 시간)
+SELECT r.id, COUNT(msg.id) AS messages,
+    TIMESTAMPDIFF(MINUTE, r.opens_at, MIN(msg.created_at)) / 60 AS first_message_hours,
+    TIMESTAMPDIFF(MINUTE, r.opens_at, MAX(msg.created_at)) / 60 AS last_message_hours
+FROM chat_room r
+LEFT JOIN personal_match pm ON r.source_type = 'PERSONAL' AND pm.id = r.source_id
+LEFT JOIN group_match gm ON r.source_type = 'GROUP' AND gm.id = r.source_id
+JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id) AND qs.is_active
+LEFT JOIN chat_message msg ON msg.room_id = r.id AND msg.message_type <> 'SYSTEM'
+WHERE r.status <> 'SCHEDULED' AND r.source_type <> 'REMATCH' AND qs.week_started_on = :monday
+GROUP BY r.id;
 
 -- 평가지 상태 (쓴 사람 기준)
 SELECT r.match_type, r.status, COUNT(*) FROM member_review r
@@ -289,6 +348,33 @@ JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'C
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
 WHERE qp.status = 'COMPLETED'
 GROUP BY qs.matching_type, again_set.matching_type;
+
+-- 매칭 결과별 재참여의 성사됨 (지난 회차 완주자 중 성사, 그중 고른 회차 완주는 위 SQL 에 같은 EXISTS 를 더한다)
+SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qp.status = 'COMPLETED' AND (
+    EXISTS (SELECT 1 FROM personal_match pm WHERE pm.quiz_set_id = qp.quiz_set_id AND pm.status = 'ACCEPTED'
+            AND (pm.member_id_1 = qp.member_id OR pm.member_id_2 = qp.member_id))
+    OR EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
+               WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id AND gmm.status = 'ACCEPTED'))
+GROUP BY qs.matching_type;
+
+-- 가입 주차별 리텐션의 가입자 (:first_monday 는 고른 회차 7주 전 월요일). 주별 신규 가입 표와 같다
+SELECT DATE_SUB(DATE(joined_at), INTERVAL WEEKDAY(joined_at) DAY) AS join_monday, COUNT(*) FROM member
+WHERE role = 'USER' AND joined_at >= :first_monday AND joined_at < :monday + INTERVAL 7 DAY
+GROUP BY join_monday;
+
+-- 가입 주차별 리텐션의 완주 (가입한 주와 그 뒤 회차만 칸에 들어간다)
+SELECT DATE_SUB(DATE(m.joined_at), INTERVAL WEEKDAY(m.joined_at) DAY) AS join_monday, qs.week_started_on, COUNT(*)
+FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qp.status = 'COMPLETED'
+  AND qs.week_started_on BETWEEN :first_monday AND :monday
+  AND m.joined_at >= :first_monday AND m.joined_at < :monday + INTERVAL 7 DAY
+  AND qs.week_started_on >= DATE_SUB(DATE(m.joined_at), INTERVAL WEEKDAY(m.joined_at) DAY)
+GROUP BY join_monday, qs.week_started_on;
 
 -- 신고 처리 상태 (피신고자 기준)
 SELECT r.status, COUNT(*) FROM member_report r
@@ -351,10 +437,10 @@ GROUP BY DATE(joined_at);
 | 회원 현황 | 더미 생성(지역은 무작위, 직접 만들기에서 고를 수 있다). 정지·영구 차단은 회원 상세의 직권 제재(`/admin/members/{id}/sanctions`)나 신고 검토 제재. 탈퇴 사유는 테스트 계정으로 앱에서 탈퇴 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다). 탈퇴 시각은 조정된 시각이라 조정된 주에 잡힌다. 진행 중인 매칭·채팅이 있으면 탈퇴가 막히고, 탈퇴한 계정으로 30일 안에 다시 로그인하면 복구되어 사유가 빠진다. 앱은 사유를 늘 보내서 "사유 없음"·모르는 코드는 `POST /api/v1/users/{id}/leave`를 바디 없이나 아무 `reason`으로 불러야 생긴다. 더미를 탈퇴시키는 도구는 없어 탈퇴 한 건마다 소셜 계정이 하나 필요하다. 정지는 끝난 뒤에도 목요일 매칭 배치나 그 회원의 다음 로그인 전까지 SUSPENDED 로 남아 정지로 센다. 가입 미완료는 소셜 로그인만 하고 가입 화면을 닫으면 생기고, 성별·생년월일이 없어 회원 조건을 걸면 0명이 된다 |
 | 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨). 요일별 완주는 답 시각이 실제 시각이라 늘 실제 오늘 요일에만 쌓인다. 여러 요일은 실제 날짜가 다른 날에 만들어야 하고, 시각 조정으로 미래 회차를 풀면 회차 주보다 앞선 실제 요일이 찍힌다 |
 | 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다. 예: 남성 더미 둘은 첫 선택지, 여성 더미 둘은 둘째 선택지를 고르면 성별 차이 100%p, 쏠림 0 이다 |
-| 매칭 | 시각 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 생성 → "퀴즈 마감 직후"로 옮겨 매칭 실행(더미를 나중에 더했으면 퀴즈셋별 재생성) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 재생성할 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다 |
-| 채팅 | 매칭 성사 → QA 콘솔 시각 조정 "채팅방 열린 직후" → 앱이나 QA 콘솔로 메시지 보내기 | 열리기 전(`SCHEDULED`) 방은 세지 않는다. 회차는 원본 매칭의 퀴즈셋이라 매칭 장과 같은 회차에 잡힌다. 재매칭 방은 성사 뒤 다음 금요일에 열린다. 재매칭 방 화면의 [옮기기]나 "채팅방 열린 직후"로 연 뒤 원래 그룹 회차를 연다 |
+| 매칭 | 시각 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 생성 → "퀴즈 마감 직후"로 옮겨 매칭 실행(더미를 나중에 더했으면 퀴즈셋별 재생성) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 재생성할 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다. 후보 점수는 같은 답을 고른 문항 수 ÷ 문항 수 × 100 이라, 더미 직접 만들기에서 문항별 선택지를 맞춰 원하는 점수대를 만든다(일괄 생성은 무작위). 회원마다 점수가 높은 5명까지만 후보로 남아 인원이 많으면 낮은 점수 쌍은 생기지 않고, 점수를 바꾸면 퀴즈셋별 재생성이 필요하다. 성사 그룹 크기는 QA 콘솔에서 한 그룹에 수락을 3명·4명…으로 넣어 만든다(3명째에 성사, 금요일 00:00 마감 전까지 더 붙는다). 성사 뒤 후보를 다시 만들면 그 쌍은 "점수 없는 성사"로 보인다 |
+| 채팅 | 매칭 성사 → QA 콘솔 시각 조정 "채팅방 열린 직후" → 앱이나 QA 콘솔로 메시지 보내기 | 열리기 전(`SCHEDULED`) 방은 세지 않는다. 회차는 원본 매칭의 퀴즈셋이라 매칭 장과 같은 회차에 잡힌다. 재매칭 방은 성사 뒤 다음 금요일에 열린다. 재매칭 방 화면의 [옮기기]나 "채팅방 열린 직후"로 연 뒤 원래 그룹 회차를 연다. 방당 메시지 수는 방 화면 빠른 입력 "연속 35개"로 구간을 옮긴다(1번 10~49, 2번 50~99, 3번 100개 이상). 첫 발신자 성별은 원하는 성별의 더미로 먼저 보낸다. 첫 메시지까지·마지막 메시지 시점은 메시지 시각이 실제 시각이라, 실제 금~일에 그 주 활성 셋으로 성사된 방에서 시각 조정 없이 보낸 메시지로만 뜻이 있다. 시각 조정 버튼으로는 걸린 시간을 만들 수 없다 |
 | 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
-| 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333). 유형 전환은 테스트 계정이 지난 회차와 고른 회차에 다른 유형을 풀어서 만든다. 두 회차 모두 두 유형의 활성 셋이 있어야 하고, 네 줄을 다 보려면 줄마다 계정이 하나씩 필요하다 |
+| 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333). 유형 전환은 테스트 계정이 지난 회차와 고른 회차에 다른 유형을 풀어서 만든다. 두 회차 모두 두 유형의 활성 셋이 있어야 하고, 네 줄을 다 보려면 줄마다 계정이 하나씩 필요하다. 매칭 결과별 재참여는 테스트 계정이 지난 회차를 풀고 QA 콘솔에서 1:1 수락이나 그룹 수락으로 성사시킨 뒤 고른 회차를 다시 푼다. 가입 주차별 리텐션은 더미로도 만든다. 실제 이번 주에 만든 더미가 그 뒤 주의 활성 셋을 완주하면 "가입 뒤 N회차" 칸에 잡힌다. 가입한 주보다 앞선 셋으로 만든 더미의 완주는 어느 칸에도 들어가지 않는다 |
 | 차단 | QA 콘솔 신고에서 "더미가 이 회원도 사용자 차단"을 체크해 신고, 또는 앱에서 테스트 계정으로 차단 | 콘솔로 하면 신고 장도 같이 는다. 같은 상대에게 검토 대기 신고가 있으면 다시 신고할 수 없어 다른 더미로 한다. 이미 차단한 쌍이면 차단 수는 그대로다. 차단 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다. 매칭 유형 조건까지 보려면 실제 날짜 주의 활성 셋으로 더미를 만든다 |
 | 알림 | 테스트 계정(USER, 앱에 로그인해 푸시 토큰 등록)과 더미에게 알림이 가는 동작을 한다. 예: 매칭 실행, QA 콘솔에서 테스트 계정에게 1:1 신청, QA 콘솔 방에서 더미로 메시지 보내기, 공지 발송(`/admin/notices`, 활성 회원 전원에게 감). 퀴즈 오픈 알림은 실제 시각 월 00:00 배치에서만 나가서 재현되지 않는다 | 더미는 푸시 토큰이 없어 "등록된 기기 없음"으로 남는다. 방 알림 꺼짐: 테스트 계정이 앱에서 그 방 알림을 끄고 더미로 메시지를 보낸다(채팅 알림만 해당). 알림 설정 꺼짐: 앱 설정에서 채팅·매칭 알림을 끄고 더미 메시지나 1:1 신청을 받는다. 공지는 설정과 상관없이 늘 보내서 이 경우를 못 만든다. 방 알림을 먼저 보므로 둘 다 꺼져 있으면 방 알림 꺼짐으로 남는다. 실패: 테스트 계정으로 아무 문자열을 푸시 토큰으로 등록(`POST /api/v1/notifications/devices`)하면 FCM 이 거절해 실패로 남는다. 이 토큰은 자동으로 지워지지 않으니 끝나면 `DELETE /api/v1/notifications/devices/{token}`으로 지운다. 안 지우면 그 계정 알림이 계속 실패로 잡힌다. 로컬(`local` 프로필)은 가짜 발송기라 늘 성공으로 남아 실패를 재현할 수 없다. 이력 시각은 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
 | 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |

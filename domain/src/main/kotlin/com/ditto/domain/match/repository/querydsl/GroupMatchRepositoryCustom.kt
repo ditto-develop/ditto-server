@@ -16,4 +16,7 @@ interface GroupMatchRepositoryCustom {
 
     /** 그 주 퀴즈셋의 그룹 ID 전부. 성사 여부는 가리지 않는다. */
     fun findGroupMatchIdsByWeekStartedOn(weekStartedOn: LocalDate): List<Long>
+
+    /** 그 주 활성 셋의 후보 그룹마다 점수와 성사 여부. */
+    fun findGroupScoresInWeek(weekStartedOn: LocalDate): List<GroupMatchScore>
 }

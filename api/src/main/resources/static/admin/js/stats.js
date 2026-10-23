@@ -36,12 +36,12 @@
         byId(tbodyId).replaceChildren(...rowElements);
     };
 
-    const fillGenderTable = ({ headId, bodyId, firstColumnLabel, genderLabels, rows }) => {
+    const fillGenderTable = ({ headId, bodyId, firstColumnLabel, genderLabels, rows, totalLabel = '합계' }) => {
         const headRow = document.createElement('tr');
         headRow.append(
             headerCell(firstColumnLabel),
             ...StatsCalc.genderColumnLabels(genderLabels).map((label) => headerCell(label, 'num')),
-            headerCell('합계', 'num'),
+            headerCell(totalLabel, 'num'),
         );
         byId(headId).replaceChildren(headRow);
         fillRows(bodyId, rows, (row) => [
@@ -235,6 +235,85 @@
             genderLabels,
             rows: funnel.unmatchedGenderRows,
         });
+        renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const scoreText = (score) => `${score.toFixed(1)}점`;
+
+    // 조각마다 줄이 갈리지 않게 묶어 ' · ' 로 잇는다.
+    const fillNowrapPieces = (id, pieces) => {
+        const container = byId(id);
+        container.replaceChildren();
+        pieces.forEach((piece, index) => {
+            if (index > 0) container.append(' · ');
+            container.append(element('span', 'nowrap', piece));
+        });
+    };
+
+    // 성사 쪽 평균을 옆에 둬서 점수가 높을수록 성사되는지 본다. 후보가 다 지워져도 점수 없는 성사는 보인다.
+    const scoreSummaryPieces = (summary, matchedSummary, unitLabel, unscoredMatchedCount) => {
+        const unscoredPieces = unscoredMatchedCount > 0 ? [`점수 없는 성사 ${unscoredMatchedCount}${unitLabel}`] : [];
+        if (summary.count === 0) return ['이 회차 후보가 없습니다.', ...unscoredPieces];
+        const matchedPiece = matchedSummary.count === 0
+            ? '성사 없음'
+            : `성사 ${matchedSummary.count}${unitLabel} 평균 ${scoreText(matchedSummary.average)}`;
+        return [
+            `평균 ${scoreText(summary.average)}`,
+            `중앙값 ${scoreText(summary.median)}`,
+            matchedPiece,
+            ...unscoredPieces,
+        ];
+    };
+
+    const fillScoreCard = (idPrefix, { title, summary, matchedSummary, unitLabel, unscoredMatchedCount = 0 }) => {
+        byId(`${idPrefix}Title`).textContent = `${title} · ${summary.count}${unitLabel}`;
+        fillNowrapPieces(
+            `${idPrefix}Summary`,
+            scoreSummaryPieces(summary, matchedSummary, unitLabel, unscoredMatchedCount),
+        );
+        fillShares(`${idPrefix}Shares`, summary.bins, { className: 'share-row wide-label-row', unit: unitLabel });
+    };
+
+    // 표마다 칸 수가 달라 넉넉히 잡아 한 줄 전체를 덮는다.
+    const FULL_ROW_COLUMN_SPAN = 99;
+
+    // 표에 행이 없으면 안내 한 줄을 넣는다.
+    const fillEmptyRowIfNone = (bodyId, message) => {
+        const body = byId(bodyId);
+        if (body.children.length > 0) return;
+        const emptyCell = element('td', 'empty', message);
+        emptyCell.colSpan = FULL_ROW_COLUMN_SPAN;
+        const row = document.createElement('tr');
+        row.append(emptyCell);
+        body.append(row);
+    };
+
+    const renderMatchScores = (matchStats, quizMatchingTypeLabels, genderLabels) => {
+        const scores = StatsCalc.matchScores(matchStats);
+        const showsOneToOne = Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
+        const showsGroup = Object.hasOwn(quizMatchingTypeLabels, 'GROUP');
+        byId('matchPairScoreCard').hidden = !showsOneToOne;
+        byId('matchGroupScoreCard').hidden = !showsGroup;
+        byId('matchGroupSizeCard').hidden = !showsGroup;
+        fillScoreCard('matchPairScore', {
+            title: '1:1 후보 점수',
+            summary: scores.pair,
+            matchedSummary: scores.matchedPair,
+            unitLabel: '쌍',
+            unscoredMatchedCount: scores.unscoredMatchedPairCount,
+        });
+        fillScoreCard('matchGroupScore', {
+            title: '그룹 후보 점수', summary: scores.group, matchedSummary: scores.matchedGroup, unitLabel: '개',
+        });
+        fillGenderTable({
+            headId: 'matchGroupSizeHead',
+            bodyId: 'matchGroupSizeRows',
+            firstColumnLabel: '인원 · 그룹 수',
+            genderLabels,
+            rows: StatsCalc.activeGroupSizeRows(matchStats.activeGroupMemberCounts, genderLabels),
+            totalLabel: '합계(명)',
+        });
+        fillEmptyRowIfNone('matchGroupSizeRows', '성사된 그룹이 없습니다. 그룹은 3명 이상 수락하면 성사됩니다.');
     };
 
     const rateCell = (part, whole) => cell(StatsCalc.percentText(part, whole), 'num');
@@ -251,8 +330,36 @@
         ...(showsAllSent ? [allSentCell(row)] : []),
     ];
 
+    const hourText = (hours) => `${hours.toFixed(1)}시간`;
+
+    const renderChatMessages = (chatStats, roomTypeLabels, genderLabels) => {
+        const messages = StatsCalc.chatMessageStats(chatStats, roomTypeLabels, genderLabels);
+        const options = { className: 'share-row wide-label-row', unit: '개' };
+        byId('chatMessageCountTitle').textContent = `방당 메시지 수 · 방 ${countText(messages.roomCount, '개')}`;
+        byId('chatMessageCountSummary').textContent = messages.averageMessageCount === null
+            ? ''
+            : `평균 ${messages.averageMessageCount.toFixed(1)}개 · 중앙값 ${messages.medianMessageCount.toFixed(1)}개`;
+        fillShares('chatMessageCountShares', messages.messageCountBins, options);
+        const messagedRoomsText = `대화가 있는 방 ${countText(messages.messagedRoomCount, '개')}`;
+        byId('chatFirstMessageTitle').textContent = `첫 메시지까지 · ${messagedRoomsText}`;
+        byId('chatFirstSenderTitle').textContent = `첫 발신자 성별 · ${messagedRoomsText}`;
+        byId('chatLastMessageTitle').textContent = `마지막 메시지 시점 · ${messagedRoomsText}`;
+        const firstMessagePieces = messages.medianFirstMessageHours === null
+            ? ['대화가 있는 방이 없습니다.']
+            : [
+                `중앙값 ${hourText(messages.medianFirstMessageHours)}`,
+                ...(messages.beforeOpenRoomCount > 0
+                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시각 조정)`]
+                    : []),
+            ];
+        fillNowrapPieces('chatFirstMessageSummary', firstMessagePieces);
+        fillShares('chatFirstMessageShares', messages.firstMessageBins, options);
+        fillShares('chatFirstSenderShares', messages.firstSenderGenderCounts, options);
+        fillShares('chatLastMessageShares', messages.lastMessageBins, options);
+    };
+
     // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.
-    const renderChatSection = ({ memberReviewMatchTypeLabels, chatStats }) => {
+    const renderChatSection = ({ genderLabels, memberReviewMatchTypeLabels, chatStats }) => {
         const activity = StatsCalc.chatActivity(chatStats, memberReviewMatchTypeLabels);
         showSectionIfAny('chat', activity.rows.some((row) => row.openedCount > 0));
 
@@ -267,6 +374,7 @@
         byId('chatAllSentHead').hidden = !showsAllSent;
         byId('chatRematchNote').hidden = !activity.rows.some((row) => row.isRematch);
         fillRows('chatByTypeRows', activity.rows, (row) => chatTypeCells(row, showsAllSent));
+        renderChatMessages(chatStats, memberReviewMatchTypeLabels, genderLabels);
     };
 
     const percentPointText = (value) => `${value.toFixed(1)}%p`;
@@ -365,8 +473,41 @@
         renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
     };
 
+    const retentionRateCells = (row) => [
+        cell(row.label),
+        countCell(row.previousCount),
+        countCell(row.completedAgainCount),
+        cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
+    ];
+
+    // 칸이 없으면 '-', 있으면 비율 옆에 완주자 수를 붙인다.
+    const cohortCell = (roundCell, joinedCount) => {
+        if (roundCell === null) return cell('-', 'num empty');
+        const { completedCount } = roundCell;
+        return cell(`${StatsCalc.percentText(completedCount, joinedCount)} (${completedCount})`, 'num');
+    };
+
+    const renderCohortRetention = (memberStats, retentionStats, weekStartedOn) => {
+        const { columnCount, rows } = StatsCalc.cohortRetention(memberStats, retentionStats, weekStartedOn);
+        const headRow = document.createElement('tr');
+        headRow.append(
+            headerCell('가입 주차'),
+            headerCell('가입자(명)', 'num'),
+            headerCell('가입한 주', 'num'),
+            ...Array.from({ length: columnCount }, (_, index) => headerCell(`가입 뒤 ${index + 1}회차`, 'num')),
+        );
+        byId('retentionCohortHead').replaceChildren(headRow);
+        fillRows('retentionCohortRows', rows, (row) => [
+            cell(`${shortDate(row.cohortWeek)} 주`),
+            countCell(row.joinedCount),
+            cohortCell(row.joinWeekCell, row.joinedCount),
+            ...row.afterCells.map((afterCell) => cohortCell(afterCell, row.joinedCount)),
+        ]);
+        fillEmptyRowIfNone('retentionCohortRows', '8주 안에 가입한 회원이 없습니다.');
+    };
+
     const renderRetentionSection = (
-        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, retentionStats },
+        { weekStartedOn, quizMatchingTypeLabels, allQuizMatchingTypeLabels, memberStats, retentionStats },
     ) => {
         const { previousRoundWeek, previousProgressCounts, completedAgainCounts } = retentionStats;
         const { previousCount, completedAgainCount, countsByType } =
@@ -381,12 +522,17 @@
         });
         byId('retentionPreviousCount').textContent = countText(previousCount, '명');
         byId('retentionCompletedAgainCount').textContent = countText(completedAgainCount, '명');
-        fillRows('retentionByTypeRows', countsByType, (row) => [
-            cell(row.label),
-            countCell(row.previousCount),
-            countCell(row.completedAgainCount),
-            cell(StatsCalc.percentText(row.completedAgainCount, row.previousCount), 'num'),
-        ]);
+        fillRows('retentionByTypeRows', countsByType, retentionRateCells);
+        fillRows(
+            'retentionMatchResultRows',
+            StatsCalc.matchResultRetention(
+                { previousCount, completedAgainCount },
+                retentionStats.matchedPreviousCompletionCounts,
+                retentionStats.matchedCompletedAgainCounts,
+            ),
+            retentionRateCells,
+        );
+        renderCohortRetention(memberStats, retentionStats, weekStartedOn);
         fillShares(
             'retentionTrackSwitchShares',
             StatsCalc.trackSwitchCounts(completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels),

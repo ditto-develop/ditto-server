@@ -3,6 +3,7 @@ package com.ditto.domain.quiz.repository.querydsl
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 interface QuizProgressRepositoryCustom {
     fun deleteByMemberIdAndQuizSetIds(memberId: Long, quizSetIds: List<Long>)
@@ -28,6 +29,26 @@ interface QuizProgressRepositoryCustom {
         weekStartedOn: LocalDate,
         filter: MemberFilter,
     ): List<CompletedAgainCount>
+
+    /** countMembersCompletedAgain 중 이전 주에 성사된 회원만 센다. */
+    fun countMatchedMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<CompletedAgainCount>
+
+    /** 그 주 완주자 중 그 셋에서 성사된 회원 수를 유형별로 센다. */
+    fun countMatchedMembersCompletedInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchedCompletionCount>
+
+    /**
+     * 가입 시각이 그 범위인 회원의 완주마다 (가입 시각, 완주한 회차). 가입 주차별 리텐션이 쓴다.
+     * 가입 주로 묶는 날짜 함수가 MySQL 과 H2 에서 달라서 묶지 않고 넘기고 화면이 묶는다.
+     */
+    fun findCompletionsWithJoinedAtInWeeks(
+        roundWeeks: Collection<LocalDate>,
+        joinedAtRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+    ): List<CompletionWithJoinedAt>
 
     /** 여러 주에 걸쳐 완주했어도 한 명으로 센다. */
     fun countMembersCompletedInWeeks(

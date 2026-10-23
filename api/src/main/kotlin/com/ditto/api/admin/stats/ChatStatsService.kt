@@ -17,5 +17,6 @@ class ChatStatsService(
         ChatStatsData(
             chatRoomMemberCounts = chatRoomRepository.countMembersPerOpenedRoomInWeek(week.startedOn),
             chatRoomSenderCounts = chatRoomRepository.countSendersPerOpenedRoomInWeek(week.startedOn),
+            messageSummaries = chatRoomRepository.summarizeMessagesPerOpenedRoomInWeek(week.startedOn),
         )
 }

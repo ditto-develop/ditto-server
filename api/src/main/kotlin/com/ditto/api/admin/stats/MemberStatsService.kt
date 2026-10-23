@@ -10,7 +10,6 @@ import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Service
 class MemberStatsService(
@@ -32,21 +31,13 @@ class MemberStatsService(
             currentActiveRoundWeeks = currentActiveRoundWeeks,
             recentlyCompletedActiveStatusCount =
                 quizProgressRepository.countActiveStatusMembersCompletedInWeeks(currentActiveRoundWeeks, memberFilter),
-            recentWeekCount = RECENT_WEEK_COUNT,
-            recentJoinedAts = memberRepository.findAllJoinedAtsWithin(recentWeeksRangeUntil(week), memberFilter),
+            recentWeekCount = StatsRoundFinder.RECENT_WEEK_COUNT,
+            recentJoinedAts =
+                memberRepository.findAllJoinedAtsWithin(StatsRoundFinder.recentWeeksRangeUntil(week), memberFilter),
             genderBirthDateCounts = memberRepository.countCurrentMembersByGenderAndBirthDate(memberFilter),
             locationCounts = memberRepository.countCurrentMembersByLocation(memberFilter),
             leaveReasonCounts = memberRepository.countMembersLeftWithinByLeaveReason(week.dateTimeRange, memberFilter),
             adminMemberCount = memberRepository.countByRoleAndStatusNot(MemberRole.ADMIN, MemberStatus.LEFT),
         )
-    }
-
-    private fun recentWeeksRangeUntil(week: OperationWeek): OpenEndRange<LocalDateTime> {
-        val firstWeek = week.minusWeeks(RECENT_WEEK_COUNT - 1L)
-        return firstWeek.dateTimeRange.start..<week.dateTimeRange.endExclusive
-    }
-
-    companion object {
-        private const val RECENT_WEEK_COUNT = 8
     }
 }

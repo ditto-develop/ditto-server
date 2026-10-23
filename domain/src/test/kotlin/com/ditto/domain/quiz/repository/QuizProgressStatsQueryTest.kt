@@ -1,5 +1,12 @@
 package com.ditto.domain.quiz.repository
 
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
@@ -14,6 +21,8 @@ import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.querydsl.CompletedAgainCount
+import com.ditto.domain.quiz.repository.querydsl.CompletionWithJoinedAt
+import com.ditto.domain.quiz.repository.querydsl.MatchedCompletionCount
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressCount
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -29,6 +38,9 @@ class QuizProgressStatsQueryTest(
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
+    private val personalMatchRepository: PersonalMatchRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -240,6 +252,68 @@ class QuizProgressStatsQueryTest(
 
         "주 목록이 비면 0이다" {
             quizProgressRepository.countActiveStatusMembersCompletedInWeeks(emptyList(), MemberFilter.NONE) shouldBe 0L
+        }
+    }
+
+    "성사된 회원의 완주와 재참여" - {
+        "1:1 은 ACCEPTED 쌍, 그룹은 성사된 그룹 수락자만 성사로 센다" {
+            val previousOneToOne = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
+            val current = saveQuizSet()
+            val (one, other) = saveMember() to saveMember()
+            val pending = saveMember()
+            listOf(one, other, pending).forEach { saveProgress(it, previousOneToOne) }
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(one, other, previousOneToOne.id, PersonalMatchStatus.ACCEPTED),
+            )
+            personalMatchRepository.save(PersonalMatchFixture.create(pending, saveMember(), previousOneToOne.id))
+            val (grouped, unformed) = saveMember() to saveMember()
+            listOf(grouped, unformed).forEach { saveProgress(it, previousGroup) }
+            val formedGroup = groupMatchRepository.save(
+                GroupMatchFixture.create(quizSetId = previousGroup.id, acceptedCount = 3),
+            )
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(formedGroup.id, grouped).apply { accept() })
+            val unformedGroup = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = previousGroup.id))
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(unformedGroup.id, unformed).apply { accept() })
+            listOf(one, grouped, unformed).forEach { saveProgress(it, current) }
+
+            quizProgressRepository.countMatchedMembersCompletedInWeek(
+                WEEK.minusWeeks(1),
+                MemberFilter.NONE,
+            ) shouldContainExactlyInAnyOrder listOf(
+                MatchedCompletionCount(MatchingType.ONE_TO_ONE, 2L),
+                MatchedCompletionCount(MatchingType.GROUP, 1L),
+            )
+            quizProgressRepository.countMatchedMembersCompletedAgain(
+                WEEK.minusWeeks(1),
+                WEEK,
+                MemberFilter.NONE,
+            ) shouldContainExactlyInAnyOrder listOf(
+                CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
+                CompletedAgainCount(MatchingType.GROUP, MatchingType.ONE_TO_ONE, 1L),
+            )
+        }
+    }
+
+    "findCompletionsWithJoinedAtInWeeks" - {
+        "가입 시각이 범위 안인 회원의 완주마다 가입 시각과 회차를 준다" {
+            val previous = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val current = saveQuizSet()
+            val joinedAt = LocalDateTime.of(2026, 10, 13, 9, 0)
+            val newcomer = saveMember(joinedAt = joinedAt)
+            saveProgress(newcomer, previous)
+            saveProgress(newcomer, current)
+            saveProgress(saveMember(joinedAt = joinedAt), current, completed = false)
+            saveProgress(saveMember(joinedAt = LocalDateTime.of(2026, 9, 1, 9, 0)), current)
+
+            quizProgressRepository.findCompletionsWithJoinedAtInWeeks(
+                listOf(WEEK.minusWeeks(1), WEEK),
+                LocalDateTime.of(2026, 10, 12, 0, 0)..<LocalDateTime.of(2026, 10, 26, 0, 0),
+                MemberFilter.NONE,
+            ) shouldContainExactlyInAnyOrder listOf(
+                CompletionWithJoinedAt(joinedAt, WEEK.minusWeeks(1)),
+                CompletionWithJoinedAt(joinedAt, WEEK),
+            )
         }
     }
 })

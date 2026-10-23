@@ -29,4 +29,7 @@ interface GroupMatchMemberRepositoryCustom {
 
     /** 그 주 그룹 초대를 그룹 성사 여부·초대 상태·성별로 묶은 수. */
     fun countInvitedMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<GroupMatchMemberCount>
+
+    /** 그 주 성사된 그룹마다 수락한 회원을 성별로 센다. 그룹 단위라 회원 조건과 관리자 제외를 걸지 않는다. */
+    fun countAcceptedMembersPerActiveGroupInWeek(weekStartedOn: LocalDate): List<ActiveGroupMemberCount>
 }

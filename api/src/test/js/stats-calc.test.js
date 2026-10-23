@@ -698,3 +698,189 @@ describe('trackSwitchCounts', () => {
         ]);
     });
 });
+
+describe('scoreSummary', () => {
+    test('평균·중앙값을 내고 10점 구간은 값이 있는 구간 사이만 0이어도 채운다', () => {
+        const summary = StatsCalc.scoreSummary([62, 81.5, 65, 100]);
+
+        assert.equal(summary.count, 4);
+        assert.equal(summary.average, 77.125);
+        assert.equal(summary.median, 73.25);
+        assert.deepEqual(summary.bins, [
+            { label: '60점대', count: 2 },
+            { label: '70점대', count: 0 },
+            { label: '80점대', count: 1 },
+            { label: '90점 이상', count: 1 },
+        ]);
+    });
+
+    test('점수가 없으면 평균·중앙값이 null 이고 구간도 없다', () => {
+        assert.deepEqual(StatsCalc.scoreSummary([]), { count: 0, average: null, median: null, bins: [] });
+    });
+});
+
+describe('matchScores', () => {
+    test('그룹은 전체 후보와 성사된 그룹을 따로 요약한다', () => {
+        const scores = StatsCalc.matchScores({
+            pairScores: [70],
+            acceptedPairScores: [],
+            groupScores: [{ isActive: true, score: 66 }, { isActive: false, score: 60 }],
+        });
+
+        assert.equal(scores.pair.count, 1);
+        assert.equal(scores.matchedPair.count, 0);
+        assert.equal(scores.unscoredMatchedPairCount, 0);
+        assert.equal(scores.group.average, 63);
+        assert.equal(scores.matchedGroup.average, 66);
+    });
+});
+
+describe('matchScores 의 점수 없는 성사 쌍', () => {
+    test('후보 행이 사라져 점수가 null 인 성사 쌍은 평균에서 빼고 따로 센다', () => {
+        const scores = StatsCalc.matchScores({ pairScores: [70], acceptedPairScores: [80, null], groupScores: [] });
+
+        assert.equal(scores.matchedPair.count, 1);
+        assert.equal(scores.matchedPair.average, 80);
+        assert.equal(scores.unscoredMatchedPairCount, 1);
+    });
+});
+
+describe('activeGroupSizeRows', () => {
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+
+    test('성사 그룹을 인원수로 묶고 인원수마다 성별 구성을 더한다', () => {
+        const rows = StatsCalc.activeGroupSizeRows([
+            { groupMatchId: 1, gender: 'MALE', count: 2 },
+            { groupMatchId: 1, gender: 'FEMALE', count: 2 },
+            { groupMatchId: 2, gender: 'MALE', count: 1 },
+            { groupMatchId: 2, gender: 'FEMALE', count: 2 },
+            { groupMatchId: 3, gender: 'FEMALE', count: 3 },
+        ], GENDER_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '3명 · 2개', countsInColumnOrder: [1, 5, 0], totalCount: 6 },
+            { label: '4명 · 1개', countsInColumnOrder: [2, 2, 0], totalCount: 4 },
+        ]);
+    });
+});
+
+describe('chatMessageStats', () => {
+    const ROOM_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+    const OPENS_AT = '2026-10-23 00:00:00';
+    const summary = (roomId, senderGender, messageCount, firstMessageAt, lastMessageAt) =>
+        ({ roomId, opensAt: OPENS_AT, senderGender, messageCount, firstMessageAt, lastMessageAt });
+    const chatStats = {
+        chatRoomMemberCounts: [
+            { roomId: 1, roomType: 'PERSONAL', count: 2 },
+            { roomId: 2, roomType: 'GROUP', count: 4 },
+            { roomId: 3, roomType: 'PERSONAL', count: 2 },
+            { roomId: 9, roomType: 'REMATCH', count: 2 },
+        ],
+        messageSummaries: [
+            summary(1, 'MALE', 8, '2026-10-23 03:00:00', '2026-10-24 10:00:00'),
+            summary(1, 'FEMALE', 4, '2026-10-23 00:30:00', '2026-10-25 01:00:00'),
+            summary(2, 'MALE', 60, '2026-10-23 07:00:00', '2026-10-23 20:00:00'),
+            summary(9, 'MALE', 3, '2026-10-23 01:00:00', '2026-10-23 02:00:00'),
+        ],
+    };
+
+    test('메시지 없는 방은 0개로 넣고 재매칭 방은 빼서 방당 메시지 수를 낸다', () => {
+        const stats = StatsCalc.chatMessageStats(chatStats, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.equal(stats.roomCount, 3);
+        assert.equal(stats.messagedRoomCount, 2);
+        assert.equal(stats.averageMessageCount, 24);
+        assert.equal(stats.medianMessageCount, 12);
+        assert.deepEqual(stats.messageCountBins.map((bin) => bin.count), [1, 0, 1, 1, 0]);
+    });
+
+    test('첫 발신자는 가장 이른 성별이고 첫·마지막 메시지는 방이 열린 때부터 잰다', () => {
+        const stats = StatsCalc.chatMessageStats(chatStats, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.equal(stats.medianFirstMessageHours, 3.75);
+        assert.deepEqual(stats.firstMessageBins.map((bin) => bin.count), [1, 0, 1, 0, 0]);
+        assert.deepEqual(stats.firstSenderGenderCounts, [
+            { label: '남성', count: 1 },
+            { label: '여성', count: 1 },
+            { label: '미입력', count: 0 },
+        ]);
+        assert.deepEqual(stats.lastMessageBins.map((bin) => bin.count), [1, 0, 1, 0]);
+    });
+
+    test('메시지가 방 열린 시각보다 이르면 맨 앞 칸에 따로 센다', () => {
+        const shifted = {
+            chatRoomMemberCounts: [{ roomId: 1, roomType: 'PERSONAL', count: 2 }],
+            messageSummaries: [summary(1, 'MALE', 1, '2026-10-22 23:00:00', '2026-10-22 23:00:00')],
+        };
+
+        const stats = StatsCalc.chatMessageStats(shifted, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.deepEqual(stats.firstMessageBins[0], { label: '열린 시각 전(시각 조정)', count: 1 });
+        assert.equal(stats.beforeOpenRoomCount, 1);
+    });
+});
+
+describe('matchResultRetention', () => {
+    test('성사 안 됨은 전체 재참여에서 성사를 뺀다', () => {
+        const rows = StatsCalc.matchResultRetention(
+            { previousCount: 10, completedAgainCount: 6 },
+            [{ matchingType: 'ONE_TO_ONE', count: 3 }, { matchingType: 'GROUP', count: 1 }],
+            [{ previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'GROUP', count: 3 }],
+        );
+
+        assert.deepEqual(rows, [
+            { label: '성사됨', previousCount: 4, completedAgainCount: 3 },
+            { label: '성사 안 됨', previousCount: 6, completedAgainCount: 3 },
+        ]);
+    });
+});
+
+describe('cohortRetention', () => {
+    test('가입한 주로 묶고 가입한 주 회차와 가입 뒤 N번째 회차의 완주 수를 낸다', () => {
+        const memberStats = {
+            recentWeekCount: 3,
+            recentJoinedAts: ['2026-10-06 10:00:00', '2026-10-08 22:00:00', '2026-10-14 09:00:00'],
+        };
+        const retentionStats = {
+            cohortRoundWeeks: ['2026-10-19', '2026-10-05'],
+            completionsWithJoinedAt: [
+                { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-05' },
+                { joinedAt: '2026-10-08 22:00:00', weekStartedOn: '2026-10-05' },
+                { joinedAt: '2026-10-06 10:00:00', weekStartedOn: '2026-10-19' },
+                { joinedAt: '2026-10-14 09:00:00', weekStartedOn: '2026-10-19' },
+            ],
+        };
+
+        const { columnCount, rows } = StatsCalc.cohortRetention(memberStats, retentionStats, '2026-10-19');
+
+        assert.equal(columnCount, 1);
+        assert.deepEqual(rows, [
+            {
+                cohortWeek: '2026-10-05',
+                joinedCount: 2,
+                joinWeekCell: { completedCount: 2 },
+                afterCells: [{ completedCount: 1 }],
+            },
+            {
+                cohortWeek: '2026-10-12',
+                joinedCount: 1,
+                joinWeekCell: null,
+                afterCells: [{ completedCount: 1 }],
+            },
+        ]);
+    });
+
+    test('아직 오지 않은 회차 칸은 null 이고 가입자가 없는 주는 줄이 없다', () => {
+        const { columnCount, rows } = StatsCalc.cohortRetention(
+            { recentWeekCount: 2, recentJoinedAts: ['2026-10-19 10:00:00'] },
+            { cohortRoundWeeks: ['2026-10-12', '2026-10-19'], completionsWithJoinedAt: [] },
+            '2026-10-19',
+        );
+
+        assert.equal(columnCount, 1);
+        assert.deepEqual(rows, [
+            { cohortWeek: '2026-10-19', joinedCount: 1, joinWeekCell: { completedCount: 0 }, afterCells: [null] },
+        ]);
+    });
+});

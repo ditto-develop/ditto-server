@@ -13,6 +13,7 @@ import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizSetFixture
@@ -24,7 +25,10 @@ import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.support.IntegrationTest
 import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.shouldBe
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 3, 9)
@@ -154,6 +158,42 @@ class ChatRoomStatsQueryTest(
             val counts = chatRoomRepository.countSendersPerOpenedRoomInWeek(WEEK)
 
             counts shouldContainExactlyInAnyOrder listOf(ChatRoomSenderCount(groupRoomId, 2L))
+        }
+    }
+
+    "summarizeMessagesPerOpenedRoomInWeek" - {
+        "방마다 발신자 성별로 대화 메시지 수와 첫·마지막 시각을 주고 SYSTEM 과 회원 행이 없는 발신자도 다룬다" {
+            val male = memberRepository.save(
+                MemberFixture.create(nickname = "male", email = "male@ditto.pics", gender = Gender.MALE),
+            ).id
+            val female = memberRepository.save(
+                MemberFixture.create(nickname = "female", email = "female@ditto.pics", gender = Gender.FEMALE),
+            ).id
+            val roomId = savePersonalRoom(saveQuizSet(), listOf(male, female))
+            saveMessage(roomId, male)
+            saveMessage(roomId, male, ChatMessageType.IMAGE)
+            saveMessage(roomId, female)
+            saveMessage(roomId, male, ChatMessageType.SYSTEM)
+            saveMessage(roomId, female + 100)
+            // created_at 은 auditing 이 찍어서 첫 메시지를 직접 앞당긴다.
+            val firstAt = LocalDateTime.of(2026, 3, 13, 0, 30)
+            JdbcTemplate(dataSource).update(
+                "UPDATE chat_message SET created_at = ? WHERE room_id = ? AND sender_id = ?",
+                firstAt,
+                roomId,
+                female,
+            )
+
+            val summaries = chatRoomRepository.summarizeMessagesPerOpenedRoomInWeek(WEEK)
+
+            summaries.map { Triple(it.roomId, it.senderGender, it.messageCount) } shouldContainExactlyInAnyOrder listOf(
+                Triple(roomId, Gender.MALE, 2L),
+                Triple(roomId, Gender.FEMALE, 1L),
+                Triple(roomId, null, 1L),
+            )
+            val femaleSummary = summaries.single { it.senderGender == Gender.FEMALE }
+            femaleSummary.firstMessageAt shouldBe firstAt
+            femaleSummary.opensAt shouldBe chatRoomRepository.findById(roomId).orElseThrow().opensAt
         }
     }
 })

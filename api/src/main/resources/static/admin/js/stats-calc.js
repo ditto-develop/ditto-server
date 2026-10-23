@@ -77,6 +77,15 @@ const StatsCalc = (() => {
     }, new Map());
 
     const sumCounts = (countRows) => countRows.reduce((sum, countRow) => sum + countRow.count, 0);
+    const average = (values) =>
+        (values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length);
+    const median = (values) => {
+        if (values.length === 0) return null;
+        const sorted = [...values].sort((one, other) => one - other);
+        const middle = Math.floor(sorted.length / 2);
+        if (sorted.length % 2 === 1) return sorted[middle];
+        return (sorted[middle - 1] + sorted[middle]) / 2;
+    };
     const completedOnly = (progressCounts) => progressCounts.filter((countRow) => countRow.status === 'COMPLETED');
     // labels 순서대로 0이어도 한 행씩 낸다.
     const labeledCounts = (countsByKey, labels) =>
@@ -302,6 +311,89 @@ const StatsCalc = (() => {
         };
     };
 
+    const HOUR_MILLIS = 60 * 60 * 1000;
+    const toUtcDateTime = (dateTime) => new Date(`${dateTime.replace(' ', 'T')}Z`);
+    const hoursBetween = (from, to) => (toUtcDateTime(to) - toUtcDateTime(from)) / HOUR_MILLIS;
+    const MESSAGE_COUNT_BINS = [
+        { label: '0개', max: 0 },
+        { label: '1~9개', max: 9 },
+        { label: '10~49개', max: 49 },
+        { label: '50~99개', max: 99 },
+        { label: '100개 이상', max: Infinity },
+    ];
+    const FIRST_MESSAGE_HOUR_BINS = [
+        { label: '1시간 안', max: 1 },
+        { label: '1~6시간', max: 6 },
+        { label: '6~24시간', max: 24 },
+        { label: '24~48시간', max: 48 },
+        { label: '48시간 넘게', max: Infinity },
+    ];
+    // 방은 72시간 열린다.
+    const LAST_MESSAGE_HOUR_BINS = [
+        { label: '첫째 날', max: 24 },
+        { label: '둘째 날', max: 48 },
+        { label: '셋째 날', max: 72 },
+        { label: '72시간 뒤', max: Infinity },
+    ];
+    // 메시지 시각은 실제 시각이고 방 열린 시각은 시각 조정을 따라서, 시각을 옮긴 dev 에서는 음수가 나올 수 있다.
+    const BEFORE_OPEN_LABEL = '열린 시각 전(시각 조정)';
+
+    // 구간마다 max 이하이고 앞 구간 max 보다 큰 값을 센다. 음수는 맨 앞 칸에 따로 모은다.
+    const binCounts = (values, bins) => {
+        const beforeOpenCount = values.filter((value) => value < 0).length;
+        const counted = bins.map((bin, index) => {
+            const lowerExclusive = index === 0 ? -Infinity : bins[index - 1].max;
+            const inBin = (value) => value >= 0 && value > lowerExclusive && value <= bin.max;
+            return { label: bin.label, count: values.filter(inBin).length };
+        });
+        return beforeOpenCount > 0 ? [{ label: BEFORE_OPEN_LABEL, count: beforeOpenCount }, ...counted] : counted;
+    };
+
+    // 발신자 성별로 나뉜 행을 방마다 합치고, 가장 이른 행의 성별을 첫 발신자로 본다.
+    const roomMessageSummaries = (messageSummaries) =>
+        [...groupBy(messageSummaries, (summary) => summary.roomId).values()].map((genderRows) => {
+            const earliestRow = genderRows
+                .reduce((earliest, row) => (row.firstMessageAt < earliest.firstMessageAt ? row : earliest));
+            const lastMessageAt = genderRows.map((row) => row.lastMessageAt).sort().at(-1);
+            return {
+                roomId: earliestRow.roomId,
+                messageCount: genderRows.reduce((sum, row) => sum + row.messageCount, 0),
+                firstSenderGender: earliestRow.senderGender,
+                firstMessageHours: hoursBetween(earliestRow.opensAt, earliestRow.firstMessageAt),
+                lastMessageHours: hoursBetween(earliestRow.opensAt, lastMessageAt),
+            };
+        });
+
+    // roomTypeLabels 에 있는 유형의 열린 방만 본다(재매칭 제외). 메시지가 없는 방은 0개로 센다.
+    const chatMessageStats = (chatStats, roomTypeLabels, genderLabels) => {
+        const shownRoomIds = new Set(chatStats.chatRoomMemberCounts
+            .filter((row) => Object.hasOwn(roomTypeLabels, row.roomType))
+            .map((row) => row.roomId));
+        const messagedRooms = roomMessageSummaries(chatStats.messageSummaries)
+            .filter((room) => shownRoomIds.has(room.roomId));
+        const messageCounts = [
+            ...messagedRooms.map((room) => room.messageCount),
+            ...Array(shownRoomIds.size - messagedRooms.length).fill(0),
+        ];
+        const firstMessageHours = messagedRooms.map((room) => room.firstMessageHours);
+        const firstSenderCounts = countBy(messagedRooms, (room) => room.firstSenderGender);
+        return {
+            roomCount: shownRoomIds.size,
+            messagedRoomCount: messagedRooms.length,
+            averageMessageCount: average(messageCounts),
+            medianMessageCount: median(messageCounts),
+            messageCountBins: binCounts(messageCounts, MESSAGE_COUNT_BINS),
+            medianFirstMessageHours: median(firstMessageHours),
+            firstMessageBins: binCounts(firstMessageHours, FIRST_MESSAGE_HOUR_BINS),
+            beforeOpenRoomCount: firstMessageHours.filter((hours) => hours < 0).length,
+            firstSenderGenderCounts: [
+                ...labeledCounts(firstSenderCounts, genderLabels),
+                { label: GENDER_UNKNOWN_LABEL, count: firstSenderCounts.get(null) || 0 },
+            ],
+            lastMessageBins: binCounts(messagedRooms.map((room) => room.lastMessageHours), LAST_MESSAGE_HOUR_BINS),
+        };
+    };
+
     const choiceShare = (answerRows, choiceId) => {
         const choiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === choiceId));
         return percent(choiceCount, sumCounts(answerRows));
@@ -406,6 +498,96 @@ const StatsCalc = (() => {
         };
     };
 
+    const SCORE_BIN_SIZE = 10;
+    const LAST_SCORE_BIN_INDEX = 9;
+
+    // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다. 값이 있는 구간 사이만 보인다.
+    const scoreSummary = (scores) => {
+        if (scores.length === 0) return { count: 0, average: null, median: null, bins: [] };
+        const binIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN_INDEX);
+        const countsByBin = countBy(scores, binIndexOf);
+        const firstBin = Math.min(...countsByBin.keys());
+        const lastBin = Math.max(...countsByBin.keys());
+        const bins = Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => {
+            const binIndex = firstBin + offset;
+            const label = binIndex === LAST_SCORE_BIN_INDEX ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`;
+            return { label, count: countsByBin.get(binIndex) || 0 };
+        });
+        return {
+            count: scores.length,
+            average: average(scores),
+            median: median(scores),
+            bins,
+        };
+    };
+
+    // 후보를 다시 만들면 성사 쌍의 후보 행이 지워져 점수가 null 로 온다.
+    const matchScores = ({ pairScores, acceptedPairScores, groupScores }) => ({
+        pair: scoreSummary(pairScores),
+        matchedPair: scoreSummary(acceptedPairScores.filter((score) => score !== null)),
+        unscoredMatchedPairCount: acceptedPairScores.filter((score) => score === null).length,
+        group: scoreSummary(groupScores.map((groupScore) => groupScore.score)),
+        matchedGroup: scoreSummary(
+            groupScores.filter((groupScore) => groupScore.isActive).map((groupScore) => groupScore.score),
+        ),
+    });
+
+    // 성사 그룹을 인원수로 묶고 인원수마다 성별 구성을 낸다.
+    const activeGroupSizeRows = (activeGroupMemberCounts, genderLabels) => {
+        const rowsByGroup = groupBy(activeGroupMemberCounts, (countRow) => countRow.groupMatchId);
+        const groupRowsBySize = groupBy([...rowsByGroup.values()], (groupRows) => sumCounts(groupRows));
+        return [...groupRowsBySize.entries()]
+            .sort(([oneSize], [otherSize]) => oneSize - otherSize)
+            .map(([size, groups]) => genderRow(`${size}명 · ${groups.length}개`, groups.flat(), genderLabels));
+    };
+
+    // 지난 회차 완주자를 성사 여부로 나눈다. 성사 안 됨은 전체에서 성사를 뺀 값이다.
+    const matchResultRetention = (retentionTotals, matchedPreviousCompletionCounts, matchedCompletedAgainCounts) => {
+        const matchedPreviousCount = sumCounts(matchedPreviousCompletionCounts);
+        const matchedAgainCount = sumCounts(matchedCompletedAgainCounts);
+        return [
+            { label: '성사됨', previousCount: matchedPreviousCount, completedAgainCount: matchedAgainCount },
+            {
+                label: '성사 안 됨',
+                previousCount: retentionTotals.previousCount - matchedPreviousCount,
+                completedAgainCount: retentionTotals.completedAgainCount - matchedAgainCount,
+            },
+        ];
+    };
+
+    // 가입한 주마다 가입 뒤 N번째 회차에 완주한 수. 가입한 주가 회차면 그 회차는 "가입한 주" 칸이다.
+    // 아직 오지 않은 회차 칸은 null 이다.
+    const cohortRetention = ({ recentJoinedAts, recentWeekCount }, retentionStats, weekStartedOn) => {
+        const roundWeeks = [...retentionStats.cohortRoundWeeks].sort();
+        const cohortWeeks = Array.from({ length: recentWeekCount }, (_, index) =>
+            addDays(weekStartedOn, -7 * (recentWeekCount - 1 - index)));
+        const joinedCountsByWeek = countBy(recentJoinedAts, (joinedAt) => mondayOf(dateOf(joinedAt)));
+        const completionKey = (cohortWeek, roundWeek) => `${cohortWeek}|${roundWeek}`;
+        const completionCounts = countBy(
+            retentionStats.completionsWithJoinedAt,
+            (completion) => completionKey(mondayOf(dateOf(completion.joinedAt)), completion.weekStartedOn),
+        );
+        const columnCount = roundWeeks.filter((roundWeek) => roundWeek > cohortWeeks[0]).length;
+        const cellOf = (cohortWeek, roundWeek) => (roundWeek === undefined
+            ? null
+            : { completedCount: completionCounts.get(completionKey(cohortWeek, roundWeek)) || 0 });
+        const rows = cohortWeeks
+            .map((cohortWeek) => {
+                const roundsAfter = roundWeeks.filter((roundWeek) => roundWeek > cohortWeek);
+                return {
+                    cohortWeek,
+                    joinedCount: joinedCountsByWeek.get(cohortWeek) || 0,
+                    joinWeekCell: roundWeeks.includes(cohortWeek) ? cellOf(cohortWeek, cohortWeek) : null,
+                    afterCells: Array.from(
+                        { length: columnCount },
+                        (_, index) => cellOf(cohortWeek, roundsAfter[index]),
+                    ),
+                };
+            })
+            .filter((row) => row.joinedCount > 0);
+        return { columnCount, rows };
+    };
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -480,6 +662,12 @@ const StatsCalc = (() => {
         retentionCounts,
         completionDayCounts,
         trackSwitchCounts,
+        matchResultRetention,
+        cohortRetention,
+        chatMessageStats,
+        scoreSummary,
+        matchScores,
+        activeGroupSizeRows,
         memberReportCounts,
         pushSendCounts,
     };

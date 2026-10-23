@@ -1,6 +1,8 @@
 package com.ditto.domain.match.repository.querydsl
 
+import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
+import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
 import com.ditto.domain.member.repository.querydsl.nonAdminMatching
@@ -48,6 +50,34 @@ class MatchCandidateRepositoryImpl(
             .fetch()
             .map { row -> MatchCandidateCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L) }
     }
+
+    override fun findPairScoresInWeek(weekStartedOn: LocalDate): List<Double> =
+        queryFactory
+            .select(matchCandidate.score)
+            .from(matchCandidate)
+            .join(quizSet).on(quizSet.id.eq(matchCandidate.quizSetId), quizSet.isActive.isTrue)
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                matchCandidate.ownerMemberId.lt(matchCandidate.otherMemberId),
+            )
+            .fetch()
+            .filterNotNull()
+
+    override fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double?> =
+        queryFactory
+            .select(matchCandidate.score)
+            .from(personalMatch)
+            .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
+            .leftJoin(matchCandidate).on(
+                matchCandidate.quizSetId.eq(personalMatch.quizSetId),
+                matchCandidate.ownerMemberId.eq(personalMatch.memberId1),
+                matchCandidate.otherMemberId.eq(personalMatch.memberId2),
+            )
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+            )
+            .fetch()
 
     /** (owner=one, other=other) 또는 그 반대 — 방향 무관 페어 조건 */
     private fun pairInEitherDirection(oneMemberId: Long, otherMemberId: Long) =

@@ -6,6 +6,7 @@ import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 /** 회차는 활성 퀴즈셋이 있는 주다. */
 @Service
@@ -43,5 +44,13 @@ class StatsRoundFinder(
     companion object {
         // 기준 회차까지 이 수의 회차 안에서 한 번이라도 완주하면 활성 회원이다.
         const val ACTIVE_ROUND_COUNT = 4
+
+        // 주별 신규 가입 표와 가입 주차별 리텐션이 고른 주까지 같은 8주를 본다.
+        const val RECENT_WEEK_COUNT = 8
+
+        fun recentWeeksRangeUntil(week: OperationWeek): OpenEndRange<LocalDateTime> {
+            val firstWeek = week.minusWeeks(RECENT_WEEK_COUNT - 1L)
+            return firstWeek.dateTimeRange.start..<week.dateTimeRange.endExclusive
+        }
     }
 }

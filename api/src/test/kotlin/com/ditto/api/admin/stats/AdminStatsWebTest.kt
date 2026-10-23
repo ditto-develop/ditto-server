@@ -183,7 +183,10 @@ class AdminStatsWebTest(
                                 """"personalMatchMemberCounts":""" +
                                 """[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
-                                """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}]}""",
+                                """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
+                                """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +
+                                """"groupScores":[{"isActive":false,"score":80.0}],""" +
+                                """"activeGroupMemberCounts":[]}""",
                         ),
                     ),
                 )
@@ -211,10 +214,12 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"chatStats":{"chatRoomMemberCounts":""" +
                                 """[{"roomId":${room.id},"roomType":"PERSONAL","count":2}],""" +
-                                """"chatRoomSenderCounts":[{"roomId":${room.id},"count":1}]}""",
+                                """"chatRoomSenderCounts":[{"roomId":${room.id},"count":1}],""" +
+                                """"messageSummaries":[{"roomId":${room.id},"opensAt":""",
                         ),
                     ),
                 )
+                .andExpect(content().string(pageJsonContaining(""""senderGender":null,"messageCount":1,""")))
         }
 
         "평가 집계를 페이지 JSON 에 넣는다" {
@@ -264,7 +269,9 @@ class AdminStatsWebTest(
                                 """[{"matchingType":"ONE_TO_ONE","status":"COMPLETED","gender":null,"count":1}],""" +
                                 """"completedAgainCounts":""" +
                                 """[{"previousMatchingType":"ONE_TO_ONE",""" +
-                                """"againMatchingType":"ONE_TO_ONE","count":1}]}""",
+                                """"againMatchingType":"ONE_TO_ONE","count":1}],""" +
+                                """"matchedPreviousCompletionCounts":[],"matchedCompletedAgainCounts":[],""" +
+                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[]}""",
                         ),
                     ),
                 )
@@ -346,7 +353,9 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
-                                """"completedAgainCounts":[]}""",
+                                """"completedAgainCounts":[],"matchedPreviousCompletionCounts":[],""" +
+                                """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],""" +
+                                """"completionsWithJoinedAt":[]}""",
                         ),
                     ),
                 )
