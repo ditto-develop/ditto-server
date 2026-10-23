@@ -214,10 +214,12 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"chatStats":{"chatRoomMemberCounts":""" +
                                 """[{"roomId":${room.id},"roomType":"PERSONAL","count":2}],""" +
-                                """"chatRoomSenderCounts":[{"roomId":${room.id},"count":1}]}""",
+                                """"chatRoomSenderCounts":[{"roomId":${room.id},"count":1}],""" +
+                                """"messageSummaries":[{"roomId":${room.id},"opensAt":""",
                         ),
                     ),
                 )
+                .andExpect(content().string(pageJsonContaining(""""senderGender":null,"messageCount":1,""")))
         }
 
         "평가 집계를 페이지 JSON 에 넣는다" {

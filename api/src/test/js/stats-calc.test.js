@@ -752,3 +752,59 @@ describe('activeGroupSizeRows', () => {
         ]);
     });
 });
+
+describe('chatMessageStats', () => {
+    const ROOM_TYPE_LABELS = { PERSONAL: '1:1', GROUP: '그룹' };
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+    const OPENS_AT = '2026-10-23 00:00:00';
+    const summary = (roomId, senderGender, messageCount, firstMessageAt, lastMessageAt) =>
+        ({ roomId, opensAt: OPENS_AT, senderGender, messageCount, firstMessageAt, lastMessageAt });
+    const chatStats = {
+        chatRoomMemberCounts: [
+            { roomId: 1, roomType: 'PERSONAL', count: 2 },
+            { roomId: 2, roomType: 'GROUP', count: 4 },
+            { roomId: 3, roomType: 'PERSONAL', count: 2 },
+            { roomId: 9, roomType: 'REMATCH', count: 2 },
+        ],
+        messageSummaries: [
+            summary(1, 'MALE', 8, '2026-10-23 03:00:00', '2026-10-24 10:00:00'),
+            summary(1, 'FEMALE', 4, '2026-10-23 00:30:00', '2026-10-25 01:00:00'),
+            summary(2, 'MALE', 60, '2026-10-23 07:00:00', '2026-10-23 20:00:00'),
+            summary(9, 'MALE', 3, '2026-10-23 01:00:00', '2026-10-23 02:00:00'),
+        ],
+    };
+
+    test('메시지 없는 방은 0개로 넣고 재매칭 방은 빼서 방당 메시지 수를 낸다', () => {
+        const stats = StatsCalc.chatMessageStats(chatStats, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.equal(stats.roomCount, 3);
+        assert.equal(stats.messagedRoomCount, 2);
+        assert.equal(stats.averageMessageCount, 24);
+        assert.equal(stats.medianMessageCount, 12);
+        assert.deepEqual(stats.messageCountBins.map((bin) => bin.count), [1, 0, 1, 1, 0]);
+    });
+
+    test('첫 발신자는 가장 이른 성별이고 첫·마지막 메시지는 방이 열린 때부터 잰다', () => {
+        const stats = StatsCalc.chatMessageStats(chatStats, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.equal(stats.medianFirstMessageHours, 3.75);
+        assert.deepEqual(stats.firstMessageBins.map((bin) => bin.count), [1, 0, 1, 0, 0]);
+        assert.deepEqual(stats.firstSenderGenderCounts, [
+            { label: '남성', count: 1 },
+            { label: '여성', count: 1 },
+            { label: '미입력', count: 0 },
+        ]);
+        assert.deepEqual(stats.lastMessageBins.map((bin) => bin.count), [1, 0, 1, 0]);
+    });
+
+    test('메시지가 방 열린 시각보다 이르면 맨 앞 칸에 따로 센다', () => {
+        const shifted = {
+            chatRoomMemberCounts: [{ roomId: 1, roomType: 'PERSONAL', count: 2 }],
+            messageSummaries: [summary(1, 'MALE', 1, '2026-10-22 23:00:00', '2026-10-22 23:00:00')],
+        };
+
+        const stats = StatsCalc.chatMessageStats(shifted, ROOM_TYPE_LABELS, GENDER_LABELS);
+
+        assert.deepEqual(stats.firstMessageBins[0], { label: '열린 시각 전(시각 조정)', count: 1 });
+    });
+});

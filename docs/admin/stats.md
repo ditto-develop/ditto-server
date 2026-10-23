@@ -91,11 +91,17 @@
 | 대화 시작률 | 대화 메시지(`TEXT`·`IMAGE`, `SYSTEM` 제외)가 하나라도 있는 방 ÷ 열린 방 |
 | 양방향 대화율 | 2명 이상이 대화 메시지를 보낸 방 ÷ 열린 방 |
 | 전원 (그룹만) | 참여자(`chat_room_member`, 나간 사람 포함) 전원이 대화 메시지를 보낸 방 ÷ 열린 방. 두 사람 방은 양방향과 같아 비운다 |
+| 방당 메시지 수 | 열린 방마다 대화 메시지 수. 메시지가 없는 방은 0개. 평균·중앙값과 구간(0, 1~9, 10~49, 50~99, 100개 이상) |
+| 첫 메시지까지 | 대화가 있는 방에서 방이 열린 때(`opens_at`)부터 첫 대화 메시지까지 걸린 시간. 중앙값과 구간 |
+| 첫 발신자 성별 | 대화가 있는 방에서 첫 대화 메시지를 보낸 사람의 성별 |
+| 마지막 메시지 시점 | 방이 열린 때부터 마지막 대화 메시지까지를 첫째·둘째·셋째 날(24시간씩)로 나눈 것. 72시간 뒤는 끝나지 않은 방 등에서 나올 수 있다 |
 
 - 회차: 원본 매칭(1:1 `personal_match`, 그룹 `group_match`, 재매칭 `rematch`)의 퀴즈셋이 그 주 활성 셋인 방이다. 재매칭 방은 성사 뒤 처음 오는 금요일에 열리지만 원래 그룹의 퀴즈셋으로 센다. 그래서 매칭 장과 같은 회차에 잡히고 비활성 셋의 방은 빠진다.
 - 관리자가 든 방도 센다. 방을 빼면 상대 회원의 대화까지 빠지고, 관리자만 빼면 1:1 방이 한 사람 방이 되기 때문이다(#329). 운영에서 팀원 계정이 관리자로 매칭에 참여하고 있어 다른 장과 숫자가 어긋날 수 있다.
 - 재매칭은 따로 한 줄이고 1:1·그룹 합계에 넣지 않는다. 서로 원한 두 사람이라 수치가 높게 나온다. 매칭 유형 "전체"·"그룹"에서 보인다. 재매칭은 평가 제출로 뒤늦게 성사되어 지난 회차 숫자가 나중에 늘 수 있다.
 - 방 단위 지표라 성별·연령대·가입 주차 조건은 걸지 않는다. 매칭 유형은 화면이 그 유형 줄만 골라 그린다.
+- 메시지 지표는 대화 활동 합계처럼 재매칭 방을 넣지 않는다. 서버는 (방, 발신자 성별)마다 메시지 수와 첫·마지막 시각을 내리고, 방 단위 합계와 첫 발신자는 `stats-calc.js`가 가장 이른 성별 행으로 고른다.
+- 메시지 시각(`created_at`)은 실제 시각이고 방 열린 시각(`opens_at`)은 시각 조정을 따른다. 운영에서는 같지만, 시각을 옮긴 dev 에서는 걸린 시간이 어긋나고 음수면 "열린 시각 전(시각 조정)" 칸에 따로 센다.
 - 다른 장과 달리 서버가 방마다 한 행(참여자 수·보낸 사람 수)을 내린다. 방별 두 수를 묶은 분포는 쿼리가 복잡해져서, 비율은 `stats-calc.js`가 방 행으로 계산한다. 방 수는 회차당 많아야 수백이다.
 
 ## 평가
@@ -291,6 +297,18 @@ FROM (
     WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
 ) rooms
 GROUP BY source_type;
+
+-- 방마다 발신자 성별로 대화 메시지 수·첫·마지막 시각 (위 방 조건과 같다, 재매칭은 화면에서 뺀다)
+SELECT r.id, r.source_type, r.opens_at, m.gender, COUNT(*), MIN(msg.created_at), MAX(msg.created_at)
+FROM chat_room r
+LEFT JOIN personal_match pm ON r.source_type = 'PERSONAL' AND pm.id = r.source_id
+LEFT JOIN group_match gm ON r.source_type = 'GROUP' AND gm.id = r.source_id
+LEFT JOIN rematch rm ON r.source_type = 'REMATCH' AND rm.id = r.source_id
+JOIN quiz_set qs ON qs.id = COALESCE(pm.quiz_set_id, gm.quiz_set_id, rm.quiz_set_id) AND qs.is_active
+JOIN chat_message msg ON msg.room_id = r.id AND msg.message_type <> 'SYSTEM'
+LEFT JOIN member m ON m.id = msg.sender_id
+WHERE r.status <> 'SCHEDULED' AND qs.week_started_on = :monday
+GROUP BY r.id, r.source_type, r.opens_at, m.gender;
 
 -- 평가지 상태 (쓴 사람 기준)
 SELECT r.match_type, r.status, COUNT(*) FROM member_review r

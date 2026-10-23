@@ -45,4 +45,7 @@ interface ChatRoomRepositoryCustom {
 
     /** 그 회차에 열린 방마다 대화 메시지(SYSTEM 제외)를 보낸 사람 수. 비활성 퀴즈셋의 방과 메시지가 없는 방은 행이 없다. */
     fun countSendersPerOpenedRoomInWeek(weekStartedOn: LocalDate): List<ChatRoomSenderCount>
+
+    /** 그 회차에 열린 방마다 발신자 성별로 대화 메시지 수와 첫·마지막 메시지 시각. 메시지가 없는 방은 행이 없다. */
+    fun summarizeMessagesPerOpenedRoomInWeek(weekStartedOn: LocalDate): List<ChatRoomMessageSummary>
 }

@@ -7,6 +7,7 @@ import com.ditto.domain.chat.entity.QChatMessage.chatMessage
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
+import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.entity.QNotification.notification
@@ -133,6 +134,33 @@ class ChatRoomRepositoryImpl(
                 ChatRoomSenderCount(
                     roomId = row.get(chatRoom.id) ?: throw IllegalStateException("group by 키 id 가 비었다"),
                     count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    override fun summarizeMessagesPerOpenedRoomInWeek(weekStartedOn: LocalDate): List<ChatRoomMessageSummary> {
+        val countExpression = chatMessage.count()
+        val firstMessageAt = chatMessage.createdAt.min()
+        val lastMessageAt = chatMessage.createdAt.max()
+        return queryFactory
+            .select(chatRoom.id, chatRoom.opensAt, member.gender, countExpression, firstMessageAt, lastMessageAt)
+            .from(chatRoom)
+            .join(chatMessage).on(
+                chatMessage.roomId.eq(chatRoom.id),
+                chatMessage.messageType.ne(ChatMessageType.SYSTEM),
+            )
+            .leftJoin(member).on(member.id.eq(chatMessage.senderId))
+            .where(openedRoomInWeek(weekStartedOn))
+            .groupBy(chatRoom.id, chatRoom.opensAt, member.gender)
+            .fetch()
+            .map { row ->
+                ChatRoomMessageSummary(
+                    roomId = row.get(chatRoom.id) ?: throw IllegalStateException("group by 키 id 가 비었다"),
+                    opensAt = row.get(chatRoom.opensAt) ?: throw IllegalStateException("group by 키 opensAt 이 비었다"),
+                    senderGender = row.get(member.gender),
+                    messageCount = row.get(countExpression) ?: 0L,
+                    firstMessageAt = row.get(firstMessageAt) ?: throw IllegalStateException("첫 메시지 시각이 비었다"),
+                    lastMessageAt = row.get(lastMessageAt) ?: throw IllegalStateException("마지막 메시지 시각이 비었다"),
                 )
             }
     }

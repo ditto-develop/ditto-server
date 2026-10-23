@@ -292,7 +292,27 @@
     ];
 
     // 평가의 매칭 유형 키와 채팅방 유형 키(PERSONAL·GROUP)가 같아 그 라벨을 쓴다.
-    const renderChatSection = ({ memberReviewMatchTypeLabels, chatStats }) => {
+    const hourText = (hours) => `${hours.toFixed(1)}시간`;
+
+    const renderChatMessages = (chatStats, roomTypeLabels, genderLabels) => {
+        const messages = StatsCalc.chatMessageStats(chatStats, roomTypeLabels, genderLabels);
+        const options = { className: 'share-row wide-label-row', unit: '개' };
+        byId('chatMessageCountTitle').textContent = `방당 메시지 수 · 방 ${countText(messages.roomCount, '개')}`;
+        byId('chatMessageCountSummary').textContent = messages.averageMessageCount === null
+            ? ''
+            : `평균 ${messages.averageMessageCount.toFixed(1)}개 · 중앙값 ${messages.medianMessageCount.toFixed(1)}개`;
+        fillShares('chatMessageCountShares', messages.messageCountBins, options);
+        byId('chatFirstMessageTitle').textContent =
+            `첫 메시지까지 · 대화가 있는 방 ${countText(messages.messagedRoomCount, '개')}`;
+        byId('chatFirstMessageSummary').textContent = messages.medianFirstMessageHours === null
+            ? '대화가 있는 방이 없습니다.'
+            : `중앙값 ${hourText(messages.medianFirstMessageHours)}`;
+        fillShares('chatFirstMessageShares', messages.firstMessageBins, options);
+        fillShares('chatFirstSenderShares', messages.firstSenderGenderCounts, options);
+        fillShares('chatLastMessageShares', messages.lastMessageBins, options);
+    };
+
+    const renderChatSection = ({ genderLabels, memberReviewMatchTypeLabels, chatStats }) => {
         const activity = StatsCalc.chatActivity(chatStats, memberReviewMatchTypeLabels);
         showSectionIfAny('chat', activity.rows.some((row) => row.openedCount > 0));
 
@@ -307,6 +327,7 @@
         byId('chatAllSentHead').hidden = !showsAllSent;
         byId('chatRematchNote').hidden = !activity.rows.some((row) => row.isRematch);
         fillRows('chatByTypeRows', activity.rows, (row) => chatTypeCells(row, showsAllSent));
+        renderChatMessages(chatStats, memberReviewMatchTypeLabels, genderLabels);
     };
 
     const percentPointText = (value) => `${value.toFixed(1)}%p`;

@@ -77,6 +77,15 @@ const StatsCalc = (() => {
     }, new Map());
 
     const sumCounts = (countRows) => countRows.reduce((sum, countRow) => sum + countRow.count, 0);
+    const average = (values) =>
+        (values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length);
+    const median = (values) => {
+        if (values.length === 0) return null;
+        const sorted = [...values].sort((one, other) => one - other);
+        const middle = Math.floor(sorted.length / 2);
+        if (sorted.length % 2 === 1) return sorted[middle];
+        return (sorted[middle - 1] + sorted[middle]) / 2;
+    };
     const completedOnly = (progressCounts) => progressCounts.filter((countRow) => countRow.status === 'COMPLETED');
     // labels 순서대로 0이어도 한 행씩 낸다.
     const labeledCounts = (countsByKey, labels) =>
@@ -302,6 +311,88 @@ const StatsCalc = (() => {
         };
     };
 
+    const HOUR_MILLIS = 60 * 60 * 1000;
+    const toUtcDateTime = (dateTime) => new Date(`${dateTime.replace(' ', 'T')}Z`);
+    const hoursBetween = (from, to) => (toUtcDateTime(to) - toUtcDateTime(from)) / HOUR_MILLIS;
+    const MESSAGE_COUNT_BINS = [
+        { label: '0개', max: 0 },
+        { label: '1~9개', max: 9 },
+        { label: '10~49개', max: 49 },
+        { label: '50~99개', max: 99 },
+        { label: '100개 이상', max: Infinity },
+    ];
+    const FIRST_MESSAGE_HOUR_BINS = [
+        { label: '1시간 안', max: 1 },
+        { label: '1~6시간', max: 6 },
+        { label: '6~24시간', max: 24 },
+        { label: '24~48시간', max: 48 },
+        { label: '48시간 넘게', max: Infinity },
+    ];
+    // 방은 72시간 열린다.
+    const LAST_MESSAGE_HOUR_BINS = [
+        { label: '첫째 날', max: 24 },
+        { label: '둘째 날', max: 48 },
+        { label: '셋째 날', max: 72 },
+        { label: '72시간 뒤', max: Infinity },
+    ];
+    // 메시지 시각은 실제 시각이고 방 열린 시각은 시각 조정을 따라서, 시각을 옮긴 dev 에서는 음수가 나올 수 있다.
+    const BEFORE_OPEN_LABEL = '열린 시각 전(시각 조정)';
+
+    // 구간마다 max 이하이고 앞 구간 max 보다 큰 값을 센다. 음수는 맨 앞 칸에 따로 모은다.
+    const binCounts = (values, bins) => {
+        const beforeOpenCount = values.filter((value) => value < 0).length;
+        const counted = bins.map((bin, index) => {
+            const lowerExclusive = index === 0 ? -Infinity : bins[index - 1].max;
+            const inBin = (value) => value >= 0 && value > lowerExclusive && value <= bin.max;
+            return { label: bin.label, count: values.filter(inBin).length };
+        });
+        return beforeOpenCount > 0 ? [{ label: BEFORE_OPEN_LABEL, count: beforeOpenCount }, ...counted] : counted;
+    };
+
+    // 발신자 성별로 나뉜 행을 방마다 합치고, 가장 이른 행의 성별을 첫 발신자로 본다.
+    const roomMessageSummaries = (messageSummaries) =>
+        [...groupBy(messageSummaries, (summary) => summary.roomId).values()].map((genderRows) => {
+            const firstRow = genderRows
+                .reduce((earliest, row) => (row.firstMessageAt < earliest.firstMessageAt ? row : earliest));
+            const lastMessageAt = genderRows.map((row) => row.lastMessageAt).sort().at(-1);
+            return {
+                roomId: firstRow.roomId,
+                messageCount: genderRows.reduce((sum, row) => sum + row.messageCount, 0),
+                firstSenderGender: firstRow.senderGender,
+                firstMessageHours: hoursBetween(firstRow.opensAt, firstRow.firstMessageAt),
+                lastMessageHours: hoursBetween(firstRow.opensAt, lastMessageAt),
+            };
+        });
+
+    // 열린 방 기준이고 메시지가 없는 방은 0개로 센다. 재매칭 방은 대화 활동 합계처럼 넣지 않는다.
+    const chatMessageStats = (chatStats, roomTypeLabels, genderLabels) => {
+        const shownRoomIds = new Set(chatStats.chatRoomMemberCounts
+            .filter((row) => Object.hasOwn(roomTypeLabels, row.roomType))
+            .map((row) => row.roomId));
+        const messagedRooms = roomMessageSummaries(chatStats.messageSummaries)
+            .filter((room) => shownRoomIds.has(room.roomId));
+        const messageCounts = [
+            ...messagedRooms.map((room) => room.messageCount),
+            ...Array(shownRoomIds.size - messagedRooms.length).fill(0),
+        ];
+        const firstMessageHours = messagedRooms.map((room) => room.firstMessageHours);
+        const firstSenderCounts = countBy(messagedRooms, (room) => room.firstSenderGender);
+        return {
+            roomCount: shownRoomIds.size,
+            messagedRoomCount: messagedRooms.length,
+            averageMessageCount: average(messageCounts),
+            medianMessageCount: median(messageCounts),
+            messageCountBins: binCounts(messageCounts, MESSAGE_COUNT_BINS),
+            medianFirstMessageHours: median(firstMessageHours),
+            firstMessageBins: binCounts(firstMessageHours, FIRST_MESSAGE_HOUR_BINS),
+            firstSenderGenderCounts: [
+                ...labeledCounts(firstSenderCounts, genderLabels),
+                { label: GENDER_UNKNOWN_LABEL, count: firstSenderCounts.get(null) || 0 },
+            ],
+            lastMessageBins: binCounts(messagedRooms.map((room) => room.lastMessageHours), LAST_MESSAGE_HOUR_BINS),
+        };
+    };
+
     const choiceShare = (answerRows, choiceId) => {
         const choiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === choiceId));
         return percent(choiceCount, sumCounts(answerRows));
@@ -409,12 +500,6 @@ const StatsCalc = (() => {
     const SCORE_BIN_SIZE = 10;
     const LAST_SCORE_BIN = 9;
 
-    const medianOf = (sortedValues) => {
-        const middle = Math.floor(sortedValues.length / 2);
-        if (sortedValues.length % 2 === 1) return sortedValues[middle];
-        return (sortedValues[middle - 1] + sortedValues[middle]) / 2;
-    };
-
     // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다. 값이 있는 구간 사이만 보인다.
     const scoreSummary = (scores) => {
         if (scores.length === 0) return { count: 0, average: null, median: null, bins: [] };
@@ -429,8 +514,8 @@ const StatsCalc = (() => {
         });
         return {
             count: scores.length,
-            average: scores.reduce((sum, score) => sum + score, 0) / scores.length,
-            median: medianOf([...scores].sort((one, other) => one - other)),
+            average: average(scores),
+            median: median(scores),
             bins,
         };
     };
@@ -527,6 +612,7 @@ const StatsCalc = (() => {
         retentionCounts,
         completionDayCounts,
         trackSwitchCounts,
+        chatMessageStats,
         scoreSummary,
         matchScores,
         activeGroupSizeRows,
