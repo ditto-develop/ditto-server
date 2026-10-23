@@ -193,6 +193,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .question-block { padding: 14px 0; border-bottom: 1px solid var(--border); }
 .question-block:last-child { border-bottom: none; padding-bottom: 0; }
 .question-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.question-block .nowrap { white-space: nowrap; }
 .question-count { margin-left: 6px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
 
 /* Buttons */

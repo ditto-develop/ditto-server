@@ -75,6 +75,15 @@ describe('locationCounts', () => {
         ]);
     });
 
+    test('같은 수면 라벨 순이다', () => {
+        const rows = StatsCalc.locationCounts(
+            [{ location: 'JEJU', count: 1 }, { location: 'BUSAN', count: 1 }],
+            LOCATION_LABELS,
+        );
+
+        assert.deepEqual(rows.map((row) => row.label), ['부산', '제주']);
+    });
+
     test('미입력이 없으면 줄을 만들지 않는다', () => {
         const rows = StatsCalc.locationCounts([{ location: 'JEJU', count: 1 }], LOCATION_LABELS);
 
@@ -647,13 +656,17 @@ describe('sumCounts', () => {
 });
 
 describe('completionDayCounts', () => {
-    test('완주 시각을 월요일부터 일요일까지 요일별로 세고 없는 요일은 0이다', () => {
+    test('응답 기간인 월~수는 0이어도 나오고 그 밖의 요일은 완주가 있을 때만 붙는다', () => {
         const days = StatsCalc.completionDayCounts(
             ['2026-10-19 00:00:00', '2026-10-19 23:59:59', '2026-10-21 12:00:00', '2026-10-25 09:00:00'],
         );
 
-        assert.deepEqual(days.map((day) => day.label), ['월', '화', '수', '목', '금', '토', '일']);
-        assert.deepEqual(days.map((day) => day.count), [2, 0, 1, 0, 0, 0, 1]);
+        assert.deepEqual(days, [
+            { label: '월', count: 2 },
+            { label: '화', count: 0 },
+            { label: '수', count: 1 },
+            { label: '일', count: 1 },
+        ]);
     });
 });
 

@@ -23,6 +23,8 @@ const StatsCalc = (() => {
     const REMATCH_ROOM_TYPE = 'REMATCH';
     // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
     const MATCHING_BATCH_DAY_OFFSET = 3;
+    // 퀴즈 응답 기간(월~수, QuizResponsePeriod)과 맞춘다.
+    const RESPONSE_DAY_COUNT = 3;
     // 알림 유형 라벨은 어드민 화면에서만 써서 서버 enum 이 아니라 여기 둔다. 없는 유형은 enum 이름 그대로 보인다.
     const NOTIFICATION_TYPE_LABELS = {
         QUIZ_OPENED: '퀴즈 열림',
@@ -112,7 +114,7 @@ const StatsCalc = (() => {
                 label: locationLabels[countRow.location] || countRow.location,
                 count: countRow.count,
             }))
-            .sort((one, other) => other.count - one.count);
+            .sort((one, other) => other.count - one.count || one.label.localeCompare(other.label, 'ko'));
         return unknownCount > 0 ? [...knownRows, { label: LOCATION_UNKNOWN_LABEL, count: unknownCount }] : knownRows;
     };
 
@@ -373,11 +375,13 @@ const StatsCalc = (() => {
         return ratingScores.map((rating) => ({ label: `${rating}점`, count: countsByRating.get(rating) || 0 }));
     };
 
-    // 완주 시각은 마지막 답을 낸 시각이다. 월요일부터 일요일까지 0이어도 칸을 채운다.
+    // 응답 기간인 월~수는 0이어도 칸을 채우고, 그 밖의 요일은 완주가 있을 때만 붙는다(QA 시각 조정 등).
     const completionDayCounts = (completedAts) => {
         const mondayFirstDayIndexOf = (dateTime) => (toUtcDate(dateOf(dateTime)).getUTCDay() + 6) % 7;
         const countsByDay = countBy(completedAts, mondayFirstDayIndexOf);
-        return DAY_LABELS.map((label, index) => ({ label, count: countsByDay.get(index) || 0 }));
+        return DAY_LABELS
+            .map((label, index) => ({ label, count: countsByDay.get(index) || 0 }))
+            .filter((day, index) => index < RESPONSE_DAY_COUNT || day.count > 0);
     };
 
     // 지난 회차 유형은 조건으로 거른 라벨, 고른 회차 유형은 늘 두 유형 다 나온다.

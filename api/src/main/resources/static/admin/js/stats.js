@@ -83,7 +83,9 @@
 
     const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
-        byId('memberJoinedCountBasis').textContent = `가입 미완료 ${countText(totals.pending, '명')}은 빠짐`;
+        const pendingBasis = byId('memberJoinedCountBasis');
+        pendingBasis.hidden = totals.pending === 0;
+        pendingBasis.textContent = `가입 미완료 ${countText(totals.pending, '명')} 제외`;
         byId('memberCurrentCount').textContent = countText(totals.current, '명');
         byId('memberLeftCount').textContent = countText(totals.left, '명');
     };
@@ -116,26 +118,40 @@
     };
 
     const renderLeaveReasons = ({ leaveReasonCounts }) => {
-        const counts = StatsCalc.leaveReasonCounts(leaveReasonCounts);
-        byId('leaveReasonTitle').textContent = `탈퇴 사유 · ${countText(counts.leftCount, '명')}`;
+        const { leftCount, reasonCounts } = StatsCalc.leaveReasonCounts(leaveReasonCounts);
+        byId('leaveReasonTitle').textContent = `탈퇴 사유 · ${countText(leftCount, '명')}`;
+        if (leftCount === 0) {
+            byId('leaveReasonShares').replaceChildren(element('p', 'muted', '이 주에 탈퇴한 회원이 없습니다.'));
+            return;
+        }
         const options = { className: 'share-row wide-label-row stack-on-phone', unit: '명' };
-        byId('leaveReasonShares').replaceChildren(
-            ...counts.reasonCounts.map((row) => shareRow(row, counts.leftCount, options)),
-        );
+        byId('leaveReasonShares').replaceChildren(...reasonCounts.map((row) => shareRow(row, leftCount, options)));
     };
 
-    const renderMemberSection = ({
-        weekStartedOn, today, genderLabels, locationLabels, ageBandRanges, memberStats, quizStats,
-    }) => {
+    const activeRoundWeeksText = (roundWeeks) => {
+        if (roundWeeks.length === 0) return '최근 회차 없음';
+        return `최근 ${roundWeeks.length}회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
+    };
+
+    const renderAccountStatus = ({ countsByStatus, currentActiveRoundWeeks, recentlyCompletedActiveStatusCount }) => {
+        fillShares(
+            'accountStatusShares',
+            StatsCalc.accountStatusCounts(countsByStatus, recentlyCompletedActiveStatusCount),
+        );
+        byId('accountStatusNote').textContent =
+            `활성 = ${activeRoundWeeksText(currentActiveRoundWeeks)} 완주자. ` +
+            '퀴즈 참여 장의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
+            '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
+    };
+
+    const renderMemberSection = (
+        { weekStartedOn, today, genderLabels, locationLabels, ageBandRanges, memberStats },
+    ) => {
         const totals = StatsCalc.memberTotals(memberStats.countsByStatus);
         showSectionIfAny('member', totals.joined > 0);
         byId('statsToday').textContent = today;
-        byId('memberActiveRoundCount').textContent = quizStats.activeRoundCount;
         renderMemberTotals(totals);
-        fillShares(
-            'accountStatusShares',
-            StatsCalc.accountStatusCounts(memberStats.countsByStatus, memberStats.recentlyCompletedActiveStatusCount),
-        );
+        renderAccountStatus(memberStats);
         fillShares('locationShares', StatsCalc.locationCounts(memberStats.locationCounts, locationLabels));
         fillShares('genderShares', StatsCalc.genderCounts(memberStats.genderBirthDateCounts, genderLabels));
         renderAgeGenderTable(memberStats, genderLabels, ageBandRanges, today);
@@ -160,8 +176,7 @@
         showSectionIfAny('quiz', participation.startedCount > 0);
 
         byId('quizActiveRoundCount').textContent = activeRoundCount;
-        const activeRoundDates = activeRoundWeeks.map(shortDate).reverse().join('·');
-        byId('quizActiveRounds').textContent = `최근 ${activeRoundWeeks.length}회차(${activeRoundDates} 주)`;
+        byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
         renderQuizRates(participation, activeMemberCount);
         // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
         byId('quizMatchingTypeSharesCard').hidden = Object.keys(quizMatchingTypeLabels).length < 2;
@@ -242,25 +257,30 @@
 
     const percentPointText = (value) => `${value.toFixed(1)}%p`;
 
-    // 성별이 둘 이상 답했을 때만 첫 선택지 비율과 차이를 보인다.
+    // 응답이 적어도 차이가 커 보여서 성별마다 인원을 붙인다.
     const genderGapLine = (choices, genderShares) => {
-        if (genderShares.length < 2) return null;
         const shares = genderShares.map((genderShare) => genderShare.share);
         const sharesText = genderShares
-            .map((genderShare) => `${genderShare.label} ${genderShare.share.toFixed(1)}%`)
+            .map(({ label, share, answerCount }) => `${label} ${share.toFixed(1)}%(${countText(answerCount, '명')})`)
             .join(' · ');
-        const gap = Math.max(...shares) - Math.min(...shares);
-        return element('p', 'muted', `'${choices[0].label}' 선택 · ${sharesText} · 차이 ${percentPointText(gap)}`);
+        const line = element('p', 'muted', `'${choices[0].label}' 선택 · ${sharesText} · `);
+        line.append(element('span', 'nowrap', `차이 ${percentPointText(Math.max(...shares) - Math.min(...shares))}`));
+        return line;
     };
 
-    const questionBlock = ({ displayOrder, question, answerCount, choices, genderShares }) => {
+    const questionCountText = (answerCount, skew) => {
+        const skewText = skew === null ? '' : ` · 쏠림 ${percentPointText(skew)}`;
+        return `응답 ${countText(answerCount, '명')}${skewText}`;
+    };
+
+    const questionBlock = ({ displayOrder, question, answerCount, choices, skew, genderShares }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
-        title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
+        title.append(element('span', 'question-count', questionCountText(answerCount, skew)));
         const choiceRows = choices
             .map((choice) => shareRow(choice, answerCount, { className: 'share-row wide-label-row stack-on-phone' }));
-        const genderGap = genderGapLine(choices, genderShares);
-        block.append(title, ...choiceRows, ...(genderGap ? [genderGap] : []));
+        block.append(title, ...choiceRows);
+        if (genderShares.length >= 2) block.append(genderGapLine(choices, genderShares));
         return block;
     };
 
