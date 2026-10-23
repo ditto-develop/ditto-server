@@ -116,7 +116,10 @@ class AdminStatsWebTest(
                 )
                 .andExpect(
                     content().string(
-                        pageJsonContaining(""""locationCounts":[{"location":null,"count":1}],"leaveReasonCounts":[]"""),
+                        pageJsonContaining(
+                            """"locationCounts":[{"location":null,"count":1}],"leaveReasonCounts":[],""" +
+                                """"adminMemberCount":0""",
+                        ),
                     ),
                 )
         }
@@ -146,6 +149,7 @@ class AdminStatsWebTest(
                     ),
                 )
                 .andExpect(content().string(pageJsonContaining(""""completedAts":["""")))
+                .andExpect(content().string(pageJsonContaining(""""adminCompletedCount":0""")))
                 .andExpect(
                     content().string(
                         pageJsonContaining(

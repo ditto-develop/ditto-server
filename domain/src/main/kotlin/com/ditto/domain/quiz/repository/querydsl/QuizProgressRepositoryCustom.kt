@@ -43,6 +43,9 @@ interface QuizProgressRepositoryCustom {
         filter: MemberFilter,
     ): Long
 
+    /** 그 주 활성 셋을 완주한 관리자 계정 수. 지표에서 빠진 인원을 보여 주는 데 쓰고 회원 조건은 걸지 않는다. */
+    fun countAdminMembersCompletedInWeek(weekStartedOn: LocalDate): Long
+
     /** countMembersCompletedInWeeks 와 같은 회원 중 지금 ACTIVE 인 가입자 수. 매칭 유형은 따지지 않는다. */
     fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long
 }

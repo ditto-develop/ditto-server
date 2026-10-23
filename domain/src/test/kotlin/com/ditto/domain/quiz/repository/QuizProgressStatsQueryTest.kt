@@ -205,6 +205,19 @@ class QuizProgressStatsQueryTest(
         }
     }
 
+    "countAdminMembersCompletedInWeek" - {
+        "그 주 활성 셋을 완주한 관리자만 센다" {
+            val quizSet = saveQuizSet()
+            saveProgress(saveMember(role = MemberRole.ADMIN), quizSet)
+            saveProgress(saveMember(role = MemberRole.ADMIN), quizSet, completed = false)
+            saveProgress(saveMember(role = MemberRole.ADMIN), saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)))
+            saveProgress(saveMember(role = MemberRole.ADMIN), saveQuizSet(isActive = false))
+            saveProgress(saveMember(), quizSet)
+
+            quizProgressRepository.countAdminMembersCompletedInWeek(WEEK) shouldBe 1L
+        }
+    }
+
     "countActiveStatusMembersCompletedInWeeks" - {
         "여러 주에 완주한 회원은 한 번만 세고 지금 ACTIVE 가 아니거나 가입하지 않은 회원은 빼고 유형은 따지지 않는다" {
             val previousWeek = WEEK.minusWeeks(1)

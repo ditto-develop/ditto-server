@@ -1,5 +1,6 @@
 package com.ditto.domain.quiz.repository.querydsl
 
+import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
@@ -119,6 +120,17 @@ class QuizProgressRepositoryImpl(
             )
             .fetchOne() ?: 0L
     }
+
+    override fun countAdminMembersCompletedInWeek(weekStartedOn: LocalDate): Long =
+        queryFactory
+            .select(quizProgress.memberId.countDistinct())
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.role.eq(MemberRole.ADMIN),
+            )
+            .fetchOne() ?: 0L
 
     override fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long {
         if (roundWeeks.isEmpty()) return 0L

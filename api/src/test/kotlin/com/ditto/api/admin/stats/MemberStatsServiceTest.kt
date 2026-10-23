@@ -58,6 +58,7 @@ class MemberStatsServiceTest(
             val stats = memberStatsService.findStats(StatsFilter(), WEEK, TODAY)
 
             stats.countsByStatus shouldBe mapOf(MemberStatus.ACTIVE to 1L, MemberStatus.LEFT to 1L)
+            stats.adminMemberCount shouldBe 1L
             stats.genderBirthDateCounts shouldContainExactly listOf(
                 GenderBirthDateCount(Gender.MALE, LocalDate.of(2003, 1, 1), 1L),
             )

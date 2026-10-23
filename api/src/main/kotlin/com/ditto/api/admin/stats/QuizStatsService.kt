@@ -40,6 +40,7 @@ class QuizStatsService(
                 memberFilter,
             ),
             completedAts = quizAnswerRepository.findCompletedAtsInWeek(week.startedOn, quizMatchingType, memberFilter),
+            adminCompletedCount = quizProgressRepository.countAdminMembersCompletedInWeek(week.startedOn),
             choiceAnswerCounts = quizAnswerRepository.countAnswersPerChoiceInWeek(
                 week.startedOn,
                 quizMatchingType,

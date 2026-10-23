@@ -145,6 +145,19 @@
             '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
     };
 
+    // 팀원이 관리자 계정으로 실제 참여하면 숫자가 작게 보여서 빠진 인원을 알린다.
+    const renderAdminExcludedNotice = ({ memberStats, quizStats }) => {
+        const { adminMemberCount } = memberStats;
+        const { adminCompletedCount } = quizStats;
+        const notice = byId('adminExcludedNotice');
+        notice.hidden = adminMemberCount === 0;
+        const completedText = adminCompletedCount === 0
+            ? ''
+            : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
+        notice.textContent =
+            `관리자 계정 ${countText(adminMemberCount, '명')}은 채팅 장을 뺀 모든 지표에서 빠집니다.${completedText}`;
+    };
+
     const renderMemberSection = (
         { weekStartedOn, today, genderLabels, locationLabels, ageBandRanges, memberStats },
     ) => {
@@ -442,6 +455,7 @@
         ]);
     };
 
+    renderAdminExcludedNotice(pageData);
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);

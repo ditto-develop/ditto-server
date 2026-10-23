@@ -66,6 +66,7 @@
                 <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
             </div>
 
+            <p class="alert info" id="adminExcludedNotice" hidden></p>
             <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·매칭·채팅·평가·리텐션은 비어 있습니다.</p>
 
             <div class="qa-bar">

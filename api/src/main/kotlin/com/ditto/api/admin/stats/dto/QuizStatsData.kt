@@ -12,5 +12,6 @@ data class QuizStatsData(
     val activeMemberCount: Long,
     val activeMemberWithPushDeviceCount: Long,
     val completedAts: List<LocalDateTime>,
+    val adminCompletedCount: Long,
     val choiceAnswerCounts: List<ChoiceAnswerCount>,
 )

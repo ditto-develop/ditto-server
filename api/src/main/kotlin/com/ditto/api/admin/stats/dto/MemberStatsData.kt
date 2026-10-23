@@ -16,4 +16,5 @@ data class MemberStatsData(
     val genderBirthDateCounts: List<GenderBirthDateCount>,
     val locationCounts: List<LocationCount>,
     val leaveReasonCounts: List<LeaveReasonCount>,
+    val adminMemberCount: Long,
 )

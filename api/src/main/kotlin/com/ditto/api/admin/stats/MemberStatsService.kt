@@ -2,6 +2,8 @@ package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.stats.dto.MemberStatsData
 import com.ditto.api.admin.stats.dto.StatsFilter
+import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.system.OperationWeek
@@ -35,6 +37,7 @@ class MemberStatsService(
             genderBirthDateCounts = memberRepository.countCurrentMembersByGenderAndBirthDate(memberFilter),
             locationCounts = memberRepository.countCurrentMembersByLocation(memberFilter),
             leaveReasonCounts = memberRepository.countMembersLeftWithinByLeaveReason(week.dateTimeRange, memberFilter),
+            adminMemberCount = memberRepository.countByRoleAndStatusNot(MemberRole.ADMIN, MemberStatus.LEFT),
         )
     }
 

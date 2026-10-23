@@ -4,7 +4,7 @@
 
 ## 공통
 
-- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다.
+- **관리자 제외**: `role = ADMIN` 은 모든 지표에서 뺀다. 채팅만 예외다. 팀원이 관리자 계정으로 실제 퀴즈·매칭에 참여하면 숫자가 작게 보여서, 페이지 위에 탈퇴하지 않은 관리자 계정 수와 고른 회차에 퀴즈를 완주한 관리자 수를 알린다(#343). 이 둘은 회원 조건·매칭 유형을 걸지 않는다.
 - **기준일**: `ServerTimeProvider.now()`의 날짜. QA 시각 조정을 따른다. 화면 "오늘(…) 기준" 줄에 보인다.
 - **회차**: 그 주 월요일 00:00 ~ 다음 월요일 00:00. 번호는 활성 퀴즈셋이 있는 주를 오래된 순으로 센 값이라, 퀴즈셋을 지우거나 비활성으로 돌리거나 과거 주에 만들면 번호가 밀린다. 같은 주에 QA 용 비활성 셋이 있어도 매칭처럼 활성 셋만 본다.
 - **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
@@ -151,6 +151,13 @@
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
 
 ```sql
+-- 지표에서 빠진 관리자 (계정 수, 고른 회차 완주자)
+SELECT COUNT(*) FROM member WHERE role = 'ADMIN' AND status <> 'LEFT';
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN member m ON m.id = qp.member_id AND m.role = 'ADMIN'
+WHERE qp.status = 'COMPLETED';
+
 -- 누적 가입자·현재 회원·탈퇴·계정 상태 (PENDING 은 가입 미완료)
 SELECT status, COUNT(*) FROM member
 WHERE role = 'USER' AND (status = 'PENDING' OR joined_at IS NOT NULL)
