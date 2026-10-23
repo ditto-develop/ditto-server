@@ -39,7 +39,7 @@ internal class SendResultCallback(
 
         onResult(
             PushSendResult(
-                failureCodes = failures.map { (_, errorCode) -> codeOf(errorCode) },
+                failureCodes = failures.map { (_, errorCode) -> failureCodeOf(errorCode) },
                 deadTokens = unregistered.map { (token, _) -> token },
             ),
         )
@@ -49,16 +49,16 @@ internal class SendResultCallback(
     override fun onFailure(t: Throwable) {
         logger.warn(t) { "푸시 발송 실패 — 무시한다: type=${notificationType ?: "-"}, tokens=${tokens.size}개" }
         val errorCode = (t as? FirebaseMessagingException)?.messagingErrorCode
-        onResult(PushSendResult(failureCodes = tokens.map { codeOf(errorCode) }, deadTokens = emptyList()))
+        onResult(PushSendResult(failureCodes = tokens.map { failureCodeOf(errorCode) }, deadTokens = emptyList()))
     }
 
     private fun describe(failure: Pair<String, MessagingErrorCode?>): String {
         val (token, errorCode) = failure
-        return "${codeOf(errorCode)}(…${token.takeLast(TOKEN_LOG_SUFFIX_LENGTH)})"
+        return "${failureCodeOf(errorCode)}(…${token.takeLast(TOKEN_LOG_SUFFIX_LENGTH)})"
     }
 
     // 코드가 null 인 실패도 있다(SDK 가 모르는 새 에러 상태). "null" 이 찍히면 로깅 버그로 읽힌다.
-    private fun codeOf(errorCode: MessagingErrorCode?): String = errorCode?.name ?: UNKNOWN_CODE
+    private fun failureCodeOf(errorCode: MessagingErrorCode?): String = errorCode?.name ?: UNKNOWN_CODE
 
     companion object {
         /** 같은 회원의 기기를 구분할 정도만. 늘리면 토큰 자체가 로그에 남는 쪽으로 기운다. */

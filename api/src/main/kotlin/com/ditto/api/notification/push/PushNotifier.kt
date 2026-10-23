@@ -53,44 +53,63 @@ class PushNotifier(
         runCatchingExceptions {
             val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
-            notifications.forEach { notification ->
-                if (notification.memberId in mutedMemberIds) {
-                    saveHistory(PushSendHistory.skipped(notification, PushSkipReason.MUTED))
-                    return@forEach
-                }
-                send(notification, deepLink)
-            }
+            val plans = notifications.map { planOf(it, mutedMemberIds) }
+            val (sendPlans, skipPlans) = plans.partition { it.skipReason == null }
+            saveHistories(
+                skipPlans.mapNotNull { plan -> plan.skipReason?.let { PushSendHistory.skipped(plan.notification, it) } },
+            )
+            sendAll(sendPlans, deepLink)
         }.onFailure {
             logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
         }
     }
 
-    private fun send(notification: Notification, deepLink: String?) {
+    // 방 알림 → 알림 토글 → 기기 순서로 본다. 앞에서 걸리면 뒤는 조회하지 않는다.
+    private fun planOf(notification: Notification, mutedMemberIds: Set<Long>): PushPlan {
+        if (notification.memberId in mutedMemberIds) {
+            return PushPlan(notification, PushSkipReason.MUTED)
+        }
         if (!allowsPush(notification)) {
-            saveHistory(PushSendHistory.skipped(notification, PushSkipReason.TOGGLE_OFF))
-            return
+            return PushPlan(notification, PushSkipReason.TOGGLE_OFF)
         }
         val tokens = memberDeviceRepository.findAllByMemberId(notification.memberId).map { it.token }
         if (tokens.isEmpty()) {
-            saveHistory(PushSendHistory.skipped(notification, PushSkipReason.NO_DEVICE))
+            return PushPlan(notification, PushSkipReason.NO_DEVICE)
+        }
+        return PushPlan(notification, skipReason = null, tokens = tokens)
+    }
+
+    // 응답마다 저장하면 전원 발송 때 FCM 스레드가 알림 수만큼 커넥션을 잡아서, 응답을 모아 한 번에 저장한다.
+    private fun sendAll(sendPlans: List<PushPlan>, deepLink: String?) {
+        if (sendPlans.isEmpty()) {
             return
         }
-
-        // 회원당 기기는 몇 개라 FCM 응답은 한 번 온다(500개를 넘어야 나눠 보낸다).
-        pushSender.send(buildMessage(notification, tokens, deepLink)) { result ->
-            if (result.deadTokens.isNotEmpty()) {
-                pushDeadDeviceCleaner.clean(result.deadTokens)
+        val collector = PushSendHistoryCollector(sendPlans.size, ::saveHistories)
+        sendPlans.forEach { plan ->
+            pushSender.send(buildMessage(plan.notification, plan.tokens, deepLink)) { result ->
+                collector.add(PushSendHistory.sent(plan.notification, plan.tokens.size, result.failureCodes))
+                cleanDeadTokens(result.deadTokens)
             }
-            saveHistory(
-                PushSendHistory.sent(notification, deviceCount = tokens.size, failureCodes = result.failureCodes),
-            )
         }
     }
 
-    // 이력을 못 남겨도 발송은 그대로 간다. FCM 응답 스레드에서도 불려서 예외를 밖으로 내지 않는다.
-    private fun saveHistory(history: PushSendHistory) {
-        runCatchingExceptions { pushSendHistoryRepository.save(history) }.onFailure {
-            logger.warn(it) { "푸시 발송 이력 저장 실패 — 무시한다: notificationId=${history.notificationId}" }
+    // FCM 응답 스레드에서 불리므로 예외를 밖으로 내지 않는다.
+    private fun cleanDeadTokens(deadTokens: List<String>) {
+        if (deadTokens.isEmpty()) {
+            return
+        }
+        runCatchingExceptions { pushDeadDeviceCleaner.clean(deadTokens) }.onFailure {
+            logger.warn(it) { "무효 토큰 정리 실패 — 무시한다: ${deadTokens.size}개" }
+        }
+    }
+
+    // 이력을 못 남겨도 발송은 그대로 간다.
+    private fun saveHistories(histories: List<PushSendHistory>) {
+        if (histories.isEmpty()) {
+            return
+        }
+        runCatchingExceptions { pushSendHistoryRepository.saveAll(histories) }.onFailure {
+            logger.warn(it) { "푸시 발송 이력 저장 실패 — 무시한다: ${histories.size}건" }
         }
     }
 
@@ -146,6 +165,12 @@ class PushNotifier(
         NotificationType.CHAT_ENDING_SOON, NotificationType.QUIZ_CLOSING_SOON -> Duration.ofHours(6)
         else -> null
     }
+
+    private data class PushPlan(
+        val notification: Notification,
+        val skipReason: PushSkipReason?,
+        val tokens: List<String> = emptyList(),
+    )
 
     companion object {
         private val logger = KotlinLogging.logger {}
