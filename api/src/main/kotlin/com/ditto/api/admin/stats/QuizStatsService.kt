@@ -34,6 +34,11 @@ class QuizStatsService(
                 quizMatchingType,
                 memberFilter,
             ),
+            activeMemberWithPushDeviceCount = quizProgressRepository.countMembersCompletedInWeeksWithPushDevice(
+                activeRoundWeeks,
+                quizMatchingType,
+                memberFilter,
+            ),
             choiceAnswerCounts = quizAnswerRepository.countAnswersPerChoiceInWeek(
                 week.startedOn,
                 quizMatchingType,

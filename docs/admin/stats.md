@@ -113,6 +113,21 @@
 - 신고하면서 함께 건 차단(`UserReportService`)도 같은 테이블이라 센다.
 - 회원 조건과 매칭 유형은 신고와 같이 차단된 사람에게 건다. 관리자가 차단된 건은 뺀다.
 
+## 알림
+
+| 블록 | 세는 것 |
+|---|---|
+| 알림 | 고른 회차 주(월~일, 실제 시각)에 남은 푸시 발송 이력(`push_send_history`) 건수. 알림 한 건이 한 행이다 |
+| 보냄·건너뜀 | 건너뛴 이유(`skip_reason`)가 비었으면 보낸 것, 있으면 건너뛴 것(채팅방 알림 꺼짐·알림 설정 꺼짐·등록된 기기 없음) |
+| 실패율 | 보낸 알림 중 실패 기기가 하나라도 있는 알림 ÷ 보낸 알림 |
+| 푸시 토큰 등록률 | 퀴즈 참여 장의 활성 회원 중 지금 기기 토큰(`member_device`)이 있는 회원 ÷ 활성 회원 |
+
+- 이력은 기록을 시작한 뒤(#339 배포)부터 쌓여서 그 전 회차는 비어 있다. 180일 뒤 지워진다.
+- 실패는 FCM 이 받지 않은 것이다. 기기에 실제로 떴는지는 모른다. iOS 알림 권한을 끈 기기도 보낸 것으로 센다.
+- 발송 건수는 매칭 유형과 관계가 없어 매칭 유형으로 거르지 않는다. 회원 조건은 받는 회원에게 건다. 관리자에게 간 알림은 뺀다.
+- 토큰 등록률은 회차가 아니라 지금 토큰 기준이다. 분모가 퀴즈 참여 장의 활성 회원이라 매칭 유형 조건도 같이 걸린다.
+- 알림 유형 라벨은 어드민 화면에서만 쓰여서 서버 enum 이 아니라 `stats-calc.js`에 둔다. 새 유형을 더하면 거기도 더한다. 빠지면 enum 이름 그대로 보인다.
+
 ## 손으로 대조하기
 
 필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다.
@@ -234,6 +249,19 @@ FROM member_report r
 JOIN member m ON m.id = r.reported_member_id AND m.role = 'USER'
 WHERE r.created_at >= :monday AND r.created_at < :monday + INTERVAL 7 DAY;
 
+-- 알림 발송 이력 (받는 회원 기준). skip_reason 이 NULL 이면 보낸 것, failed_device_count > 0 이면 실패
+SELECT h.notification_type, h.skip_reason, h.failed_device_count > 0 AS failed, COUNT(*) FROM push_send_history h
+JOIN member m ON m.id = h.member_id AND m.role = 'USER'
+WHERE h.created_at >= :monday AND h.created_at < :monday + INTERVAL 7 DAY
+GROUP BY h.notification_type, h.skip_reason, failed;
+
+-- 푸시 토큰 등록률 분자 (:rounds 는 활성 회원 SQL 과 같은 회차들)
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED'
+  AND EXISTS (SELECT 1 FROM member_device d WHERE d.member_id = qp.member_id);
+
 -- 차단 수 (차단된 사람 기준)
 SELECT COUNT(*) FROM member_block b
 JOIN member m ON m.id = b.blocked_member_id AND m.role = 'USER'
@@ -259,6 +287,7 @@ GROUP BY DATE(joined_at);
 | 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
 | 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333) |
 | 차단 | QA 콘솔 신고에서 "더미가 이 회원도 사용자 차단"을 체크해 신고, 또는 앱에서 테스트 계정으로 차단 | 콘솔로 하면 신고 장도 같이 는다. 같은 상대에게 검토 대기 신고가 있으면 다시 신고할 수 없어 다른 더미로 한다. 이미 차단한 쌍이면 차단 수는 그대로다. 차단 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다. 매칭 유형 조건까지 보려면 실제 날짜 주의 활성 셋으로 더미를 만든다 |
+| 알림 | 테스트 계정(USER, 앱에 로그인해 토큰 등록)과 더미에게 알림이 가는 동작을 한다. 예: 퀴즈 오픈, 매칭 실행, QA 콘솔에서 1:1 신청 | 더미는 기기 토큰이 없어 "등록된 기기 없음"으로 건너뛴 것으로 남는다. 로컬(`local` 프로필)은 가짜 발송기라 늘 성공으로 남는다. 이력 시각은 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
 | 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |
 
 더미 정리를 하면 더미의 진행·답·평가·신고와 함께 더미가 낀 방의 테스트 계정 평가, 테스트 계정이 더미를 신고한 건도 지워져 지난 회차 숫자가 바뀐다. 매칭·채팅·차단도 줄어든다. 더미가 낀 후보·1:1 매칭, 더미가 초대된 그룹(테스트 계정 초대까지), 그 매칭에서 나온 방, 더미가 하거나 받은 차단이 지워진다.

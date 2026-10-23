@@ -5,6 +5,8 @@ import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.notification.MemberDeviceFixture
+import com.ditto.domain.notification.repository.MemberDeviceRepository
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
@@ -24,6 +26,7 @@ class QuizProgressStatsQueryTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
+    private val memberDeviceRepository: MemberDeviceRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -155,6 +158,31 @@ class QuizProgressStatsQueryTest(
 
         "주 목록이 비면 0이다" {
             quizProgressRepository.countMembersCompletedInWeeks(emptyList(), null, MemberFilter.NONE) shouldBe 0L
+        }
+    }
+
+    "countMembersCompletedInWeeksWithPushDevice" - {
+        "완주한 회원 중 기기 토큰이 있는 회원만 한 번씩 센다" {
+            val quizSet = saveQuizSet()
+            val twoDevices = saveMember()
+            val noDevice = saveMember()
+            listOf(twoDevices, noDevice).forEach { saveProgress(it, quizSet) }
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = twoDevices, token = "token-1"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = twoDevices, token = "token-2"))
+
+            quizProgressRepository.countMembersCompletedInWeeksWithPushDevice(
+                listOf(WEEK),
+                null,
+                MemberFilter.NONE,
+            ) shouldBe 1L
+        }
+
+        "주 목록이 비면 0이다" {
+            quizProgressRepository.countMembersCompletedInWeeksWithPushDevice(
+                emptyList(),
+                null,
+                MemberFilter.NONE,
+            ) shouldBe 0L
         }
     }
 })

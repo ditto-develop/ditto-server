@@ -450,6 +450,53 @@ describe('retentionCounts', () => {
     });
 });
 
+describe('pushSendCounts', () => {
+    const SKIP_REASON_LABELS = { MUTED: '채팅방 알림 꺼짐', TOGGLE_OFF: '알림 설정 꺼짐', NO_DEVICE: '등록된 기기 없음' };
+    const historyCount = (notificationType, skipReason, deviceCount, failedDeviceCount, count) =>
+        ({ notificationType, skipReason, deviceCount, failedDeviceCount, count });
+    const HISTORY_COUNTS = [
+        historyCount('CHAT_MESSAGE', null, 1, 0, 5),
+        historyCount('CHAT_MESSAGE', null, 2, 1, 1),
+        historyCount('CHAT_MESSAGE', 'MUTED', 0, 0, 2),
+        historyCount('MATCH_RESULT', null, 1, 1, 1),
+        historyCount('MATCH_RESULT', 'NO_DEVICE', 0, 0, 3),
+    ];
+
+    test('건너뛴 이유가 없으면 보냄이고 실패 기기가 하나라도 있으면 실패다', () => {
+        const counts = StatsCalc.pushSendCounts(HISTORY_COUNTS, SKIP_REASON_LABELS);
+
+        assert.equal(counts.notificationCount, 12);
+        assert.equal(counts.sentCount, 7);
+        assert.equal(counts.failedCount, 2);
+        assert.equal(counts.skippedCount, 5);
+    });
+
+    test('유형별 줄은 알림이 많은 순이고 라벨이 붙는다', () => {
+        const counts = StatsCalc.pushSendCounts(HISTORY_COUNTS, SKIP_REASON_LABELS);
+
+        assert.deepEqual(counts.typeRows, [
+            { label: '새 메시지', notificationCount: 8, sentCount: 6, failedCount: 1, skippedCount: 2 },
+            { label: '매칭 결과', notificationCount: 4, sentCount: 1, failedCount: 1, skippedCount: 3 },
+        ]);
+    });
+
+    test('건너뛴 이유는 라벨 순서대로 0이어도 나온다', () => {
+        const counts = StatsCalc.pushSendCounts(HISTORY_COUNTS, SKIP_REASON_LABELS);
+
+        assert.deepEqual(counts.skipReasonCounts, [
+            { label: '채팅방 알림 꺼짐', count: 2 },
+            { label: '알림 설정 꺼짐', count: 0 },
+            { label: '등록된 기기 없음', count: 3 },
+        ]);
+    });
+
+    test('라벨이 없는 유형은 enum 이름 그대로 보인다', () => {
+        const counts = StatsCalc.pushSendCounts([historyCount('NEW_TYPE', null, 1, 0, 1)], SKIP_REASON_LABELS);
+
+        assert.equal(counts.typeRows[0].label, 'NEW_TYPE');
+    });
+});
+
 describe('memberReportCounts', () => {
     const reasonLabels = { MONEY_DEMAND: '금전 요구', ETC: '기타' };
     const statusLabels = { RECEIVED: '검토 대기', REJECTED: '기각' };

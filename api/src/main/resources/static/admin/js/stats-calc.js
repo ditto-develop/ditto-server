@@ -10,6 +10,31 @@ const StatsCalc = (() => {
     const REMATCH_ROOM_TYPE = 'REMATCH';
     // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
     const MATCHING_BATCH_DAY_OFFSET = 3;
+    const NOTIFICATION_TYPE_LABELS = {
+        QUIZ_OPENED: '퀴즈 오픈',
+        QUIZ_CLOSING_SOON: '퀴즈 마감 임박',
+        MATCH_RESULT: '매칭 결과',
+        NO_MATCH: '매칭 없음',
+        GROUP_FORMED: '그룹 성사',
+        GROUP_NOT_FORMED: '그룹 미성사',
+        REMATCH_REQUESTED: '재매칭 신청',
+        REMATCH_REJECTED: '재매칭 불발',
+        REMATCH_MATCHED: '재매칭 성사',
+        MATCH_REQUESTED: '1:1 대화 신청',
+        MATCH_ACCEPTED: '1:1 신청 수락',
+        MATCH_REJECTED: '1:1 신청 거절',
+        REVIEW_REQUEST: '평가 요청',
+        REVIEW_REMINDER: '평가 리마인드',
+        CHAT_ROOM_OPENED: '채팅방 오픈',
+        CHAT_MESSAGE: '새 메시지',
+        CHAT_NO_MESSAGE: '첫 메시지 리마인드',
+        CHAT_ENDING_SOON: '채팅 종료 임박',
+        VOTE_CREATED: '투표 시작',
+        VOTE_CLOSED: '투표 마감',
+        SYSTEM_NOTICE: '시스템 공지',
+        REPORT_ACTIONED: '신고 처리',
+        SANCTION_IMPOSED: '제재',
+    };
 
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
     const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
@@ -278,6 +303,33 @@ const StatsCalc = (() => {
         };
     };
 
+    // 실패는 보낸 기기 중 하나라도 실패한 알림이다. 건너뛴 이유가 비었으면 보낸 것이다.
+    const pushSendCountsOf = (historyCounts) => {
+        const sentRows = historyCounts.filter((countRow) => countRow.skipReason === null);
+        return {
+            notificationCount: sumCounts(historyCounts),
+            sentCount: sumCounts(sentRows),
+            failedCount: sumCounts(sentRows.filter((countRow) => countRow.failedDeviceCount > 0)),
+            skippedCount: sumCounts(historyCounts.filter((countRow) => countRow.skipReason !== null)),
+        };
+    };
+
+    // 유형 라벨은 어드민 화면에서만 쓰여서 서버 enum 이 아니라 여기 둔다. 없는 유형은 enum 이름 그대로 보인다.
+    const pushSendCounts = (historyCounts, skipReasonLabels) => {
+        const typeRows = [...groupBy(historyCounts, (countRow) => countRow.notificationType).entries()]
+            .map(([notificationType, rows]) => ({
+                label: NOTIFICATION_TYPE_LABELS[notificationType] || notificationType,
+                ...pushSendCountsOf(rows),
+            }))
+            .sort((one, other) => other.notificationCount - one.notificationCount);
+        const skippedRows = historyCounts.filter((countRow) => countRow.skipReason !== null);
+        return {
+            ...pushSendCountsOf(historyCounts),
+            typeRows,
+            skipReasonCounts: labeledCounts(sumCountsBy(skippedRows, (countRow) => countRow.skipReason), skipReasonLabels),
+        };
+    };
+
     const memberReportCounts = (memberReportCountRows, reasonLabels, statusLabels) => {
         const countsByStatus = sumCountsBy(memberReportCountRows, (countRow) => countRow.status);
         const countsByReason = new Map(Object.keys(reasonLabels).map((reason) => [
@@ -319,6 +371,7 @@ const StatsCalc = (() => {
         ratingCounts,
         retentionCounts,
         memberReportCounts,
+        pushSendCounts,
     };
 })();
 

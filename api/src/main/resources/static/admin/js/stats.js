@@ -335,6 +335,34 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
+    // 토큰 등록률의 분모는 퀴즈 참여 장의 활성 회원과 같다.
+    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
+        fillRateCard('pushDeviceRate', {
+            part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
+        });
+    };
+
+    const renderPushSendSection = ({ quizStats, pushSendHistoryCounts, pushSkipReasonLabels }) => {
+        renderPushDeviceRate(quizStats);
+        const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);
+        showSectionIfAny('pushSend', counts.notificationCount > 0);
+
+        byId('pushNotificationCount').textContent = countText(counts.notificationCount, '건');
+        byId('pushNotificationCountBasis').textContent =
+            `보냄 ${countText(counts.sentCount, '건')} · 건너뜀 ${countText(counts.skippedCount, '건')}`;
+        fillRateCard('pushFailureRate', {
+            part: counts.failedCount, whole: counts.sentCount, unit: '건', wholeLabel: '보냄',
+        });
+        fillRows('pushSendByTypeRows', counts.typeRows, (row) => [
+            cell(row.label),
+            countCell(row.notificationCount),
+            countCell(row.sentCount),
+            countCell(row.failedCount),
+            countCell(row.skippedCount),
+        ]);
+        fillShares('pushSkipReasonShares', counts.skipReasonCounts, { className: 'share-row wide-label-row', unit: '건' });
+    };
+
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
@@ -344,4 +372,5 @@
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
     renderMemberBlockSection(pageData);
+    renderPushSendSection(pageData);
 })();
