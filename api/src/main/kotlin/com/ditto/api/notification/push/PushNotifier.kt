@@ -53,7 +53,7 @@ class PushNotifier(
         runCatchingExceptions {
             val deepLink = notificationDeepLinks.deepLinkFor(first)
             val mutedMemberIds = mutedMemberIdsOf(first)
-            val plans = notifications.map { planOf(it, mutedMemberIds) }
+            val plans = notifications.mapNotNull { planOrNullOf(it, mutedMemberIds) }
             val (sendPlans, skipPlans) = plans.partition { it.skipReason == null }
             saveHistories(
                 skipPlans.mapNotNull { plan -> plan.skipReason?.let { PushSendHistory.skipped(plan.notification, it) } },
@@ -63,6 +63,12 @@ class PushNotifier(
             logger.warn(it) { "푸시 준비 실패 — 무시한다: type=${first.type}, targetId=${first.targetId}" }
         }
     }
+
+    // 한 명 조회가 실패해도 나머지 수신자에게는 보낸다.
+    private fun planOrNullOf(notification: Notification, mutedMemberIds: Set<Long>): PushPlan? =
+        runCatchingExceptions { planOf(notification, mutedMemberIds) }
+            .onFailure { logger.warn(it) { "푸시 준비 실패 — 이 알림만 건너뛴다: notificationId=${notification.id}" } }
+            .getOrNull()
 
     // 방 알림 → 알림 토글 → 기기 순서로 본다. 앞에서 걸리면 뒤는 조회하지 않는다.
     private fun planOf(notification: Notification, mutedMemberIds: Set<Long>): PushPlan {
@@ -85,11 +91,21 @@ class PushNotifier(
             return
         }
         val collector = PushSendHistoryCollector(sendPlans.size, ::saveHistories)
-        sendPlans.forEach { plan ->
+        sendPlans.forEach { plan -> send(plan, deepLink, collector) }
+    }
+
+    // 보내기 전에 실패해도 수집기의 응답 수는 채워야 나머지 이력이 저장된다. 그래서 모든 기기 실패로 남긴다.
+    private fun send(plan: PushPlan, deepLink: String?, collector: PushSendHistoryCollector) {
+        runCatchingExceptions {
             pushSender.send(buildMessage(plan.notification, plan.tokens, deepLink)) { result ->
-                collector.add(PushSendHistory.sent(plan.notification, plan.tokens.size, result.failureCodes))
                 cleanDeadTokens(result.deadTokens)
+                collector.add(PushSendHistory.sent(plan.notification, plan.tokens.size, result.failureCodes))
             }
+        }.onFailure {
+            logger.warn(it) { "푸시 발송 실패 — 모든 기기 실패로 남긴다: notificationId=${plan.notification.id}" }
+            collector.add(
+                PushSendHistory.sent(plan.notification, plan.tokens.size, plan.tokens.map { SEND_ERROR_CODE }),
+            )
         }
     }
 
@@ -173,6 +189,7 @@ class PushNotifier(
     )
 
     companion object {
+        private const val SEND_ERROR_CODE = "SEND_ERROR"
         private val logger = KotlinLogging.logger {}
     }
 }

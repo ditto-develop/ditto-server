@@ -64,12 +64,14 @@ class PushNotifierTest : FreeSpec({
         unreadCount: Long = 3L,
         roomMembers: List<ChatRoomMember> = emptyList(),
         historySaveFails: Boolean = false,
+        deviceLookupFailsFor: Long? = null,
     ): Fixture {
         val settingRepository = mockk<MemberNotificationSettingRepository> {
             every { findByMemberId(any()) } returns setting
         }
         val deviceRepository = mockk<MemberDeviceRepository> {
             every { findAllByMemberId(any()) } answers {
+                if (firstArg<Long>() == deviceLookupFailsFor) throw RuntimeException("db down")
                 deviceTokens.map { MemberDeviceFixture.create(memberId = firstArg(), token = it) }
             }
         }
@@ -423,6 +425,43 @@ class PushNotifierTest : FreeSpec({
             history.deviceCount shouldBe 2
             history.failedDeviceCount shouldBe 1
             history.failureCodes shouldBe "UNAVAILABLE"
+        }
+
+        "한 명 조회가 실패해도 나머지 수신자에게는 보낸다" {
+            val fixture = fixture(room = ChatRoomFixture.personal(), deviceLookupFailsFor = MEMBER_ID)
+            val messages = mutableListOf<PushMessage>()
+            every { fixture.pushSender.send(capture(messages), any()) } returns Unit
+
+            fixture.notifier.pushAll(
+                listOf(
+                    notification(NotificationType.CHAT_MESSAGE),
+                    notification(NotificationType.CHAT_MESSAGE, memberId = MEMBER_ID + 1, id = 8822L),
+                ),
+            )
+
+            messages.map { it.data["notificationId"] } shouldBe listOf("8822")
+        }
+
+        "발송 호출이 실패한 알림은 모든 기기 실패로 남기고 다른 알림 이력도 저장한다" {
+            val fixture = fixture(deviceTokens = listOf("token-1", "token-2"), room = ChatRoomFixture.personal())
+            val callbacks = mutableListOf<(PushSendResult) -> Unit>()
+            every { fixture.pushSender.send(match { it.data["notificationId"] == "8821" }, any()) } throws
+                RuntimeException("firebase down")
+            every { fixture.pushSender.send(match { it.data["notificationId"] == "8822" }, capture(callbacks)) } returns
+                Unit
+
+            fixture.notifier.pushAll(
+                listOf(
+                    notification(NotificationType.CHAT_MESSAGE),
+                    notification(NotificationType.CHAT_MESSAGE, memberId = MEMBER_ID + 1, id = 8822L),
+                ),
+            )
+            callbacks.single()(PushSendResult(failureCodes = emptyList(), deadTokens = emptyList()))
+
+            val failed = fixture.savedHistories.single { it.notificationId == 8821L }
+            failed.failedDeviceCount shouldBe 2
+            failed.failureCodes shouldBe "SEND_ERROR"
+            fixture.savedHistories.single { it.notificationId == 8822L }.failedDeviceCount shouldBe 0
         }
 
         "이력 저장이 실패해도 푸시는 나가고 예외가 밖으로 나가지 않는다" {
