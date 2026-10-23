@@ -129,6 +129,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.`in`(roundWeeks),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.status.eq(MemberStatus.ACTIVE),
+                member.joinedAt.isNotNull,
                 member.nonAdminMatching(filter),
             )
             .fetchOne() ?: 0L

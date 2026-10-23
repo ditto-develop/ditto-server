@@ -19,6 +19,7 @@ import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val WEEK = LocalDate.of(2026, 10, 19)
@@ -37,6 +38,7 @@ class QuizProgressStatsQueryTest(
         gender: Gender? = Gender.MALE,
         role: MemberRole = MemberRole.USER,
         status: MemberStatus = MemberStatus.ACTIVE,
+        joinedAt: LocalDateTime? = LocalDateTime.of(2026, 10, 1, 12, 0),
     ): Long {
         memberIndex += 1
         val nickname = "m$memberIndex"
@@ -47,6 +49,7 @@ class QuizProgressStatsQueryTest(
                 gender = gender,
                 role = role,
                 status = status,
+                joinedAt = joinedAt,
             ),
         ).id
     }
@@ -203,7 +206,7 @@ class QuizProgressStatsQueryTest(
     }
 
     "countActiveStatusMembersCompletedInWeeks" - {
-        "여러 주에 완주한 회원은 한 번만 세고 지금 ACTIVE 가 아닌 회원은 빼고 유형은 따지지 않는다" {
+        "여러 주에 완주한 회원은 한 번만 세고 지금 ACTIVE 가 아니거나 가입하지 않은 회원은 빼고 유형은 따지지 않는다" {
             val previousWeek = WEEK.minusWeeks(1)
             val oneToOne = saveQuizSet()
             val group = saveQuizSet(weekStartedOn = previousWeek, matchingType = MatchingType.GROUP)
@@ -214,6 +217,7 @@ class QuizProgressStatsQueryTest(
             saveProgress(saveMember(status = MemberStatus.SUSPENDED), oneToOne)
             saveProgress(saveMember(), oneToOne, completed = false)
             saveProgress(saveMember(role = MemberRole.ADMIN), oneToOne)
+            saveProgress(saveMember(joinedAt = null), oneToOne)
 
             quizProgressRepository.countActiveStatusMembersCompletedInWeeks(
                 listOf(WEEK, previousWeek),

@@ -164,7 +164,7 @@ ORDER BY week_started_on DESC LIMIT 4;
 -- 계정 상태의 활성 (:recent_rounds 는 위 회차들)
 SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
-JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE'
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE' AND m.joined_at IS NOT NULL
 WHERE qs.week_started_on IN (:recent_rounds) AND qp.status = 'COMPLETED';
 
 -- 지역 (현재 회원)

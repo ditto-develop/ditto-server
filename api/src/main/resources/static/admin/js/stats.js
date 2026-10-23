@@ -120,8 +120,9 @@
     const renderLeaveReasons = ({ leaveReasonCounts }) => {
         const { leftCount, reasonCounts } = StatsCalc.leaveReasonCounts(leaveReasonCounts);
         byId('leaveReasonTitle').textContent = `탈퇴 사유 · ${countText(leftCount, '명')}`;
+        byId('leaveReasonEmpty').hidden = leftCount > 0;
         if (leftCount === 0) {
-            byId('leaveReasonShares').replaceChildren(element('p', 'muted', '이 주에 탈퇴한 회원이 없습니다.'));
+            byId('leaveReasonShares').replaceChildren();
             return;
         }
         const options = { className: 'share-row wide-label-row stack-on-phone', unit: '명' };
@@ -257,14 +258,20 @@
 
     const percentPointText = (value) => `${value.toFixed(1)}%p`;
 
-    // 응답이 적어도 차이가 커 보여서 성별마다 인원을 붙인다.
+    // 응답이 적어도 차이가 커 보여서 성별마다 응답자 수를 붙인다. 조각마다 줄이 갈리지 않게 묶는다.
     const genderGapLine = (choices, genderShares) => {
         const shares = genderShares.map((genderShare) => genderShare.share);
-        const sharesText = genderShares
-            .map(({ label, share, answerCount }) => `${label} ${share.toFixed(1)}%(${countText(answerCount, '명')})`)
-            .join(' · ');
-        const line = element('p', 'muted', `'${choices[0].label}' 선택 · ${sharesText} · `);
-        line.append(element('span', 'nowrap', `차이 ${percentPointText(Math.max(...shares) - Math.min(...shares))}`));
+        const pieces = [
+            `'${choices[0].label}' 선택`,
+            ...genderShares.map(({ label, share, answerCount }) =>
+                `${label} ${countText(answerCount, '명')} 중 ${share.toFixed(1)}%`),
+            `차이 ${percentPointText(Math.max(...shares) - Math.min(...shares))}`,
+        ];
+        const line = element('p', 'muted');
+        pieces.forEach((piece, index) => {
+            if (index > 0) line.append(' · ');
+            line.append(element('span', 'nowrap', piece));
+        });
         return line;
     };
 

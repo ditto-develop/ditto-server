@@ -23,7 +23,7 @@ const StatsCalc = (() => {
     const REMATCH_ROOM_TYPE = 'REMATCH';
     // 매칭 배치 크론(목 00:01)과 맞춘다. 크론을 바꾸면 같이 바꾼다.
     const MATCHING_BATCH_DAY_OFFSET = 3;
-    // 퀴즈 응답 기간(월~수, QuizResponsePeriod)과 맞춘다.
+    // 퀴즈 응답 기간(월~수, QuizResponsePeriod)과 맞춘다. 응답 기간을 바꾸면 같이 바꾼다.
     const RESPONSE_DAY_COUNT = 3;
     // 알림 유형 라벨은 어드민 화면에서만 써서 서버 enum 이 아니라 여기 둔다. 없는 유형은 enum 이름 그대로 보인다.
     const NOTIFICATION_TYPE_LABELS = {

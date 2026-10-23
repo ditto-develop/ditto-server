@@ -90,18 +90,18 @@
 
             <section class="stats-section" id="members">
                 <h2 class="stats-section-title">회원 현황</h2>
-                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다. 계정 상태는 지금 상태로 셉니다. 활성은 지금 회차까지 최근 회차 안에 퀴즈를 끝까지 푼 회원이고 휴면은 나머지입니다.</p>
+                <p class="stats-section-desc">여기는 매칭 유형으로 거르지 않습니다. 탈퇴하고 30일이 지나 완전히 지워진 회원은 빠집니다. 계정 상태는 지금 상태로 셉니다.</p>
                 <p class="alert info" id="memberEmptyNotice" hidden>조건에 맞는 회원이 없습니다.</p>
                 <div id="memberSectionBody">
                     <p class="stats-basis">오늘(<span id="statsToday">-</span>) 기준</p>
                     <div class="grid stats-totals">
                         <div class="card stat">
-                            <span class="label">누적 가입자 (탈퇴 포함)</span>
+                            <span class="label">누적 가입자 <span class="nowrap">(탈퇴 포함)</span></span>
                             <span class="value" id="memberJoinedCount">-</span>
                             <span class="basis" id="memberJoinedCountBasis"></span>
                         </div>
                         <div class="card stat">
-                            <span class="label">현재 회원 (정지·차단 포함)</span>
+                            <span class="label">현재 회원 <span class="nowrap">(정지·차단 포함)</span></span>
                             <span class="value" id="memberCurrentCount">-</span>
                         </div>
                         <div class="card stat">
@@ -162,6 +162,8 @@
                     <div class="card">
                         <h3 id="leaveReasonTitle">탈퇴 사유</h3>
                         <div id="leaveReasonShares"></div>
+                        <p class="muted" id="leaveReasonEmpty" hidden
+                           th:text="${hasConditions ? '조건에 맞는 탈퇴 회원이 없습니다.' : '이 주에 탈퇴한 회원이 없습니다.'}">이 주에 탈퇴한 회원이 없습니다.</p>
                     </div>
                 </div>
             </section>
@@ -207,7 +209,7 @@
                         <div class="card">
                             <h3>요일별 완주</h3>
                             <div id="quizCompletionDayShares"></div>
-                            <p class="muted">마지막으로 답한 요일입니다. QA 시각 조정은 따르지 않고 실제로 답한 때로 셉니다.</p>
+                            <p class="muted">마지막으로 답한 요일입니다. 시각 조정은 따르지 않고 실제로 답한 때로 셉니다.</p>
                         </div>
                     </div>
                 </div>

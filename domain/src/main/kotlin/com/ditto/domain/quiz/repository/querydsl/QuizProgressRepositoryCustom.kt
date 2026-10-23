@@ -43,6 +43,6 @@ interface QuizProgressRepositoryCustom {
         filter: MemberFilter,
     ): Long
 
-    /** countMembersCompletedInWeeks 와 같은 회원 중 지금 상태가 ACTIVE 인 회원 수. 매칭 유형은 따지지 않는다. */
+    /** countMembersCompletedInWeeks 와 같은 회원 중 지금 ACTIVE 인 가입자 수. 매칭 유형은 따지지 않는다. */
     fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long
 }
