@@ -501,18 +501,22 @@ const StatsCalc = (() => {
     const SCORE_BIN_SIZE = 10;
     const LAST_SCORE_BIN_INDEX = 9;
 
-    // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다. 값이 있는 구간 사이만 보인다.
+    // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다.
+    const scoreBinIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN_INDEX);
+    const scoreBinLabel = (binIndex) =>
+        (binIndex === LAST_SCORE_BIN_INDEX ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`);
+    // 값이 있는 가장 낮은 구간부터 가장 높은 구간까지 0이어도 칸을 채운다.
+    const scoreBinIndexesBetween = (binIndexes) => {
+        const firstBin = Math.min(...binIndexes);
+        const lastBin = Math.max(...binIndexes);
+        return Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => firstBin + offset);
+    };
+
     const scoreSummary = (scores) => {
         if (scores.length === 0) return { count: 0, average: null, median: null, bins: [] };
-        const binIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN_INDEX);
-        const countsByBin = countBy(scores, binIndexOf);
-        const firstBin = Math.min(...countsByBin.keys());
-        const lastBin = Math.max(...countsByBin.keys());
-        const bins = Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => {
-            const binIndex = firstBin + offset;
-            const label = binIndex === LAST_SCORE_BIN_INDEX ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`;
-            return { label, count: countsByBin.get(binIndex) || 0 };
-        });
+        const countsByBin = countBy(scores, scoreBinIndexOf);
+        const bins = scoreBinIndexesBetween([...countsByBin.keys()])
+            .map((binIndex) => ({ label: scoreBinLabel(binIndex), count: countsByBin.get(binIndex) || 0 }));
         return {
             count: scores.length,
             average: average(scores),
@@ -586,6 +590,55 @@ const StatsCalc = (() => {
             })
             .filter((row) => row.joinedCount > 0);
         return { columnCount, rows };
+    };
+
+    const POSITIVE_RATING = 4;
+    const UNSCORED_LABEL = '점수 없음';
+    const isPositiveRating = (rating) => rating >= POSITIVE_RATING;
+
+    // 서로 평가한 쌍 중 둘 다 긍정인 쌍. 쌍은 서버가 한 번만 센다.
+    const mutualPositiveRows = (mutualRatingCounts, matchTypeLabels) =>
+        Object.entries(matchTypeLabels).map(([matchType, label]) => {
+            const typeRows = mutualRatingCounts.filter((countRow) => countRow.matchType === matchType);
+            const bothPositiveRows = typeRows.filter((countRow) =>
+                isPositiveRating(countRow.rating) && isPositiveRating(countRow.counterpartRating));
+            return { label, pairCount: sumCounts(typeRows), bothPositivePairCount: sumCounts(bothPositiveRows) };
+        });
+
+    // 점수 구간마다 평가 수와 긍정 수. 후보 행이 없어 점수를 모르는 평가는 맨 뒤 칸에 따로 센다.
+    const ratingsByScoreBin = (ratingsWithMatchScore) => {
+        const scoredRows = ratingsWithMatchScore.filter((row) => row.score !== null);
+        const rowsByBin = groupBy(scoredRows, (row) => scoreBinIndexOf(row.score));
+        const binRow = (label, rows) => ({
+            label,
+            ratingCount: rows.length,
+            positiveCount: rows.filter((row) => isPositiveRating(row.rating)).length,
+        });
+        const scoredBinRows = scoredRows.length === 0
+            ? []
+            : scoreBinIndexesBetween([...rowsByBin.keys()])
+                .map((binIndex) => binRow(scoreBinLabel(binIndex), rowsByBin.get(binIndex) || []));
+        const unscoredRows = ratingsWithMatchScore.filter((row) => row.score === null);
+        return unscoredRows.length === 0 ? scoredBinRows : [...scoredBinRows, binRow(UNSCORED_LABEL, unscoredRows)];
+    };
+
+    // 지난 회차 평가자를 준 별점 평균이 긍정 기준 이상인지로 나눈다.
+    const givenRatingRetention = (averageGivenRatings, averageGivenRatingsOfMembersCompletedAgain) => {
+        const countWhere = (averages, matches) => averages.filter(matches).length;
+        const isPositiveAverage = (averageRating) => averageRating >= POSITIVE_RATING;
+        return [
+            {
+                label: '평균 4점 이상',
+                previousCount: countWhere(averageGivenRatings, isPositiveAverage),
+                completedAgainCount: countWhere(averageGivenRatingsOfMembersCompletedAgain, isPositiveAverage),
+            },
+            {
+                label: '평균 4점 미만',
+                previousCount: countWhere(averageGivenRatings, (average) => !isPositiveAverage(average)),
+                completedAgainCount:
+                    countWhere(averageGivenRatingsOfMembersCompletedAgain, (average) => !isPositiveAverage(average)),
+            },
+        ];
     };
 
     const isSkipped = (countRow) => countRow.skipReason !== null;
@@ -662,6 +715,9 @@ const StatsCalc = (() => {
         retentionCounts,
         completionDayCounts,
         trackSwitchCounts,
+        mutualPositiveRows,
+        ratingsByScoreBin,
+        givenRatingRetention,
         matchResultRetention,
         cohortRetention,
         chatMessageStats,

@@ -884,3 +884,51 @@ describe('cohortRetention', () => {
         ]);
     });
 });
+
+describe('mutualPositiveRows', () => {
+    test('유형마다 서로 평가한 쌍과 둘 다 4점 이상인 쌍을 센다', () => {
+        const rows = StatsCalc.mutualPositiveRows([
+            { matchType: 'PERSONAL', rating: 5, counterpartRating: 4, count: 2 },
+            { matchType: 'PERSONAL', rating: 5, counterpartRating: 3, count: 1 },
+            { matchType: 'GROUP', rating: 4, counterpartRating: 4, count: 1 },
+        ], { PERSONAL: '1:1', GROUP: '그룹' });
+
+        assert.deepEqual(rows, [
+            { label: '1:1', pairCount: 3, bothPositivePairCount: 2 },
+            { label: '그룹', pairCount: 1, bothPositivePairCount: 1 },
+        ]);
+    });
+});
+
+describe('ratingsByScoreBin', () => {
+    test('점수 구간마다 평가 수와 긍정 수를 내고 점수 없는 평가는 맨 뒤에 둔다', () => {
+        const rows = StatsCalc.ratingsByScoreBin([
+            { matchType: 'PERSONAL', rating: 5, score: 61 },
+            { matchType: 'PERSONAL', rating: 3, score: 64 },
+            { matchType: 'GROUP', rating: 4, score: 82 },
+            { matchType: 'PERSONAL', rating: 2, score: null },
+        ]);
+
+        assert.deepEqual(rows, [
+            { label: '60점대', ratingCount: 2, positiveCount: 1 },
+            { label: '70점대', ratingCount: 0, positiveCount: 0 },
+            { label: '80점대', ratingCount: 1, positiveCount: 1 },
+            { label: '점수 없음', ratingCount: 1, positiveCount: 0 },
+        ]);
+    });
+
+    test('평가가 없으면 빈 목록이다', () => {
+        assert.deepEqual(StatsCalc.ratingsByScoreBin([]), []);
+    });
+});
+
+describe('givenRatingRetention', () => {
+    test('준 별점 평균 4점을 기준으로 긍정·부정으로 나눠 재참여를 센다', () => {
+        const rows = StatsCalc.givenRatingRetention([4, 4.5, 3.9, 2], [4.5, 2]);
+
+        assert.deepEqual(rows, [
+            { label: '평균 4점 이상', previousCount: 2, completedAgainCount: 1 },
+            { label: '평균 4점 미만', previousCount: 2, completedAgainCount: 1 },
+        ]);
+    });
+});

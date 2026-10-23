@@ -112,8 +112,11 @@
 | 평가지 | 그 회차(`member_review.week_started_on`) 매칭에서 열린 평가. 한 사람 × 한 채팅방이 한 건 |
 | 제출률 | 완료(`COMPLETED`) ÷ 평가지. 대상 일부만 답한 진행 중(`IN_PROGRESS`)은 제출로 치지 않고 따로 보여 준다 |
 | 만남 상태·별점 | 응답(확정된 답, `review_answer.answered_at` 있음). 그룹은 대상마다 한 건이라 평가지보다 많다 |
+| 상호 긍정 | 같은 방에서 서로를 평가한(둘 다 확정한) 두 사람을 한 쌍으로 세고, 둘 다 별점 4점 이상인 쌍의 비율. 쌍은 작성자 id 가 작은 쪽에서 한 번 센다. 1:1 은 방당 한 쌍, 그룹은 방 안 두 사람 쌍 전부 |
+| 매칭 점수별 긍정 비율 | 확정된 답마다 그 매칭의 점수를 10점 구간으로 묶어 평가 수와 긍정(4점 이상) 비율. 1:1 은 작성자 → 대상 후보 점수(`match_candidate`), 그룹은 그룹 점수(`group_match.score`). 후보를 다시 만들어 후보 행이 없으면 "점수 없음" 칸 |
 
-- 회원 조건은 평가를 쓴 사람에게 건다.
+- 회원 조건은 평가를 쓴 사람에게 건다. 상호 긍정과 점수별 긍정 비율은 쌍·점수 단위라 회원 조건을 걸지 않고 관리자가 낀 평가도 센다(매칭 장 점수 카드와 같은 규칙).
+- 평가 긍정은 별점 4점 이상이다(기획 확정). 만남 상태와 재매칭 의사는 보지 않는다.
 - 매칭 유형 1:1 은 평가의 `PERSONAL`, 그룹은 `GROUP` 이다(`MatchingTypeFilter`). 재매칭 채팅은 평가를 열지 않아 없다.
 - 프로필의 받은 평가 집계와 달리 방이 끝났는지는 보지 않는다. 열린 그룹 방에서 나간 사람이 먼저 낸 평가도 센다.
 
@@ -125,6 +128,7 @@
 - 유형 전환(기획서의 "트랙 전환")은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
 - 매칭 결과별 재참여: 지난 회차 완주자를 그 셋에서 성사됐는지로 나눈 재참여율. 성사는 매칭 장과 같다(1:1 ACCEPTED 쌍, 성사 그룹 수락자). 성사 안 됨은 전체에서 성사를 뺀 값이다.
+- 평가 결과별 재참여: 지난 회차 평가에서 답을 하나 이상 확정한 회원을 자기가 준 별점의 평균이 4점 이상(긍정)인지로 나눈 재참여율. 받은 평가가 아니라 준 평가로 나눠 "만족한 사람이 다시 오는가"를 본다. 서버는 회원 id 없이 회원마다의 평균 목록만 내린다. 매칭 유형 조건은 평가의 유형(`PERSONAL`·`GROUP`)에 건다. 평가는 회차 다음 주 월요일에 열려서, 지난 회차 평가자는 고른 회차 퀴즈를 풀 무렵 평가를 낸다.
 - 가입 주차별 리텐션(기획서의 "가입 코호트 잔존"): 고른 회차까지 8주 동안 가입한 회원을 가입한 주(월~일)로 묶고, 가입 뒤 N번째 회차에 퀴즈를 완주한 비율을 계단 표로 보인다. 가입한 주가 회차면 그 회차를 "가입한 주" 칸에 따로 둔다. 회차는 활성 퀴즈셋이 있는 주라 퀴즈를 쉰 주는 건너뛴다. 가입자 수는 회원 장의 주별 신규 가입과 같은 값이다(탈퇴한 회원 포함). 매칭 유형은 따지지 않는다.
 - 지난 회차가 없으면(첫 회차, 회차 아닌 주) 장 전체가 비어 두 표도 보이지 않는다.
 
@@ -339,6 +343,23 @@ JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
 WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL
 GROUP BY a.meeting_status, a.rating;
 
+-- 상호 긍정 (서로 확정한 쌍을 (내 별점, 상대 별점)으로, 작성자 id 가 작은 쪽에서 한 번)
+SELECT r.match_type, a.rating, ca.rating AS counterpart_rating, COUNT(*) FROM review_answer a
+JOIN member_review r ON r.id = a.member_review_id
+JOIN member_review cr ON cr.chat_room_id = r.chat_room_id AND cr.author_member_id = a.reviewed_member_id
+JOIN review_answer ca ON ca.member_review_id = cr.id AND ca.reviewed_member_id = r.author_member_id
+    AND ca.answered_at IS NOT NULL
+WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL AND r.author_member_id < a.reviewed_member_id
+GROUP BY r.match_type, a.rating, ca.rating;
+
+-- 매칭 점수별 긍정 비율 (답마다 별점과 점수)
+SELECT r.match_type, a.rating, COALESCE(mc.score, gm.score) AS score FROM review_answer a
+JOIN member_review r ON r.id = a.member_review_id
+LEFT JOIN match_candidate mc ON r.match_type = 'PERSONAL' AND mc.quiz_set_id = r.quiz_set_id
+    AND mc.owner_member_id = r.author_member_id AND mc.other_member_id = a.reviewed_member_id
+LEFT JOIN group_match gm ON r.match_type = 'GROUP' AND gm.id = r.match_id
+WHERE r.week_started_on = :monday AND a.answered_at IS NOT NULL;
+
 -- 주간 재참여·유형 전환 (:previous 는 지난 회차 월요일). 분모는 위 참여자 SQL 을 :previous 로 돌린 COMPLETED 수
 SELECT qs.matching_type AS previous_type, again_set.matching_type AS again_type, COUNT(DISTINCT qp.member_id)
 FROM quiz_progress qp
@@ -359,6 +380,17 @@ WHERE qp.status = 'COMPLETED' AND (
     OR EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
                WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id AND gmm.status = 'ACCEPTED'))
 GROUP BY qs.matching_type;
+
+-- 평가 결과별 재참여 (지난 회차 평가자마다 준 별점 평균과 고른 회차 완주 여부)
+SELECT r.author_member_id, AVG(a.rating) AS average_given,
+    EXISTS (SELECT 1 FROM quiz_progress qp JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
+            WHERE qp.member_id = r.author_member_id AND qp.status = 'COMPLETED' AND qs.week_started_on = :monday)
+        AS completed_again
+FROM review_answer a
+JOIN member_review r ON r.id = a.member_review_id
+JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
+WHERE r.week_started_on = :previous AND a.answered_at IS NOT NULL
+GROUP BY r.author_member_id;
 
 -- 가입 주차별 리텐션의 가입자 (:first_monday 는 고른 회차 7주 전 월요일). 주별 신규 가입 표와 같다
 SELECT DATE_SUB(DATE(joined_at), INTERVAL WEEKDAY(joined_at) DAY) AS join_monday, COUNT(*) FROM member

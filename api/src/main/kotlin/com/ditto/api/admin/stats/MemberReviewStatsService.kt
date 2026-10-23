@@ -26,6 +26,9 @@ class MemberReviewStatsService(
                 memberFilter,
             ),
             reviewAnswerCounts = reviewAnswerRepository.countAnsweredInWeek(week.startedOn, chatRoomType, memberFilter),
+            mutualRatingCounts = reviewAnswerRepository.countMutualRatingsInWeek(week.startedOn, chatRoomType),
+            ratingsWithMatchScore =
+                reviewAnswerRepository.findRatingsWithMatchScoreInWeek(week.startedOn, chatRoomType),
         )
     }
 }

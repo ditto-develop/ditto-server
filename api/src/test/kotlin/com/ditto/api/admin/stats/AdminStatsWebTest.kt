@@ -238,7 +238,9 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"memberReviewStats":{"memberReviewCounts":""" +
                                 """[{"matchType":"PERSONAL","status":"COMPLETED","count":1}],"reviewAnswerCounts":""" +
-                                """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}]}""",
+                                """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}],""" +
+                                """"mutualRatingCounts":[],""" +
+                                """"ratingsWithMatchScore":[{"matchType":"PERSONAL","rating":5,"score":null}]}""",
                         ),
                     ),
                 )
@@ -271,7 +273,8 @@ class AdminStatsWebTest(
                                 """[{"previousMatchingType":"ONE_TO_ONE",""" +
                                 """"againMatchingType":"ONE_TO_ONE","count":1}],""" +
                                 """"matchedPreviousCompletionCounts":[],"matchedCompletedAgainCounts":[],""" +
-                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[]}""",
+                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[],""" +
+                                """"averageGivenRatings":[],"averageGivenRatingsOfMembersCompletedAgain":[]}""",
                         ),
                     ),
                 )
@@ -355,7 +358,8 @@ class AdminStatsWebTest(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
                                 """"completedAgainCounts":[],"matchedPreviousCompletionCounts":[],""" +
                                 """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],""" +
-                                """"completionsWithJoinedAt":[]}""",
+                                """"completionsWithJoinedAt":[],"averageGivenRatings":[],""" +
+                                """"averageGivenRatingsOfMembersCompletedAgain":[]}""",
                         ),
                     ),
                 )

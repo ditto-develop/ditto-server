@@ -471,6 +471,24 @@
         showSectionIfAny('memberReview', submission.memberReviewCount > 0);
         renderMemberReviewSubmission(submission, memberReviewCounts, memberReviewMatchTypeLabels);
         renderMemberReviewAnswers(reviewAnswerCounts, meetingStatusLabels, ratingScores);
+        renderMemberReviewOutcomes(memberReviewStats, memberReviewMatchTypeLabels);
+    };
+
+    const renderMemberReviewOutcomes = ({ mutualRatingCounts, ratingsWithMatchScore }, memberReviewMatchTypeLabels) => {
+        const mutualRows = StatsCalc.mutualPositiveRows(mutualRatingCounts, memberReviewMatchTypeLabels);
+        fillRows('memberReviewMutualRows', mutualRows, (row) => [
+            cell(row.label),
+            countCell(row.pairCount),
+            countCell(row.bothPositivePairCount),
+            cell(StatsCalc.percentText(row.bothPositivePairCount, row.pairCount), 'num'),
+        ]);
+        fillRows('memberReviewScoreRows', StatsCalc.ratingsByScoreBin(ratingsWithMatchScore), (row) => [
+            cell(row.label),
+            countCell(row.ratingCount),
+            countCell(row.positiveCount),
+            cell(StatsCalc.percentText(row.positiveCount, row.ratingCount), 'num'),
+        ]);
+        fillEmptyRowIfNone('memberReviewScoreRows', '확정된 평가가 없습니다.');
     };
 
     const retentionRateCells = (row) => [
@@ -529,6 +547,14 @@
                 { previousCount, completedAgainCount },
                 retentionStats.matchedPreviousCompletionCounts,
                 retentionStats.matchedCompletedAgainCounts,
+            ),
+            retentionRateCells,
+        );
+        fillRows(
+            'retentionGivenRatingRows',
+            StatsCalc.givenRatingRetention(
+                retentionStats.averageGivenRatings,
+                retentionStats.averageGivenRatingsOfMembersCompletedAgain,
             ),
             retentionRateCells,
         );
