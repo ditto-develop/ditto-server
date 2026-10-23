@@ -271,6 +271,25 @@
                             </div>
                         </div>
                     </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card" id="matchCandidateExposureCard">
+                            <h3>1:1 후보 노출 쏠림</h3>
+                            <p class="muted" id="matchCandidateExposureSummary"></p>
+                            <div id="matchCandidateExposureShares"></div>
+                            <p class="muted">회원마다 5명을 고르고 한쪽만 골라도 후보로 남아서, 여러 사람이 고른 회원은 5명보다 많이 받습니다.</p>
+                        </div>
+                        <div class="card">
+                            <h3 id="matchUnmatchedMembersTitle">연속 미매칭 회원</h3>
+                            <p class="muted" id="matchUnmatchedMembersBasis"></p>
+                            <div class="tbl-scroll stats-member-list" id="matchUnmatchedMembersTable">
+                                <table class="tbl">
+                                    <thead><tr><th>닉네임</th><th class="num">회원 id</th></tr></thead>
+                                    <tbody id="matchUnmatchedMembersRows"></tbody>
+                                </table>
+                            </div>
+                            <p class="muted" id="matchUnmatchedMembersNote">그룹은 금요일 00:00 마감까지 성사가 늘 수 있습니다.</p>
+                        </div>
+                    </div>
 
                     <p class="stats-basis">쌍·그룹 단위라 회원 조건은 걸지 않고 관리자가 낀 쌍·그룹도 셉니다</p>
                     <div class="grid cols-2 stats-align-start">
@@ -398,6 +417,29 @@
                             </table>
                         </div>
                     </div>
+                    <p class="stats-basis">긍정은 별점 4점 이상 · 쌍·점수 단위라 회원 조건은 걸지 않고 관리자가 낀 평가도 셉니다</p>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>상호 긍정</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 유형</th><th class="num">서로 평가한 쌍(개)</th><th class="num">둘 다 긍정(개)</th><th class="num">상호 긍정률</th></tr></thead>
+                                    <tbody id="memberReviewMutualRows"></tbody>
+                                </table>
+                            </div>
+                            <p class="muted">같은 방에서 서로를 평가한 두 사람을 한 쌍으로 셉니다. 한쪽만 답했으면 빠집니다.</p>
+                        </div>
+                        <div class="card">
+                            <h3>매칭 점수별 긍정 비율</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 점수</th><th class="num">평가(건)</th><th class="num">긍정(건)</th><th class="num">긍정 비율</th></tr></thead>
+                                    <tbody id="memberReviewScoreRows"></tbody>
+                                </table>
+                            </div>
+                            <p class="muted">1:1 은 평가한 상대와의 후보 점수, 그룹은 그룹 점수입니다.</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -443,9 +485,21 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card">
-                        <h3>유형 전환 (다시 참여한 회원)</h3>
-                        <div id="retentionTrackSwitchShares"></div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>평가 결과별 재참여</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>준 별점</th><th class="num">평가자(명)</th><th class="num">다시 참여(명)</th><th class="num">재참여율</th></tr></thead>
+                                    <tbody id="retentionGivenRatingRows"></tbody>
+                                </table>
+                            </div>
+                            <p class="muted">지난 회차 평가를 낸 회원을 자기가 준 별점의 평균으로 나눕니다.</p>
+                        </div>
+                        <div class="card">
+                            <h3>유형 전환 (다시 참여한 회원)</h3>
+                            <div id="retentionTrackSwitchShares"></div>
+                        </div>
                     </div>
                     <div class="card">
                         <h3>가입 주차별 리텐션</h3>
@@ -491,6 +545,17 @@
                             <div id="memberReportStatusShares"></div>
                         </div>
                     </div>
+                </div>
+                <p class="stats-basis" id="memberReportRepeatedBasis"></p>
+                <div class="card">
+                    <h3>신고 상위 회원</h3>
+                    <div class="tbl-scroll stats-member-list">
+                        <table class="tbl">
+                            <thead><tr><th>닉네임</th><th class="num">회원 id</th><th class="num">신고(건)</th></tr></thead>
+                            <tbody id="memberReportRepeatedRows"></tbody>
+                        </table>
+                    </div>
+                    <p class="muted">고른 회차 주까지 4주 동안 신고를 2건 이상 받은 회원을 많은 순으로 10명까지 보여 줍니다. 처리 상태와 상관없이 세고, 접수 시각은 실제 시각입니다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않습니다.</p>
                 </div>
             </section>
 

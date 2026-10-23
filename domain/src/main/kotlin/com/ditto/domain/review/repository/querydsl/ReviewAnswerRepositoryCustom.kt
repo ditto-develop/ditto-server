@@ -26,4 +26,31 @@ interface ReviewAnswerRepositoryCustom {
         matchType: ChatRoomType?,
         filter: MemberFilter,
     ): List<ReviewAnswerCount>
+
+    /**
+     * 그 주 같은 방에서 서로를 평가한 쌍을 (내가 준 별점, 상대가 준 별점)으로 묶은 수. 쌍은 작성자 id 가 작은 쪽에서 한 번 센다.
+     * 쌍 단위라 회원 조건과 관리자 제외를 걸지 않는다.
+     */
+    fun countMutualRatingsInWeek(weekStartedOn: LocalDate, matchType: ChatRoomType?): List<MutualRatingCount>
+
+    /**
+     * 그 주 확정된 답마다 별점과 그 매칭의 점수. 1:1 은 작성자 → 대상 후보 점수, 그룹은 그룹 점수다.
+     * 화면이 점수를 구간으로 묶는다. 쌍·그룹 단위라 회원 조건과 관리자 제외를 걸지 않는다.
+     */
+    fun findRatingsWithMatchScoreInWeek(weekStartedOn: LocalDate, matchType: ChatRoomType?): List<RatingWithMatchScore>
+
+    /** 그 주 평가를 낸 회원마다 준 별점의 평균. 회원 조건은 평가를 쓴 사람에게 건다. */
+    fun findAverageGivenRatingsInWeek(
+        weekStartedOn: LocalDate,
+        matchType: ChatRoomType?,
+        filter: MemberFilter,
+    ): List<Double>
+
+    /** 지난 회차 findAverageGivenRatingsInWeek 중 고른 회차에 유형과 상관없이 퀴즈를 완주한 회원만. */
+    fun findAverageGivenRatingsOfMembersCompletedAgain(
+        previousWeekStartedOn: LocalDate,
+        weekStartedOn: LocalDate,
+        matchType: ChatRoomType?,
+        filter: MemberFilter,
+    ): List<Double>
 }

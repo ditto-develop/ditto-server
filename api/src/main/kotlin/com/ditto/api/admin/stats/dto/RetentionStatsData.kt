@@ -14,6 +14,8 @@ data class RetentionStatsData(
     val matchedCompletedAgainCounts: List<CompletedAgainCount>,
     val cohortRoundWeeks: List<LocalDate>,
     val completionsWithJoinedAt: List<CompletionWithJoinedAt>,
+    val averageGivenRatings: List<Double>,
+    val averageGivenRatingsOfMembersCompletedAgain: List<Double>,
 ) {
     companion object {
         val NO_PREVIOUS_ROUND = RetentionStatsData(
@@ -24,6 +26,8 @@ data class RetentionStatsData(
             matchedCompletedAgainCounts = emptyList(),
             cohortRoundWeeks = emptyList(),
             completionsWithJoinedAt = emptyList(),
+            averageGivenRatings = emptyList(),
+            averageGivenRatingsOfMembersCompletedAgain = emptyList(),
         )
     }
 }

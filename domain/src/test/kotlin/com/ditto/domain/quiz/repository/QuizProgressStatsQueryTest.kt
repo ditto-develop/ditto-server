@@ -24,6 +24,7 @@ import com.ditto.domain.quiz.repository.querydsl.CompletedAgainCount
 import com.ditto.domain.quiz.repository.querydsl.CompletionWithJoinedAt
 import com.ditto.domain.quiz.repository.querydsl.MatchedCompletionCount
 import com.ditto.domain.quiz.repository.querydsl.QuizProgressCount
+import com.ditto.domain.quiz.repository.querydsl.UnmatchedMember
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -84,6 +85,8 @@ class QuizProgressStatsQueryTest(
         repeat(if (completed) 2 else 1) { progress.recordAnswer() }
         quizProgressRepository.save(progress)
     }
+
+    fun nicknameOf(memberId: Long): String = memberRepository.findById(memberId).orElseThrow().nickname
 
     "countProgressesInWeek" - {
         "그 주 활성 셋의 진행을 유형·상태·성별로 묶는다" {
@@ -292,6 +295,43 @@ class QuizProgressStatsQueryTest(
                 CompletedAgainCount(MatchingType.ONE_TO_ONE, MatchingType.ONE_TO_ONE, 1L),
                 CompletedAgainCount(MatchingType.GROUP, MatchingType.ONE_TO_ONE, 1L),
             )
+        }
+    }
+
+    "findMembersUnmatchedInEveryRound" - {
+        "두 회차 모두 완주했는데 어느 회차에서도 성사되지 못한 ACTIVE 회원만 고른다" {
+            val previous = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val current = saveQuizSet()
+            val unmatched = saveMember()
+            val matchedBefore = saveMember()
+            val skippedPrevious = saveMember()
+            val suspended = saveMember(status = MemberStatus.SUSPENDED)
+            val admin = saveMember(role = MemberRole.ADMIN)
+            listOf(unmatched, matchedBefore, suspended, admin).forEach { saveProgress(it, previous) }
+            listOf(unmatched, matchedBefore, skippedPrevious, suspended, admin).forEach { saveProgress(it, current) }
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(matchedBefore, saveMember(), previous.id, PersonalMatchStatus.ACCEPTED),
+            )
+
+            quizProgressRepository.findMembersUnmatchedInEveryRound(
+                listOf(WEEK, WEEK.minusWeeks(1)),
+                null,
+                MemberFilter.NONE,
+            ) shouldBe listOf(UnmatchedMember(unmatched, nicknameOf(unmatched)))
+        }
+
+        "매칭 유형을 주면 그 유형 셋의 완주만 본다" {
+            val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
+            val current = saveQuizSet()
+            val switched = saveMember()
+            saveProgress(switched, previousGroup)
+            saveProgress(switched, current)
+
+            quizProgressRepository.findMembersUnmatchedInEveryRound(
+                listOf(WEEK, WEEK.minusWeeks(1)),
+                MatchingType.ONE_TO_ONE,
+                MemberFilter.NONE,
+            ) shouldBe emptyList()
         }
     }
 

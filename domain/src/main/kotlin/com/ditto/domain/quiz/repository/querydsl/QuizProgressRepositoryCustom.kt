@@ -69,4 +69,11 @@ interface QuizProgressRepositoryCustom {
 
     /** countMembersCompletedInWeeks 와 같은 회원 중 지금 ACTIVE 인 가입자 수. 매칭 유형은 따지지 않는다. */
     fun countActiveStatusMembersCompletedInWeeks(roundWeeks: Collection<LocalDate>, filter: MemberFilter): Long
+
+    /** 주어진 회차를 모두 완주했는데 어느 회차에서도 성사되지 못한 ACTIVE 회원. 성사는 매칭 장과 같다. */
+    fun findMembersUnmatchedInEveryRound(
+        roundWeeks: Collection<LocalDate>,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): List<UnmatchedMember>
 }

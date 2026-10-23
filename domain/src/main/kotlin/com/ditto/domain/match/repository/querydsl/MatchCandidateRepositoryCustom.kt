@@ -24,6 +24,9 @@ interface MatchCandidateRepositoryCustom {
 
     fun countCandidateOwnersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchCandidateCount>
 
+    /** 그 주 활성 셋에서 후보를 받은 회원마다 받은 후보 수. 화면이 구간으로 묶는다. */
+    fun countCandidatesPerOwnerInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<Long>
+
     /**
      * 그 주 활성 셋의 후보 쌍마다 점수 하나. 후보는 늘 두 방향으로 생겨서 id 가 작은 쪽 행만 센다.
      * 화면이 중앙값을 구해서 구간으로 묶지 않고 넘긴다.

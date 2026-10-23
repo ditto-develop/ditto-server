@@ -45,6 +45,7 @@ import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.ReviewAnswerContent
 import com.ditto.domain.review.repository.MemberReviewRepository
 import com.ditto.domain.review.repository.ReviewAnswerRepository
+import com.ditto.domain.system.OperationWeek
 import io.kotest.matchers.string.shouldContain
 import org.hamcrest.CoreMatchers.containsString
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -55,6 +56,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -180,13 +182,15 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"matchStats":{"matchCandidateCounts":[{"gender":null,"count":1}],""" +
+                                """"candidateCountsPerOwner":[1],""" +
                                 """"personalMatchMemberCounts":""" +
                                 """[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
                                 """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +
                                 """"groupScores":[{"isActive":false,"score":80.0}],""" +
-                                """"activeGroupMemberCounts":[]}""",
+                                """"activeGroupMemberCounts":[],""" +
+                                """"unmatchedRoundWeeks":[],"membersUnmatchedInEveryRound":[]}""",
                         ),
                     ),
                 )
@@ -238,7 +242,9 @@ class AdminStatsWebTest(
                         pageJsonContaining(
                             """"memberReviewStats":{"memberReviewCounts":""" +
                                 """[{"matchType":"PERSONAL","status":"COMPLETED","count":1}],"reviewAnswerCounts":""" +
-                                """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}]}""",
+                                """[{"matchType":"PERSONAL","meetingStatus":"MET","rating":5,"count":1}],""" +
+                                """"mutualRatingCounts":[],""" +
+                                """"ratingsWithMatchScore":[{"matchType":"PERSONAL","rating":5,"score":null}]}""",
                         ),
                     ),
                 )
@@ -271,7 +277,8 @@ class AdminStatsWebTest(
                                 """[{"previousMatchingType":"ONE_TO_ONE",""" +
                                 """"againMatchingType":"ONE_TO_ONE","count":1}],""" +
                                 """"matchedPreviousCompletionCounts":[],"matchedCompletedAgainCounts":[],""" +
-                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[]}""",
+                                """"cohortRoundWeeks":["2026-04-13","2026-04-06"],"completionsWithJoinedAt":[],""" +
+                                """"averageGivenRatings":[],"averageGivenRatingsOfMembersCompletedAgain":[]}""",
                         ),
                     ),
                 )
@@ -288,6 +295,7 @@ class AdminStatsWebTest(
                     reason = MemberReportReason.MONEY_DEMAND,
                 ),
             )
+            val mostReportedFirstWeek = OperationWeek.containing(LocalDate.now()).minusWeeks(3).startedOn
 
             mockMvc.perform(get("/admin/stats").with(authentication(admin)))
                 .andExpect(status().isOk)
@@ -295,7 +303,10 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"memberReportStats":{"memberReportCounts":""" +
-                                """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}]}""",
+                                """[{"reasons":["MONEY_DEMAND"],"status":"RECEIVED","count":1}],""" +
+                                """"mostReportedMembers":""" +
+                                """[{"memberId":${reported.id},"nickname":"reported","count":1}],""" +
+                                """"mostReportedFirstWeek":"$mostReportedFirstWeek"}""",
                         ),
                     ),
                 )
@@ -355,7 +366,8 @@ class AdminStatsWebTest(
                             """"retentionStats":{"previousRoundWeek":null,"previousProgressCounts":[],""" +
                                 """"completedAgainCounts":[],"matchedPreviousCompletionCounts":[],""" +
                                 """"matchedCompletedAgainCounts":[],"cohortRoundWeeks":[],""" +
-                                """"completionsWithJoinedAt":[]}""",
+                                """"completionsWithJoinedAt":[],"averageGivenRatings":[],""" +
+                                """"averageGivenRatingsOfMembersCompletedAgain":[]}""",
                         ),
                     ),
                 )

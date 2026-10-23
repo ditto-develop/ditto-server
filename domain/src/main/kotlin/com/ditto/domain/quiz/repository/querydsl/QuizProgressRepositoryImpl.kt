@@ -223,6 +223,37 @@ class QuizProgressRepositoryImpl(
             }
     }
 
+    override fun findMembersUnmatchedInEveryRound(
+        roundWeeks: Collection<LocalDate>,
+        matchingType: MatchingType?,
+        filter: MemberFilter,
+    ): List<UnmatchedMember> {
+        if (roundWeeks.isEmpty()) return emptyList()
+        return queryFactory
+            .select(member.id, member.nickname)
+            .fromProgressOfActiveSetsWithMember()
+            .where(
+                quizSet.weekStartedOn.`in`(roundWeeks),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                member.status.eq(MemberStatus.ACTIVE),
+                member.nonAdminMatching(filter),
+                matchingTypeIs(matchingType),
+                matchedInProgressSet().not(),
+            )
+            .groupBy(member.id, member.nickname)
+            // 한 주에 진행은 하나라 성사되지 않은 완주가 있는 회차 수로 센다.
+            .having(quizSet.weekStartedOn.countDistinct().eq(roundWeeks.distinct().size.toLong()))
+            .orderBy(member.id.asc())
+            .fetch()
+            .map { row ->
+                UnmatchedMember(
+                    memberId = row.get(member.id) ?: throw IllegalStateException("group by 키 member.id 가 비었다"),
+                    nickname = row.get(member.nickname)
+                        ?: throw IllegalStateException("group by 키 member.nickname 이 비었다"),
+                )
+            }
+    }
+
     private fun countCompletedAgain(
         previousWeekStartedOn: LocalDate,
         weekStartedOn: LocalDate,

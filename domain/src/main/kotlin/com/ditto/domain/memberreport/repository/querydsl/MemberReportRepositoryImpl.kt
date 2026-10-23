@@ -14,6 +14,7 @@ import com.querydsl.jpa.JPAExpressions
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Transactional(readOnly = true)
 class MemberReportRepositoryImpl(
@@ -43,6 +44,35 @@ class MemberReportRepositoryImpl(
                 MemberReportCount(
                     reasons = row.get(memberReport.reasons).orEmpty(),
                     status = row.get(memberReport.status) ?: throw IllegalStateException("group by 키 status 가 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    override fun findMostReportedMembers(
+        receivedRange: OpenEndRange<LocalDateTime>,
+        filter: MemberFilter,
+        limit: Long,
+    ): List<ReportedMemberCount> {
+        val countExpression = memberReport.count()
+        return queryFactory
+            .select(member.id, member.nickname, countExpression)
+            .from(memberReport)
+            .join(member).on(member.id.eq(memberReport.reportedMemberId))
+            .where(
+                memberReport.createdAt.goe(receivedRange.start),
+                memberReport.createdAt.lt(receivedRange.endExclusive),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(member.id, member.nickname)
+            .orderBy(countExpression.desc(), member.id.asc())
+            .limit(limit)
+            .fetch()
+            .map { row ->
+                ReportedMemberCount(
+                    memberId = row.get(member.id) ?: throw IllegalStateException("group by 키 member.id 가 비었다"),
+                    nickname = row.get(member.nickname)
+                        ?: throw IllegalStateException("group by 키 member.nickname 이 비었다"),
                     count = row.get(countExpression) ?: 0L,
                 )
             }
