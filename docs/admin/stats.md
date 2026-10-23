@@ -71,12 +71,17 @@
 | 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
 | 매칭률 | 성사 ÷ 완주 |
 | 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
+| 1:1 후보 점수 | 그 회차 후보 쌍의 `match_candidate.score`(0~100). 쌍은 두 방향 행으로 저장되어 `owner_member_id < other_member_id` 쪽만 센다. 평균·중앙값과 10점 구간, 옆에 성사(ACCEPTED) 쌍의 평균 |
+| 그룹 후보 점수 | 그 회차 후보 그룹의 `group_match.score`. 평균·중앙값과 10점 구간, 옆에 성사(`is_active`) 그룹의 평균 |
+| 성사 그룹 크기·성비 | 성사 그룹마다 수락(ACCEPTED)한 인원을 세서 인원수별 그룹 수와 성별 구성 |
 
 - 기획서의 매칭은 "짝을 정해 준다"지만 디토는 후보를 보여 주고 신청·수락으로 성사된다. 그래서 매칭 = 성사로 세고 후보는 참고로 보여 준다(#329). 1:1 후보는 자격 상대만 있으면 누구나 받아서(ADR 0040) 거의 100%다.
 - 배치는 목요일 00:01 에 돈다. 그 전에는 후보·성사가 0 이다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다.
 - 서버는 테이블마다 센 값만 내리고 후보·성사로 나누는 건 `stats-calc.js`가 한다. 1:1 성사는 한 행에 회원이 둘이라 `member_id_1` 쪽과 `member_id_2` 쪽을 따로 세서 내린다.
 - 매칭 유형 조건은 화면이 그 유형 줄만 그려서 건다. 회원 조건은 세는 회원에게 건다.
 - 성사 뒤 진행을 초기화하면 완주에서 빠져 성사가 완주보다 클 수 있다. 미매칭은 0 에서 자른다.
+- 점수·그룹 크기는 쌍·그룹 단위라 회원 조건을 걸지 않고 관리자가 낀 쌍·그룹도 센다. 매칭 유형을 고르면 그 유형 카드만 보인다.
+- 상위 20% 컷 라인은 지금 매칭 규칙(ADR 0040)에 없어 보여 주지 않는다.
 
 ## 채팅
 
@@ -249,6 +254,26 @@ JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
 GROUP BY gm.is_active, gmm.status, m.gender;
+
+-- 1:1 후보 점수 (쌍마다 한 번) · 성사 쌍 점수
+SELECT mc.score FROM match_candidate mc
+JOIN quiz_set qs ON qs.id = mc.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+WHERE mc.owner_member_id < mc.other_member_id;
+SELECT mc.score FROM personal_match pm
+JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN match_candidate mc ON mc.quiz_set_id = pm.quiz_set_id
+    AND mc.owner_member_id = pm.member_id_1 AND mc.other_member_id = pm.member_id_2
+WHERE pm.status = 'ACCEPTED';
+
+-- 그룹 후보 점수 · 성사 그룹 크기·성비
+SELECT gm.is_active, gm.score FROM group_match gm
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday;
+SELECT gm.id, m.gender, COUNT(*) FROM group_match_member gmm
+JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN member m ON m.id = gmm.member_id
+WHERE gmm.status = 'ACCEPTED'
+GROUP BY gm.id, m.gender;
 
 -- 채팅 유형별 열린 방·대화 시작·양방향·전원 (:monday 회차, 원본 매칭의 활성 퀴즈셋)
 SELECT source_type, COUNT(*) AS opened,

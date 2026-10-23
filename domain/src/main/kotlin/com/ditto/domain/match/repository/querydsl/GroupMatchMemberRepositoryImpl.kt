@@ -109,6 +109,29 @@ class GroupMatchMemberRepositoryImpl(
             .fetchFirst() != null
     }
 
+    override fun countAcceptedMembersPerActiveGroupInWeek(weekStartedOn: LocalDate): List<ActiveGroupMemberCount> {
+        val countExpression = groupMatchMember.count()
+        return queryFactory
+            .select(groupMatch.id, member.gender, countExpression)
+            .from(groupMatchMember)
+            .join(groupMatch).on(groupMatchMember.roomId.eq(groupMatch.id), groupMatch.isActive.isTrue)
+            .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(groupMatchMember.memberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                groupMatchMember.status.eq(InvitationStatus.ACCEPTED),
+            )
+            .groupBy(groupMatch.id, member.gender)
+            .fetch()
+            .map { row ->
+                ActiveGroupMemberCount(
+                    groupMatchId = row.get(groupMatch.id) ?: throw IllegalStateException("group by 키 id 가 비었다"),
+                    gender = row.get(member.gender),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
     override fun countInvitedMembersInWeek(
         weekStartedOn: LocalDate,
         filter: MemberFilter,

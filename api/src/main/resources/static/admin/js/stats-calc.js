@@ -406,6 +406,53 @@ const StatsCalc = (() => {
         };
     };
 
+    const SCORE_BIN_SIZE = 10;
+    const LAST_SCORE_BIN = 9;
+
+    const medianOf = (sortedValues) => {
+        const middle = Math.floor(sortedValues.length / 2);
+        if (sortedValues.length % 2 === 1) return sortedValues[middle];
+        return (sortedValues[middle - 1] + sortedValues[middle]) / 2;
+    };
+
+    // 점수는 0~100 이다. 10점 구간으로 묶고 100점은 90점 이상 칸에 넣는다. 값이 있는 구간 사이만 보인다.
+    const scoreSummary = (scores) => {
+        if (scores.length === 0) return { count: 0, average: null, median: null, bins: [] };
+        const binIndexOf = (score) => Math.min(Math.floor(score / SCORE_BIN_SIZE), LAST_SCORE_BIN);
+        const countsByBin = countBy(scores, binIndexOf);
+        const firstBin = Math.min(...countsByBin.keys());
+        const lastBin = Math.max(...countsByBin.keys());
+        const bins = Array.from({ length: lastBin - firstBin + 1 }, (_, offset) => {
+            const binIndex = firstBin + offset;
+            const label = binIndex === LAST_SCORE_BIN ? '90점 이상' : `${binIndex * SCORE_BIN_SIZE}점대`;
+            return { label, count: countsByBin.get(binIndex) || 0 };
+        });
+        return {
+            count: scores.length,
+            average: scores.reduce((sum, score) => sum + score, 0) / scores.length,
+            median: medianOf([...scores].sort((one, other) => one - other)),
+            bins,
+        };
+    };
+
+    const matchScores = ({ pairScores, acceptedPairScores, groupScores }) => ({
+        pair: scoreSummary(pairScores),
+        acceptedPair: scoreSummary(acceptedPairScores),
+        group: scoreSummary(groupScores.map((groupScore) => groupScore.score)),
+        activeGroup: scoreSummary(
+            groupScores.filter((groupScore) => groupScore.isGroupActive).map((groupScore) => groupScore.score),
+        ),
+    });
+
+    // 성사 그룹을 인원수로 묶고 인원수마다 성별 구성을 낸다.
+    const activeGroupSizeRows = (activeGroupMemberCounts, genderLabels) => {
+        const rowsByGroup = groupBy(activeGroupMemberCounts, (countRow) => countRow.groupMatchId);
+        const groupRowsBySize = groupBy([...rowsByGroup.values()], (groupRows) => sumCounts(groupRows));
+        return [...groupRowsBySize.entries()]
+            .sort(([oneSize], [otherSize]) => oneSize - otherSize)
+            .map(([size, groups]) => genderRow(`${size}명 · ${groups.length}개`, groups.flat(), genderLabels));
+    };
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -480,6 +527,9 @@ const StatsCalc = (() => {
         retentionCounts,
         completionDayCounts,
         trackSwitchCounts,
+        scoreSummary,
+        matchScores,
+        activeGroupSizeRows,
         memberReportCounts,
         pushSendCounts,
     };

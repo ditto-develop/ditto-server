@@ -271,6 +271,29 @@
                             </div>
                         </div>
                     </div>
+
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 쌍·그룹 단위라 회원 조건은 걸지 않고 관리자가 낀 쌍·그룹도 셉니다</p>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card" id="matchPairScoreCard">
+                            <h3 id="matchPairScoreTitle">1:1 후보 점수</h3>
+                            <p class="muted" id="matchPairScoreSummary"></p>
+                            <div id="matchPairScoreShares"></div>
+                        </div>
+                        <div class="card" id="matchGroupScoreCard">
+                            <h3 id="matchGroupScoreTitle">그룹 후보 점수</h3>
+                            <p class="muted" id="matchGroupScoreSummary"></p>
+                            <div id="matchGroupScoreShares"></div>
+                        </div>
+                        <div class="card" id="matchGroupSizeCard">
+                            <h3>성사 그룹 크기·성비</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="matchGroupSizeHead"></thead>
+                                    <tbody id="matchGroupSizeRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

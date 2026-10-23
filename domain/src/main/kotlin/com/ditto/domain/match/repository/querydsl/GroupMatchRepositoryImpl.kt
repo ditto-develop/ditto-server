@@ -37,4 +37,18 @@ class GroupMatchRepositoryImpl(
         .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id))
         .where(quizSet.weekStartedOn.eq(weekStartedOn))
         .fetch()
+
+    override fun findGroupScoresInWeek(weekStartedOn: LocalDate): List<GroupMatchScore> =
+        queryFactory
+            .select(groupMatch.isActive, groupMatch.score)
+            .from(groupMatch)
+            .join(quizSet).on(quizSet.id.eq(groupMatch.quizSetId), quizSet.isActive.isTrue)
+            .where(quizSet.weekStartedOn.eq(weekStartedOn))
+            .fetch()
+            .map { row ->
+                GroupMatchScore(
+                    isGroupActive = row.get(groupMatch.isActive) ?: false,
+                    score = row.get(groupMatch.score) ?: 0.0,
+                )
+            }
 }

@@ -183,7 +183,10 @@ class AdminStatsWebTest(
                                 """"personalMatchMemberCounts":""" +
                                 """[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
-                                """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}]}""",
+                                """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
+                                """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +
+                                """"groupScores":[{"isGroupActive":false,"score":80.0}],""" +
+                                """"activeGroupMemberCounts":[]}""",
                         ),
                     ),
                 )

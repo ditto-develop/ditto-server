@@ -23,4 +23,10 @@ interface MatchCandidateRepositoryCustom {
     fun existsPairByQuizSetId(oneMemberId: Long, otherMemberId: Long, quizSetId: Long): Boolean
 
     fun countCandidateOwnersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchCandidateCount>
+
+    /** 그 주 활성 셋의 후보 쌍마다 점수 하나. 후보는 늘 두 방향으로 생겨서 id 가 작은 쪽 행만 센다. */
+    fun findPairScoresInWeek(weekStartedOn: LocalDate): List<Double>
+
+    /** 그 주 1:1 성사(ACCEPTED) 쌍의 후보 점수. */
+    fun findAcceptedPairScoresInWeek(weekStartedOn: LocalDate): List<Double>
 }

@@ -3,6 +3,7 @@ package com.ditto.api.admin.stats
 import com.ditto.api.admin.stats.dto.MatchStatsData
 import com.ditto.api.admin.stats.dto.StatsFilter
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.system.OperationWeek
@@ -16,6 +17,7 @@ class MatchStatsService(
     private val matchCandidateRepository: MatchCandidateRepository,
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val groupMatchRepository: GroupMatchRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -27,6 +29,11 @@ class MatchStatsService(
                 personalMatchRepository.countAcceptedMembersInWeek(week.startedOn, memberFilter),
             groupMatchMemberCounts =
                 groupMatchMemberRepository.countInvitedMembersInWeek(week.startedOn, memberFilter),
+            pairScores = matchCandidateRepository.findPairScoresInWeek(week.startedOn),
+            acceptedPairScores = matchCandidateRepository.findAcceptedPairScoresInWeek(week.startedOn),
+            groupScores = groupMatchRepository.findGroupScoresInWeek(week.startedOn),
+            activeGroupMemberCounts =
+                groupMatchMemberRepository.countAcceptedMembersPerActiveGroupInWeek(week.startedOn),
         )
     }
 }

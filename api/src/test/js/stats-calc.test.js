@@ -698,3 +698,57 @@ describe('trackSwitchCounts', () => {
         ]);
     });
 });
+
+describe('scoreSummary', () => {
+    test('평균·중앙값을 내고 10점 구간은 값이 있는 구간 사이만 0이어도 채운다', () => {
+        const summary = StatsCalc.scoreSummary([62, 81.5, 65, 100]);
+
+        assert.equal(summary.count, 4);
+        assert.equal(summary.average, 77.125);
+        assert.equal(summary.median, 73.25);
+        assert.deepEqual(summary.bins, [
+            { label: '60점대', count: 2 },
+            { label: '70점대', count: 0 },
+            { label: '80점대', count: 1 },
+            { label: '90점 이상', count: 1 },
+        ]);
+    });
+
+    test('점수가 없으면 평균·중앙값이 null 이고 구간도 없다', () => {
+        assert.deepEqual(StatsCalc.scoreSummary([]), { count: 0, average: null, median: null, bins: [] });
+    });
+});
+
+describe('matchScores', () => {
+    test('그룹은 전체 후보와 성사된 그룹을 따로 요약한다', () => {
+        const scores = StatsCalc.matchScores({
+            pairScores: [70],
+            acceptedPairScores: [],
+            groupScores: [{ isGroupActive: true, score: 66 }, { isGroupActive: false, score: 60 }],
+        });
+
+        assert.equal(scores.pair.count, 1);
+        assert.equal(scores.acceptedPair.count, 0);
+        assert.equal(scores.group.average, 63);
+        assert.equal(scores.activeGroup.average, 66);
+    });
+});
+
+describe('activeGroupSizeRows', () => {
+    const GENDER_LABELS = { MALE: '남성', FEMALE: '여성' };
+
+    test('성사 그룹을 인원수로 묶고 인원수마다 성별 구성을 더한다', () => {
+        const rows = StatsCalc.activeGroupSizeRows([
+            { groupMatchId: 1, gender: 'MALE', count: 2 },
+            { groupMatchId: 1, gender: 'FEMALE', count: 2 },
+            { groupMatchId: 2, gender: 'MALE', count: 1 },
+            { groupMatchId: 2, gender: 'FEMALE', count: 2 },
+            { groupMatchId: 3, gender: 'FEMALE', count: 3 },
+        ], GENDER_LABELS);
+
+        assert.deepEqual(rows, [
+            { label: '3명 · 2개', countsInColumnOrder: [1, 5, 0], totalCount: 6 },
+            { label: '4명 · 1개', countsInColumnOrder: [2, 2, 0], totalCount: 4 },
+        ]);
+    });
+});

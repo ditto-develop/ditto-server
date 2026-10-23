@@ -235,6 +235,46 @@
             genderLabels,
             rows: funnel.unmatchedGenderRows,
         });
+        renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const scoreText = (score) => `${score.toFixed(1)}점`;
+
+    // 성사 쪽 평균을 옆에 둬서 점수가 높을수록 성사되는지 본다.
+    const scoreSummaryText = (summary, matchedSummary, unitLabel) => {
+        if (summary.count === 0) return '이 회차 후보가 없습니다.';
+        const matchedText = matchedSummary.count === 0
+            ? '성사 없음'
+            : `성사 ${matchedSummary.count}${unitLabel} 평균 ${scoreText(matchedSummary.average)}`;
+        return `평균 ${scoreText(summary.average)} · 중앙값 ${scoreText(summary.median)} · ${matchedText}`;
+    };
+
+    const fillScoreCard = (idPrefix, { title, summary, matchedSummary, unitLabel }) => {
+        byId(`${idPrefix}Title`).textContent = `${title} · ${summary.count}${unitLabel}`;
+        byId(`${idPrefix}Summary`).textContent = scoreSummaryText(summary, matchedSummary, unitLabel);
+        fillShares(`${idPrefix}Shares`, summary.bins, { unit: unitLabel });
+    };
+
+    const renderMatchScores = (matchStats, quizMatchingTypeLabels, genderLabels) => {
+        const scores = StatsCalc.matchScores(matchStats);
+        const showsOneToOne = Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
+        const showsGroup = Object.hasOwn(quizMatchingTypeLabels, 'GROUP');
+        byId('matchPairScoreCard').hidden = !showsOneToOne;
+        byId('matchGroupScoreCard').hidden = !showsGroup;
+        byId('matchGroupSizeCard').hidden = !showsGroup;
+        fillScoreCard('matchPairScore', {
+            title: '1:1 후보 점수', summary: scores.pair, matchedSummary: scores.acceptedPair, unitLabel: '쌍',
+        });
+        fillScoreCard('matchGroupScore', {
+            title: '그룹 후보 점수', summary: scores.group, matchedSummary: scores.activeGroup, unitLabel: '개',
+        });
+        fillGenderTable({
+            headId: 'matchGroupSizeHead',
+            bodyId: 'matchGroupSizeRows',
+            firstColumnLabel: '인원 · 그룹 수',
+            genderLabels,
+            rows: StatsCalc.activeGroupSizeRows(matchStats.activeGroupMemberCounts, genderLabels),
+        });
     };
 
     const rateCell = (part, whole) => cell(StatsCalc.percentText(part, whole), 'num');
