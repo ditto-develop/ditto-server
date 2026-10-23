@@ -4,6 +4,9 @@ import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
 import com.ditto.domain.match.entity.QGroupMatchMember
 import com.ditto.domain.match.entity.QGroupMatchMember.groupMatchMember
+import com.ditto.domain.member.entity.QMember.member
+import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.nonAdminMatching
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.querydsl.jpa.impl.JPAQueryFactory
 import java.time.LocalDate
@@ -104,5 +107,31 @@ class GroupMatchMemberRepositoryImpl(
                 other.status.ne(InvitationStatus.DECLINED),
             )
             .fetchFirst() != null
+    }
+
+    override fun countMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<GroupMatchMemberCount> {
+        val countExpression = groupMatchMember.count()
+        return queryFactory
+            .select(groupMatch.isActive, groupMatchMember.status, member.gender, countExpression)
+            .from(groupMatchMember)
+            .join(groupMatch).on(groupMatchMember.roomId.eq(groupMatch.id))
+            .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(groupMatchMember.memberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                member.nonAdminMatching(filter),
+            )
+            .groupBy(groupMatch.isActive, groupMatchMember.status, member.gender)
+            .fetch()
+            .map { row ->
+                GroupMatchMemberCount(
+                    isGroupActive = row.get(groupMatch.isActive)
+                        ?: throw IllegalStateException("group by 키 isActive 가 비었다"),
+                    status = row.get(groupMatchMember.status)
+                        ?: throw IllegalStateException("group by 키 status 가 비었다"),
+                    gender = row.get(member.gender),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
     }
 }

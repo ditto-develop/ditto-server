@@ -122,6 +122,55 @@ const StatsCalc = (() => {
         ));
     };
 
+    // 1:1 은 후보·성사 테이블이 따로 있고, 그룹은 초대 한 테이블에서 성사된 그룹을 수락한 사람이 성사다.
+    const matchStageCountRows = (matchStats) => ({
+        ONE_TO_ONE: {
+            candidate: matchStats.matchCandidateCounts,
+            matched: matchStats.personalMatchMemberCounts,
+        },
+        GROUP: {
+            candidate: matchStats.groupMatchMemberCounts,
+            matched: matchStats.groupMatchMemberCounts
+                .filter((countRow) => countRow.isGroupActive && countRow.status === 'ACCEPTED'),
+        },
+    });
+
+    const completedCountsOf = (progressCounts, matchingType) =>
+        completedOnly(progressCounts).filter((countRow) => countRow.matchingType === matchingType);
+
+    const matchFunnel = (progressCounts, matchStats, quizMatchingTypeLabels) => {
+        const stageCountRows = matchStageCountRows(matchStats);
+        const countsByType = Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => ({
+            label,
+            completedCount: sumCounts(completedCountsOf(progressCounts, matchingType)),
+            candidateCount: sumCounts(stageCountRows[matchingType].candidate),
+            matchedCount: sumCounts(stageCountRows[matchingType].matched),
+        }));
+        const completedCount = countsByType.reduce((sum, row) => sum + row.completedCount, 0);
+        const matchedCount = countsByType.reduce((sum, row) => sum + row.matchedCount, 0);
+        return {
+            completedCount,
+            candidateCount: countsByType.reduce((sum, row) => sum + row.candidateCount, 0),
+            matchedCount,
+            unmatchedCount: Math.max(0, completedCount - matchedCount),
+            countsByType,
+        };
+    };
+
+    // 미매칭 = 완주 - 성사. 성사 뒤 진행을 초기화한 회원은 완주에서 빠져 음수가 될 수 있어 0 에서 자른다.
+    const unmatchedGenderRows = (progressCounts, matchStats, quizMatchingTypeLabels, genderLabels) => {
+        const stageCountRows = matchStageCountRows(matchStats);
+        return Object.entries(quizMatchingTypeLabels).map(([matchingType, label]) => {
+            const completedByGender = sumCountsBy(completedCountsOf(progressCounts, matchingType), (row) => row.gender);
+            const matchedByGender = sumCountsBy(stageCountRows[matchingType].matched, (row) => row.gender);
+            const unmatchedCounts = [...Object.keys(genderLabels), null].map((gender) => ({
+                gender,
+                count: Math.max(0, (completedByGender.get(gender) || 0) - (matchedByGender.get(gender) || 0)),
+            }));
+            return genderRow(label, unmatchedCounts, genderLabels);
+        });
+    };
+
     // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
     const questionDistributions = (choiceAnswerCounts) =>
         [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => ({
@@ -208,6 +257,8 @@ const StatsCalc = (() => {
         ageGenderRows,
         quizParticipation,
         participantGenderRows,
+        matchFunnel,
+        unmatchedGenderRows,
         questionDistributions,
         memberReviewSubmission,
         memberReviewSubmissionByType,

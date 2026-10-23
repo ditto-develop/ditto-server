@@ -1,5 +1,6 @@
 package com.ditto.domain.match.repository.querydsl
 
+import com.ditto.domain.member.repository.querydsl.MemberFilter
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -25,4 +26,6 @@ interface GroupMatchMemberRepositoryCustom {
      * 호출 트랜잭션에 이미 올라온 초대는 갱신되지 않는다.
      */
     fun declinePendingInvitations(groupMatchIds: Collection<Long>, updatedAt: LocalDateTime): Long
+
+    fun countMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<GroupMatchMemberCount>
 }

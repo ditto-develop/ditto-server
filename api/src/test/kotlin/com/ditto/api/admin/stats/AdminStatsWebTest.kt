@@ -2,6 +2,15 @@ package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.auth.AdminPrincipal
 import com.ditto.api.support.IntegrationTest
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.MatchCandidateFixture
+import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.match.repository.MatchCandidateRepository
+import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -51,6 +60,10 @@ class AdminStatsWebTest(
     private val memberReviewRepository: MemberReviewRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
     private val memberReportRepository: MemberReportRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
+    private val personalMatchRepository: PersonalMatchRepository,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -113,6 +126,32 @@ class AdminStatsWebTest(
                                 """"quizId":${quiz.id},"quizDisplayOrder":1,"question":"Q1",""" +
                                 """"choiceId":${choice.id},""" +
                                 """"choiceDisplayOrder":1,"choiceContent":"A","count":1}]""",
+                        ),
+                    ),
+                )
+        }
+
+        "매칭 집계를 페이지 JSON 에 넣는다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val (oneMember, otherMember) = listOf("one", "other").map { nickname ->
+                memberRepository.save(MemberFixture.create(nickname = nickname, email = "$nickname@ditto.pics"))
+            }
+            matchCandidateRepository.save(MatchCandidateFixture.create(oneMember.id, otherMember.id, quizSet.id))
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(oneMember.id, otherMember.id, quizSet.id, PersonalMatchStatus.ACCEPTED),
+            )
+            val groupMatch = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id))
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(groupMatch.id, oneMember.id))
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
+                .andExpect(status().isOk)
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"matchStats":{"matchCandidateCounts":[{"gender":null,"count":1}],""" +
+                                """"personalMatchMemberCounts":[{"gender":null,"count":1},{"gender":null,"count":1}],""" +
+                                """"groupMatchMemberCounts":""" +
+                                """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}]}""",
                         ),
                     ),
                 )

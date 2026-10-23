@@ -156,7 +156,38 @@
         });
     };
 
-    const questionBlock = ({ displayOrder, question, answerCount, choices }) => {
+    const renderMatchSection = ({ genderLabels, quizMatchingTypeLabels, quizStats, matchStats }) => {
+        const funnel = StatsCalc.matchFunnel(quizStats.progressCounts, matchStats, quizMatchingTypeLabels);
+        showSectionIfAny('match', funnel.completedCount > 0);
+
+        byId('matchMatchedCount').textContent = countText(funnel.matchedCount, '명');
+        byId('matchMatchedCountBasis').textContent = `후보 ${countText(funnel.candidateCount, '명')}`;
+        fillRateCard('matchRate', {
+            part: funnel.matchedCount, whole: funnel.completedCount, unit: '명', wholeLabel: '완주',
+        });
+        byId('matchUnmatchedCount').textContent = countText(funnel.unmatchedCount, '명');
+        fillRows('matchFunnelRows', funnel.countsByType, (row) => [
+            cell(row.label),
+            countCell(row.completedCount),
+            countCell(row.candidateCount),
+            countCell(row.matchedCount),
+            cell(StatsCalc.percentText(row.matchedCount, row.completedCount), 'num'),
+        ]);
+        fillGenderTable({
+            headId: 'matchUnmatchedGenderHead',
+            bodyId: 'matchUnmatchedGenderRows',
+            firstColumnLabel: '매칭 유형',
+            genderLabels,
+            rows: StatsCalc.unmatchedGenderRows(
+                quizStats.progressCounts,
+                matchStats,
+                quizMatchingTypeLabels,
+                genderLabels,
+            ),
+        });
+    };
+
+    const questionBlock =({ displayOrder, question, answerCount, choices }) => {
         const block = element('div', 'question-block');
         const title = element('p', 'question-title', `${displayOrder}. ${question}`);
         title.append(element('span', 'question-count', `응답 ${countText(answerCount, '명')}`));
@@ -269,6 +300,7 @@
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);
+    renderMatchSection(pageData);
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);

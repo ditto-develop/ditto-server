@@ -11,7 +11,7 @@
 - **가입 주차**: 고른 날이 속한 주(월~일)에 `joined_at`이 있는 회원.
 - **더미**: dev 의 더미 회원(닉네임 `dummy-`)도 일반 회원처럼 센다. 운영은 QA 도구가 꺼져 있어 더미가 없다. 더미는 만들 때 고른 나이가 그날(실제 날짜) 만 나이가 되는 생년월일을 무작위로 받는다. 시각 조정을 몇 주 앞으로 걸면 기준일이 달라 연령대가 고른 나이와 한 칸 어긋날 수 있다.
 - **탈퇴·삭제**: 그때의 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 탈퇴 30일 뒤 완전 삭제된 회원은 행이 없어 빠진다(지금은 삭제가 dry-run).
-- **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·평가·리텐션)은 "회차가 아닌 주"로 비운다.
+- **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·매칭·평가·리텐션)은 "회차가 아닌 주"로 비운다.
 
 ## 회원 현황
 
@@ -46,6 +46,22 @@
 - 성별·연령대·가입 주차 조건은 답한 회원에게 건다. 답이 없는 선택지도 0으로 나온다.
 - 완주하지 않은 회원의 답도 센다. 중간에 그만둔 회원은 뒤 문항에 답이 없어서, 문항마다 응답 수가 줄어드는 것으로 이탈 지점도 보인다.
 - 쏠림 기준선은 기획서에 없어 화면에 표시하지 않는다. 비율만 보여 준다.
+
+## 매칭
+
+| 블록 | 세는 것 |
+|---|---|
+| 완주 | 퀴즈 참여 장의 회차 참여자와 같다 |
+| 후보 | 1:1 은 `match_candidate`에 후보가 생긴 회원(`owner_member_id`). 그룹은 후보 그룹(`group_match_member`)에 들어간 회원이고 거절·미성사도 센다 |
+| 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원 |
+| 매칭률 | 성사 ÷ 완주 |
+| 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
+
+- 기획서의 매칭은 "짝을 정해 준다"지만 디토는 후보를 보여 주고 신청·수락으로 성사된다. 그래서 매칭 = 성사로 세고 후보는 참고로 보여 준다(#329). 1:1 후보는 자격 상대만 있으면 누구나 받아서(ADR 0040) 거의 100%다.
+- 배치는 목요일 00:01 에 돈다. 그 전에는 후보·성사가 0 이다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다.
+- 서버는 테이블마다 센 값만 내리고 후보·성사로 나누는 건 `stats-calc.js`가 한다. 1:1 성사는 한 행에 회원이 둘이라 `member_id_1` 쪽과 `member_id_2` 쪽을 따로 세서 내린다.
+- 매칭 유형 조건은 화면이 그 유형 줄만 그려서 건다. 회원 조건은 세는 회원에게 건다.
+- 성사 뒤 진행을 초기화하면 완주에서 빠져 성사가 완주보다 클 수 있다. 미매칭은 0 에서 자른다.
 
 ## 평가
 
@@ -118,6 +134,28 @@ JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED';
 
+-- 1:1 후보
+SELECT m.gender, COUNT(DISTINCT c.owner_member_id) FROM match_candidate c
+JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY m.gender;
+
+-- 1:1 성사 (두 사람을 각각)
+SELECT m.gender, COUNT(*) FROM personal_match pm
+JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
+JOIN member m ON m.id IN (pm.member_id_1, pm.member_id_2) AND m.role = 'USER'
+WHERE qs.week_started_on = :monday AND pm.status = 'ACCEPTED'
+GROUP BY m.gender;
+
+-- 그룹 후보 = 전부, 성사 = is_active 이고 ACCEPTED
+SELECT gm.is_active, gmm.status, m.gender, COUNT(*) FROM group_match_member gmm
+JOIN group_match gm ON gm.id = gmm.room_id
+JOIN quiz_set qs ON qs.id = gm.quiz_set_id AND qs.is_active
+JOIN member m ON m.id = gmm.member_id AND m.role = 'USER'
+WHERE qs.week_started_on = :monday
+GROUP BY gm.is_active, gmm.status, m.gender;
+
 -- 평가지 상태 (쓴 사람 기준)
 SELECT r.match_type, r.status, COUNT(*) FROM member_review r
 JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
@@ -170,6 +208,7 @@ GROUP BY DATE(joined_at);
 | 회원 현황 | 더미 생성 | 가입 시각은 실제 시각이라 일별 표에는 실제 오늘 줄에만 늘어난다. 시각 조정 중이면 실제 날짜의 주를 `?week=yyyy-MM-dd`로 연다(드롭다운에는 조정된 이번 주와 회차만 나온다) |
 | 퀴즈 참여 | 더미 생성(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨) |
 | 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다 |
+| 매칭 | 더미 생성 → 퀴즈셋 매칭 실행 → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 매칭 실행 전에는 후보·성사가 0 이다. 그룹은 3명이 수락해야 성사로 잡힌다 |
 | 평가 | 매칭 실행 → QA 콘솔 시각 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다 |
 | 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시각 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333) |
 | 신고 | QA 콘솔에서 더미로 신고 | 접수 시각이 실제 시각이라 시각 조정 중인 회차에는 안 잡힌다. 실제 날짜의 주를 `?week=`로 연다 |

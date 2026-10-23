@@ -196,6 +196,64 @@ describe('participantGenderRows', () => {
     });
 });
 
+// 1:1 완주 남 3·여 2, 그룹 완주 미입력 1 (PROGRESS_COUNTS)
+const MATCH_STATS = {
+    matchCandidateCounts: [
+        { gender: 'MALE', count: 3 },
+        { gender: 'FEMALE', count: 2 },
+    ],
+    // 두 쪽을 따로 세서 같은 성별이 두 행으로 온다.
+    personalMatchMemberCounts: [
+        { gender: 'MALE', count: 1 },
+        { gender: 'FEMALE', count: 1 },
+        { gender: 'MALE', count: 1 },
+    ],
+    groupMatchMemberCounts: [
+        { isGroupActive: true, status: 'ACCEPTED', gender: null, count: 1 },
+        { isGroupActive: true, status: 'DECLINED', gender: 'MALE', count: 1 },
+        { isGroupActive: false, status: 'ACCEPTED', gender: 'FEMALE', count: 1 },
+    ],
+};
+
+describe('matchFunnel', () => {
+    test('그룹 성사는 성사된 그룹을 수락한 사람만이고 후보는 거절·미성사도 센다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, QUIZ_MATCHING_TYPE_LABELS);
+
+        assert.deepEqual(funnel.countsByType, [
+            { label: '1:1', completedCount: 5, candidateCount: 5, matchedCount: 3 },
+            { label: '그룹', completedCount: 1, candidateCount: 3, matchedCount: 1 },
+        ]);
+        assert.equal(funnel.completedCount, 6);
+        assert.equal(funnel.candidateCount, 8);
+        assert.equal(funnel.matchedCount, 4);
+        assert.equal(funnel.unmatchedCount, 2);
+    });
+
+    test('매칭 유형을 고르면 그 유형 줄만 나온다', () => {
+        const funnel = StatsCalc.matchFunnel(PROGRESS_COUNTS, MATCH_STATS, { GROUP: '그룹' });
+
+        assert.deepEqual(funnel.countsByType.map((row) => row.label), ['그룹']);
+        assert.equal(funnel.completedCount, 1);
+        assert.equal(funnel.matchedCount, 1);
+    });
+});
+
+describe('unmatchedGenderRows', () => {
+    test('완주에서 성사를 성별마다 빼고 음수는 0으로 둔다', () => {
+        const rows = StatsCalc.unmatchedGenderRows(
+            PROGRESS_COUNTS,
+            MATCH_STATS,
+            QUIZ_MATCHING_TYPE_LABELS,
+            GENDER_LABELS,
+        );
+
+        assert.deepEqual(rows, [
+            { label: '1:1', countsInColumnOrder: [1, 1, 0], totalCount: 2 },
+            { label: '그룹', countsInColumnOrder: [0, 0, 0], totalCount: 0 },
+        ]);
+    });
+});
+
 describe('questionDistributions', () => {
     const choiceRow = (quizSetId, quizId, quizDisplayOrder, choiceContent, count) => ({
         quizSetId,

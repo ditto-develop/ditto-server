@@ -14,6 +14,7 @@ data class StatsPageData(
     val today: LocalDate,
     val memberStats: MemberStatsData,
     val quizStats: QuizStatsData,
+    val matchStats: MatchStatsData,
     val memberReviewStats: MemberReviewStatsData,
     val retentionStats: RetentionStatsData,
     val memberReportStats: MemberReportStatsData,

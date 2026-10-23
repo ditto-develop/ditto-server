@@ -66,7 +66,7 @@
                 <p class="muted stats-filter-note" th:if="${filter.joinedWeek != null}">고른 날이 속한 주(월~일)에 가입한 회원만 셉니다.</p>
             </div>
 
-            <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·평가·리텐션은 비어 있습니다.</p>
+            <p class="alert info" th:unless="${isRoundWeek}">이 주는 활성 퀴즈셋이 없어 회차로 치지 않습니다. 퀴즈 참여·문항 분포·매칭·평가·리텐션은 비어 있습니다.</p>
 
             <div class="qa-bar">
                 <span>회차 <b th:text="${roundLabel}">2회차 · 10/19 주</b></span>
@@ -78,6 +78,7 @@
                     <a href="#members">회원</a>
                     <a href="#quiz-participation">퀴즈</a>
                     <a href="#questions">문항</a>
+                    <a href="#matches">매칭</a>
                     <a href="#member-reviews">평가</a>
                     <a href="#retention">리텐션</a>
                     <a href="#member-reports">신고</a>
@@ -194,6 +195,52 @@
                 <div id="questionSectionBody">
                     <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준</p>
                     <div id="questionDistributions"></div>
+                </div>
+            </section>
+
+            <section class="stats-section" id="matches">
+                <h2 class="stats-section-title">매칭</h2>
+                <p class="stats-section-desc">매칭은 성사를 뜻합니다. 1:1 은 신청이 수락된 두 사람, 그룹은 3명 이상 모인 그룹을 수락한 사람입니다. 후보는 매칭 배치가 후보를 보여 준 회원이고, 미매칭은 퀴즈를 끝까지 풀었지만 성사되지 않은 회원입니다. 배치는 목요일 00:01 에 돌아서 그 전에는 후보·성사가 0 입니다.</p>
+                <p class="alert info" id="matchEmptyNotice" hidden
+                   th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (hasConditions ? '조건에 맞는 퀴즈 참여가 없습니다.' : '이 회차에 퀴즈를 끝까지 푼 회원이 없습니다.')}">이 회차에 퀴즈를 끝까지 푼 회원이 없습니다.</p>
+                <div id="matchSectionBody">
+                    <p class="stats-basis"><span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준</p>
+                    <div class="grid stats-totals">
+                        <div class="card stat">
+                            <span class="label">성사</span>
+                            <span class="value" id="matchMatchedCount">-</span>
+                            <span class="basis" id="matchMatchedCountBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">매칭률</span>
+                            <span class="value" id="matchRate">-</span>
+                            <span class="basis" id="matchRateBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label">미매칭</span>
+                            <span class="value" id="matchUnmatchedCount">-</span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3>매칭 유형별 완주 → 후보 → 성사</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>매칭 유형</th><th class="num">완주(명)</th><th class="num">후보(명)</th><th class="num">성사(명)</th><th class="num">매칭률</th></tr></thead>
+                                    <tbody id="matchFunnelRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>미매칭 성별 구성</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="matchUnmatchedGenderHead"></thead>
+                                    <tbody id="matchUnmatchedGenderRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
