@@ -673,9 +673,9 @@ describe('completionDayCounts', () => {
 describe('trackSwitchCounts', () => {
     const ALL_LABELS = { ONE_TO_ONE: '1:1', GROUP: '그룹' };
     const COMPLETED_AGAIN_COUNTS = [
-        { previousMatchingType: 'ONE_TO_ONE', matchingType: 'ONE_TO_ONE', count: 3 },
-        { previousMatchingType: 'ONE_TO_ONE', matchingType: 'GROUP', count: 1 },
-        { previousMatchingType: 'GROUP', matchingType: 'ONE_TO_ONE', count: 2 },
+        { previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'ONE_TO_ONE', count: 3 },
+        { previousMatchingType: 'ONE_TO_ONE', againMatchingType: 'GROUP', count: 1 },
+        { previousMatchingType: 'GROUP', againMatchingType: 'ONE_TO_ONE', count: 2 },
     ];
 
     test('지난 회차 유형 → 고른 회차 유형 네 줄을 0이어도 낸다', () => {

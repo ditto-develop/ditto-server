@@ -28,7 +28,6 @@ data class StatsPageData(
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val locationLabels: Map<String, String> = Location.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,
-    /** 트랙 전환의 고른 회차 쪽은 매칭 유형 조건과 상관없이 두 유형이 다 나온다. */
     val allQuizMatchingTypeLabels: Map<String, String> = MatchingTypeFilter.ALL.quizMatchingTypeLabels(),
     val memberReviewMatchTypeLabels: Map<String, String>,
     val meetingStatusLabels: Map<String, String> = MeetingStatus.entries.associate { it.name to it.description },

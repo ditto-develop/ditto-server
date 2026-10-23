@@ -107,7 +107,7 @@ const StatsCalc = (() => {
 
     // 지역은 많아서 회원이 있는 곳만 많은 순으로 보인다.
     const locationCounts = (countRows, locationLabels) => {
-        const unknownCount = sumCounts(countRows.filter((countRow) => countRow.location === null));
+        const unknownRow = countRows.find((countRow) => countRow.location === null);
         const knownRows = countRows
             .filter((countRow) => countRow.location !== null)
             .map((countRow) => ({
@@ -115,18 +115,18 @@ const StatsCalc = (() => {
                 count: countRow.count,
             }))
             .sort((one, other) => other.count - one.count || one.label.localeCompare(other.label, 'ko'));
-        return unknownCount > 0 ? [...knownRows, { label: LOCATION_UNKNOWN_LABEL, count: unknownCount }] : knownRows;
+        return unknownRow ? [...knownRows, { label: LOCATION_UNKNOWN_LABEL, count: unknownRow.count }] : knownRows;
     };
 
     // 사유는 탈퇴 화면 순서대로 0이어도 나온다. 모르는 코드는 코드 그대로 뒤에 붙는다.
     const leaveReasonCounts = (countRows) => {
         const countsByReason = sumCountsBy(countRows, (countRow) => countRow.leaveReason);
-        const extraRows = [...countsByReason.entries()]
-            .filter(([reason]) => !(reason in LEAVE_REASON_LABELS))
+        const unlabeledReasonRows = [...countsByReason.entries()]
+            .filter(([reason]) => reason === null || !Object.hasOwn(LEAVE_REASON_LABELS, reason))
             .map(([reason, count]) => ({ label: reason === null ? LEAVE_REASON_UNKNOWN_LABEL : reason, count }));
         return {
             leftCount: sumCounts(countRows),
-            reasonCounts: [...labeledCounts(countsByReason, LEAVE_REASON_LABELS), ...extraRows],
+            reasonCounts: [...labeledCounts(countsByReason, LEAVE_REASON_LABELS), ...unlabeledReasonRows],
         };
     };
 
@@ -302,38 +302,33 @@ const StatsCalc = (() => {
         };
     };
 
-    // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
-    // 문항은 선택지가 둘이라 첫 선택지 비율 하나로 쏠림과 성별 차이를 본다. 행은 선택지 순서로 온다.
-    const firstChoiceShare = (questionRows, answerRows) => {
-        const firstChoiceId = questionRows[0].choiceId;
-        const firstChoiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === firstChoiceId));
-        return percent(firstChoiceCount, sumCounts(answerRows));
+    const choiceShare = (answerRows, choiceId) => {
+        const choiceCount = sumCounts(answerRows.filter((countRow) => countRow.choiceId === choiceId));
+        return percent(choiceCount, sumCounts(answerRows));
     };
 
-    // 답한 성별만 나온다. 성별 조건을 걸면 한 줄이라 차이를 볼 수 없다.
-    const firstChoiceSharesByGender = (questionRows, genderLabels) =>
+    // 답한 성별만 나온다.
+    const choiceSharesByGender = (questionRows, choiceId, genderLabels) =>
         Object.entries(genderLabels)
             .map(([gender, label]) => {
                 const genderRows = questionRows.filter((countRow) => countRow.gender === gender);
-                return {
-                    label,
-                    answerCount: sumCounts(genderRows),
-                    share: firstChoiceShare(questionRows, genderRows),
-                };
+                return { label, answerCount: sumCounts(genderRows), share: choiceShare(genderRows, choiceId) };
             })
             .filter((genderShare) => genderShare.answerCount > 0);
 
+    // 문항은 선택지가 둘이라 첫 선택지 비율 하나로 쏠림과 성별 차이를 본다. 행은 선택지 순서로 온다.
     // 쏠림은 첫 선택지 비율이 50%에서 벗어난 %p 다. 0 이면 반반, 50 이면 한쪽으로 다 몰렸다.
-    const questionDistribution = (questionRows, genderLabels) => {
+    const questionSummary = (questionRows, genderLabels) => {
         const answerCount = sumCounts(questionRows);
+        const firstChoiceId = questionRows[0].choiceId;
         return {
             displayOrder: questionRows[0].quizDisplayOrder,
             question: questionRows[0].question,
             answerCount,
             choices: [...groupBy(questionRows, (countRow) => countRow.choiceId).values()]
                 .map((choiceRows) => ({ label: choiceRows[0].choiceContent, count: sumCounts(choiceRows) })),
-            skew: answerCount === 0 ? null : Math.abs(firstChoiceShare(questionRows, questionRows) - 50),
-            genderShares: firstChoiceSharesByGender(questionRows, genderLabels),
+            skew: answerCount === 0 ? null : Math.abs(choiceShare(questionRows, firstChoiceId) - 50),
+            genderShares: choiceSharesByGender(questionRows, firstChoiceId, genderLabels),
         };
     };
 
@@ -343,10 +338,11 @@ const StatsCalc = (() => {
         return skews.length === 0 ? null : skews.reduce((sum, skew) => sum + skew, 0) / skews.length;
     };
 
+    // 서버가 퀴즈셋·문항·선택지 순서로 준 행을 그 순서 그대로 묶는다.
     const questionDistributions = (choiceAnswerCounts, genderLabels) =>
         [...groupBy(choiceAnswerCounts, (countRow) => countRow.quizSetId).values()].map((quizSetRows) => {
             const questions = [...groupBy(quizSetRows, (countRow) => countRow.quizId).values()]
-                .map((questionRows) => questionDistribution(questionRows, genderLabels));
+                .map((questionRows) => questionSummary(questionRows, genderLabels));
             return { matchingType: quizSetRows[0].matchingType, questions, skewScore: averageSkew(questions) };
         });
 
@@ -385,12 +381,12 @@ const StatsCalc = (() => {
     };
 
     // 지난 회차 유형은 조건으로 거른 라벨, 고른 회차 유형은 늘 두 유형 다 나온다.
-    const trackSwitchCounts = (completedAgainCounts, quizMatchingTypeLabels, allQuizMatchingTypeLabels) =>
-        Object.entries(quizMatchingTypeLabels).flatMap(([previousType, previousLabel]) =>
-            Object.entries(allQuizMatchingTypeLabels).map(([matchingType, label]) => ({
-                label: `${previousLabel} → ${label}`,
+    const trackSwitchCounts = (completedAgainCounts, previousTypeLabels, allQuizMatchingTypeLabels) =>
+        Object.entries(previousTypeLabels).flatMap(([previousType, previousLabel]) =>
+            Object.entries(allQuizMatchingTypeLabels).map(([againType, againLabel]) => ({
+                label: `${previousLabel} → ${againLabel}`,
                 count: sumCounts(completedAgainCounts.filter((countRow) =>
-                    countRow.previousMatchingType === previousType && countRow.matchingType === matchingType)),
+                    countRow.previousMatchingType === previousType && countRow.againMatchingType === againType)),
             })));
 
     const retentionCounts = (previousProgressCounts, completedAgainCounts, quizMatchingTypeLabels) => {

@@ -165,7 +165,7 @@ class QuizProgressRepositoryImpl(
                 CompletedAgainCount(
                     previousMatchingType = row.get(quizSet.matchingType)
                         ?: throw IllegalStateException("group by 키 matchingType 이 비었다"),
-                    matchingType = row.get(againSet.matchingType)
+                    againMatchingType = row.get(againSet.matchingType)
                         ?: throw IllegalStateException("group by 키 againSet.matchingType 이 비었다"),
                     count = row.get(countExpression) ?: 0L,
                 )
