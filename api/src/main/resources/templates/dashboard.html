@@ -13,20 +13,20 @@
 
             <h2 class="dashboard-heading">처리할 일</h2>
             <div class="grid cols-3">
-                <a class="card stat todo" th:href="@{/admin/reports}">
-                    <span class="label">검토 대기 신고</span>
+                <a class="card stat dashboard-todo" th:classappend="${receivedReportCount > 0} ? 'has-items'" th:href="@{/admin/reports}">
+                    <span class="label">검토 대기 신고 <span class="dashboard-todo-go" aria-hidden="true">→</span></span>
                     <span class="value" th:text="|${receivedReportCount}건|">0건</span>
                     <span>
                         <span class="badge danger" th:if="${overdueReportCount > 0}" th:text="|24시간 지남 ${overdueReportCount}건|">24시간 지남 1건</span>
                         <span class="muted" th:if="${overdueReportCount == 0}">24시간 지난 건 없음</span>
                     </span>
                 </a>
-                <a class="card stat todo" th:href="@{/admin/feedbacks}">
-                    <span class="label">확인 대기 의견</span>
+                <a class="card stat dashboard-todo" th:classappend="${receivedFeedbackCount > 0} ? 'has-items'" th:href="@{/admin/feedbacks}">
+                    <span class="label">확인 대기 의견 <span class="dashboard-todo-go" aria-hidden="true">→</span></span>
                     <span class="value" th:text="|${receivedFeedbackCount}건|">0건</span>
                 </a>
-                <a class="card stat todo" th:href="@{/admin/launch-notifications}">
-                    <span class="label">출시 알림 메일 발송 대기</span>
+                <a class="card stat dashboard-todo" th:classappend="${pendingLaunchNotificationCount > 0} ? 'has-items'" th:href="@{/admin/launch-notifications}">
+                    <span class="label">출시 알림 메일 발송 대기 <span class="dashboard-todo-go" aria-hidden="true">→</span></span>
                     <span class="value" th:text="|${pendingLaunchNotificationCount}명|">0명</span>
                 </a>
             </div>
@@ -34,12 +34,12 @@
             <h2 class="dashboard-heading">이번 주</h2>
             <div class="grid cols-3">
                 <div class="card stat">
-                    <span class="label">이번 주</span>
-                    <span class="value" th:text="${@weekLabel.of(state.weekStartedOn)}">-</span>
+                    <span class="label">기간</span>
+                    <span class="value dashboard-value" th:text="${@weekLabel.of(state.weekStartedOn)}">-</span>
                 </div>
                 <div class="card stat">
                     <span class="label">서버 시각</span>
-                    <span class="value" style="font-size:18px"
+                    <span class="value dashboard-value"
                           th:text="${#temporals.format(state.dateTime, 'yyyy-MM-dd HH:mm')}">-</span>
                 </div>
                 <div class="card stat">

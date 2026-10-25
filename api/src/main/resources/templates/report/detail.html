@@ -34,12 +34,10 @@
                         <img th:src="${url}" th:alt="'첨부 ' + ${i.count}" style="max-width:180px;max-height:180px;border-radius:8px"/>
                     </a>
                 </div>
-            </div>
-
-            <!-- 대응 가이드라인 -->
-            <div class="card">
-                <h2>대응 가이드라인</h2>
-                <p th:each="g : ${report.guidelines}" th:text="${g}">가이드라인</p>
+                <div class="report-guidelines">
+                    <h3>대응 가이드라인</h3>
+                    <p th:each="g : ${report.guidelines}" th:text="${g}">가이드라인</p>
+                </div>
             </div>
 
             <!-- 피신고자 -->
@@ -99,11 +97,11 @@
                 <form th:action="@{/admin/reports/{id}/action(id=${report.id})}" method="post"
                       onsubmit="return confirm('결정: ' + this.decision.selectedOptions[0].text + '\n검토는 신고당 한 번만 할 수 있고 되돌릴 수 없습니다. 계속할까요?');">
                     <div class="field">
-                        <div class="with-info stats-filter-label">
+                        <div class="with-info label-with-info">
                             <label for="decision">결정</label>
                             <th:block th:replace="~{fragments :: info('info-report-decision', '결정', '영구 차단은 앱을 아예 못 쓰게 하는 제재입니다. 회원이 상대를 안 보이게 하는 사용자 차단과는 다릅니다.')}"></th:block>
                         </div>
-                        <select id="decision" name="decision" required>
+                        <select id="decision" name="decision" class="decision-select" required>
                             <option value="" selected disabled>결정을 고르세요</option>
                             <option th:each="d : ${decisions}" th:value="${d.name()}" th:text="${d.description}">결정</option>
                         </select>
@@ -112,7 +110,7 @@
                         <label for="reviewNote">메모 (선택, 최대 500자)</label>
                         <textarea id="reviewNote" name="reviewNote" maxlength="500" rows="3" style="width:100%"></textarea>
                     </div>
-                    <p class="muted">이용 정지와 영구 차단은 바로, 경고는 다음 주 월요일부터 적용되며 피신고자에게 제재 알림이 갑니다. 허위 신고로 기각해도 신고자는 자동으로 제재되지 않으니, 신고자 칸의 '제재 관리'에서 따로 제재하세요.</p>
+                    <p class="alert info">이용 정지와 영구 차단은 바로, 경고는 다음 주 월요일부터 적용되며 피신고자에게 제재 알림이 갑니다. 허위 신고로 기각해도 신고자는 자동으로 제재되지 않으니, 신고자 칸의 '제재 관리'에서 따로 제재하세요.</p>
                     <button class="btn" type="submit">검토 완료</button>
                 </form>
             </div>

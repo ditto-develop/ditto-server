@@ -28,7 +28,7 @@
                 <div class="card stat">
                     <span class="label">마지막 설정자</span>
                     <span class="value" style="font-size:16px"
-                          th:text="${override.enabled and override.authorName != null} ? (${override.authorName} + ' (' + ${override.authorEmail} + ')') : '—'">—</span>
+                          th:text="${override.enabled and override.authorName != null} ? (${override.authorName} + (${override.authorEmail != null} ? ' (' + ${override.authorEmail} + ')' : '')) : '—'">—</span>
                 </div>
             </div>
 

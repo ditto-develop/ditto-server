@@ -59,7 +59,9 @@
             </div>
 
             <div class="card" id="qa-tools" th:if="${answerResetPreview != null}">
-                <h2>QA 도구</h2>
+                <details class="qa-tools-details">
+                <summary>QA 도구 <span class="badge danger">되돌릴 수 없음</span>
+                    <span class="muted">(<th:block th:if="${matchingErasePreview != null}">매칭 기록 초기화 · </th:block>전체 답·진행 초기화<th:block th:if="${matchingErasePreview != null}"> · 강제 삭제</th:block>)</span></summary>
                 <div class="alert error">
                     운영 데이터가 되돌릴 수 없게 지워집니다.
                     <span th:if="${answerResetPreview.realParticipantCount > 0}"
@@ -67,8 +69,6 @@
                     <span th:if="${matchingErasePreview != null and matchingErasePreview.realMemberRoomCount > 0}"
                           th:text="|실회원이 있는 채팅방 ${matchingErasePreview.realMemberRoomCount}개의 메시지·평가도 함께 사라집니다.|">실회원 방</span>
                 </div>
-                <details class="qa-tools-details">
-                <summary>도구 펼치기 (<th:block th:if="${matchingErasePreview != null}">매칭 기록 초기화 · </th:block>전체 답·진행 초기화<th:block th:if="${matchingErasePreview != null}"> · 강제 삭제</th:block>)</summary>
                 <th:block th:if="${matchingErasePreview != null}">
                     <p style="margin:0 0 4px"
                        th:text="|아래 도구가 모두 지우는 매칭 기록: ${matchingErasePreview.counts.toDisplayText()}|">매칭 기록</p>

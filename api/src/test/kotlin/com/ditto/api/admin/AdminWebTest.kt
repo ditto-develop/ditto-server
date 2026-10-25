@@ -892,7 +892,7 @@ class AdminWebTest {
     @DisplayName("제재 관리 화면은 회원 상태마다 한글 배지를 보여 준다")
     fun memberStatusBadgeLabels() {
         val expectedBadges = mapOf(
-            MemberStatus.ACTIVE to "<span class=\"badge ok\">정상</span>",
+            MemberStatus.ACTIVE to "<span class=\"badge neutral\">정상</span>",
             MemberStatus.PENDING to "<span class=\"badge neutral\">가입 미완료</span>",
             MemberStatus.SUSPENDED to "<span class=\"badge danger\">이용 정지</span>",
             MemberStatus.BANNED to "<span class=\"badge danger\">영구 차단</span>",
@@ -1065,7 +1065,7 @@ class AdminWebTest {
             .andExpect(content().string(containsString(">검토 대기 1</a>")))
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge ok\">정상</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">정상</span>")))
             .andExpect(content().string(containsString("이번이 1차 제재")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
             .andExpect(content().string(containsString("<option value=\"\" selected disabled>결정을 고르세요</option>")))

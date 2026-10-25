@@ -6,13 +6,18 @@
     --sidebar-active: #6c5ce7;
     --border: #e7e9ee;
     --text: #1f2330;
-    --text-sub: #6b7185;
-    --text-muted: #9aa0b4;
+    --text-sub: #5f6578;
+    --text-muted: #6e7488;
     --primary: #6c5ce7;
     --primary-dark: #5a4bd4;
     --danger: #e85a6b;
     --success: #22b07d;
     --warning: #e0a106;
+    /* 연한 배지 배경 위에서도 글자 대비가 4.5:1 을 넘는 진한 글자색 */
+    --success-text: #137a55;
+    --caution-text: #8a5a00;
+    --danger-text: #c23347;
+    --info-text: #1f5fcc;
     --blue: #3a86ff;
     --radius: 12px;
     --shadow: 0 1px 4px rgba(20, 23, 40, 0.08);
@@ -94,6 +99,8 @@ a { color: inherit; text-decoration: none; }
 
 h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em; }
 .page-desc { color: var(--text-sub); margin: 0 0 24px; }
+/* 한국어가 단어 중간에서 끊기지 않게 한다. 긴 닉네임 같은 토큰은 그래도 줄을 바꾼다. */
+.content { word-break: keep-all; overflow-wrap: break-word; }
 
 /* Cards */
 .card {
@@ -109,7 +116,7 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 /* 그리드 간격과 카드 아래 여백이 겹쳐 두 배로 벌어지지 않게 한다. */
 .grid > .card { margin-bottom: 0; }
 .grid.cols-2 { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
-.grid.cols-3 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
 .stat { display: flex; flex-direction: column; gap: 6px; }
 .stat .label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
@@ -117,8 +124,14 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 
 /* 대시보드 */
 .dashboard-heading { font-size: 15px; font-weight: 700; margin: 8px 0 10px; }
-a.card.todo { transition: border-color 0.15s; }
-a.card.todo:hover { border-color: var(--primary); }
+a.card.dashboard-todo { transition: border-color 0.15s; }
+a.card.dashboard-todo:hover { border-color: var(--primary); }
+.dashboard-todo .label { display: flex; justify-content: space-between; }
+.dashboard-todo-go { color: var(--primary); }
+.dashboard-todo:not(.has-items) .value { color: var(--text-sub); }
+.dashboard-todo.has-items { box-shadow: inset 3px 0 0 var(--primary), var(--shadow); }
+.dashboard-value { font-size: 18px; }
+.dashboard-alert { margin-bottom: 12px; }
 
 /* Badges */
 .badge {
@@ -131,16 +144,21 @@ a.card.todo:hover { border-color: var(--primary); }
     font-weight: 700;
     white-space: nowrap;
 }
-.badge.quiz, .qa-week-period.quiz_period { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
-.badge.matching, .qa-week-period.matching_period { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
-.badge.chatting, .qa-week-period.chatting_period { background: rgba(34, 176, 125, 0.13); color: var(--success); }
-.badge.cat { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
-.badge.locked { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
+.qa-week-period.quiz_period { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
+.qa-week-period.matching_period { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
+.qa-week-period.chatting_period { background: rgba(34, 176, 125, 0.13); color: var(--success); }
+/* 주간 기간은 상태가 아니라서 채우지 않고 테두리만 그려 상태 배지와 구분한다. */
+.badge.quiz, .badge.matching, .badge.chatting { background: transparent; border: 1px solid currentColor; }
+.badge.quiz { color: var(--info-text); }
+.badge.matching { color: var(--caution-text); }
+.badge.chatting { color: var(--success-text); }
+.badge.cat { background: rgba(108, 92, 231, 0.1); color: var(--primary-dark); }
+.badge.locked { background: rgba(224, 161, 6, 0.15); color: var(--caution-text); }
 /* 상태 배지는 뜻으로 색을 고른다. 기간 배지(quiz·matching·chatting)와 섞어 쓰지 않는다. */
-.badge.ok { background: rgba(34, 176, 125, 0.13); color: var(--success); }
-.badge.caution { background: rgba(224, 161, 6, 0.15); color: #8a5a00; }
-.badge.danger { background: rgba(232, 90, 107, 0.12); color: var(--danger); }
-.badge.info { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
+.badge.ok { background: rgba(34, 176, 125, 0.13); color: var(--success-text); }
+.badge.caution { background: rgba(224, 161, 6, 0.15); color: var(--caution-text); }
+.badge.danger { background: rgba(232, 90, 107, 0.12); color: var(--danger-text); }
+.badge.info { background: rgba(58, 134, 255, 0.13); color: var(--info-text); }
 .badge.neutral { background: rgba(154, 160, 180, 0.16); color: var(--text-sub); }
 a.badge:hover { text-decoration: underline; }
 
@@ -188,9 +206,9 @@ a.badge:hover { text-decoration: underline; }
 @supports (position-area: bottom) {
     .info-pop:popover-open {
         inset: auto;
-        margin: 6px 0;
-        position-area: bottom span-right;
-        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+        margin: 0 6px;
+        position-area: right span-bottom;
+        position-try-fallbacks: flip-inline, flip-block, flip-block flip-inline;
     }
 }
 /* popover 를 모르는 브라우저는 설명이 본문처럼 보이므로 버튼만 숨긴다. */
@@ -211,9 +229,9 @@ a.badge:hover { text-decoration: underline; }
     white-space: nowrap;
     vertical-align: middle;
 }
-.scope-badge.round, .scope-badge.week, .scope-badge.range { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
-.scope-badge.week { background: rgba(58, 134, 255, 0.12); color: var(--blue); }
-.scope-badge.range { background: rgba(108, 92, 231, 0.06); border-color: rgba(108, 92, 231, 0.35); }
+.scope-badge.round { background: rgba(108, 92, 231, 0.1); color: var(--primary-dark); }
+.scope-badge.week { background: rgba(58, 134, 255, 0.12); color: var(--info-text); }
+.scope-badge.range { background: transparent; border-color: var(--primary-dark); color: var(--primary-dark); }
 .scope-badge.now { background: transparent; border: 1px dashed var(--text-muted); color: var(--text-sub); }
 
 /* Tables */
@@ -249,8 +267,13 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-filter .field { margin-bottom: 0; }
 .stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .stats-filter .field.stats-week-field { min-width: 168px; }
-.stats-filter-label { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
-.stats-filter .stats-filter-label label { margin-bottom: 0; }
+/* 입력칸 라벨 옆 (i). label 의 아래 여백을 감싼 줄이 대신 가져 (i)와 높이가 맞는다. */
+.label-with-info { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.field .label-with-info label { margin-bottom: 0; }
+.decision-select { max-width: 360px; }
+.report-guidelines { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.report-guidelines h3 { font-size: 14px; margin: 0 0 6px; }
+.report-guidelines p { margin: 0 0 4px; }
 .stats-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; padding: 0; list-style: none; color: var(--text-sub); font-size: 12px; }
 .stats-legend li { display: flex; align-items: center; gap: 6px; }
 /* 목차는 상단바 아래에 붙어 따라온다. 장 앵커는 상단바와 목차 높이만큼 내려 멈춘다. */
@@ -322,6 +345,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .btn.danger { background: var(--surface); color: var(--danger); border-color: rgba(232, 90, 107, 0.4); }
 .btn.danger:hover { background: rgba(232, 90, 107, 0.08); }
 .btn.sm { padding: 6px 12px; font-size: 12px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 /* 의견 목록 미리보기. 폰 폭에서 눌리지 않게 최소 폭을 두고 2줄까지만 보인다 */
@@ -560,7 +584,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .cbox .swap:hover { border-color: var(--primary); color: var(--primary); }
 
 .qfoot { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-.qfoot .lockmsg { font-size: 12px; color: var(--warning); font-weight: 600; margin-right: auto; }
+.qfoot .lockmsg { font-size: 12px; color: var(--caution-text); font-weight: 600; margin-right: auto; }
 
 .savebar {
     position: sticky;

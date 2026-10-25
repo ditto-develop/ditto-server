@@ -139,7 +139,9 @@ class AdminReportService(
         return memberIds.associateWith { found[it] ?: "(탈퇴한 회원 #$it)" }
     }
 
+    // 시간 조정을 접수보다 앞 시각으로 걸면 음수가 된다.
     private fun formatElapsed(elapsed: Duration): String {
+        if (elapsed.isNegative) return "방금 접수"
         val days = elapsed.toDays()
         val hours = elapsed.toHours() % 24
         val minutes = elapsed.toMinutes() % 60
