@@ -19,7 +19,7 @@
     <div class="match-group" th:each="g : ${matching.groupCandidates}">
         <div class="match-group-head">
             <span th:text="|그룹 #${g.groupMatchId} · ${#numbers.formatDecimal(g.score, 1, 1)} · 수락 ${g.acceptedCount}/${g.activationThreshold}|">그룹 #1 · 75.0 · 수락 1/3</span>
-            <span class="badge on" th:if="${g.isFormed}">성사</span>
+            <span class="badge ok" th:if="${g.isFormed}">성사</span>
             <span class="muted">본인</span>
             <span th:class="${g.myResponse.tone.cssClass}" th:text="${g.myResponse.label}">대기</span>
         </div>

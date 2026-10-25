@@ -132,8 +132,12 @@ class AdminQuizController(
 
     @PostMapping("/admin/quiz-sets/{id}/activate")
     fun activate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
-        adminQuizService.activate(id)
-        redirectAttributes.addFlashAttribute("message", "퀴즈셋을 활성화했습니다.")
+        runCatching { adminQuizService.activate(id) }
+            .onSuccess { redirectAttributes.addFlashAttribute("message", "퀴즈셋을 활성화했습니다.") }
+            .onFailure { exception ->
+                if (exception !is WarnException) throw exception
+                redirectAttributes.addFlashAttribute("error", exception.message)
+            }
         return "redirect:/admin/quiz-sets/$id"
     }
 

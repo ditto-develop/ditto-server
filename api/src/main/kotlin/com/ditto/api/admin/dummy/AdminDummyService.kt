@@ -17,7 +17,7 @@ import kotlin.random.Random
 /**
  * 어드민 편의 기능 — 특정 퀴즈셋을 랜덤하게 푼(COMPLETED) 더미 회원을 남/여 인원수만큼 생성한다.
  * 회원(member)·진행(quiz_progress)·답변(quiz_answer)만 만들고 매칭 후보(match_candidate)는
- * 만들지 않는다(어드민 '매칭 재생성'으로 분리). 더미는 닉네임 마커([DummyMarker])로 식별·정리한다.
+ * 만들지 않는다(어드민 '매칭 수동 실행'으로 분리). 더미는 닉네임 마커([DummyMarker])로 식별·정리한다.
  */
 @Service
 @Transactional

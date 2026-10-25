@@ -1,6 +1,7 @@
 package com.ditto.api.admin.member
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.member.entity.MemberRole
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -27,16 +28,16 @@ class AdminMemberController(
         @RequestParam(required = false) q: String?,
         model: Model,
     ): String {
-        model.addAttribute("q", q ?: "")
-        if (!q.isNullOrBlank()) {
-            model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(q))
+        // 검색창은 하나다. 예전 링크의 email 파라미터도 같은 검색으로 받는다. 닉네임에는 @ 가 들어갈 수 없다.
+        val query = q?.takeIf { it.isNotBlank() } ?: email.orEmpty()
+        model.addAttribute("q", query)
+        when {
+            query.isBlank() -> Unit
+            query.contains(EMAIL_AT_SIGN) -> model.addAttribute("members", adminMemberService.searchByEmail(query))
+            else -> model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(query))
         }
-        model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
         model.addAttribute("admins", adminMemberService.listAdmins())
-        if (!email.isNullOrBlank()) {
-            model.addAttribute("members", adminMemberService.searchByEmail(email))
-        }
         model.addAttribute("active", "member")
         return "member/list"
     }
@@ -48,10 +49,9 @@ class AdminMemberController(
         @RequestParam(required = false) email: String?,
         model: Model,
     ): String {
-        val hasSearch = !q.isNullOrBlank() || !email.isNullOrBlank()
+        val backQuery = q?.takeIf { it.isNotBlank() } ?: email?.takeIf { it.isNotBlank() } ?: "#$id"
         model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
-        model.addAttribute("backQuery", if (hasSearch) q.orEmpty() else "#$id")
-        model.addAttribute("backEmail", email.orEmpty())
+        model.addAttribute("backQuery", backQuery)
         model.addAttribute("active", "member")
         return "member/quizzes"
     }
@@ -61,19 +61,24 @@ class AdminMemberController(
         @PathVariable id: Long,
         @RequestParam role: MemberRole,
         @RequestParam(required = false) q: String?,
-        @RequestParam(required = false) email: String?,
         @AuthenticationPrincipal admin: AdminPrincipal,
         redirectAttributes: RedirectAttributes,
     ): String {
-        adminMemberService.changeRole(id, role)
-        log.info { "어드민[${admin.displayName}] 이 회원 #$id 의 권한을 $role 로 변경" }
-        redirectAttributes.addFlashAttribute("message", "회원 #${id}의 권한을 바꿨습니다: ${role.description}")
         if (!q.isNullOrBlank()) redirectAttributes.addAttribute("q", q)
-        if (!email.isNullOrBlank()) redirectAttributes.addAttribute("email", email)
+        runCatching { adminMemberService.changeRole(id, role, admin.memberId) }
+            .onSuccess {
+                log.info { "어드민[${admin.displayName}] 이 회원 #$id 의 권한을 $role 로 변경" }
+                redirectAttributes.addFlashAttribute("message", "회원 #${id}의 권한을 바꿨습니다: ${role.description}")
+            }
+            .onFailure { exception ->
+                if (exception !is WarnException) throw exception
+                redirectAttributes.addFlashAttribute("error", exception.message)
+            }
         return "redirect:/admin/members"
     }
 
     companion object {
         private val log = KotlinLogging.logger {}
+        private const val EMAIL_AT_SIGN = '@'
     }
 }

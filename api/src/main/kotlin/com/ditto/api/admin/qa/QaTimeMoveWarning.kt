@@ -21,6 +21,13 @@ enum class QaTimeMoveWarning(val message: String, val isIrreversible: Boolean) {
     ;
 
     companion object {
+        const val IRREVERSIBLE_NOTICE = "되돌릴 수 없습니다."
+        const val MOVE_QUESTION = "옮길까요?"
+        private const val DISABLE_QUESTION = "끌까요?"
+
+        // 끄기 버튼만 눌렀는데 마감 경고가 뜨면 이유를 모르니, 실제 시각으로 돌아간다는 말을 앞에 붙인다.
+        private const val DISABLE_LEAD = "끄면 실제 시각으로 돌아갑니다."
+
         fun of(week: OperationWeek, now: LocalDateTime, target: LocalDateTime): List<QaTimeMoveWarning> {
             if (target < now) return listOf(BACK_TO_PAST)
             return listOfNotNull(
@@ -29,11 +36,16 @@ enum class QaTimeMoveWarning(val message: String, val isIrreversible: Boolean) {
             )
         }
 
-        fun confirmMessageOf(warnings: List<QaTimeMoveWarning>): String? {
+        fun confirmMessageOf(warnings: List<QaTimeMoveWarning>, question: String = MOVE_QUESTION): String? {
             if (warnings.isEmpty()) return null
-            val irreversible = "되돌릴 수 없습니다.".takeIf { warnings.any { it.isIrreversible } }
-            return (warnings.map { it.message } + listOfNotNull(irreversible, "옮길까요?")).joinToString(" ")
+            val irreversible = IRREVERSIBLE_NOTICE.takeIf { warnings.any { it.isIrreversible } }
+            return (warnings.map { it.message } + listOfNotNull(irreversible, question)).joinToString(" ")
         }
+
+        /** 시간 조정을 끄면 실제 시각으로 옮겨 가는 것과 같아서 같은 경고를 쓴다. */
+        fun disableConfirmMessageOf(now: LocalDateTime, realNow: LocalDateTime): String? =
+            confirmMessageOf(of(OperationWeek.containing(now.toLocalDate()), now, realNow), DISABLE_QUESTION)
+                ?.let { "$DISABLE_LEAD $it" }
 
         private fun crosses(now: LocalDateTime, target: LocalDateTime, boundary: LocalDateTime): Boolean =
             now < boundary && target >= boundary

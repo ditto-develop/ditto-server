@@ -1,25 +1,26 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments :: head('매칭 실행')}"></head>
+<head th:replace="~{fragments :: head('매칭 수동 실행')}"></head>
 <body>
 <div class="layout">
     <aside th:replace="~{fragments :: sidebar('matching')}"></aside>
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
-            <h1 class="page-title">매칭 실행</h1>
-            <p class="page-desc">매주 목요일 00:01 자동 매칭을 기다리지 않고 지금 돌리거나, 퀴즈셋별로 매칭을 재생성합니다.<th:block th:if="${qaToolsEnabled}"> 자동 매칭은 실제 시각으로 돌아서 시간 조정 중에는 [자동 매칭 실행]을 누르세요.</th:block></p>
+            <h1 class="page-title">매칭 수동 실행</h1>
+            <p class="page-desc">정기 매칭은 매주 목요일 00:01에 자동으로 돕니다. 평소에는 이 화면을 쓸 일이 없고, 정기 매칭이 실패했을 때 다시 돌리거나 퀴즈셋 하나의 매칭을 다시 만들 때 씁니다.<th:block th:if="${qaToolsEnabled}"> 정기 매칭은 실제 시각으로 돌아서 시간 조정 중에는 [정기 매칭 지금 돌리기]를 누르세요.</th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card" th:if="${regeneration}">
-                <h2>퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span> 재생성 결과
+                <h2>퀴즈셋 #<span th:text="${regeneration.quizSetId}">0</span> 다시 만든 결과
                     <span class="badge cat" th:text="${@matchingTypeLabel.of(regeneration.matchingType)}">1:1</span>
                     <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${regeneration.quizSetId})}">참여 현황 보기 →</a></h2>
                 <p class="muted">
                     매칭 대상 <b th:text="${regeneration.participantCount}">0</b>명 ·
                     매칭 <b th:text="${regeneration.matches.size()}">0</b>건 ·
-                    <span title="후보 테이블 행 수입니다. 1:1은 짝 하나가 2행입니다.">지운 행 <b th:text="${regeneration.rowCounts.deletedCount}">0</b> ·
-                    저장한 행 <b th:text="${regeneration.rowCounts.savedCount}">0</b></span>
+                    <span class="with-info">지운 후보 <b th:text="${regeneration.rowCounts.deletedCount}">0</b>건 ·
+                    저장한 후보 <b th:text="${regeneration.rowCounts.savedCount}">0</b>건
+                    <th:block th:replace="~{fragments :: info('info-row-counts', '후보 건수', '회원마다 한 건이라 1:1은 짝 하나가 2건입니다.')}"></th:block></span>
                     (이 요약은 새로 고치면 사라집니다)
                 </p>
                 <p class="muted" th:if="${candidateCounts != null and !regeneration.matches.isEmpty()}">
@@ -46,16 +47,18 @@
             </div>
 
             <div class="card">
-                <h2>자동 매칭 지금 실행</h2>
+                <h2>정기 매칭 지금 돌리기</h2>
                 <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로
-                    마감됐고 후보가 없는 퀴즈셋의 매칭 후보를 생성합니다.</p>
-                <form th:action="@{/admin/matching/run-scheduled}" method="post" class="inline-form">
-                    <button class="btn" type="submit">자동 매칭 실행</button>
+                    마감됐고 후보가 없는 퀴즈셋의 매칭 후보를 만듭니다. 이미 후보가 있는 퀴즈셋은 건드리지 않습니다.</p>
+                <form th:action="@{/admin/matching/run-scheduled}" method="post" class="inline-form"
+                      onsubmit="return confirm('마감됐고 후보가 없는 퀴즈셋의 매칭 후보를 지금 만듭니다.\n처음 후보를 받은 회원에게 매칭 결과 알림이 갑니다. 계속할까요?');">
+                    <button class="btn" type="submit">정기 매칭 지금 돌리기</button>
                 </form>
             </div>
 
             <div class="card">
-                <h2>퀴즈셋별 매칭 재생성</h2>
+                <h2 class="with-info">퀴즈셋 매칭 다시 만들기
+                    <th:block th:replace="~{fragments :: info('info-regenerate', '매칭 다시 만들기', '이 퀴즈셋의 매칭 후보를 지우고 지금 답 기준으로 다시 계산합니다. 이번에 처음 후보를 받은 회원에게만 매칭 결과 알림이 갑니다. 그룹 퀴즈셋은 누군가 초대에 응답한 뒤에는 다시 만들 수 없습니다.')}"></th:block></h2>
                 <p class="muted" th:if="${quizSets.isEmpty()}">퀴즈셋이 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${quizSets.isEmpty()}">
                     <table class="tbl">
@@ -63,15 +66,17 @@
                         <tbody>
                         <tr th:each="qs : ${quizSets}">
                             <td class="num" th:text="${@weekLabel.of(qs.weekStartedOn)}">-</td>
-                            <td><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
+                            <td class="title-cell"><a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}" th:text="${qs.title}">title</a></td>
                             <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
                             <td>
-                                <span class="badge on" th:if="${qs.isActive}">활성</span>
-                                <span class="badge off" th:unless="${qs.isActive}">비활성</span>
+                                <span class="badge ok" th:if="${qs.isActive}">활성</span>
+                                <span class="badge neutral" th:unless="${qs.isActive}">비활성</span>
                             </td>
                             <td class="actions">
-                                <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post">
-                                    <button class="btn secondary sm" type="submit">매칭 재생성</button>
+                                <form class="inline-form" th:action="@{/admin/matching/quiz-sets/{id}/regenerate(id=${qs.id})}" method="post"
+                                      th:attr="data-confirm=|퀴즈셋 #${qs.id} ${qs.title}의 기존 매칭 후보를 지우고 다시 만듭니다. 처음 후보를 받은 회원에게 알림이 갑니다. 계속할까요?|"
+                                      onsubmit="return confirm(this.dataset.confirm);">
+                                    <button class="btn secondary sm" type="submit">다시 만들기</button>
                                 </form>
                                 <a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}/participants(id=${qs.id})}">참여 현황</a>
                             </td>

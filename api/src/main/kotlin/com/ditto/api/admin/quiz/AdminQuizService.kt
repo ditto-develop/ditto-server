@@ -17,6 +17,7 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 /**
  * 어드민 퀴즈셋 CRUD. 퀴즈셋과 하위 Quiz/QuizChoice 를 함께 관리한다(JPA cascade 미사용 → 수동 정리).
@@ -34,6 +35,9 @@ class AdminQuizService(
 ) {
     @Transactional(readOnly = true)
     fun listQuizSets(): List<QuizSet> = quizSetRepository.findAllByOrderByWeekStartedOnDescIdDesc()
+
+    @Transactional(readOnly = true)
+    fun listQuizSetsInWeek(weekStartedOn: LocalDate): List<QuizSet> = quizSetRepository.findByWeekStartedOn(weekStartedOn)
 
     @Transactional(readOnly = true)
     fun getQuizSet(id: Long): QuizSet =

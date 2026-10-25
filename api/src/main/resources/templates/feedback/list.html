@@ -31,7 +31,7 @@
             </div>
 
             <div class="card">
-                <h2>목록 <span class="badge cat" th:text="${feedbacks.size()} + '건'">0건</span></h2>
+                <h2>목록 <span class="badge neutral" th:text="${feedbacks.size()} + '건'">0건</span></h2>
                 <p class="muted" th:if="${feedbacks.isEmpty()}"
                    th:text="${selectedStatus.description} + (${selectedType != null} ? ' · ' + ${selectedType.description} : '') + ' 의견이 없습니다.'">확인 대기 의견이 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${feedbacks.isEmpty()}">
@@ -62,7 +62,7 @@
                             <td class="actions">
                                 <a th:href="@{/admin/feedbacks/{id}(id=${f.id})}"
                                    th:classappend="${completedTab} ? 'btn secondary sm' : 'btn sm'"
-                                   th:text="${completedTab} ? '보기' : '확인'">확인</a>
+                                   th:text="${completedTab} ? '보기' : '확인하기'">확인하기</a>
                             </td>
                         </tr>
                         </tbody>

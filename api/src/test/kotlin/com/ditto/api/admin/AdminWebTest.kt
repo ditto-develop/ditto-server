@@ -141,7 +141,7 @@ class AdminWebTest {
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
-            AdminPrincipal(1L, "관리자", "admin@ditto.pics"),
+            AdminPrincipal(ADMIN_MEMBER_ID, "관리자", "admin@ditto.pics"),
             null,
             listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
         )
@@ -161,6 +161,25 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("대시보드는 검토 대기 신고와 24시간 지난 건수를 보여 주고, 이번 주 활성 퀴즈셋이 없으면 알린다")
+    fun dashboardShowsTodos() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "대시신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "대시피신고자", status = MemberStatus.ACTIVE))
+        memberReportRepository.save(MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id))
+
+        mockMvc.perform(get("/admin").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(stringContainsInOrder("검토 대기 신고", "1건", "24시간 지난 건 없음")))
+            .andExpect(content().string(containsString("이번 주 활성 퀴즈셋이 없습니다.")))
+
+        // 서버 시각을 하루 넘게 옮기면 같은 신고가 24시간 지난 건으로 잡힌다.
+        val dayLater = LocalDateTime.now().plusHours(25).withSecond(0).withNano(0).toString()
+        mockMvc.perform(post("/admin/time-override").with(authentication(admin())).with(csrf()).param("dateTime", dayLater))
+        mockMvc.perform(get("/admin").with(authentication(admin())))
+            .andExpect(content().string(containsString("24시간 지남 1건")))
+    }
+
+    @Test
     @DisplayName("대시보드/퀴즈/시간/매칭 페이지가 렌더링된다")
     fun pagesRender() {
         mockMvc.perform(get("/admin").with(authentication(admin()))).andExpect(status().isOk)
@@ -172,7 +191,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 생성·QA 콘솔 링크가 보인다")
+    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 관리·QA 콘솔 링크가 보인다")
     fun sidebarShowsQaLinksWhenQaToolsEnabled() {
         mockMvc.perform(get("/admin").with(authentication(admin())))
             .andExpect(status().isOk)
@@ -197,7 +216,7 @@ class AdminWebTest {
         notice.targetCount shouldBe 1
         notice.recipientCount shouldBe 1
         notice.isSending shouldBe false
-        notice.authorMemberId shouldBe 1L
+        notice.authorMemberId shouldBe ADMIN_MEMBER_ID
         notificationRepository.findAll().single().let {
             it.memberId shouldBe active.id
             it.type shouldBe NotificationType.SYSTEM_NOTICE
@@ -269,8 +288,8 @@ class AdminWebTest {
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
             .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants?q=%23$receiver")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">신청함</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">신청 받음</span>")))
             .andExpect(content().string(containsString("<span class=\"muted\">퀴즈 미완료</span>")))
             .andExpect(content().string(containsString("→ 퀴즈를 끝까지 풀기")))
     }
@@ -287,8 +306,8 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("그룹 #${group.id} · 75.0 · 수락 1/3")))
-            .andExpect(content().string(containsString("<span class=\"badge on\">수락</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">대기</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge ok\">수락</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">대기</span>")))
     }
 
     @Test
@@ -318,7 +337,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">탈퇴</span>")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
     }
 
@@ -374,11 +393,11 @@ class AdminWebTest {
             .andExpect(content().string(containsString(">즉흥적으로<")))
             .andExpect(content().string(containsString(">f3<")))
             .andExpect(content().string(containsString("실회원테스터")))
-            .andExpect(content().string(containsString("<span class=\"badge cat\">실회원</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge on\">완료</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">진행 중</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge off\">시작 전</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge info\">실회원</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge ok\">완료</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge info\">진행 중</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">시작 전</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">삭제된 회원</span>")))
             .andExpect(content().string(containsString(">여성<")))
             .andExpect(content().string(containsString(">서울<")))
             .andExpect(content().string(containsString(">디자인<")))
@@ -630,27 +649,60 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("시간 조정 설정/끄기")
+    @DisplayName("같은 주에 활성 퀴즈셋이 있으면 활성화 요청은 상세로 돌려보내 사유를 알린다")
+    fun duplicatedActivationRejected() {
+        quizSetRepository.save(QuizSetFixture.create(isActive = true))
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(isActive = false))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/activate", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
+            .andExpect(flash().attribute("error", containsString("이미 활성화된")))
+
+        quizSetRepository.findById(quizSet.id).get().isActive shouldBe false
+    }
+
+    @Test
+    @DisplayName("시간 조정을 켜면 모든 화면 상단바에 조정 시각이 보이고, 끄면 사라진다")
     fun timeOverride() {
         mockMvc.perform(
             post("/admin/time-override").with(authentication(admin())).with(csrf())
                 .param("dateTime", "2026-06-18T09:00"),
         ).andExpect(status().is3xxRedirection)
             .andExpect(flash().attribute("message", "서버 시각을 맞췄습니다: 2026-06-18 09:00"))
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(content().string(containsString("시간 조정 중 · 2026-06-18 09:00")))
+        // 조정 시각이 실제보다 과거라 끄면 마감을 넘겨 앞으로 간다. 끄기에 확인을 붙이고, 직접 고를 때 비교할 경계를 내린다.
+        mockMvc.perform(get("/admin/time-override").with(authentication(admin())))
+            .andExpect(content().string(containsString("data-now=\"2026-06-18T09:00\"")))
+            .andExpect(content().string(containsString("data-group-deadline=\"2026-06-19T00:00\"")))
+            .andExpect(content().string(containsString("data-chat-end=\"2026-06-22T00:00\"")))
+            .andExpect(content().string(stringContainsInOrder("data-confirm=\"끄면 실제 시각으로 돌아갑니다.", "되돌릴 수 없습니다. 끌까요?\"")))
+
         mockMvc.perform(post("/admin/time-override/disable").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(flash().attribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다."))
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(content().string(not(containsString("시간 조정 중"))))
     }
 
     @Test
-    @DisplayName("자동 매칭 지금 실행")
+    @DisplayName("시간 조정이 꺼져 있으면 끄기 버튼은 확인 없이 바로 끈다")
+    fun timeOverrideDisableWithoutConfirmWhenOff() {
+        mockMvc.perform(get("/admin/time-override").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(not(containsString("data-confirm="))))
+    }
+
+    @Test
+    @DisplayName("정기 매칭 지금 돌리기는 매칭 화면으로 돌아와 결과를 알린다")
     fun runScheduledMatching() {
         mockMvc.perform(post("/admin/matching/run-scheduled").with(authentication(admin())).with(csrf()))
-            .andExpect(status().is3xxRedirection)
+            .andExpect(redirectedUrl("/admin/matching"))
+            .andExpect(flash().attribute("message", "정기 매칭을 지금 돌렸습니다."))
     }
 
     @Test
-    @DisplayName("더미 생성 페이지 렌더 + 생성/삭제")
+    @DisplayName("더미 관리 페이지 렌더 + 만들기/삭제")
     fun dummyPage() {
         mockMvc.perform(get("/admin/dummy").with(authentication(admin()))).andExpect(status().isOk)
 
@@ -674,14 +726,15 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("이메일 검색 결과는 권한 바꾸기 카드 안에 그린다")
+    @DisplayName("검색어에 @가 있으면 이메일로 찾아 권한을 바꿀 수 있는 표를 그린다")
     fun memberSearchByEmail() {
         memberRepository.save(MemberFixture.create(nickname = "m1", email = "dup@ditto.pics", role = MemberRole.USER))
         memberRepository.save(MemberFixture.create(nickname = "m2", email = "dup@ditto.pics", role = MemberRole.ADMIN))
 
-        mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
+        mockMvc.perform(get("/admin/members").param("q", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(stringContainsInOrder("<h2>권한 바꾸기</h2>", ">m1<", ">m2<", "<h2>현재 관리자")))
+            .andExpect(content().string(stringContainsInOrder(">m1<", ">m2<", "<h2>현재 관리자")))
+            .andExpect(content().string(containsString(">관리자</option>")))
     }
 
     @Test
@@ -691,16 +744,18 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(not(containsString(noMatchGuide))))
-        mockMvc.perform(get("/admin/members").param("email", "dup").with(authentication(admin())))
+        mockMvc.perform(get("/admin/members").param("q", "nobody@ditto.pics").with(authentication(admin())))
             .andExpect(content().string(containsString(noMatchGuide)))
     }
 
     @Test
-    @DisplayName("한쪽을 검색해도 다른 쪽 검색어를 함께 보내 두 결과를 유지한다")
-    fun memberSearchKeepsOtherSearch() {
-        mockMvc.perform(get("/admin/members").param("q", "닉네임").param("email", "keep@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"email\" value=\"keep@ditto.pics\"/>")))
-            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"q\" value=\"닉네임\"/>")))
+    @DisplayName("예전 링크의 email 파라미터도 하나뿐인 검색창으로 받는다")
+    fun memberSearchAcceptsLegacyEmailParam() {
+        memberRepository.save(MemberFixture.create(nickname = "예전링크", email = "keep@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("email", "keep@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("name=\"q\" value=\"keep@ditto.pics\"")))
+            .andExpect(content().string(containsString(">예전링크<")))
     }
 
     @Test
@@ -708,10 +763,11 @@ class AdminWebTest {
     fun memberQuizzesBackToEmailSearch() {
         val member = memberRepository.save(MemberFixture.create(nickname = "이메일회원", email = "back@ditto.pics"))
 
-        mockMvc.perform(get("/admin/members").param("email", "back@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=&amp;email=back@ditto.pics")))
-        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("email", "back@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("href=\"/admin/members?q=&amp;email=back@ditto.pics\"")))
+        mockMvc.perform(get("/admin/members").param("q", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=back@ditto.pics")))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/sanctions")))
+        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("q", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("href=\"/admin/members?q=back@ditto.pics\"")))
     }
 
     @Test
@@ -738,7 +794,7 @@ class AdminWebTest {
     fun memberPageWithoutAdmins() {
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(containsString("관리자가 없습니다.")))
-            .andExpect(content().string(not(containsString("<th>권한 바꾸기</th>"))))
+            .andExpect(content().string(not(containsString("권한 바꾸기 설명"))))
     }
 
     @Test
@@ -805,10 +861,30 @@ class AdminWebTest {
 
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
-                .param("role", "ADMIN").param("q", "rolechg").param("email", "role@ditto.pics"),
+                .param("role", "ADMIN").param("q", "rolechg"),
         )
-            .andExpect(redirectedUrl("/admin/members?q=rolechg&email=role%40ditto.pics"))
+            .andExpect(redirectedUrl("/admin/members?q=rolechg"))
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
+    }
+
+    @Test
+    @DisplayName("본인 권한은 화면에서 바꿀 수 없고, 직접 요청해도 거부한다")
+    fun memberRoleSelfRowLocked() {
+        val me = memberRepository.save(MemberFixture.create(nickname = "본인관리자", email = "me@ditto.pics", role = MemberRole.ADMIN))
+        val myAuthentication = UsernamePasswordAuthenticationToken(
+            AdminPrincipal(me.id, "본인관리자", "me@ditto.pics"),
+            null,
+            listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
+        )
+
+        mockMvc.perform(get("/admin/members").with(authentication(myAuthentication)))
+            .andExpect(content().string(containsString("<span class=\"muted\">본인</span>")))
+            .andExpect(content().string(not(containsString("/admin/members/${me.id}/role"))))
+        mockMvc.perform(
+            post("/admin/members/{id}/role", me.id).with(authentication(myAuthentication)).with(csrf()).param("role", "USER"),
+        )
+            .andExpect(flash().attribute("error", "본인 권한은 바꿀 수 없습니다."))
+        memberRepository.findById(me.id).get().role shouldBe MemberRole.ADMIN
     }
 
     @Test
@@ -826,11 +902,11 @@ class AdminWebTest {
     @DisplayName("제재 관리 화면은 회원 상태마다 한글 배지를 보여 준다")
     fun memberStatusBadgeLabels() {
         val expectedBadges = mapOf(
-            MemberStatus.ACTIVE to "<span class=\"badge on\">정상</span>",
-            MemberStatus.PENDING to "<span class=\"badge matching\">가입 미완료</span>",
-            MemberStatus.SUSPENDED to "<span class=\"badge warn\">이용 정지</span>",
-            MemberStatus.BANNED to "<span class=\"badge warn\">영구 차단</span>",
-            MemberStatus.LEFT to "<span class=\"badge matching\">탈퇴</span>",
+            MemberStatus.ACTIVE to "<span class=\"badge neutral\">정상</span>",
+            MemberStatus.PENDING to "<span class=\"badge neutral\">가입 미완료</span>",
+            MemberStatus.SUSPENDED to "<span class=\"badge danger\">이용 정지</span>",
+            MemberStatus.BANNED to "<span class=\"badge danger\">영구 차단</span>",
+            MemberStatus.LEFT to "<span class=\"badge neutral\">탈퇴</span>",
         )
 
         expectedBadges.forEach { (memberStatus, badge) ->
@@ -962,7 +1038,7 @@ class AdminWebTest {
                 .flashAttr("candidateCounts", OneToOneCandidateCounts.of(summary).shouldNotBeNull()),
         )
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("재생성 결과")))
+            .andExpect(content().string(containsString("다시 만든 결과")))
             .andExpect(content().string(containsString("후보 0명인 회원 <b>1</b>명")))
             .andExpect(content().string(containsString("<span class=\"badge cat\">1:1</span>")))
             .andExpect(content().string(containsString("매칭 대상 <b>3</b>명")))
@@ -981,12 +1057,12 @@ class AdminWebTest {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
             .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어")))
-            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요.")))
+            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요.")))
             .andExpect(flash().attribute("message", null))
     }
 
     @Test
-    @DisplayName("신고 목록·상세 페이지가 렌더링된다")
+    @DisplayName("신고 목록은 상태마다 건수를 보이고, 상세는 결정을 비운 채로 렌더링된다")
     fun reportPages() {
         val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자", status = MemberStatus.ACTIVE))
         val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자", status = MemberStatus.ACTIVE))
@@ -994,12 +1070,15 @@ class AdminWebTest {
             MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
         )
 
-        mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString(">검토 대기 1</a>")))
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">정상</span>")))
             .andExpect(content().string(containsString("이번이 1차 제재")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
+            .andExpect(content().string(containsString("<option value=\"\" selected disabled>결정을 고르세요</option>")))
     }
 
     @Test
@@ -1012,7 +1091,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">탈퇴</span>")))
     }
 
     @Test
@@ -1057,12 +1136,14 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("회원 제재 관리 페이지 렌더·직권 제재·해제")
+    @DisplayName("회원 제재 관리 페이지는 회원 관리로 돌아가는 링크와 알림이 가지 않는다는 확인을 보이고, 직권 제재가 적용된다")
     fun memberSanctions() {
         val member = memberRepository.save(MemberFixture.create(nickname = "제재대상", status = MemberStatus.ACTIVE))
 
         mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(containsString("href=\"/admin/members?q=%23${member.id}\"")))
+            .andExpect(content().string(containsString("회원에게 알림은 가지 않습니다")))
 
         mockMvc.perform(
             post("/admin/members/{id}/sanctions", member.id)
@@ -1075,7 +1156,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge warn\">이용 정지</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge danger\">이용 정지</span>")))
             .andExpect(content().string(containsString("누적 제재 <strong>1</strong>건")))
     }
 
@@ -1257,5 +1338,10 @@ class AdminWebTest {
 
         // 테스트가 트랜잭션 안이라 findById 는 벌크 UPDATE 전 캐시를 돌려준다. 쿼리로 DB를 직접 본다.
         launchNotificationRequestRepository.countByPlatformAndNotifiedAtIsNull(LaunchPlatform.ANDROID) shouldBe 0
+    }
+
+    companion object {
+        // 저장한 회원 id 와 겹치면 회원 관리 표에서 본인 행으로 잡힌다.
+        private const val ADMIN_MEMBER_ID = 999_999L
     }
 }

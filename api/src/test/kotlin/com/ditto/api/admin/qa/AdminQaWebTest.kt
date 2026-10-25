@@ -374,6 +374,13 @@ class AdminQaWebTest(
             }
         }
 
+        "조정한 시각이 지난 주라 끄면 마감을 넘기는 경우 끄기 버튼이 확인을 받는다" {
+            overrideServerTime(thisMonday.minusWeeks(2).plusDays(2).atTime(12, 0))
+
+            mockMvc.perform(get("/admin/qa").with(authentication(admin)))
+                .andExpect(content().string(containsString("data-confirm=\"끄면 실제 시각으로 돌아갑니다. 그룹 응답 마감을 넘깁니다.")))
+        }
+
         "실제 시각으로 되돌린다" {
             mockMvc.perform(post("/admin/qa/server-time/disable").asAdmin())
                 .andExpect(redirectedUrl("/admin/qa"))

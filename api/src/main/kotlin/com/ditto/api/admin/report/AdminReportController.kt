@@ -35,6 +35,7 @@ class AdminReportController(
         val selected = status ?: MemberReportStatus.RECEIVED
         model.addAttribute("reports", adminReportService.listReports(selected, serverTimeProvider.now()))
         model.addAttribute("statuses", MemberReportStatus.entries)
+        model.addAttribute("statusCounts", adminReportService.countReportsByStatus())
         model.addAttribute("selected", selected)
         model.addAttribute("active", "report")
         return "report/list"

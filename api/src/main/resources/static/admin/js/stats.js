@@ -119,7 +119,7 @@
             (day) => (day.isToday ? 'today' : ''),
         );
 
-        byId('weeklyJoinTitle').textContent = `주별 신규 가입 · 고른 주까지 ${memberStats.recentWeekCount}주`;
+        byId('weeklyJoinScope').textContent = `고른 주까지 ${memberStats.recentWeekCount}주`;
         const weeks = StatsCalc.weeklyJoins(weekStartedOn, memberStats.recentWeekCount, memberStats.recentJoinedAts);
         fillRows('weeklyJoinRows', weeks, (week) => [
             cell(`${shortDate(week.weekStartedOn)} 주`),
@@ -139,10 +139,7 @@
         byId('leaveReasonShares').replaceChildren(...reasonCounts.map((row) => shareRow(row, leftCount, options)));
     };
 
-    const activeRoundWeeksText = (roundWeeks) => {
-        if (roundWeeks.length === 0) return '최근 회차 없음';
-        return `최근 ${roundWeeks.length}회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
-    };
+    const activeRoundWeeksText = (roundWeeks) => `${roundWeeks.map(shortDate).reverse().join('·')} 주`;
 
     const renderAccountStatus = ({ countsByStatus, currentActiveRoundWeeks, recentlyCompletedActiveStatusCount }) => {
         fillShares(
@@ -150,8 +147,10 @@
             StatsCalc.accountStatusCounts(countsByStatus, recentlyCompletedActiveStatusCount),
         );
         byId('accountStatusNote').textContent =
-            `활성 = ${activeRoundWeeksText(currentActiveRoundWeeks)} 완주자. ` +
-            '퀴즈 참여 장의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
+            (currentActiveRoundWeeks.length === 0
+                ? '아직 회차가 없어 활성 회원이 없습니다. '
+                : `활성은 오늘까지 최근 회차(${activeRoundWeeksText(currentActiveRoundWeeks)})에 한 번이라도 퀴즈를 끝까지 푼 회원입니다. `) +
+            '퀴즈 참여 항목의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
             '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
     };
 
@@ -165,7 +164,7 @@
             ? ''
             : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
         notice.textContent =
-            `관리자 계정 ${countText(adminMemberCount, '명')}은 채팅 장을 뺀 모든 지표에서 빠집니다.${completedText}`;
+            `관리자 계정 ${countText(adminMemberCount, '명')}은 지표에서 뺍니다. 단, 채팅과 쌍·그룹 단위로 세는 지표에는 관리자가 낀 방·쌍·그룹도 들어갑니다.${completedText}`;
     };
 
     const renderMemberSection = (
@@ -199,8 +198,12 @@
         const participation = StatsCalc.quizParticipation(progressCounts, quizMatchingTypeLabels);
         showSectionIfAny('quiz', participation.startedCount > 0);
 
-        byId('quizActiveRoundCount').textContent = activeRoundCount;
-        byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
+        // 회차가 아닌 주에는 기준 줄을 그리지 않는다. 여기서 멈추면 뒤 항목이 하나도 그려지지 않는다.
+        const activeRoundScope = byId('quizActiveRoundScope');
+        if (activeRoundScope) {
+            activeRoundScope.textContent = `최근 ${activeRoundCount}회차`;
+            byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
+        }
         renderQuizRates(participation, activeMemberCount);
         // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
         byId('quizMatchingTypeSharesCard').hidden = Object.keys(quizMatchingTypeLabels).length < 2;
@@ -415,7 +418,7 @@
             : [
                 `중앙값 ${hourText(messages.medianFirstMessageHours)}`,
                 ...(messages.beforeOpenRoomCount > 0
-                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시각 조정)`]
+                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시간 조정)`]
                     : []),
             ];
         fillNowrapPieces('chatFirstMessageSummary', firstMessagePieces);
@@ -666,8 +669,7 @@
         fillEmptyRowIfNone('memberReportRepeatedRows', '이 기간에 신고를 2건 이상 받은 회원이 없습니다.');
     };
 
-    const renderMemberBlockSection = ({ memberBlockCount }) => {
-        showSectionIfAny('memberBlock', memberBlockCount > 0);
+    const renderMemberBlockCount = ({ memberBlockCount }) => {
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
@@ -714,6 +716,6 @@
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
-    renderMemberBlockSection(pageData);
+    renderMemberBlockCount(pageData);
     renderPushSendSection(pageData);
 })();

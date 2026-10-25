@@ -21,6 +21,9 @@ class AdminLaunchNotificationService(
         latestPendingId = launchNotificationRequestRepository.findFirstByPlatformAndNotifiedAtIsNullOrderByIdDesc(platform)?.id,
     )
 
+    @Transactional(readOnly = true)
+    fun countPendingRequests(): Long = launchNotificationRequestRepository.countByNotifiedAtIsNull()
+
     /** 아직 안내를 안 보낸 [upToId] 이하 신청의 CSV. 열은 이메일과 최초 신청 일시뿐이다. */
     @Transactional(readOnly = true)
     fun exportPendingCsv(platform: LaunchPlatform, upToId: Long): String {

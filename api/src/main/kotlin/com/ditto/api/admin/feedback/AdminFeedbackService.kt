@@ -26,6 +26,9 @@ class AdminFeedbackService(
 ) {
 
     @Transactional(readOnly = true)
+    fun countFeedbacks(status: FeedbackStatus): Long = feedbackRepository.countByStatus(status)
+
+    @Transactional(readOnly = true)
     fun listFeedbacks(status: FeedbackStatus, type: FeedbackType?): List<FeedbackListItem> {
         val feedbacks = findFeedbacks(status, type)
         val nicknames = nicknamesOf(feedbacks.map { it.memberId })

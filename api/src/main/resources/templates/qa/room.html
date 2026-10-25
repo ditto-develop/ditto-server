@@ -109,8 +109,8 @@
                              th:classappend="${roomMember.hasLeft} ? 'left'">
                             <div>
                                 <b th:text="${roomMember.member.nickname}">홍길동</b>
-                                <span class="badge cat" th:unless="${roomMember.dummy}">실회원</span>
-                                <span class="badge off" th:if="${roomMember.hasLeft}">나감</span>
+                                <span class="badge info" th:unless="${roomMember.dummy}">실회원</span>
+                                <span class="badge neutral" th:if="${roomMember.hasLeft}">나감</span>
                                 <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${roomMember.member})}"></span>
                                 <div class="muted"
                                      th:text="${roomMember.lastReadMessageId != null} ? |#${roomMember.lastReadMessageId}까지 읽음| : '읽은 메시지 없음'">
@@ -229,7 +229,7 @@
                                 <tr th:each="target : ${review.targets}">
                                     <td>
                                         <span th:text="${target.member.nickname}">홍길동</span>
-                                        <span class="badge cat" th:unless="${target.dummy}">실회원</span>
+                                        <span class="badge info" th:unless="${target.dummy}">실회원</span>
                                     </td>
                                     <td>
                                         <span th:if="${target.answered}" th:text="${target.answerSummary}">만났어요 · 5점</span>

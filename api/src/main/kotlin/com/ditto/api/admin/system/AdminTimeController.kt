@@ -1,6 +1,7 @@
 package com.ditto.api.admin.system
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.admin.qa.dto.QaTimeMoveGuide
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.system.ServerTimeService
 import com.ditto.api.system.SystemStateProvider
@@ -15,7 +16,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 서버 시각 조정. 설정 시 DB에 저장하고 그 시각을 사용하며, 해제하면 실제 시각을 사용한다.
+ * 시간 조정. 설정 시 DB에 저장하고 그 시각을 사용하며, 해제하면 실제 시각을 사용한다.
  * 설정 변경자(이름·이메일)는 로그인한 어드민으로 기록한다.
  */
 @Controller
@@ -26,8 +27,10 @@ class AdminTimeController(
 ) {
     @GetMapping("/admin/time-override")
     fun page(model: Model): String {
+        val now = serverTimeProvider.now()
         model.addAttribute("override", serverTimeService.getOverride())
-        model.addAttribute("currentTime", serverTimeProvider.now())
+        model.addAttribute("currentTime", now)
+        model.addAttribute("timeMoveGuide", QaTimeMoveGuide.of(now, LocalDateTime.now()))
         model.addAttribute("state", systemStateProvider.current())
         model.addAttribute("active", "time")
         return "time-override"

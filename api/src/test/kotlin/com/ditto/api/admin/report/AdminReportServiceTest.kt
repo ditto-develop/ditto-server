@@ -49,6 +49,18 @@ class AdminReportServiceTest(
             rows[0].elapsedText shouldContain "1일"
         }
 
+        "서버 시각이 접수보다 앞이면 경과 시간 대신 방금 접수로 보인다" {
+            val reporter = saveActiveMember("신고자")
+            val reported = saveActiveMember("피신고자")
+            val report = memberReportRepository.save(
+                MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
+            )
+
+            val rows = adminReportService.listReports(MemberReportStatus.RECEIVED, report.createdAt.minusMinutes(31))
+
+            rows[0].elapsedText shouldBe "방금 접수"
+        }
+
         "24시간 이내 건은 초과 표시가 없다" {
             val reporter = saveActiveMember("신고자")
             val reported = saveActiveMember("피신고자")

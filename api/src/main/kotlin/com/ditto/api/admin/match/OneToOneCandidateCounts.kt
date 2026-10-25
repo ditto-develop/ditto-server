@@ -3,7 +3,7 @@ package com.ditto.api.admin.match
 import com.ditto.api.match.service.CandidateGenerationSummary
 import com.ditto.domain.quiz.entity.MatchingType
 
-// 1:1 후보 수는 5명이 상한이 아니라서 재생성 결과에 회원별 분포를 같이 보여 준다.
+// 1:1 후보 수는 5명이 상한이 아니라서 다시 만든 결과에 회원별 분포를 같이 보여 준다.
 class OneToOneCandidateCounts(
     val memberCountWithoutCandidate: Int,
     val minCandidateCount: Int,

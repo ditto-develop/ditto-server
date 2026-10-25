@@ -13,6 +13,8 @@ interface LaunchNotificationRequestRepository :
 
     fun countByPlatformAndNotifiedAtIsNull(platform: LaunchPlatform): Long
 
+    fun countByNotifiedAtIsNull(): Long
+
     fun countByPlatformAndNotifiedAtIsNotNull(platform: LaunchPlatform): Long
 
     fun findFirstByPlatformAndNotifiedAtIsNullOrderByIdDesc(platform: LaunchPlatform): LaunchNotificationRequest?

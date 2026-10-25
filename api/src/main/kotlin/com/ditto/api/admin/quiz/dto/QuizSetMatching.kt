@@ -19,7 +19,7 @@ class QuizSetMatching(
     fun of(memberId: Long): ParticipantMatching = byMemberId[memberId] ?: ParticipantMatching.EMPTY
 }
 
-/** [outsideRequests]는 저장된 후보와 겹치지 않는 1:1 신청·성사다. 재생성하면 후보가 바뀌어도 신청은 남는다. */
+/** [outsideRequests]는 저장된 후보와 겹치지 않는 1:1 신청·성사다. 다시 만들면 후보가 바뀌어도 신청은 남는다. */
 class ParticipantMatching(
     val personalCandidates: List<PersonalCandidate> = emptyList(),
     val outsideRequests: List<OutsideRequest> = emptyList(),
@@ -98,11 +98,11 @@ class OutsideRequest(
     }
 }
 
-/** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 on, 대기는 matching, 끝난 것은 off. */
+/** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 ok, 대기는 caution, 끝난 것은 neutral. */
 enum class BadgeTone(val cssClass: String) {
-    POSITIVE("badge on"),
-    PENDING("badge matching"),
-    CLOSED("badge off"),
+    POSITIVE("badge ok"),
+    PENDING("badge caution"),
+    CLOSED("badge neutral"),
 }
 
 enum class PersonalRequestState(val label: String, val tone: BadgeTone) {
@@ -184,7 +184,7 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
 enum class MissEmphasis(val cssClass: String) {
     EXPECTED("muted"),
     NORMAL(""),
-    ACTION_NEEDED("badge matching"),
+    ACTION_NEEDED("badge caution"),
 }
 
 /**
@@ -198,11 +198,11 @@ enum class MatchMissReason(
     val linksToParticipants: Boolean = false,
 ) {
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
-    NOT_GENERATED("매칭 전", "'매칭 실행'에서 재생성하거나 [자동 매칭 실행] 누르기", MissEmphasis.EXPECTED),
+    NOT_GENERATED("매칭 전", "'매칭 수동 실행'에서 다시 만들거나 [정기 매칭 지금 돌리기] 누르기", MissEmphasis.EXPECTED),
     NOT_COMPLETED("퀴즈 미완료", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
     COMPLETED_AFTER_GENERATION(
         "매칭 뒤 퀴즈 완료",
-        "'매칭 실행'에서 재생성(그룹은 응답이 시작되면 재생성할 수 없음)",
+        "'매칭 수동 실행'에서 다시 만들기(그룹은 응답이 시작되면 다시 만들 수 없음)",
         MissEmphasis.ACTION_NEEDED,
     ),
     EXCLUDED_INACTIVE("매칭 제외: 비활성 회원", "회원 상태 확인", MissEmphasis.EXPECTED),
@@ -214,7 +214,7 @@ enum class MatchMissReason(
         "성별 선호가 맞고 나이 차 ${OneToOneMatchingProcessor.MAX_AGE_GAP}살 이내이며 서로 차단하지 않은 상대 추가",
         MissEmphasis.NORMAL,
     ),
-    STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "'매칭 실행'에서 재생성", MissEmphasis.ACTION_NEEDED),
+    STATE_CHANGED_AFTER_GENERATION("지금 다시 매칭하면 후보가 됨", "'매칭 수동 실행'에서 다시 만들기", MissEmphasis.ACTION_NEEDED),
     NOT_ASSIGNED_TO_GROUP("그룹 배정 안 됨(인원이 남거나 차단, 정상)", null, MissEmphasis.NORMAL),
 
     /** 회원 화면은 1:1 풀 전체를 다시 계산하지 않아 풀 단계 이유를 모른다. */

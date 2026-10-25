@@ -31,6 +31,17 @@ class AdminReportService(
 ) {
 
     @Transactional(readOnly = true)
+    fun countReportsByStatus(): Map<MemberReportStatus, Long> =
+        MemberReportStatus.entries.associateWith { memberReportRepository.countByStatus(it) }
+
+    @Transactional(readOnly = true)
+    fun countReceivedReports(): Long = memberReportRepository.countByStatus(MemberReportStatus.RECEIVED)
+
+    @Transactional(readOnly = true)
+    fun countOverdueReports(now: LocalDateTime): Long =
+        memberReportRepository.countByStatusAndCreatedAtBefore(MemberReportStatus.RECEIVED, now.minus(REVIEW_SLA))
+
+    @Transactional(readOnly = true)
     fun listReports(status: MemberReportStatus, now: LocalDateTime): List<ReportListItem> {
         val reports = memberReportRepository.findAllByStatusOrderByCreatedAtAsc(status)
         val nicknames = nicknamesOf(reports.flatMap { listOf(it.reporterId, it.reportedMemberId) })
@@ -128,7 +139,9 @@ class AdminReportService(
         return memberIds.associateWith { found[it] ?: "(탈퇴한 회원 #$it)" }
     }
 
+    // 시간 조정을 접수보다 앞 시각으로 걸면 음수가 된다.
     private fun formatElapsed(elapsed: Duration): String {
+        if (elapsed.isNegative) return "방금 접수"
         val days = elapsed.toDays()
         val hours = elapsed.toHours() % 24
         val minutes = elapsed.toMinutes() % 60

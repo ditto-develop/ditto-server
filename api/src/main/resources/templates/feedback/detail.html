@@ -7,10 +7,11 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
+            <a class="muted" th:href="@{/admin/feedbacks}">← 의견 확인</a>
             <h1 class="page-title">
                 의견 #<span th:text="${feedback.id}">0</span>
                 <span class="badge cat" th:text="${feedback.typeDescription}">유형</span>
-                <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'matching' : 'on'" th:text="${feedback.statusDescription}">상태</span>
+                <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'caution' : 'ok'" th:text="${feedback.statusDescription}">상태</span>
             </h1>
             <p class="page-desc" style="word-break:keep-all">
                 보낸 회원:
@@ -67,7 +68,6 @@
                 </p>
             </div>
 
-            <p><a class="btn secondary sm" th:href="@{/admin/feedbacks}">목록으로</a></p>
         </main>
     </div>
 </div>

@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">시스템 공지</h1>
-            <p class="page-desc">활성 회원 전원에게 알림 센터·푸시로 공지를 보냅니다. 같은 내용으로 다시 보내도 막지 않습니다.</p>
+            <p class="page-desc">정상 회원 전원에게 알림 센터·푸시로 공지를 보냅니다. 같은 내용으로 다시 보내도 막지 않습니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">
@@ -24,19 +24,22 @@
                     </div>
                     <div class="field">
                         <button class="btn" type="submit"
-                                onclick="return confirm('활성 회원 전원에게 보냅니다. 되돌릴 수 없습니다. 보낼까요?')">전원에게 보내기</button>
+                                onclick="return confirm('정상 회원 전원에게 보냅니다. 되돌릴 수 없습니다. 보낼까요?')">전원에게 보내기</button>
                     </div>
                 </form>
             </div>
 
             <div class="card">
-                <h2>발송 이력</h2>
-                <p class="muted">[전원에게 보내기]를 누르고 화면이 돌아오면 발송도 끝난 것입니다. 그 뒤에도 '발송 중'으로 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 알림 테이블을 확인하세요.</p>
+                <h2 class="with-info">발송 이력
+                    <th:block th:replace="~{fragments :: info('info-notice-sending', '발송 이력', '[전원에게 보내기]를 누르고 화면이 돌아오면 발송도 끝난 것입니다. 그 뒤에도 발송 중으로 남아 있으면 도중에 서버가 멈춘 것이니, 다시 보내기 전에 서버 담당자에게 확인을 요청하세요.')}"></th:block></h2>
                 <p class="muted" th:if="${notices.isEmpty()}">보낸 공지가 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${notices.isEmpty()}">
                     <table class="tbl">
                         <thead>
-                        <tr><th>#</th><th>보낸 시각</th><th>제목</th><th>본문</th><th>수신</th><th>발송자</th></tr>
+                        <tr><th>#</th><th>보낸 시각</th><th>제목</th><th>본문</th>
+                            <th><span class="with-info">수신 / 대상
+                                <th:block th:replace="~{fragments :: info('info-notice-recipient', '수신과 대상', '대상은 보낸 순간의 정상 회원 수, 수신은 알림 센터에 공지를 남긴 회원 수입니다. 푸시가 기기에 도착한 수는 아닙니다.')}"></th:block></span></th>
+                            <th>발송자</th></tr>
                         </thead>
                         <tbody>
                         <tr th:each="n : ${notices}">
@@ -45,7 +48,7 @@
                             <td th:text="${n.title}">title</td>
                             <td class="muted" th:text="${n.body} ?: '-'">body</td>
                             <td class="num">
-                                <span class="badge" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
+                                <span class="badge caution" th:if="${n.sending}" th:text="'발송 중 · 대상 ' + ${n.targetCount} + '명'">발송 중</span>
                                 <span th:unless="${n.sending}" th:text="${n.recipientCount} + ' / ' + ${n.targetCount} + '명'">0</span>
                             </td>
                             <td th:text="${n.authorName != null} ? (${n.authorName} + (${n.authorEmail != null} ? ' (' + ${n.authorEmail} + ')' : '')) : ('회원 #' + ${n.authorMemberId})">-</td>
