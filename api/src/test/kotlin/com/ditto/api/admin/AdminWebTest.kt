@@ -630,6 +630,19 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("같은 주에 활성 퀴즈셋이 있으면 활성화 요청은 상세로 돌려보내 사유를 알린다")
+    fun duplicatedActivationRejected() {
+        quizSetRepository.save(QuizSetFixture.create(isActive = true))
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(isActive = false))
+
+        mockMvc.perform(post("/admin/quiz-sets/{id}/activate", quizSet.id).with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/quiz-sets/${quizSet.id}"))
+            .andExpect(flash().attribute("error", containsString("이미 활성화된")))
+
+        quizSetRepository.findById(quizSet.id).get().isActive shouldBe false
+    }
+
+    @Test
     @DisplayName("시간 조정 설정/끄기")
     fun timeOverride() {
         mockMvc.perform(
