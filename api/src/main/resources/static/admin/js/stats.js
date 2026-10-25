@@ -140,8 +140,8 @@
     };
 
     const activeRoundWeeksText = (roundWeeks) => {
-        if (roundWeeks.length === 0) return '최근 회차 없음';
-        return `최근 ${roundWeeks.length}회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
+        if (roundWeeks.length === 0) return '열린 회차 없음';
+        return `열린 ${roundWeeks.length}개 회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
     };
 
     const renderAccountStatus = ({ countsByStatus, currentActiveRoundWeeks, recentlyCompletedActiveStatusCount }) => {
@@ -150,7 +150,7 @@
             StatsCalc.accountStatusCounts(countsByStatus, recentlyCompletedActiveStatusCount),
         );
         byId('accountStatusNote').textContent =
-            `활성 = ${activeRoundWeeksText(currentActiveRoundWeeks)} 완주자. ` +
+            `활성은 오늘 기준 최근 4회차 중 ${activeRoundWeeksText(currentActiveRoundWeeks)}에 퀴즈를 끝까지 푼 회원입니다. ` +
             '퀴즈 참여 항목의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
             '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
     };
@@ -666,7 +666,7 @@
         fillEmptyRowIfNone('memberReportRepeatedRows', '이 기간에 신고를 2건 이상 받은 회원이 없습니다.');
     };
 
-    const renderMemberBlockSection = ({ memberBlockCount }) => {
+    const renderMemberBlockCount = ({ memberBlockCount }) => {
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
@@ -713,6 +713,6 @@
     renderMemberReviewSection(pageData);
     renderRetentionSection(pageData);
     renderMemberReportSection(pageData);
-    renderMemberBlockSection(pageData);
+    renderMemberBlockCount(pageData);
     renderPushSendSection(pageData);
 })();

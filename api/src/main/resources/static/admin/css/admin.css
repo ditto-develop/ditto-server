@@ -251,7 +251,8 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-filter .field.stats-week-field { min-width: 168px; }
 .stats-filter-label { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
 .stats-filter .stats-filter-label label { margin-bottom: 0; }
-.stats-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; color: var(--text-sub); font-size: 12px; }
+.stats-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; padding: 0; list-style: none; color: var(--text-sub); font-size: 12px; }
+.stats-legend li { display: flex; align-items: center; gap: 6px; }
 /* 목차는 상단바 아래에 붙어 따라온다. 장 앵커는 상단바와 목차 높이만큼 내려 멈춘다. */
 .stats-nav { position: sticky; top: 64px; z-index: 5; box-shadow: var(--shadow); }
 .stats-nav-links a { color: var(--primary); font-weight: 600; }
