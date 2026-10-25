@@ -2,7 +2,7 @@ package com.ditto.domain.memberreport.repository.querydsl
 
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.memberreport.entity.QMemberReport.memberReport
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
@@ -35,7 +35,7 @@ class MemberReportRepositoryImpl(
             .where(
                 memberReport.createdAt.goe(receivedRange.start),
                 memberReport.createdAt.lt(receivedRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 matchingType?.let { reportedMemberCompletedQuizSetInWeek(weekStartedOn, it) },
             )
             .groupBy(memberReport.reasons, memberReport.status)
@@ -62,7 +62,7 @@ class MemberReportRepositoryImpl(
             .where(
                 memberReport.createdAt.goe(receivedRange.start),
                 memberReport.createdAt.lt(receivedRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(member.id, member.nickname)
             .orderBy(countExpression.desc(), member.id.asc())

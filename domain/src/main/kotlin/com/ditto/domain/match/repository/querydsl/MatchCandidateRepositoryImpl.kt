@@ -5,7 +5,7 @@ import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.querydsl.core.types.dsl.Expressions
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -44,7 +44,7 @@ class MatchCandidateRepositoryImpl(
             .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(member.gender)
             .fetch()
@@ -59,7 +59,7 @@ class MatchCandidateRepositoryImpl(
             .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(matchCandidate.ownerMemberId)
             .fetch()

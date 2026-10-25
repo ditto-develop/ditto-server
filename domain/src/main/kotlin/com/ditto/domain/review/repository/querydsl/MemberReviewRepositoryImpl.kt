@@ -7,7 +7,7 @@ import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.review.entity.MemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
 import com.ditto.domain.review.entity.ReviewProgressStatus
@@ -88,7 +88,7 @@ class MemberReviewRepositoryImpl(
             .where(
                 memberReview.weekStartedOn.eq(weekStartedOn),
                 matchType?.let { memberReview.matchType.eq(it) },
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(memberReview.matchType, memberReview.status)
             .fetch()

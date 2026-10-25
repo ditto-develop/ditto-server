@@ -7,7 +7,7 @@ import com.ditto.domain.match.entity.QGroupMatch.groupMatch
 import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.ditto.domain.quiz.entity.QuizProgressStatus
@@ -71,7 +71,7 @@ class ReviewAnswerRepositoryImpl(
                 memberReview.weekStartedOn.eq(weekStartedOn),
                 matchType?.let { memberReview.matchType.eq(it) },
                 reviewAnswer.answeredAt.isNotNull,
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(memberReview.matchType, reviewAnswer.meetingStatus, reviewAnswer.rating)
             .fetch()
@@ -190,7 +190,7 @@ class ReviewAnswerRepositoryImpl(
                 memberReview.weekStartedOn.eq(weekStartedOn),
                 matchType?.let { memberReview.matchType.eq(it) },
                 reviewAnswer.answeredAt.isNotNull,
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 authorCondition,
             )
             .groupBy(memberReview.authorMemberId)

@@ -2,7 +2,7 @@ package com.ditto.domain.quiz.repository.querydsl
 
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuiz.quiz
 import com.ditto.domain.quiz.entity.QQuizAnswer.quizAnswer
@@ -72,7 +72,7 @@ class QuizAnswerRepositoryImpl(
             .join(quiz).on(quiz.id.eq(quizChoice.quizId))
             .join(quizSet).on(quizSet.id.eq(quiz.quizSetId), quizSet.isActive.isTrue)
             .leftJoin(quizAnswer).on(quizAnswer.choiceId.eq(quizChoice.id))
-            .leftJoin(member).on(member.id.eq(quizAnswer.memberId), member.nonAdminMatching(filter))
+            .leftJoin(member).on(member.id.eq(quizAnswer.memberId), member.matchesFilter(filter))
             .where(quizSet.weekStartedOn.eq(weekStartedOn), matchingType?.let { quizSet.matchingType.eq(it) })
             .groupBy(
                 quizSet.id,
@@ -123,7 +123,7 @@ class QuizAnswerRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 matchingType?.let { quizSet.matchingType.eq(it) },
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(quizAnswer.memberId)
             .fetch()

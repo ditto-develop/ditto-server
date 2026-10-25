@@ -26,7 +26,7 @@ class MemberRepositoryImpl(
             // 가입하지 않고 탈퇴(LEFT)된 회원도 있어서 상태가 아니라 joined_at 으로 가입자를 가른다.
             .where(
                 member.status.eq(MemberStatus.PENDING).or(member.joinedAt.isNotNull),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(member.status)
             .fetch()
@@ -46,7 +46,7 @@ class MemberRepositoryImpl(
             .where(
                 member.joinedAt.goe(joinedAtRange.start),
                 member.joinedAt.lt(joinedAtRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .fetch()
             .filterNotNull()
@@ -56,7 +56,7 @@ class MemberRepositoryImpl(
         return queryFactory
             .select(member.gender, member.birthDate, countExpression)
             .from(member)
-            .where(member.joinedAt.isNotNull, member.status.ne(MemberStatus.LEFT), member.nonAdminMatching(filter))
+            .where(member.joinedAt.isNotNull, member.status.ne(MemberStatus.LEFT), member.matchesFilter(filter))
             .groupBy(member.gender, member.birthDate)
             .fetch()
             .map { row ->
@@ -73,7 +73,7 @@ class MemberRepositoryImpl(
         return queryFactory
             .select(member.location, countExpression)
             .from(member)
-            .where(member.joinedAt.isNotNull, member.status.ne(MemberStatus.LEFT), member.nonAdminMatching(filter))
+            .where(member.joinedAt.isNotNull, member.status.ne(MemberStatus.LEFT), member.matchesFilter(filter))
             .groupBy(member.location)
             .fetch()
             .map { row ->
@@ -93,7 +93,7 @@ class MemberRepositoryImpl(
                 member.joinedAt.isNotNull,
                 member.leftAt.goe(leftAtRange.start),
                 member.leftAt.lt(leftAtRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(member.leaveReason)
             .fetch()

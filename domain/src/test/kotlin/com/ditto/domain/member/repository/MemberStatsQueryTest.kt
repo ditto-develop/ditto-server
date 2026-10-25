@@ -61,6 +61,14 @@ class MemberStatsQueryTest(
                 mapOf(MemberStatus.ACTIVE to 2L, MemberStatus.LEFT to 1L, MemberStatus.PENDING to 1L)
         }
 
+        "관리자 포함을 켜면 관리자도 센다" {
+            save("a")
+            save("admin", role = MemberRole.ADMIN)
+
+            memberRepository.countMembersByStatus(MemberFilter(includesAdmins = true)) shouldBe
+                mapOf(MemberStatus.ACTIVE to 2L)
+        }
+
         "성별·생년월일·가입 시각 조건을 모두 건다" {
             save("match", gender = Gender.FEMALE, birthDate = LocalDate.of(2003, 1, 1))
             save("male", gender = Gender.MALE, birthDate = LocalDate.of(2003, 1, 1))
