@@ -172,7 +172,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 생성·QA 콘솔 링크가 보인다")
+    @DisplayName("QA 도구가 켜져 있으면 상단바에 켜짐 배지가, 사이드바에 시간 조정·더미 관리·QA 콘솔 링크가 보인다")
     fun sidebarShowsQaLinksWhenQaToolsEnabled() {
         mockMvc.perform(get("/admin").with(authentication(admin())))
             .andExpect(status().isOk)
@@ -643,16 +643,21 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("시간 조정 설정/끄기")
+    @DisplayName("시간 조정을 켜면 모든 화면 상단바에 조정 시각이 보이고, 끄면 사라진다")
     fun timeOverride() {
         mockMvc.perform(
             post("/admin/time-override").with(authentication(admin())).with(csrf())
                 .param("dateTime", "2026-06-18T09:00"),
         ).andExpect(status().is3xxRedirection)
             .andExpect(flash().attribute("message", "서버 시각을 맞췄습니다: 2026-06-18 09:00"))
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(content().string(containsString("시간 조정 중 · 2026-06-18 09:00")))
+
         mockMvc.perform(post("/admin/time-override/disable").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(flash().attribute("message", "시간 조정을 껐습니다. 실제 시각을 씁니다."))
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(content().string(not(containsString("시간 조정 중"))))
     }
 
     @Test

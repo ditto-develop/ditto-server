@@ -67,6 +67,11 @@ a { color: inherit; text-decoration: none; }
 .nav a:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
 .nav a.active { background: var(--sidebar-active); color: #fff; }
 .nav a .ico { width: 18px; text-align: center; }
+.nav { gap: 14px; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-title { padding: 0 14px 4px; color: rgba(199, 203, 224, 0.55); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.nav-group.qa { padding-top: 12px; border-top: 1px dashed rgba(199, 203, 224, 0.25); }
+.nav-group.qa .nav-title { color: #f2c14e; }
 
 /* Main */
 .main-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -129,6 +134,85 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 .badge.cat { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
 .badge.warn { background: rgba(232, 90, 107, 0.12); color: var(--danger); }
 .badge.locked { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
+/* 상태 배지는 뜻으로 색을 고른다. 기간 배지(quiz·matching·chatting)와 섞어 쓰지 않는다. */
+.badge.ok { background: rgba(34, 176, 125, 0.13); color: var(--success); }
+.badge.caution { background: rgba(224, 161, 6, 0.15); color: #8a5a00; }
+.badge.danger { background: rgba(232, 90, 107, 0.12); color: var(--danger); }
+.badge.info { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
+.badge.neutral { background: rgba(154, 160, 180, 0.16); color: var(--text-sub); }
+a.badge:hover { text-decoration: underline; }
+
+/* (i) 설명 */
+.with-info { display: inline-flex; align-items: center; gap: 4px; }
+.info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 1px solid var(--text-muted);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text-sub);
+    font: 700 11px/1 Georgia, "Times New Roman", serif;
+    font-style: italic;
+    vertical-align: middle;
+    cursor: pointer;
+}
+.info-btn:hover { border-color: var(--primary); color: var(--primary); }
+.info-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.info-pop {
+    max-width: min(320px, calc(100vw - 32px));
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(20, 23, 40, 0.16);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: normal;
+    word-break: keep-all;
+}
+/* 버튼 옆에 붙일 수 있는 브라우저에서만 붙이고, 아니면 기본값대로 화면 가운데에 띄운다. */
+@supports (position-area: bottom) {
+    .info-pop:popover-open {
+        inset: auto;
+        margin: 6px 0;
+        position-area: bottom span-right;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    }
+}
+/* popover 를 모르는 브라우저는 설명이 본문처럼 보이므로 버튼만 숨긴다. */
+@supports not selector(:popover-open) {
+    .info-btn { display: none; }
+    .info-pop { display: block; margin: 4px 0; padding: 0; border: 0; box-shadow: none; color: var(--text-sub); }
+}
+
+/* 지표가 세는 기간. 색과 함께 모양(채움·점선)으로도 구분한다. */
+.scope-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.scope-badge.round, .scope-badge.week, .scope-badge.range { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
+.scope-badge.week { background: rgba(58, 134, 255, 0.12); color: var(--blue); }
+.scope-badge.range { background: rgba(108, 92, 231, 0.06); border-color: rgba(108, 92, 231, 0.35); }
+.scope-badge.now { background: transparent; border: 1px dashed var(--text-muted); color: var(--text-sub); }
 
 /* Tables */
 table.tbl { width: 100%; border-collapse: collapse; }
@@ -893,6 +977,12 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .nav { flex-direction: row; flex-wrap: wrap; }
     .nav a { padding: 6px 10px; gap: 6px; font-size: 13px; white-space: nowrap; }
     .nav a .ico { width: auto; }
+    /* 위쪽 메뉴에서는 묶음 제목을 숨기고 링크만 한 흐름으로 감는다. */
+    .nav { gap: 4px; }
+    .nav-group { display: contents; }
+    .nav-title { display: none; }
+    .nav-group.qa a { border: 1px dashed rgba(242, 193, 78, 0.5); }
+    .info-btn { width: 24px; height: 24px; font-size: 13px; }
 
     .topbar { height: 52px; padding: 0 16px; position: static; }
     .content { padding: 16px; }
