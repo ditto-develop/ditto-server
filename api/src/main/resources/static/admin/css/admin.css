@@ -775,7 +775,8 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 }
 .qa-alert-with-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
-.qa-guide summary { cursor: pointer; font-weight: 700; }
+.qa-guide summary, .qa-tools-details summary { cursor: pointer; font-weight: 700; }
+.qa-tools-details[open] summary { margin-bottom: 12px; }
 .qa-guide ol { margin: 12px 0 0; padding-left: 20px; color: var(--text-sub); line-height: 1.9; }
 .card h2 .count, .qa-report-title .count {
     margin-left: 6px;
@@ -1041,6 +1042,8 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 
 /* 폰 폭. 960px 블록보다 뒤에 둔다. */
 @media (max-width: 480px) {
+    /* 버튼 옆에 붙이면 화면 끝에서 상자가 좁아지므로 가운데에 같은 폭으로 띄운다. */
+    .info-pop:popover-open { position-area: none; inset: 0; margin: auto; width: calc(100vw - 32px); height: fit-content; }
     /* 선택지·신고 사유는 라벨이 한 줄을 다 쓰고, 막대와 값은 그 아래에 둔다. */
     .stack-on-phone { grid-template-columns: 1fr 128px; row-gap: 4px; margin-bottom: 12px; }
     .stack-on-phone > span:first-child { grid-column: 1 / -1; }

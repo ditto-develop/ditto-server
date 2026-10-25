@@ -80,9 +80,9 @@
                     <span th:replace="~{fragments :: scope('round')}"></span>
                     <span th:replace="~{fragments :: scope('week')}"></span>
                     <span th:replace="~{fragments :: scopeRange('최근 N회차')}"></span>
-                    는 위에서 고른 회차를 따르고,
+                    배지는 위에서 고른 회차를 따르고,
                     <span th:replace="~{fragments :: scope('now')}"></span>
-                    은 회차를 바꿔도 그대로입니다.
+                    배지는 회차를 바꿔도 그대로입니다.
                 </p>
             </div>
 
@@ -656,8 +656,7 @@
                     </div>
                 </div>
                 <p class="alert info" id="pushSendEmptyNotice" hidden
-                   th:text="${filter.hasMemberConditions() ? '조건에 맞는 발송 이력이 없습니다.' : '이 주 발송 이력이 없습니다.'}">이 주 발송 이력이 없습니다.</p>
-                <p class="muted" th:if="${qaToolsEnabled}">시각 조정 중이면 실제 날짜의 주를 골라야 이력이 보입니다.</p>
+                   th:text="${(filter.hasMemberConditions() ? '조건에 맞는 발송 이력이 없습니다.' : '이 주 발송 이력이 없습니다.') + (qaToolsEnabled ? ' 시각 조정 중이면 실제 날짜의 주를 골라야 이력이 보입니다.' : '')}">이 주 발송 이력이 없습니다.</p>
                 <div id="pushSendSectionBody">
                     <div class="card">
                         <h3 class="with-info">건너뛴 이유
