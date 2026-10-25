@@ -247,8 +247,20 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-filter .field { margin-bottom: 0; }
 .stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .stats-filter .field.stats-week-field { min-width: 168px; }
-.stats-filter-note { margin: 12px 0 0; font-size: 13px; }
-.stats-section { margin-top: 32px; scroll-margin-top: 80px; word-break: keep-all; overflow-wrap: anywhere; }
+.stats-filter-label { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.stats-filter .stats-filter-label label { margin-bottom: 0; }
+.stats-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; color: var(--text-sub); font-size: 12px; }
+/* 목차는 상단바 아래에 붙어 따라온다. 장 앵커는 상단바와 목차 높이만큼 내려 멈춘다. */
+.stats-nav { position: sticky; top: 64px; z-index: 5; box-shadow: var(--shadow); }
+.stats-nav-links a { color: var(--primary); font-weight: 600; }
+.stats-nav-sep { color: var(--border); }
+.stats-section { margin-top: 32px; scroll-margin-top: 140px; word-break: keep-all; overflow-wrap: anywhere; }
+.stats-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 4px; }
+.stats-section-head .stats-section-title { margin: 0; }
+.stats-section .stat .label.with-info { display: inline-flex; flex-wrap: wrap; }
+.stats-section .card h3.with-info { display: flex; flex-wrap: wrap; }
+.stats-basis .scope-badge { margin-right: 4px; }
+.stats-card-note { margin: -4px 0 16px; font-size: 12px; }
 .stats-section + .stats-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border); }
 .stats-section-title { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
 .stats-section-desc { color: var(--text-sub); font-size: 13px; margin: 0 0 16px; }
@@ -256,6 +268,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
 .stats-section .stat .basis { color: var(--text-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stats-totals { grid-template-columns: repeat(3, 1fr); }
+.stats-totals.four { grid-template-columns: repeat(4, 1fr); }
 .stats-align-start { align-items: start; }
 /* 회원 목록은 길어질 수 있어 카드 안에서 스크롤한다. */
 .stats-member-list { max-height: 360px; overflow-y: auto; }
@@ -1008,7 +1021,12 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .stats-totals .value { font-size: 19px; }
     .stats-section table.tbl :is(th, td) { padding: 9px 8px; }
     .stats-filter-actions .btn { padding-top: 12px; padding-bottom: 12px; }
-    .stats-section { scroll-margin-top: 16px; }
+    /* 상단바가 고정이 아니라 목차만 맨 위에 붙는다. 링크는 줄을 바꾸지 않고 옆으로 민다. */
+    .stats-nav { top: 0; gap: 6px 14px; padding: 10px 12px; }
+    .stats-nav-links { flex: 1 1 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+    .stats-nav-links a { white-space: nowrap; }
+    .stats-section { scroll-margin-top: 110px; }
+    .stats-totals.four { grid-template-columns: repeat(2, 1fr); }
     .qa-composer-dummies, .qa-composer-row select { width: 100%; }
 
     /* 손가락으로 누르기 어려운 작은 버튼을 키운다. */

@@ -119,7 +119,7 @@
             (day) => (day.isToday ? 'today' : ''),
         );
 
-        byId('weeklyJoinTitle').textContent = `주별 신규 가입 · 고른 주까지 ${memberStats.recentWeekCount}주`;
+        byId('weeklyJoinScope').textContent = `고른 주까지 ${memberStats.recentWeekCount}주`;
         const weeks = StatsCalc.weeklyJoins(weekStartedOn, memberStats.recentWeekCount, memberStats.recentJoinedAts);
         fillRows('weeklyJoinRows', weeks, (week) => [
             cell(`${shortDate(week.weekStartedOn)} 주`),
@@ -199,7 +199,7 @@
         const participation = StatsCalc.quizParticipation(progressCounts, quizMatchingTypeLabels);
         showSectionIfAny('quiz', participation.startedCount > 0);
 
-        byId('quizActiveRoundCount').textContent = activeRoundCount;
+        byId('quizActiveRoundScope').textContent = `최근 ${activeRoundCount}회차`;
         byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
         renderQuizRates(participation, activeMemberCount);
         // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
@@ -667,7 +667,6 @@
     };
 
     const renderMemberBlockSection = ({ memberBlockCount }) => {
-        showSectionIfAny('memberBlock', memberBlockCount > 0);
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
