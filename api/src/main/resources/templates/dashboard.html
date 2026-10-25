@@ -60,7 +60,7 @@
                 </div>
                 <div class="tbl-scroll" th:unless="${weekQuizSets.isEmpty()}">
                     <table class="tbl">
-                        <thead><tr><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>
+                        <thead><tr><th>제목</th><th>매칭 유형</th><th>상태</th><th></th></tr></thead>
                         <tbody>
                         <tr th:each="qs : ${weekQuizSets}">
                             <td th:text="${qs.title}">title</td>

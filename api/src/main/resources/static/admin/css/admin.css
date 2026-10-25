@@ -126,7 +126,7 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 .dashboard-heading { font-size: 15px; font-weight: 700; margin: 8px 0 10px; }
 a.card.dashboard-todo { transition: border-color 0.15s; }
 a.card.dashboard-todo:hover { border-color: var(--primary); }
-.dashboard-todo .label { display: flex; justify-content: space-between; }
+.dashboard-todo .label { display: flex; justify-content: space-between; gap: 6px; }
 .dashboard-todo-go { color: var(--primary); }
 .dashboard-todo:not(.has-items) .value { color: var(--text-sub); }
 .dashboard-todo.has-items { box-shadow: inset 3px 0 0 var(--primary), var(--shadow); }
@@ -182,6 +182,9 @@ a.badge:hover { text-decoration: underline; }
     cursor: pointer;
 }
 .info-btn:hover { border-color: var(--primary); color: var(--primary); }
+/* 보이는 원은 작게 두고 누르는 영역만 사방 6px 넓힌다. */
+.info-btn { position: relative; }
+.info-btn::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 .info-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .info-pop {
     max-width: min(320px, calc(100vw - 32px));
@@ -371,6 +374,10 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 }
 .field-row { display: flex; gap: 14px; flex-wrap: wrap; }
 .field-row .field { flex: 1; min-width: 120px; }
+/* 버튼만 든 칸은 버튼 폭만 쓰고 나머지를 입력칸에 준다. */
+.field-row > .field:has(> .btn:only-child) { flex: 0 0 auto; min-width: 0; }
+.tbl-scroll td.title-cell { min-width: 8em; }
+td.period-cell span { white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input { width: auto; }
 .dummy-options { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
@@ -802,6 +809,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .qa-bar-links a, .qa-guide a { color: var(--primary); font-weight: 600; }
 .qa-guide summary, .qa-tools-details summary { cursor: pointer; font-weight: 700; }
 .qa-tools-details[open] summary { margin-bottom: 12px; }
+.qa-tools-details summary .muted { font-weight: 500; }
 .qa-guide ol { margin: 12px 0 0; padding-left: 20px; color: var(--text-sub); line-height: 1.9; }
 .card h2 .count, .qa-report-title .count {
     margin-left: 6px;
@@ -1018,14 +1026,27 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .nav { flex-direction: row; flex-wrap: wrap; }
     .nav a { padding: 6px 10px; gap: 6px; font-size: 13px; white-space: nowrap; }
     .nav a .ico { width: auto; }
-    /* 위쪽 메뉴에서는 묶음 제목을 숨기고 링크만 한 흐름으로 감는다. */
-    .nav { gap: 4px; }
+    /* 위쪽 메뉴는 묶음 제목을 숨기고 한 줄로 옆으로 민다. 오른쪽 끝을 흐리게 해 더 있다는 걸 알린다. */
+    .nav { gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 88%, transparent); }
+    .nav::-webkit-scrollbar { display: none; }
     .nav-group { display: contents; }
     .nav-title { display: none; }
     .nav-group.qa a { border: 1px dashed rgba(242, 193, 78, 0.5); }
     .info-btn { width: 24px; height: 24px; font-size: 13px; }
+    /* 숫자 카드의 (i)는 오른쪽 위 구석에 두어 라벨 줄이 혼자 갈리지 않게 하고, 라벨 높이를 맞춰 숫자 줄을 가지런히 한다. */
+    .stats-totals .card.stat { position: relative; }
+    .stats-totals .stat .label { min-height: 2.9em; }
+    .stats-totals .stat .label.with-info { padding-right: 22px; }
+    .stats-totals .stat .label .info-btn { position: absolute; top: 8px; right: 8px; }
+    .stats-nav { padding: 6px 12px; }
+    .stats-nav-links a { padding: 8px 2px; }
+    .qa-section-nav .qa-bar-links { margin-left: 0; }
+    .qa-section-nav .qa-bar-links a { padding: 6px 0; }
 
-    .topbar { height: 52px; padding: 0 16px; position: static; }
+    /* 시간 조정·QA 배지가 함께 뜨면 한 줄에 다 들어가지 않아 줄을 바꾸고, 이름과 로그아웃은 오른쪽에 붙인다. */
+    .topbar { height: auto; min-height: 52px; padding: 8px 16px; position: static; flex-wrap: wrap; justify-content: flex-start; gap: 8px 12px; }
+    .topbar > .who { margin-left: auto; }
+    .topbar .who, .topbar .btn { white-space: nowrap; }
     .content { padding: 16px; }
     h1.page-title { font-size: 19px; }
     .page-desc { margin-bottom: 16px; }
@@ -1050,7 +1071,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .stats-section table.tbl :is(th, td) { padding: 9px 8px; }
     .stats-filter-actions .btn { padding-top: 12px; padding-bottom: 12px; }
     /* 상단바가 고정이 아니라 목차만 맨 위에 붙는다. 링크는 줄을 바꾸지 않고 옆으로 민다. */
-    .stats-nav { top: 0; gap: 6px 14px; padding: 10px 12px; }
+    .stats-nav { top: 0; gap: 6px 14px; }
     .stats-nav-links { flex: 1 1 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
     .stats-nav-links a { white-space: nowrap; }
     .stats-section { scroll-margin-top: 110px; }
@@ -1068,7 +1089,14 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
 /* 폰 폭. 960px 블록보다 뒤에 둔다. */
 @media (max-width: 480px) {
     /* 버튼 옆에 붙이면 화면 끝에서 상자가 좁아지므로 가운데에 같은 폭으로 띄운다. */
-    .info-pop:popover-open { position-area: none; inset: 0; margin: auto; width: calc(100vw - 32px); height: fit-content; }
+    .info-pop:popover-open { position-area: none; inset: 0; margin: auto; width: calc(100vw - 32px); max-width: none; height: fit-content; font-size: 14px; }
+    .info-pop:popover-open::backdrop { background: rgba(20, 23, 40, 0.28); }
+    /* 시각 입력칸과 읽기 전용 기간 칸은 값이 길어 한 줄을 다 쓴다. */
+    .field-row > .field:has(> input[type="datetime-local"], > input:disabled) { flex-basis: 100%; }
+    /* 대시보드 할 일은 한 줄 카드로 줄여 이번 주 상태까지 첫 화면에 들어오게 한다. */
+    a.card.dashboard-todo { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
+    a.card.dashboard-todo .value { font-size: 20px; }
+    a.card.dashboard-todo > span:nth-child(3) { flex-basis: 100%; }
     /* 선택지·신고 사유는 라벨이 한 줄을 다 쓰고, 막대와 값은 그 아래에 둔다. */
     .stack-on-phone { grid-template-columns: 1fr 128px; row-gap: 4px; margin-bottom: 12px; }
     .stack-on-phone > span:first-child { grid-column: 1 / -1; }

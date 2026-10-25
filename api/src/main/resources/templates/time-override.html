@@ -43,7 +43,7 @@
                                data-past-group-deadline=${timeMoveGuide.groupDeadlineMessage},
                                data-past-chat-end=${timeMoveGuide.chatEndMessage},
                                data-irreversible=${timeMoveGuide.irreversibleNotice}">
-                    <div class="field" style="flex:1">
+                    <div class="field">
                         <label for="dateTime">서버 시각</label>
                         <input type="datetime-local" id="dateTime" name="dateTime" required
                                th:value="${#temporals.format(currentTime, 'yyyy-MM-dd''T''HH:mm')}"/>

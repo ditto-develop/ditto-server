@@ -64,7 +64,7 @@
                             <td th:text="${s.levelDescription}">제재 종류</td>
                             <td th:text="${s.originDescription}">제재 근거</td>
                             <td th:text="${s.statusDescription}">상태</td>
-                            <td>
+                            <td class="period-cell">
                                 <span th:text="${#temporals.format(s.startsAt, 'yy-MM-dd HH:mm')}">시작</span> ~
                                 <span th:text="${s.endsAt != null} ? ${#temporals.format(s.endsAt, 'yy-MM-dd HH:mm')} : '영구'">끝</span>
                             </td>

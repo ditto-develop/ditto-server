@@ -40,6 +40,13 @@
             <a th:href="@{/admin/qa}" th:classappend="${active == 'qa'} ? 'active'"><span class="ico">🕹️</span> QA 콘솔</a>
         </div>
     </nav>
+    <script>
+        // 폰 폭에서는 메뉴가 한 줄 가로 스크롤이라 지금 화면의 메뉴를 보이는 곳으로 민다.
+        (() => {
+            const nav = document.currentScript.previousElementSibling;
+            if (nav.scrollWidth > nav.clientWidth) nav.querySelector('a.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        })();
+    </script>
 </aside>
 
 <header th:fragment="topbar" class="topbar">

@@ -39,7 +39,7 @@
                         <tr th:each="row : ${view.rows}" th:with="quizSet=${row.quizSet},progress=${row.progress}"
                             th:classappend="${progress == null} ? 'not-participated'">
                             <td class="nowrap" th:text="${@weekLabel.of(quizSet.weekStartedOn)}">2026.10.05 ~ 2026.10.11</td>
-                            <td>
+                            <td class="title-cell">
                                 <a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}" th:text="${quizSet.title}">제목</a>
                                 <span class="muted" th:text="${@matchingTypeLabel.of(quizSet.matchingType)}">1:1</span>
                                 <span class="badge neutral" th:unless="${quizSet.isActive}">비활성</span>
