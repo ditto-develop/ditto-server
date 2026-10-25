@@ -39,10 +39,11 @@
                       th:attr="data-now=${#temporals.format(timeMoveGuide.now, 'yyyy-MM-dd''T''HH:mm')},
                                data-group-deadline=${#temporals.format(timeMoveGuide.groupDeadline, 'yyyy-MM-dd''T''HH:mm')},
                                data-chat-end=${#temporals.format(timeMoveGuide.chatEnd, 'yyyy-MM-dd''T''HH:mm')},
-                               data-back-to-past=${timeMoveGuide.backToPastMessage},
-                               data-past-group-deadline=${timeMoveGuide.groupDeadlineMessage},
-                               data-past-chat-end=${timeMoveGuide.chatEndMessage},
-                               data-irreversible=${timeMoveGuide.irreversibleNotice}">
+                               data-back-to-past-message=${timeMoveGuide.backToPastMessage},
+                               data-past-group-deadline-message=${timeMoveGuide.pastGroupDeadlineMessage},
+                               data-past-chat-end-message=${timeMoveGuide.pastChatEndMessage},
+                               data-irreversible-notice=${timeMoveGuide.irreversibleNotice},
+                               data-move-question=${timeMoveGuide.moveQuestion}">
                     <div class="field">
                         <label for="dateTime">서버 시각</label>
                         <input type="datetime-local" id="dateTime" name="dateTime" required
@@ -60,20 +61,7 @@
         </main>
     </div>
 </div>
-<script>
-    // QA 콘솔의 QaTimeMoveWarning 과 같은 기준이다. 마감을 넘기거나 지난 시점으로 갈 때만 묻는다.
-    document.getElementById('timeOverrideForm').addEventListener('submit', (event) => {
-        const form = event.currentTarget;
-        const { now, groupDeadline, chatEnd } = form.dataset;
-        const target = form.dateTime.value;
-        const crosses = (boundary) => now < boundary && target >= boundary;
-        const warnings = target < now
-            ? [form.dataset.backToPast]
-            : [crosses(groupDeadline) && form.dataset.pastGroupDeadline, crosses(chatEnd) && form.dataset.pastChatEnd].filter(Boolean);
-        if (warnings.length === 0) return;
-        const irreversible = target < now ? [] : [form.dataset.irreversible];
-        if (!window.confirm([...warnings, ...irreversible, '옮길까요?'].join(' '))) event.preventDefault();
-    });
-</script>
+<script th:src="@{/admin/js/time-move-calc.js}"></script>
+<script th:src="@{/admin/js/time-override.js}"></script>
 </body>
 </html>
