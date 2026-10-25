@@ -108,6 +108,17 @@ class QuizAnswerStatsQueryTest(
             counts.map { it.choiceContent to it.count } shouldBe listOf("A" to 1L, "B" to 0L)
         }
 
+        "관리자 포함을 켜면 관리자의 답도 선택지에 센다" {
+            val (choiceA, _) = saveQuestion(saveQuizSet())
+            answer(saveMember(Gender.FEMALE, role = MemberRole.ADMIN), choiceA)
+
+            val excluded = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, MemberFilter.NONE)
+            val included = quizAnswerRepository.countAnswersPerChoiceInWeek(WEEK, null, MemberFilter(includeAdmins = true))
+
+            excluded.first().count shouldBe 0L
+            included.first().count shouldBe 1L
+        }
+
         "같은 선택지의 답을 성별로 나눈다" {
             val (choiceA, _) = saveQuestion(saveQuizSet())
             answer(saveMember(Gender.FEMALE), choiceA)

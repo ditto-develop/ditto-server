@@ -53,7 +53,7 @@ class MemberBlockRepositoryImpl(
             .where(
                 memberBlock.createdAt.goe(createdRange.start),
                 memberBlock.createdAt.lt(createdRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 matchingType?.let { blockedMemberCompletedQuizSetInWeek(weekStartedOn, it) },
             )
             .fetchOne() ?: 0L

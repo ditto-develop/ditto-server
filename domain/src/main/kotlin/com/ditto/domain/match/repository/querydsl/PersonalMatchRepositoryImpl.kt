@@ -5,7 +5,7 @@ import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -103,7 +103,7 @@ class PersonalMatchRepositoryImpl(
             .where(
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(member.gender)
             .fetch()

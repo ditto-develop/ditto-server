@@ -2,7 +2,7 @@ package com.ditto.domain.notification.repository.querydsl
 
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.notification.entity.QPushSendHistory.pushSendHistory
 import com.ditto.domain.system.OperationWeek
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -37,7 +37,7 @@ class PushSendHistoryRepositoryImpl(
             .where(
                 pushSendHistory.createdAt.goe(createdRange.start),
                 pushSendHistory.createdAt.lt(createdRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(
                 pushSendHistory.notificationType,

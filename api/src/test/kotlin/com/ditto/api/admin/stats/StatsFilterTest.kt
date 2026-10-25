@@ -23,6 +23,14 @@ class StatsFilterTest : FreeSpec(
             }
         }
 
+        "toMemberFilter" - {
+            "관리자 포함은 켤 때만 회원 조건으로 넘긴다" {
+                val today = LocalDate.of(2026, 10, 25)
+                StatsFilter().toMemberFilter(today).includeAdmins shouldBe false
+                StatsFilter(includeAdmins = true).toMemberFilter(today).includeAdmins shouldBe true
+            }
+        }
+
         "hasConditions" - {
             "회차만 고르면 조건이 없다" {
                 StatsFilter(week = LocalDate.of(2026, 10, 15)).hasConditions() shouldBe false

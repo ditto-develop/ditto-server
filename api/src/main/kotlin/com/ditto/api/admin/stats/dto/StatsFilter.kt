@@ -17,6 +17,7 @@ data class StatsFilter(
     val ageBand: AgeBand? = null,
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val joinedWeek: LocalDate? = null,
+    val includeAdmins: Boolean = false,
 ) {
     fun selectedWeek(currentWeek: OperationWeek): OperationWeek =
         week?.let { OperationWeek.containing(it) } ?: currentWeek
@@ -31,5 +32,6 @@ data class StatsFilter(
         gender = gender,
         birthDateRange = ageBand?.birthDateRange(today),
         joinedAtRange = joinedWeek?.let { OperationWeek.containing(it).dateTimeRange },
+        includeAdmins = includeAdmins,
     )
 }

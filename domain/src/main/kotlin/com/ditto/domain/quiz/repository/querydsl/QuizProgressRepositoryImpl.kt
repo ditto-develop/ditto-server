@@ -9,7 +9,7 @@ import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.notification.entity.QMemberDevice.memberDevice
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuizProgress
@@ -73,7 +73,7 @@ class QuizProgressRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 matchingTypeIs(matchingType),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(quizSet.matchingType, quizProgress.status, member.gender)
             .fetch()
@@ -101,7 +101,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.`in`(roundWeeks),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 matchingTypeIs(matchingType),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .fetchOne() ?: 0L
     }
@@ -119,7 +119,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.`in`(roundWeeks),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 matchingTypeIs(matchingType),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 queryFactory.selectOne()
                     .from(memberDevice)
                     .where(memberDevice.memberId.eq(quizProgress.memberId))
@@ -149,7 +149,7 @@ class QuizProgressRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.status.eq(MemberStatus.ACTIVE),
                 member.joinedAt.isNotNull,
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .fetchOne() ?: 0L
     }
@@ -184,7 +184,7 @@ class QuizProgressRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 matchedInProgressSet(),
             )
             .groupBy(quizSet.matchingType)
@@ -212,7 +212,7 @@ class QuizProgressRepositoryImpl(
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.joinedAt.goe(joinedAtRange.start),
                 member.joinedAt.lt(joinedAtRange.endExclusive),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .fetch()
             .map { row ->
@@ -236,7 +236,7 @@ class QuizProgressRepositoryImpl(
                 quizSet.weekStartedOn.`in`(roundWeeks),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
                 member.status.eq(MemberStatus.ACTIVE),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 matchingTypeIs(matchingType),
                 matchedInProgressSet().not(),
             )
@@ -278,7 +278,7 @@ class QuizProgressRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(previousWeekStartedOn),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
                 previousProgressCondition,
             )
             .groupBy(quizSet.matchingType, againSet.matchingType)

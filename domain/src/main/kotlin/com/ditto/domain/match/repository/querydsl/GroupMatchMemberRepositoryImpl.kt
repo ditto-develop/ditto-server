@@ -6,7 +6,7 @@ import com.ditto.domain.match.entity.QGroupMatchMember
 import com.ditto.domain.match.entity.QGroupMatchMember.groupMatchMember
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.repository.querydsl.MemberFilter
-import com.ditto.domain.member.repository.querydsl.nonAdminMatching
+import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.querydsl.jpa.impl.JPAQueryFactory
 import java.time.LocalDate
@@ -145,7 +145,7 @@ class GroupMatchMemberRepositoryImpl(
             .join(member).on(member.id.eq(groupMatchMember.memberId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                member.nonAdminMatching(filter),
+                member.matchesFilter(filter),
             )
             .groupBy(groupMatch.isActive, groupMatchMember.status, member.gender)
             .fetch()
