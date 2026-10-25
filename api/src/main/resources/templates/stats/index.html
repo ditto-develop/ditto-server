@@ -138,7 +138,8 @@
                     </div>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card">
-                            <h3>계정 상태 (현재 회원)</h3>
+                            <h3 class="with-info">계정 상태 (현재 회원)
+                                <th:block th:replace="~{fragments :: info('info-stats-account-status', '계정 상태', '휴면은 실제 계정 상태가 아니라 지표에서만 나눈 것입니다. 계정은 정상이지만 오늘 기준 최근 4회차 동안 퀴즈를 한 번도 끝까지 풀지 않은 회원이고, 그 기간에 한 번이라도 끝까지 푼 회원은 활성입니다.')}"></th:block></h3>
                             <div id="accountStatusShares"></div>
                             <p class="muted" id="accountStatusNote"></p>
                         </div>
@@ -261,7 +262,7 @@
                     <div class="grid stats-totals">
                         <div class="card stat">
                             <span class="label with-info">성사
-                                <th:block th:replace="~{fragments :: info('info-stats-match-matched', '성사', '1:1은 신청이 수락된 두 사람, 그룹은 3명 이상 모여 성사된 그룹을 수락한 사람입니다. 아래 후보는 목요일 00:01 매칭에서 상대를 받은 회원입니다.')}"></th:block></span>
+                                <th:block th:replace="~{fragments :: info('info-stats-match-matched', '성사', '1:1은 신청이 수락된 두 사람, 그룹은 3명 이상 모여 성사된 그룹을 수락한 사람입니다. 1:1도 두 사람을 따로 세서, 관리자 계정이 낀 쌍이나 성별 같은 회원 조건을 걸면 한 사람만 세져 홀수가 될 수 있습니다. 아래 후보는 목요일 00:01 매칭에서 상대를 받은 회원입니다.')}"></th:block></span>
                             <span class="value" id="matchMatchedCount">-</span>
                             <span class="basis" id="matchMatchedCountBasis"></span>
                         </div>
