@@ -8,17 +8,18 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">회원 관리</h1>
-            <p class="page-desc">닉네임·회원 ID로 찾아 퀴즈 현황을 보거나, 이메일로 찾아 권한을 바꿉니다. 현재 관리자 목록에서도 권한을 바로 바꿀 수 있습니다.</p>
+            <p class="page-desc">회원을 찾아 퀴즈 현황과 제재 이력을 보거나 권한을 바꿉니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">
-                <h2>퀴즈 현황 보기</h2>
                 <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
                     <div class="field" style="flex:1">
-                        <label for="memberQuery">닉네임 또는 #회원 ID</label>
-                        <input type="search" id="memberQuery" name="q" th:value="${q}" placeholder="예: dummy-female, #123" autocomplete="off"/>
+                        <div class="with-info stats-filter-label">
+                            <label for="memberQuery">닉네임, #회원 ID 또는 이메일</label>
+                            <th:block th:replace="~{fragments :: info('info-member-search', '회원 검색', '닉네임은 일부만 넣어도 찾고, 회원 ID는 #123처럼 #을 붙입니다. 이메일은 전체를 정확히 넣어야 찾습니다. 권한은 사람을 정확히 특정할 수 있게 이메일로 찾았을 때와 현재 관리자 목록에서만 바꿀 수 있습니다.')}"></th:block>
+                        </div>
+                        <input type="search" id="memberQuery" name="q" th:value="${q}" placeholder="예: dummy-female, #123, member@example.com" autocomplete="off"/>
                     </div>
-                    <input type="hidden" name="email" th:value="${email}"/>
                     <div class="field"><button class="btn" type="submit">검색</button></div>
                 </form>
                 <th:block th:if="${searchResult != null}">
@@ -31,20 +32,22 @@
                         <div class="tbl-scroll">
                             <table class="tbl">
                                 <thead>
-                                <tr><th title="정상 회원이 아니면 회원 상태를 배지로 보여 줍니다">회원</th><th></th></tr>
+                                <tr><th><span class="with-info">회원
+                                    <th:block th:replace="~{fragments :: info('info-member-cell', '회원', '정상 회원이 아니면 회원 상태를 배지로 보여 줍니다. 더미가 아닌 회원에는 실회원 배지가 붙습니다.')}"></th:block></span></th><th></th></tr>
                                 </thead>
                                 <tbody>
                                 <tr th:each="member : ${searchResult.members}">
                                     <td class="member-cell">
                                         <span class="member-name" th:text="${member.nickname}">닉네임</span>
                                         <span class="member-id" th:text="|#${member.memberId}|">#1</span>
-                                        <span class="badge cat" th:unless="${member.isDummy}">실회원</span>
+                                        <span class="badge info" th:unless="${member.isDummy}">실회원</span>
                                         <th:block th:if="${member.status.name() != 'ACTIVE'}">
                                             <span th:replace="~{member/parts :: memberStatusBadge(${member.status})}"></span>
                                         </th:block>
                                     </td>
                                     <td class="actions">
-                                        <a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${member.memberId},q=${q},email=${email})}">퀴즈 현황</a>
+                                        <a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${member.memberId},q=${q})}">퀴즈 현황</a>
+                                        <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${member.memberId})}">제재 관리</a>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -52,18 +55,6 @@
                         </div>
                     </th:block>
                 </th:block>
-            </div>
-
-            <div class="card">
-                <h2>권한 바꾸기</h2>
-                <form th:action="@{/admin/members}" method="get" class="field-row" style="align-items:flex-end">
-                    <div class="field" style="flex:1">
-                        <label for="memberEmail">이메일</label>
-                        <input type="search" id="memberEmail" name="email" th:value="${email}" placeholder="예: member@example.com" autocomplete="off"/>
-                    </div>
-                    <input type="hidden" name="q" th:value="${q}"/>
-                    <div class="field"><button class="btn" type="submit">검색</button></div>
-                </form>
                 <th:block th:if="${members != null}">
                     <p class="muted" style="margin:0" th:if="${members.isEmpty()}">검색 결과가 없습니다. 이메일 전체를 정확히 입력하세요.</p>
                     <th:block th:unless="${members.isEmpty()}">
@@ -73,7 +64,7 @@
             </div>
 
             <div class="card">
-                <h2>현재 관리자 <span class="badge cat" th:text="${admins.size()} + '명'">0명</span></h2>
+                <h2>현재 관리자 <span class="badge neutral" th:text="${admins.size()} + '명'">0명</span></h2>
                 <p class="muted" th:if="${admins.isEmpty()}">관리자가 없습니다.</p>
                 <th:block th:unless="${admins.isEmpty()}">
                     <div th:replace="~{member/parts :: memberTable(${admins})}"></div>

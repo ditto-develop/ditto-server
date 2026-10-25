@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${q}, ${email} 을 사용한다. -->
+<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${q}, ${admin} 을 사용한다. -->
 <div th:fragment="memberTable(rows)" class="tbl-scroll">
     <table class="tbl">
         <thead>
-        <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th><th>권한 바꾸기</th><th></th></tr>
+        <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th>
+            <th><span class="with-info">권한 바꾸기
+                <th:block th:replace="~{fragments :: info('info-member-role', '권한 바꾸기', '관리자 권한이 있는 계정만 어드민에 로그인할 수 있습니다. 본인 권한은 여기서 바꿀 수 없습니다.')}"></th:block></span></th>
+            <th></th></tr>
         </thead>
         <tbody>
         <tr th:each="m : ${rows}">
@@ -14,12 +17,14 @@
             <td th:text="${m.email}">email</td>
             <td><span th:replace="~{member/parts :: memberStatusBadge(${m.status})}"></span></td>
             <td>
-                <span class="badge" th:classappend="${m.admin} ? 'on' : 'off'" th:text="${m.role.description}">일반 회원</span>
+                <span class="badge" th:classappend="${m.admin} ? 'info' : 'neutral'" th:text="${m.role.description}">일반 회원</span>
             </td>
             <td>
-                <form class="btn-row" style="margin:0" th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
-                      onsubmit="return confirm('이 회원의 권한을 바꿀까요?');">
-                    <input type="hidden" name="email" th:value="${email}"/>
+                <span class="muted" th:if="${admin != null and m.id == admin.memberId}">본인</span>
+                <form class="btn-row" style="margin:0" th:unless="${admin != null and m.id == admin.memberId}"
+                      th:action="@{/admin/members/{id}/role(id=${m.id})}" method="post"
+                      th:attr="data-member=|${m.nickname} (#${m.id})|"
+                      onsubmit="return confirm(this.dataset.member + '의 권한을 ' + this.role.selectedOptions[0].text + '(으)로 바꿉니다. 계속할까요?');">
                     <input type="hidden" name="q" th:value="${q}"/>
                     <select name="role" style="width:auto; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit;">
                         <option th:each="r : ${roles}" th:value="${r}" th:text="${r.description}" th:selected="${r == m.role}"></option>
@@ -27,7 +32,10 @@
                     <button class="btn sm" type="submit">바꾸기</button>
                 </form>
             </td>
-            <td class="actions"><a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.id},q=${q},email=${email})}">퀴즈 현황</a></td>
+            <td class="actions">
+                <a class="btn secondary sm" th:href="@{/admin/members/{id}/quizzes(id=${m.id},q=${q})}">퀴즈 현황</a>
+                <a class="btn secondary sm" th:href="@{/admin/members/{id}/sanctions(id=${m.id})}">제재 관리</a>
+            </td>
         </tr>
         </tbody>
     </table>

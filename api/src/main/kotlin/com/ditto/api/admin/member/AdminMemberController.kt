@@ -27,16 +27,17 @@ class AdminMemberController(
         @RequestParam(required = false) q: String?,
         model: Model,
     ): String {
-        model.addAttribute("q", q ?: "")
-        if (!q.isNullOrBlank()) {
-            model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(q))
+        // 검색창은 하나다. 예전 링크의 email 파라미터도 같은 검색으로 받는다.
+        val query = q?.takeIf { it.isNotBlank() } ?: email.orEmpty()
+        model.addAttribute("q", query)
+        model.addAttribute("email", "")
+        if (query.contains(EMAIL_MARK)) {
+            model.addAttribute("members", adminMemberService.searchByEmail(query))
+        } else if (query.isNotBlank()) {
+            model.addAttribute("searchResult", adminMemberService.searchByNicknameOrId(query))
         }
-        model.addAttribute("email", email ?: "")
         model.addAttribute("roles", MemberRole.entries)
         model.addAttribute("admins", adminMemberService.listAdmins())
-        if (!email.isNullOrBlank()) {
-            model.addAttribute("members", adminMemberService.searchByEmail(email))
-        }
         model.addAttribute("active", "member")
         return "member/list"
     }
@@ -48,10 +49,9 @@ class AdminMemberController(
         @RequestParam(required = false) email: String?,
         model: Model,
     ): String {
-        val hasSearch = !q.isNullOrBlank() || !email.isNullOrBlank()
+        val backQuery = q?.takeIf { it.isNotBlank() } ?: email?.takeIf { it.isNotBlank() } ?: "#$id"
         model.addAttribute("view", adminMemberQuizService.getMemberQuizzes(id))
-        model.addAttribute("backQuery", if (hasSearch) q.orEmpty() else "#$id")
-        model.addAttribute("backEmail", email.orEmpty())
+        model.addAttribute("backQuery", backQuery)
         model.addAttribute("active", "member")
         return "member/quizzes"
     }
@@ -75,5 +75,6 @@ class AdminMemberController(
 
     companion object {
         private val log = KotlinLogging.logger {}
+        private const val EMAIL_MARK = '@'
     }
 }

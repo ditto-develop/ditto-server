@@ -141,7 +141,7 @@ class AdminWebTest {
 
     private fun admin(): Authentication =
         UsernamePasswordAuthenticationToken(
-            AdminPrincipal(1L, "관리자", "admin@ditto.pics"),
+            AdminPrincipal(ADMIN_MEMBER_ID, "관리자", "admin@ditto.pics"),
             null,
             listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
         )
@@ -197,7 +197,7 @@ class AdminWebTest {
         notice.targetCount shouldBe 1
         notice.recipientCount shouldBe 1
         notice.isSending shouldBe false
-        notice.authorMemberId shouldBe 1L
+        notice.authorMemberId shouldBe ADMIN_MEMBER_ID
         notificationRepository.findAll().single().let {
             it.memberId shouldBe active.id
             it.type shouldBe NotificationType.SYSTEM_NOTICE
@@ -692,14 +692,15 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("이메일 검색 결과는 권한 바꾸기 카드 안에 그린다")
+    @DisplayName("검색어에 @가 있으면 이메일로 찾아 권한을 바꿀 수 있는 표를 그린다")
     fun memberSearchByEmail() {
         memberRepository.save(MemberFixture.create(nickname = "m1", email = "dup@ditto.pics", role = MemberRole.USER))
         memberRepository.save(MemberFixture.create(nickname = "m2", email = "dup@ditto.pics", role = MemberRole.ADMIN))
 
-        mockMvc.perform(get("/admin/members").param("email", "dup@ditto.pics").with(authentication(admin())))
+        mockMvc.perform(get("/admin/members").param("q", "dup@ditto.pics").with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(stringContainsInOrder("<h2>권한 바꾸기</h2>", ">m1<", ">m2<", "<h2>현재 관리자")))
+            .andExpect(content().string(stringContainsInOrder(">m1<", ">m2<", "<h2>현재 관리자")))
+            .andExpect(content().string(containsString(">관리자</option>")))
     }
 
     @Test
@@ -709,16 +710,18 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(not(containsString(noMatchGuide))))
-        mockMvc.perform(get("/admin/members").param("email", "dup").with(authentication(admin())))
+        mockMvc.perform(get("/admin/members").param("q", "nobody@ditto.pics").with(authentication(admin())))
             .andExpect(content().string(containsString(noMatchGuide)))
     }
 
     @Test
-    @DisplayName("한쪽을 검색해도 다른 쪽 검색어를 함께 보내 두 결과를 유지한다")
-    fun memberSearchKeepsOtherSearch() {
-        mockMvc.perform(get("/admin/members").param("q", "닉네임").param("email", "keep@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"email\" value=\"keep@ditto.pics\"/>")))
-            .andExpect(content().string(containsString("<input type=\"hidden\" name=\"q\" value=\"닉네임\"/>")))
+    @DisplayName("예전 링크의 email 파라미터도 하나뿐인 검색창으로 받는다")
+    fun memberSearchAcceptsLegacyEmailParam() {
+        memberRepository.save(MemberFixture.create(nickname = "예전링크", email = "keep@ditto.pics"))
+
+        mockMvc.perform(get("/admin/members").param("email", "keep@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("name=\"q\" value=\"keep@ditto.pics\"")))
+            .andExpect(content().string(containsString(">예전링크<")))
     }
 
     @Test
@@ -726,10 +729,11 @@ class AdminWebTest {
     fun memberQuizzesBackToEmailSearch() {
         val member = memberRepository.save(MemberFixture.create(nickname = "이메일회원", email = "back@ditto.pics"))
 
-        mockMvc.perform(get("/admin/members").param("email", "back@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=&amp;email=back@ditto.pics")))
-        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("email", "back@ditto.pics").with(authentication(admin())))
-            .andExpect(content().string(containsString("href=\"/admin/members?q=&amp;email=back@ditto.pics\"")))
+        mockMvc.perform(get("/admin/members").param("q", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/quizzes?q=back@ditto.pics")))
+            .andExpect(content().string(containsString("/admin/members/${member.id}/sanctions")))
+        mockMvc.perform(get("/admin/members/{id}/quizzes", member.id).param("q", "back@ditto.pics").with(authentication(admin())))
+            .andExpect(content().string(containsString("href=\"/admin/members?q=back@ditto.pics\"")))
     }
 
     @Test
@@ -756,7 +760,7 @@ class AdminWebTest {
     fun memberPageWithoutAdmins() {
         mockMvc.perform(get("/admin/members").with(authentication(admin())))
             .andExpect(content().string(containsString("관리자가 없습니다.")))
-            .andExpect(content().string(not(containsString("<th>권한 바꾸기</th>"))))
+            .andExpect(content().string(not(containsString("권한 바꾸기 설명"))))
     }
 
     @Test
@@ -827,6 +831,21 @@ class AdminWebTest {
         )
             .andExpect(redirectedUrl("/admin/members?q=rolechg&email=role%40ditto.pics"))
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
+    }
+
+    @Test
+    @DisplayName("현재 관리자 표에서 본인 행은 권한을 바꿀 수 없다")
+    fun memberRoleSelfRowLocked() {
+        val me = memberRepository.save(MemberFixture.create(nickname = "본인관리자", email = "me@ditto.pics", role = MemberRole.ADMIN))
+        val myAuthentication = UsernamePasswordAuthenticationToken(
+            AdminPrincipal(me.id, "본인관리자", "me@ditto.pics"),
+            null,
+            listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
+        )
+
+        mockMvc.perform(get("/admin/members").with(authentication(myAuthentication)))
+            .andExpect(content().string(containsString("<span class=\"muted\">본인</span>")))
+            .andExpect(content().string(not(containsString("/admin/members/${me.id}/role"))))
     }
 
     @Test
@@ -1278,5 +1297,10 @@ class AdminWebTest {
 
         // 테스트가 트랜잭션 안이라 findById 는 벌크 UPDATE 전 캐시를 돌려준다. 쿼리로 DB를 직접 본다.
         launchNotificationRequestRepository.countByPlatformAndNotifiedAtIsNull(LaunchPlatform.ANDROID) shouldBe 0
+    }
+
+    companion object {
+        // 저장한 회원 id 와 겹치면 회원 관리 표에서 본인 행으로 잡힌다.
+        private const val ADMIN_MEMBER_ID = 999_999L
     }
 }
