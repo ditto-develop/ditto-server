@@ -1018,6 +1018,7 @@ class AdminWebTest {
             .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))
             .andExpect(content().string(containsString("이번이 1차 제재")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
+            .andExpect(content().string(containsString("<option value=\"\" selected disabled>결정을 고르세요</option>")))
     }
 
     @Test
@@ -1075,12 +1076,14 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("회원 제재 관리 페이지 렌더·직권 제재·해제")
+    @DisplayName("회원 제재 관리 페이지는 회원 관리로 돌아가는 링크와 알림이 가지 않는다는 확인을 보이고, 직권 제재가 적용된다")
     fun memberSanctions() {
         val member = memberRepository.save(MemberFixture.create(nickname = "제재대상", status = MemberStatus.ACTIVE))
 
         mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
             .andExpect(status().isOk)
+            .andExpect(content().string(containsString("href=\"/admin/members?q=%23${member.id}\"")))
+            .andExpect(content().string(containsString("회원에게 알림은 가지 않습니다")))
 
         mockMvc.perform(
             post("/admin/members/{id}/sanctions", member.id)

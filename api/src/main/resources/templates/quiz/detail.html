@@ -7,13 +7,16 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
-            <a class="muted" th:href="@{/admin/quiz-sets}">← 목록</a>
+            <a class="muted" th:href="@{/admin/quiz-sets}">← 퀴즈셋 관리</a>
             <h1 class="page-title" style="margin-top:8px" th:text="${quizSet.title}">제목</h1>
             <p class="page-desc">
                 <span th:text="${@weekLabel.of(quizSet.weekStartedOn)}">-</span> ·
                 <span class="badge cat" th:text="${quizSet.category}">cat</span>
-                <span class="badge on" th:if="${quizSet.isActive}">활성</span>
-                <span class="badge off" th:unless="${quizSet.isActive}">비활성</span>
+                <span class="with-info">
+                    <span class="badge ok" th:if="${quizSet.isActive}">활성</span>
+                    <span class="badge neutral" th:unless="${quizSet.isActive}">비활성</span>
+                    <th:block th:replace="~{fragments :: info('info-quiz-active', '활성', '활성 퀴즈셋만 앱에 나오고 회원이 풀 수 있습니다. 같은 주차, 같은 매칭 방식(1:1·그룹)에는 활성 퀴즈셋을 하나만 둘 수 있습니다. 비활성 퀴즈셋은 매칭과 운영 지표에서 빠집니다.')}"></th:block>
+                </span>
             </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
@@ -24,7 +27,8 @@
                     <form class="inline-form" th:if="${!quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/activate(id=${quizSet.id})}" method="post">
                         <button class="btn secondary" type="submit">활성화</button>
                     </form>
-                    <form class="inline-form" th:if="${quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/deactivate(id=${quizSet.id})}" method="post">
+                    <form class="inline-form" th:if="${quizSet.isActive}" th:action="@{/admin/quiz-sets/{id}/deactivate(id=${quizSet.id})}" method="post"
+                          onsubmit="return confirm('비활성화하면 앱에서 이 퀴즈셋을 풀 수 없고 매칭과 운영 지표에서 빠집니다. 계속할까요?');">
                         <button class="btn secondary" type="submit">비활성화</button>
                     </form>
                     <form class="inline-form" th:unless="${hasMatchRecords}" th:action="@{/admin/quiz-sets/{id}/delete(id=${quizSet.id})}" method="post"

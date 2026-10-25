@@ -8,7 +8,7 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">시간 조정</h1>
-            <p class="page-desc">서버가 사용할 "현재 시각"을 임의로 설정합니다. 시간 조정을 끄면 실제 시각을 사용합니다.</p>
+            <p class="page-desc">서버가 사용할 "현재 시각"을 임의로 설정합니다. 실회원을 포함한 모든 회원에게 적용되니 QA가 끝나면 바로 끄세요. 끄면 실제 시각을 사용합니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="grid cols-2">
@@ -16,8 +16,8 @@
                     <span class="label">현재 적용 중인 서버 시각</span>
                     <span class="value" style="font-size:20px" th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>
                     <span>
-                        <span class="badge on" th:if="${override.enabled}">조정 중</span>
-                        <span class="badge off" th:unless="${override.enabled}">실제 시각</span>
+                        <span class="badge danger" th:if="${override.enabled}">조정 중</span>
+                        <span class="badge neutral" th:unless="${override.enabled}">실제 시각</span>
                         <th:block th:switch="${state.period.name()}">
                             <span th:case="'QUIZ_PERIOD'" class="badge quiz">퀴즈 기간(월~수)</span>
                             <span th:case="'MATCHING_PERIOD'" class="badge matching">매칭 기간(목)</span>
@@ -33,11 +33,14 @@
             </div>
 
             <div class="card">
-                <h2>시각 설정</h2>
-                <form th:action="@{/admin/time-override}" method="post" class="field-row" style="align-items:flex-end">
+                <h2 class="with-info">시각 설정
+                    <th:block th:replace="~{fragments :: info('info-time-override', '시각 설정', '설정한 시각은 흐르지 않고 그 자리에 멈춰 있습니다. 금 00:00(그룹 응답 마감)이나 다음 주 월 00:00(채팅 마감·평가 열림)을 넘기면 1분 안에 스케줄러가 돌아 되돌릴 수 없습니다.')}"></th:block></h2>
+                <form th:action="@{/admin/time-override}" method="post" class="field-row" style="align-items:flex-end"
+                      onsubmit="return confirm('서버 시각을 ' + this.dateTime.value.replace('T', ' ') + '(으)로 바꿉니다. 실회원에게도 적용되고, 금 00:00이나 월 00:00을 넘기면 되돌릴 수 없습니다. 계속할까요?');">
                     <div class="field" style="flex:1">
-                        <label>서버 시각</label>
-                        <input type="datetime-local" name="dateTime" required/>
+                        <label for="dateTime">서버 시각</label>
+                        <input type="datetime-local" id="dateTime" name="dateTime" required
+                               th:value="${#temporals.format(currentTime, 'yyyy-MM-dd''T''HH:mm')}"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">이 시각으로 설정</button></div>
                 </form>

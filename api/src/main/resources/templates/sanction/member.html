@@ -7,32 +7,42 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
+            <a class="muted" th:href="@{/admin/members(q=|#${view.memberId}|)}">← 회원 관리</a>
             <h1 class="page-title">
                 제재 관리: <span th:text="${view.nickname}">닉네임</span>
                 <span th:replace="~{member/parts :: memberStatusBadge(${view.memberStatus})}"></span>
             </h1>
-            <p class="page-desc">누적 제재 <strong th:text="${view.strikeCount}">0</strong>건. 허위 신고자 제재와 해제한 제재는 세지 않습니다.</p>
+            <p class="page-desc">
+                <span class="with-info">누적 제재 <strong th:text="${view.strikeCount}">0</strong>건
+                    <th:block th:replace="~{fragments :: info('info-strike-count', '누적 제재', '허위 신고자 제재와 해제한 제재는 세지 않습니다. 다음 신고 검토의 제재 차수가 이 수에 1을 더한 값입니다.')}"></th:block></span>
+                · <a class="text-link" th:href="@{/admin/members/{id}/quizzes(id=${view.memberId})}">퀴즈 현황 보기</a>
+            </p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <!-- 어드민 직접 제재 -->
             <div class="card">
-                <h2>어드민 직접 제재</h2>
-                <form th:action="@{/admin/members/{id}/sanctions(id=${view.memberId})}" method="post" class="field-row" style="align-items:flex-end">
+                <h2 class="with-info">어드민 직접 제재
+                    <th:block th:replace="~{fragments :: info('info-manual-sanction', '어드민 직접 제재', '여기서 건 제재는 신고 검토와 달리 회원에게 제재 알림이 가지 않습니다. 이용 정지와 영구 차단은 바로 앱 사용을 막고, 경고는 다음 주 월요일부터 퀴즈 참여를 막습니다.')}"></th:block></h2>
+                <form th:action="@{/admin/members/{id}/sanctions(id=${view.memberId})}" method="post" class="field-row" style="align-items:flex-end"
+                      th:attr="data-nickname=${view.nickname}"
+                      onsubmit="return confirm(this.dataset.nickname + ' 회원에게 ' + this.level.selectedOptions[0].text + ' 제재를 겁니다. 회원에게 알림은 가지 않습니다. 계속할까요?');">
                     <div class="field">
-                        <label>제재 종류</label>
-                        <select name="level">
+                        <label for="level">제재 종류</label>
+                        <select id="level" name="level" required>
+                            <option value="" selected disabled>고르세요</option>
                             <option th:each="l : ${levels}" th:value="${l.name()}" th:text="${l.description}">제재 종류</option>
                         </select>
                     </div>
                     <div class="field">
-                        <label>제재 근거</label>
-                        <select name="origin">
+                        <label for="origin">제재 근거</label>
+                        <select id="origin" name="origin" required>
+                            <option value="" selected disabled>고르세요</option>
                             <option th:each="o : ${origins}" th:value="${o.name()}" th:text="${o.description}">제재 근거</option>
                         </select>
                     </div>
                     <div class="field" style="flex:1">
-                        <label>메모 (선택)</label>
-                        <input type="text" name="note" maxlength="500"/>
+                        <label for="note">메모 (선택)</label>
+                        <input type="text" id="note" name="note" maxlength="500"/>
                     </div>
                     <div class="field"><button class="btn" type="submit">제재 적용</button></div>
                 </form>
@@ -41,7 +51,7 @@
 
             <!-- 이력 -->
             <div class="card">
-                <h2>제재 이력 <span class="badge cat" th:text="${view.sanctions.size()} + '건'">0건</span></h2>
+                <h2>제재 이력 <span class="badge neutral" th:text="${view.sanctions.size()} + '건'">0건</span></h2>
                 <p class="muted" th:if="${view.sanctions.isEmpty()}">제재 이력이 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${view.sanctions.isEmpty()}">
                     <table class="tbl">
@@ -61,7 +71,9 @@
                             <td th:text="${s.creatorName}">처리자</td>
                             <td th:text="${s.note ?: '-'}">메모</td>
                             <td class="actions">
-                                <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form">
+                                <form th:if="${s.liftable}" th:action="@{/admin/sanctions/{id}/lift(id=${s.id})}" method="post" class="inline-form"
+                                      th:attr="data-confirm=|${view.nickname} 회원의 ${s.levelDescription} 제재(#${s.id})를 해제합니다. 계속할까요?|"
+                                      onsubmit="return confirm(this.dataset.confirm);">
                                     <input type="hidden" name="memberId" th:value="${view.memberId}"/>
                                     <button class="btn secondary sm" type="submit">해제</button>
                                 </form>
