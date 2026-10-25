@@ -9,16 +9,17 @@
         <main class="content"
               th:with="isRoundWeek=${selectedWeekOption.round != null},
                        hasConditions=${filter.hasConditions()},
-                       roundLabel=${(selectedWeekOption.round != null ? selectedWeekOption.round + '회차' : '회차 없음') + ' · ' + #temporals.format(selectedWeekOption.startedOn, 'M/d') + ' 주'}">
+                       weekLabel=${#temporals.format(selectedWeekOption.startedOn, 'M/d') + ' 주'},
+                       roundLabel=${(selectedWeekOption.round != null ? selectedWeekOption.round + '회차' : '회차 없음') + ' · ' + weekLabel}">
             <h1 class="page-title">운영 지표</h1>
-            <p class="page-desc with-info">회차와 회원 조건으로 좁혀 봅니다. 장마다 붙은 배지가 어느 기간을 세는지 알려 줍니다.
+            <p class="page-desc with-info">회차와 회원 조건으로 좁혀 봅니다. 항목마다 붙은 배지가 어느 기간을 세는지 알려 줍니다.
                 <th:block th:replace="~{fragments :: info('info-stats-page', '운영 지표', '관리자 계정은 모든 지표에서 뺍니다. 채팅과 쌍·그룹 단위 지표만 관리자가 낀 것도 셉니다. 성별과 생년월일은 회원이 직접 넣었거나 소셜 로그인에서 받은 값이라 본인인증을 거치지 않았습니다.')}"></th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">
                 <form th:action="@{/admin/stats}" method="get" class="field-row stats-filter">
                     <div class="field stats-week-field">
-                        <div class="with-info label-with-info">
+                        <div class="with-info field-label-row">
                             <label for="week">회차</label>
                             <th:block th:replace="~{fragments :: info('info-stats-week', '회차', '퀴즈를 연 주(활성 퀴즈셋이 있는 주)만 1회차부터 차례로 센 번호입니다. 퀴즈셋을 지우거나 비활성으로 바꾸면 번호가 밀릴 수 있습니다. 회차가 아닌 주도 고를 수 있고, 그때는 회차로 세는 항목이 비어 있습니다.')}"></th:block>
                         </div>
@@ -30,9 +31,9 @@
                         </select>
                     </div>
                     <div class="field">
-                        <div class="with-info label-with-info">
+                        <div class="with-info field-label-row">
                             <label for="matchingType">매칭 유형</label>
-                            <th:block th:replace="~{fragments :: info('info-stats-matching-type', '매칭 유형', '1:1과 그룹 중 하나로 좁힙니다. 회원 현황과 알림에는 걸리지 않습니다. 신고·사용자 차단은 당한 회원이 그 회차에 푼 유형으로, 리텐션은 지난 회차에 푼 유형으로 거릅니다.')}"></th:block>
+                            <th:block th:replace="~{fragments :: info('info-stats-matching-type', '매칭 유형', '1:1과 그룹 중 하나로 좁힙니다. 회원 현황과 알림에는 걸리지 않습니다. 신고·차단을 당한 회원이 그 회차에 푼 유형으로, 리텐션은 지난 회차에 푼 유형으로 거릅니다.')}"></th:block>
                         </div>
                         <select id="matchingType" name="matchingType">
                             <option th:each="option : ${matchingTypeFilters}"
@@ -42,7 +43,7 @@
                         </select>
                     </div>
                     <div class="field">
-                        <div class="label-with-info"><label for="gender">성별</label></div>
+                        <div class="field-label-row"><label for="gender">성별</label></div>
                         <select id="gender" name="gender">
                             <option value="">전체</option>
                             <option th:each="gender : ${genders}"
@@ -52,7 +53,7 @@
                         </select>
                     </div>
                     <div class="field">
-                        <div class="with-info label-with-info">
+                        <div class="with-info field-label-row">
                             <label for="ageBand">연령대</label>
                             <th:block th:replace="~{fragments :: info('info-stats-age-band', '연령대', '오늘 기준 만 나이로 나눕니다. 생년월일은 본인인증을 거치지 않은 값입니다.')}"></th:block>
                         </div>
@@ -65,7 +66,7 @@
                         </select>
                     </div>
                     <div class="field">
-                        <div class="with-info label-with-info">
+                        <div class="with-info field-label-row">
                             <label for="joinedWeek">가입 주차</label>
                             <th:block th:replace="~{fragments :: info('info-stats-joined-week', '가입 주차', '고른 날이 속한 월~일 주에 가입한 회원만 셉니다. 그 주의 아무 날이나 고르면 됩니다.')}"></th:block>
                         </div>
@@ -77,8 +78,8 @@
                     </div>
                 </form>
                 <ul class="stats-legend" aria-label="기간 배지 뜻">
-                    <li><span th:replace="~{fragments :: scope('round')}"></span> 고른 회차의 퀴즈·매칭·채팅·평가</li>
-                    <li><span th:replace="~{fragments :: scope('week')}"></span> 고른 주의 달력 7일</li>
+                    <li><span th:replace="~{fragments :: scope('round')}"></span> 고른 회차 기준</li>
+                    <li><span th:replace="~{fragments :: scope('week')}"></span> 고른 주의 날짜 기준이라 회차가 아닌 주도 셈</li>
                     <li><span th:replace="~{fragments :: scopeRange('최근 N회차 · N주')}"></span> 고른 회차부터 거슬러 센 여러 회차나 주</li>
                     <li><span th:replace="~{fragments :: scope('now')}"></span> 오늘 상태라 회차를 바꿔도 그대로</li>
                 </ul>
@@ -89,7 +90,7 @@
 
             <nav class="qa-bar stats-nav" aria-label="운영 지표 목차">
                 <span th:if="${isRoundWeek}">회차 <b th:text="${roundLabel}">2회차 · 10/19 주</b></span>
-                <span th:unless="${isRoundWeek}">주 <b th:text="|${#temporals.format(selectedWeekOption.startedOn, 'M/d')} 주 (회차 아님)|">10/5 주 (회차 아님)</b></span>
+                <span th:unless="${isRoundWeek}"><b th:text="${weekLabel}">10/5 주</b> · 회차 아님</span>
                 <span>매칭 유형 <b th:text="${filter.matchingType.description}">전체</b></span>
                 <span th:if="${filter.gender != null}">성별 <b th:text="${filter.gender.description}">여성</b></span>
                 <span th:if="${filter.ageBand != null}">연령대 <b th:text="${filter.ageBand.description}">20대 초반</b></span>
@@ -104,7 +105,7 @@
                     <a href="#retention">리텐션</a>
                     <a href="#questions">문항</a>
                     <span class="stats-nav-sep" aria-hidden="true">|</span>
-                    <a href="#member-reports">신고·차단</a>
+                    <a href="#member-reports">신고·사용자 차단</a>
                     <a href="#push-sends">알림</a>
                 </span>
             </nav>
@@ -163,7 +164,7 @@
                         </div>
                     </div>
 
-                    <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="|${#temporals.format(selectedWeekOption.startedOn, 'M/d')} 주|">10/19 주</span> 월~일 가입 · 탈퇴한 회원도 가입일에 셉니다</p>
+                    <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 가입 · 탈퇴한 회원도 가입일에 셉니다</p>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card">
                             <h3>일별 신규 가입</h3>
@@ -185,7 +186,7 @@
                         </div>
                     </div>
 
-                    <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="|${#temporals.format(selectedWeekOption.startedOn, 'M/d')} 주|">10/19 주</span> 월~일에 탈퇴한 회원 · 30일 안에 복구하면 빠집니다<th:block th:if="${qaToolsEnabled}"> · 탈퇴 시각은 시간 조정을 따릅니다</th:block></p>
+                    <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span>에 탈퇴한 회원 · 30일 안에 복구하면 빠집니다<th:block th:if="${qaToolsEnabled}"> · 탈퇴 시각은 시간 조정을 따릅니다</th:block></p>
                     <div class="card">
                         <h3 id="leaveReasonTitle">탈퇴 사유</h3>
                         <div id="leaveReasonShares"></div>
@@ -200,7 +201,7 @@
                     <h2 class="stats-section-title">퀴즈 참여</h2>
                     <th:block th:replace="~{fragments :: info('info-stats-quiz', '퀴즈 참여', '참여는 퀴즈를 끝까지 푼 회원, 시작은 한 문항이라도 답한 회원입니다. 활성 퀴즈셋만 셉니다.')}"></th:block>
                 </div>
-                <p class="stats-basis" th:if="${isRoundWeek}"><span th:replace="~{fragments :: scope('round')}"></span> <span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 활성 회원: <span class="scope-badge range" id="quizActiveRoundScope">최근 4회차</span> 중 <span id="quizActiveRounds">-</span>에 한 번이라도 끝까지 푼 회원</p>
+                <p class="stats-basis" th:if="${isRoundWeek}"><span th:replace="~{fragments :: scope('round')}"></span> <span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 활성 회원: <span class="scope-badge range" id="quizActiveRoundScope">최근 4회차</span>(<span id="quizActiveRounds">-</span>)에 한 번이라도 끝까지 푼 회원</p>
                 <p class="alert info" id="quizEmptyNotice" hidden
                    th:text="${!isRoundWeek ? '회차가 아닌 주입니다.' : (hasConditions ? '조건에 맞는 퀴즈 참여가 없습니다.' : '이 회차에 퀴즈를 시작한 회원이 없습니다.')}">이 회차에 퀴즈를 시작한 회원이 없습니다.</p>
                 <div id="quizSectionBody">
@@ -575,7 +576,7 @@
                     <h2 class="stats-section-title">신고·사용자 차단</h2>
                     <th:block th:replace="~{fragments :: info('info-stats-reports', '신고·사용자 차단', '회원 조건은 신고당한 회원, 차단당한 회원 기준입니다. 신고와 사용자 차단에는 매칭 정보가 없어서 매칭 유형은 그 사람이 그 회차에 푼 퀴즈셋 유형으로 추정합니다. 신고하며 함께 건 차단도 셉니다.')}"></th:block>
                 </div>
-                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="|${#temporals.format(selectedWeekOption.startedOn, 'M/d')} 주|">10/19 주</span> 월~일에 접수된 신고와 생긴 차단<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
+                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span>에 접수된 신고와 생긴 차단<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
                 <div class="grid stats-totals four">
                     <div class="card stat">
                         <span class="label">신고 건수</span>
@@ -614,8 +615,9 @@
                     </div>
                 </div>
                 <div class="card">
-                    <h3 class="with-info">신고 상위 회원 <span th:replace="~{fragments :: scopeRange('고른 주까지 4주')}"></span>
+                    <h3 class="with-info">신고 상위 회원
                         <th:block th:replace="~{fragments :: info('info-stats-report-repeated', '신고 상위 회원', '고른 회차 주까지 4주 동안 신고를 2건 이상 받은 회원을 많은 순으로 10명까지 보여 줍니다. 처리 상태와 상관없이 셉니다. 4주에 걸쳐 보기 때문에 매칭 유형 조건은 걸지 않습니다.')}"></th:block>
+                        <span th:replace="~{fragments :: scopeRange('고른 주까지 4주')}"></span>
                         <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span></h3>
                     <p class="muted" id="memberReportRepeatedBasis"></p>
                     <div class="tbl-scroll stats-member-list">
@@ -633,7 +635,7 @@
                     <th:block th:replace="~{fragments :: info('info-stats-push', '알림', '알림마다 푸시를 보냈는지, 건너뛰었다면 왜인지 셉니다. 새 메시지 알림은 메시지마다 한 건입니다. 이력은 이 기능을 배포한 뒤부터 쌓이고 180일 뒤 지워집니다.')}"></th:block>
                     <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
                 </div>
-                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="|${#temporals.format(selectedWeekOption.startedOn, 'M/d')} 주|">10/19 주</span> 월~일 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
+                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
                 <div class="grid stats-totals">
                     <div class="card stat">
                         <span class="label">알림 건수</span>

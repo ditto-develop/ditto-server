@@ -133,7 +133,7 @@ class SingleDummyCreator(
 }
 
 class CreatedDummy(val member: Member, val answeredCount: Int, val quizCount: Int) {
-    /** 매칭 재생성 결과가 구성원을 ID로만 보여 줘서 ID를 함께 적는다. */
+    /** 매칭 다시 만든 결과가 구성원을 ID로만 보여 줘서 ID를 함께 적는다. */
     fun toDisplayText(): String =
         "${member.nickname} (#${member.id} · ${member.gender?.description} · $answeredCount/$quizCount 풀이)"
 }

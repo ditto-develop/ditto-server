@@ -18,9 +18,9 @@
                 <p class="muted">
                     매칭 대상 <b th:text="${regeneration.participantCount}">0</b>명 ·
                     매칭 <b th:text="${regeneration.matches.size()}">0</b>건 ·
-                    <span class="with-info">지운 행 <b th:text="${regeneration.rowCounts.deletedCount}">0</b> ·
-                    저장한 행 <b th:text="${regeneration.rowCounts.savedCount}">0</b>
-                    <th:block th:replace="~{fragments :: info('info-row-counts', '지운 행과 저장한 행', '저장된 후보 건수입니다. 1:1은 짝 하나가 2건입니다.')}"></th:block></span>
+                    <span class="with-info">지운 후보 <b th:text="${regeneration.rowCounts.deletedCount}">0</b>건 ·
+                    저장한 후보 <b th:text="${regeneration.rowCounts.savedCount}">0</b>건
+                    <th:block th:replace="~{fragments :: info('info-row-counts', '후보 건수', '회원마다 한 건이라 1:1은 짝 하나가 2건입니다.')}"></th:block></span>
                     (이 요약은 새로 고치면 사라집니다)
                 </p>
                 <p class="muted" th:if="${candidateCounts != null and !regeneration.matches.isEmpty()}">

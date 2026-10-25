@@ -16,7 +16,7 @@
                 <a class="card stat dashboard-todo" th:classappend="${receivedReportCount > 0} ? 'has-items'" th:href="@{/admin/reports}">
                     <span class="label">검토 대기 신고 <span class="dashboard-todo-go" aria-hidden="true">→</span></span>
                     <span class="value" th:text="|${receivedReportCount}건|">0건</span>
-                    <span>
+                    <span class="dashboard-todo-detail">
                         <span class="badge danger" th:if="${overdueReportCount > 0}" th:text="|24시간 지남 ${overdueReportCount}건|">24시간 지남 1건</span>
                         <span class="muted" th:if="${overdueReportCount == 0}">24시간 지난 건 없음</span>
                     </span>
@@ -34,12 +34,12 @@
             <h2 class="dashboard-heading">이번 주</h2>
             <div class="grid cols-3">
                 <div class="card stat">
-                    <span class="label">기간</span>
-                    <span class="value dashboard-value" th:text="${@weekLabel.of(state.weekStartedOn)}">-</span>
+                    <span class="label">주</span>
+                    <span class="value value-compact" th:text="${@weekLabel.of(state.weekStartedOn)}">-</span>
                 </div>
                 <div class="card stat">
                     <span class="label">서버 시각</span>
-                    <span class="value dashboard-value"
+                    <span class="value value-compact"
                           th:text="${#temporals.format(state.dateTime, 'yyyy-MM-dd HH:mm')}">-</span>
                 </div>
                 <div class="card stat">

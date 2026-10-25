@@ -50,7 +50,7 @@ class AdminDummyController(
         runCatching { adminDummyService.generate(form) }
             .onSuccess { created ->
                 log.info { "어드민[${admin.displayName}] 이 퀴즈셋 #${form.quizSetId} 에 더미 ${created}명 생성" }
-                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId}에 더미 ${created}명을 생성했습니다.")
+                redirectAttributes.addFlashAttribute("message", "퀴즈셋 #${form.quizSetId}에 더미 ${created}명을 만들었습니다.")
                 redirectAttributes.addFlashAttribute("createdQuizSetId", form.quizSetId)
             }
             .onFailure { e -> redirectAttributes.addFlashAttribute("error", warnOrRethrow(e).message) }

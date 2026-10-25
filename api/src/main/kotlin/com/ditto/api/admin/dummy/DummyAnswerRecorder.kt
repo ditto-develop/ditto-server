@@ -26,7 +26,7 @@ class DummyAnswerRecorder(
         val quizSet = quizSetRepository.findById(quizSetId)
             .orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 퀴즈셋입니다: #$quizSetId") }
         val quizzes = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId)
-            .ifEmpty { throw WarnException(ErrorCode.BAD_REQUEST, "문항이 없는 퀴즈셋에는 더미를 생성할 수 없습니다.") }
+            .ifEmpty { throw WarnException(ErrorCode.BAD_REQUEST, "문항이 없는 퀴즈셋에는 더미를 만들 수 없습니다.") }
         val choicesByQuizId = quizChoiceRepository
             .findByQuizIdInOrderByDisplayOrderAsc(quizzes.map { it.id })
             .groupBy { it.quizId }
@@ -34,7 +34,7 @@ class DummyAnswerRecorder(
         if (quizWithoutChoice != null) {
             throw WarnException(
                 ErrorCode.BAD_REQUEST,
-                "선택지가 없는 문항이 있어 더미를 생성할 수 없습니다: 문항 ID #${quizWithoutChoice.id}",
+                "선택지가 없는 문항이 있어 더미를 만들 수 없습니다: 문항 ID #${quizWithoutChoice.id}",
             )
         }
         return QuizQuestions(quizSet, quizzes, choicesByQuizId)

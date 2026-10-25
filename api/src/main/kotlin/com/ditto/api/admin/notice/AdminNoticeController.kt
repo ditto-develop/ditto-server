@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
-/** 시스템 공지 — 활성 회원 전원에게 SYSTEM_NOTICE 알림을 보내고 이력을 본다. */
+/** 시스템 공지 — 정상 회원 전원에게 SYSTEM_NOTICE 알림을 보내고 이력을 본다. */
 @Controller
 class AdminNoticeController(
     private val systemNoticeFacade: SystemNoticeFacade,

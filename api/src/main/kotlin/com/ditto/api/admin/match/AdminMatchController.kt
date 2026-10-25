@@ -17,7 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
  * 매칭 운영. 실시간 스케줄러(목 00:01)와 별개로, 어드민이 동일 배치 로직을 수동 실행하거나
- * 특정 퀴즈셋의 매칭 후보를 재생성한다. 수동 실행은 어드민 설정 시각([ServerTimeProvider]) 기준으로 동작한다.
+ * 특정 퀴즈셋의 매칭 후보를 다시 만든다. 수동 실행은 어드민 설정 시각([ServerTimeProvider]) 기준으로 동작한다.
  */
 @Controller
 class AdminMatchController(
@@ -45,7 +45,7 @@ class AdminMatchController(
     }
 
     /**
-     * 후보 재생성. 성공하면 알림도 함께 남긴다 — 이번에 처음 후보를 받은 회원에게는 알려야 한다.
+     * 후보 다시 만들기. 성공하면 알림도 함께 남긴다 — 이번에 처음 후보를 받은 회원에게는 알려야 한다.
      * 이미 알린 회원에게 다시 가지 않는 것은 알림 쪽 중복 정책이 보장한다(퀴즈셋당 한 번).
      * 대체할 수 없어 거부되면(응답이 시작된 그룹 퀴즈셋) 실패로 보여주고 알림도 남기지 않는다.
      * 결과 요약은 저장하지 않고 이번 화면에만 한 번 보여준다.
@@ -78,6 +78,6 @@ class AdminMatchController(
         if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
         // 매칭 기록 초기화는 QA 도구라 꺼진 서버에서는 안내할 곳이 없다.
         if (!adminQaToolsProperties.enabled) return failed
-        return "$failed. 퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요."
+        return "$failed 퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요."
     }
 }

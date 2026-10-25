@@ -675,7 +675,8 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/time-override").with(authentication(admin())))
             .andExpect(content().string(containsString("data-now=\"2026-06-18T09:00\"")))
             .andExpect(content().string(containsString("data-group-deadline=\"2026-06-19T00:00\"")))
-            .andExpect(content().string(stringContainsInOrder("data-confirm=\"", "되돌릴 수 없습니다. 끌까요?\"")))
+            .andExpect(content().string(containsString("data-chat-end=\"2026-06-22T00:00\"")))
+            .andExpect(content().string(stringContainsInOrder("data-confirm=\"끄면 실제 시각으로 돌아갑니다.", "되돌릴 수 없습니다. 끌까요?\"")))
 
         mockMvc.perform(post("/admin/time-override/disable").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
@@ -685,14 +686,23 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("자동 매칭 지금 실행")
-    fun runScheduledMatching() {
-        mockMvc.perform(post("/admin/matching/run-scheduled").with(authentication(admin())).with(csrf()))
-            .andExpect(status().is3xxRedirection)
+    @DisplayName("시간 조정이 꺼져 있으면 끄기 버튼은 확인 없이 바로 끈다")
+    fun timeOverrideDisableWithoutConfirmWhenOff() {
+        mockMvc.perform(get("/admin/time-override").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(not(containsString("data-confirm="))))
     }
 
     @Test
-    @DisplayName("더미 생성 페이지 렌더 + 생성/삭제")
+    @DisplayName("정기 매칭 지금 돌리기는 매칭 화면으로 돌아와 결과를 알린다")
+    fun runScheduledMatching() {
+        mockMvc.perform(post("/admin/matching/run-scheduled").with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/matching"))
+            .andExpect(flash().attribute("message", "정기 매칭을 지금 돌렸습니다."))
+    }
+
+    @Test
+    @DisplayName("더미 관리 페이지 렌더 + 만들기/삭제")
     fun dummyPage() {
         mockMvc.perform(get("/admin/dummy").with(authentication(admin()))).andExpect(status().isOk)
 

@@ -139,10 +139,7 @@
         byId('leaveReasonShares').replaceChildren(...reasonCounts.map((row) => shareRow(row, leftCount, options)));
     };
 
-    const activeRoundWeeksText = (roundWeeks) => {
-        if (roundWeeks.length === 0) return '열린 회차 없음';
-        return `열린 ${roundWeeks.length}개 회차(${roundWeeks.map(shortDate).reverse().join('·')} 주)`;
-    };
+    const activeRoundWeeksText = (roundWeeks) => `${roundWeeks.map(shortDate).reverse().join('·')} 주`;
 
     const renderAccountStatus = ({ countsByStatus, currentActiveRoundWeeks, recentlyCompletedActiveStatusCount }) => {
         fillShares(
@@ -150,7 +147,9 @@
             StatsCalc.accountStatusCounts(countsByStatus, recentlyCompletedActiveStatusCount),
         );
         byId('accountStatusNote').textContent =
-            `활성은 오늘 기준 최근 4회차 중 ${activeRoundWeeksText(currentActiveRoundWeeks)}에 퀴즈를 끝까지 푼 회원입니다. ` +
+            (currentActiveRoundWeeks.length === 0
+                ? '아직 회차가 없어 활성 회원이 없습니다. '
+                : `활성은 오늘까지 최근 회차(${activeRoundWeeksText(currentActiveRoundWeeks)})에 한 번이라도 퀴즈를 끝까지 푼 회원입니다. `) +
             '퀴즈 참여 항목의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
             '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
     };
@@ -165,7 +164,7 @@
             ? ''
             : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
         notice.textContent =
-            `관리자 계정 ${countText(adminMemberCount, '명')}은 지표에서 빠집니다. 채팅과 쌍·그룹 단위 지표만 관리자가 낀 것도 셉니다.${completedText}`;
+            `관리자 계정 ${countText(adminMemberCount, '명')}은 지표에서 뺍니다. 단, 채팅과 쌍·그룹 단위로 세는 지표에는 관리자가 낀 방·쌍·그룹도 들어갑니다.${completedText}`;
     };
 
     const renderMemberSection = (
@@ -199,8 +198,12 @@
         const participation = StatsCalc.quizParticipation(progressCounts, quizMatchingTypeLabels);
         showSectionIfAny('quiz', participation.startedCount > 0);
 
-        byId('quizActiveRoundScope').textContent = `최근 ${activeRoundCount}회차`;
-        byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
+        // 회차가 아닌 주에는 기준 줄을 그리지 않는다. 여기서 멈추면 뒤 항목이 하나도 그려지지 않는다.
+        const activeRoundScope = byId('quizActiveRoundScope');
+        if (activeRoundScope) {
+            activeRoundScope.textContent = `최근 ${activeRoundCount}회차`;
+            byId('quizActiveRounds').textContent = activeRoundWeeksText(activeRoundWeeks);
+        }
         renderQuizRates(participation, activeMemberCount);
         // 매칭 유형을 하나만 고르면 막대가 늘 100% 하나라 숨긴다.
         byId('quizMatchingTypeSharesCard').hidden = Object.keys(quizMatchingTypeLabels).length < 2;

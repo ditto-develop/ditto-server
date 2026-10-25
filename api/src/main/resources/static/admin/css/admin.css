@@ -130,7 +130,7 @@ a.card.dashboard-todo:hover { border-color: var(--primary); }
 .dashboard-todo-go { color: var(--primary); }
 .dashboard-todo:not(.has-items) .value { color: var(--text-sub); }
 .dashboard-todo.has-items { box-shadow: inset 3px 0 0 var(--primary), var(--shadow); }
-.dashboard-value { font-size: 18px; }
+.stat .value.value-compact { font-size: 18px; }
 .dashboard-alert { margin-bottom: 12px; }
 
 /* Badges */
@@ -139,14 +139,15 @@ a.card.dashboard-todo:hover { border-color: var(--primary); }
     align-items: center;
     gap: 5px;
     padding: 3px 10px;
+    border: 1px solid transparent;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
 }
-.qa-week-period.quiz_period { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
-.qa-week-period.matching_period { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
-.qa-week-period.chatting_period { background: rgba(34, 176, 125, 0.13); color: var(--success); }
+.qa-week-period.quiz_period { background: rgba(58, 134, 255, 0.13); color: var(--info-text); }
+.qa-week-period.matching_period { background: rgba(224, 161, 6, 0.15); color: var(--caution-text); }
+.qa-week-period.chatting_period { background: rgba(34, 176, 125, 0.13); color: var(--success-text); }
 /* 주간 기간은 상태가 아니라서 채우지 않고 테두리만 그려 상태 배지와 구분한다. */
 .badge.quiz, .badge.matching, .badge.chatting { background: transparent; border: 1px solid currentColor; }
 .badge.quiz { color: var(--info-text); }
@@ -164,7 +165,9 @@ a.badge:hover { text-decoration: underline; }
 
 /* (i) 설명 */
 .with-info { display: inline-flex; align-items: center; gap: 4px; }
+/* 보이는 원은 작게 두고 누르는 영역만 ::after 로 사방 6px 넓힌다. */
 .info-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -182,8 +185,6 @@ a.badge:hover { text-decoration: underline; }
     cursor: pointer;
 }
 .info-btn:hover { border-color: var(--primary); color: var(--primary); }
-/* 보이는 원은 작게 두고 누르는 영역만 사방 6px 넓힌다. */
-.info-btn { position: relative; }
 .info-btn::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 .info-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .info-pop {
@@ -270,15 +271,19 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-filter .field { margin-bottom: 0; }
 .stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .stats-filter .field.stats-week-field { min-width: 168px; }
-/* 입력칸 라벨 옆 (i). label 의 아래 여백을 감싼 줄이 대신 가져 (i)와 높이가 맞는다. */
-.label-with-info { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
-.field .label-with-info label { margin-bottom: 0; }
+/* 라벨과 (i)를 한 줄로 묶고, 아래 여백은 label 대신 이 줄에 둔다. (i)가 없는 칸도 같은 줄 높이를 쓴다. */
+.field-label-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.field .field-label-row label { margin-bottom: 0; }
+.readonly-field { display: block; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text-sub); }
+.qa-tools-details [id] { scroll-margin-top: 80px; }
 .decision-select { max-width: 360px; }
 .report-guidelines { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .report-guidelines h3 { font-size: 14px; margin: 0 0 6px; }
 .report-guidelines p { margin: 0 0 4px; }
-.stats-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; padding: 0; list-style: none; color: var(--text-sub); font-size: 12px; }
-.stats-legend li { display: flex; align-items: center; gap: 6px; }
+/* 배지 열과 설명 열로 나눠 설명 시작 위치를 맞춘다. */
+.stats-legend { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 10px; margin: 14px 0 0; padding: 0; list-style: none; color: var(--text-sub); font-size: 12px; }
+.stats-legend li { display: contents; }
+.stats-legend .scope-badge { justify-self: start; }
 /* 목차는 상단바 아래에 붙어 따라온다. 장 앵커는 상단바와 목차 높이만큼 내려 멈춘다. */
 .stats-nav { position: sticky; top: 64px; z-index: 5; box-shadow: var(--shadow); }
 .stats-nav-links a { color: var(--primary); font-weight: 600; }
@@ -348,7 +353,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .btn.danger { background: var(--surface); color: var(--danger); border-color: rgba(232, 90, 107, 0.4); }
 .btn.danger:hover { background: rgba(232, 90, 107, 0.08); }
 .btn.sm { padding: 6px 12px; font-size: 12px; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 /* 의견 목록 미리보기. 폰 폭에서 눌리지 않게 최소 폭을 두고 2줄까지만 보인다 */
@@ -399,9 +404,9 @@ h2 .text-link, .muted + .text-link { margin-left: 10px; }
 
 /* Alerts */
 .alert { padding: 12px 16px; border-radius: 9px; margin-bottom: 18px; font-weight: 600; font-size: 13px; }
-.alert.success { background: rgba(34, 176, 125, 0.1); color: var(--success); }
-.alert.error { background: rgba(232, 90, 107, 0.1); color: var(--danger); }
-.alert.info { background: rgba(58, 134, 255, 0.1); color: var(--blue); }
+.alert.success { background: rgba(34, 176, 125, 0.1); color: var(--success-text); }
+.alert.error { background: rgba(232, 90, 107, 0.1); color: var(--danger-text); }
+.alert.info { background: rgba(58, 134, 255, 0.1); color: var(--info-text); }
 .alert-close {
     float: right;
     margin: -6px -10px 0 8px;
@@ -1026,17 +1031,20 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .nav { flex-direction: row; flex-wrap: wrap; }
     .nav a { padding: 6px 10px; gap: 6px; font-size: 13px; white-space: nowrap; }
     .nav a .ico { width: auto; }
-    /* 위쪽 메뉴는 묶음 제목을 숨기고 한 줄로 옆으로 민다. 오른쪽 끝을 흐리게 해 더 있다는 걸 알린다. */
-    .nav { gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 88%, transparent); }
+    /* 위쪽 메뉴는 묶음 제목을 숨기고 한 줄로 옆으로 민다. 더 밀 수 있는 쪽 끝만 흐리게 한다(sidebar.js 가 끝에 닿았는지 표시). */
+    .nav { gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, transparent, #000 10%, #000 88%, transparent); }
+    .nav.at-start { mask-image: linear-gradient(to right, #000 88%, transparent); }
+    .nav.at-end { mask-image: linear-gradient(to right, transparent, #000 10%); }
+    .nav.at-start.at-end { mask-image: none; }
     .nav::-webkit-scrollbar { display: none; }
     .nav-group { display: contents; }
     .nav-title { display: none; }
     .nav-group.qa a { border: 1px dashed rgba(242, 193, 78, 0.5); }
     .info-btn { width: 24px; height: 24px; font-size: 13px; }
-    /* 숫자 카드의 (i)는 오른쪽 위 구석에 두어 라벨 줄이 혼자 갈리지 않게 하고, 라벨 높이를 맞춰 숫자 줄을 가지런히 한다. */
+    /* 숫자 카드의 (i)는 오른쪽 위에 두고 라벨을 두 줄 높이로 맞춰 숫자 줄을 가지런히 한다. */
     .stats-totals .card.stat { position: relative; }
-    .stats-totals .stat .label { min-height: 2.9em; }
-    .stats-totals .stat .label.with-info { padding-right: 22px; }
+    .stats-totals .stat .label { min-height: 3.1em; }
+    .stats-totals .stat .label.with-info { display: block; padding-right: 22px; }
     .stats-totals .stat .label .info-btn { position: absolute; top: 8px; right: 8px; }
     .stats-nav { padding: 6px 12px; }
     .stats-nav-links a { padding: 8px 2px; }
@@ -1069,7 +1077,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .stats-totals .card { padding: 12px; }
     .stats-totals .value { font-size: 19px; }
     .stats-section table.tbl :is(th, td) { padding: 9px 8px; }
-    .stats-filter-actions .btn { padding-top: 12px; padding-bottom: 12px; }
+    .stats-filter-actions .btn, .field-row > .field:has(> .btn:only-child) > .btn { padding-top: 12px; padding-bottom: 12px; }
     /* 상단바가 고정이 아니라 목차만 맨 위에 붙는다. 링크는 줄을 바꾸지 않고 옆으로 민다. */
     .stats-nav { top: 0; gap: 6px 14px; }
     .stats-nav-links { flex: 1 1 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
@@ -1091,12 +1099,12 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     /* 버튼 옆에 붙이면 화면 끝에서 상자가 좁아지므로 가운데에 같은 폭으로 띄운다. */
     .info-pop:popover-open { position-area: none; inset: 0; margin: auto; width: calc(100vw - 32px); max-width: none; height: fit-content; font-size: 14px; }
     .info-pop:popover-open::backdrop { background: rgba(20, 23, 40, 0.28); }
-    /* 시각 입력칸과 읽기 전용 기간 칸은 값이 길어 한 줄을 다 쓴다. */
-    .field-row > .field:has(> input[type="datetime-local"], > input:disabled) { flex-basis: 100%; }
+    /* 시각 입력칸은 값이 길어 한 줄을 다 쓴다. */
+    .field-row > .field:has(> input[type="datetime-local"]) { flex-basis: 100%; }
     /* 대시보드 할 일은 한 줄 카드로 줄여 이번 주 상태까지 첫 화면에 들어오게 한다. */
     a.card.dashboard-todo { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
     a.card.dashboard-todo .value { font-size: 20px; }
-    a.card.dashboard-todo > span:nth-child(3) { flex-basis: 100%; }
+    a.card.dashboard-todo .dashboard-todo-detail { flex-basis: 100%; }
     /* 선택지·신고 사유는 라벨이 한 줄을 다 쓰고, 막대와 값은 그 아래에 둔다. */
     .stack-on-phone { grid-template-columns: 1fr 128px; row-gap: 4px; margin-bottom: 12px; }
     .stack-on-phone > span:first-child { grid-column: 1 / -1; }

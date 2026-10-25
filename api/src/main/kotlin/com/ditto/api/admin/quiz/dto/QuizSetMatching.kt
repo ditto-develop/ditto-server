@@ -19,7 +19,7 @@ class QuizSetMatching(
     fun of(memberId: Long): ParticipantMatching = byMemberId[memberId] ?: ParticipantMatching.EMPTY
 }
 
-/** [outsideRequests]는 저장된 후보와 겹치지 않는 1:1 신청·성사다. 재생성하면 후보가 바뀌어도 신청은 남는다. */
+/** [outsideRequests]는 저장된 후보와 겹치지 않는 1:1 신청·성사다. 다시 만들면 후보가 바뀌어도 신청은 남는다. */
 class ParticipantMatching(
     val personalCandidates: List<PersonalCandidate> = emptyList(),
     val outsideRequests: List<OutsideRequest> = emptyList(),

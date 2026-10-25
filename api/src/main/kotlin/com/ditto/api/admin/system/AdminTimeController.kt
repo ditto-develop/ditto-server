@@ -16,7 +16,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * 서버 시각 조정. 설정 시 DB에 저장하고 그 시각을 사용하며, 해제하면 실제 시각을 사용한다.
+ * 시간 조정. 설정 시 DB에 저장하고 그 시각을 사용하며, 해제하면 실제 시각을 사용한다.
  * 설정 변경자(이름·이메일)는 로그인한 어드민으로 기록한다.
  */
 @Controller
