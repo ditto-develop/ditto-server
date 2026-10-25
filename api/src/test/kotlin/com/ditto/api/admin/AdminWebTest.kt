@@ -161,6 +161,19 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("대시보드는 검토 대기 신고 수를 보여 주고, 이번 주 활성 퀴즈셋이 없으면 알린다")
+    fun dashboardShowsTodos() {
+        val reporter = memberRepository.save(MemberFixture.create(nickname = "대시신고자", status = MemberStatus.ACTIVE))
+        val reported = memberRepository.save(MemberFixture.create(nickname = "대시피신고자", status = MemberStatus.ACTIVE))
+        memberReportRepository.save(MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id))
+
+        mockMvc.perform(get("/admin").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(stringContainsInOrder("검토 대기 신고", "1건", "24시간 지난 건 없음")))
+            .andExpect(content().string(containsString("이번 주 활성 퀴즈셋이 없습니다.")))
+    }
+
+    @Test
     @DisplayName("대시보드/퀴즈/시간/매칭 페이지가 렌더링된다")
     fun pagesRender() {
         mockMvc.perform(get("/admin").with(authentication(admin()))).andExpect(status().isOk)

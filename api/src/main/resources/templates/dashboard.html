@@ -8,9 +8,30 @@
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
             <h1 class="page-title">대시보드</h1>
-            <p class="page-desc">서버 시각 기준의 이번 주와 기간입니다.<th:block th:if="${qaToolsEnabled}"> 시간 조정을 켜 두면 조정한 시각으로 보입니다.</th:block></p>
+            <p class="page-desc">지금 처리할 일과 이번 주 상태입니다.<th:block th:if="${qaToolsEnabled}"> 시간 조정을 켜 두면 조정한 시각으로 보입니다.</th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
+            <h2 class="dashboard-heading">처리할 일</h2>
+            <div class="grid cols-3">
+                <a class="card stat todo" th:href="@{/admin/reports}">
+                    <span class="label">검토 대기 신고</span>
+                    <span class="value" th:text="|${receivedReportCount}건|">0건</span>
+                    <span>
+                        <span class="badge danger" th:if="${overdueReportCount > 0}" th:text="|24시간 지남 ${overdueReportCount}건|">24시간 지남 1건</span>
+                        <span class="muted" th:if="${overdueReportCount == 0}">24시간 지난 건 없음</span>
+                    </span>
+                </a>
+                <a class="card stat todo" th:href="@{/admin/feedbacks}">
+                    <span class="label">확인 대기 의견</span>
+                    <span class="value" th:text="|${receivedFeedbackCount}건|">0건</span>
+                </a>
+                <a class="card stat todo" th:href="@{/admin/launch-notifications}">
+                    <span class="label">출시 알림 메일 발송 대기</span>
+                    <span class="value" th:text="|${pendingLaunchNotificationCount}명|">0명</span>
+                </a>
+            </div>
+
+            <h2 class="dashboard-heading">이번 주</h2>
             <div class="grid cols-3">
                 <div class="card stat">
                     <span class="label">이번 주</span>
@@ -22,7 +43,8 @@
                           th:text="${#temporals.format(state.dateTime, 'yyyy-MM-dd HH:mm')}">-</span>
                 </div>
                 <div class="card stat">
-                    <span class="label">현재 기간</span>
+                    <span class="label with-info">현재 기간
+                        <th:block th:replace="~{fragments :: info('info-dashboard-period', '현재 기간', '디토는 매주 월~수 퀴즈, 목요일 00:01 매칭, 금~일 채팅 순서로 돌아갑니다. 다음 주 월요일 00:00에 채팅방이 닫히고 평가가 열립니다.')}"></th:block></span>
                     <span th:switch="${state.period.name()}">
                         <span th:case="'QUIZ_PERIOD'" class="badge quiz">퀴즈 기간(월~수)</span>
                         <span th:case="'MATCHING_PERIOD'" class="badge matching">매칭 기간(목)</span>
@@ -32,11 +54,29 @@
             </div>
 
             <div class="card">
-                <h2>바로가기</h2>
-                <div class="btn-row">
-                    <a class="btn" th:href="@{/admin/quiz-sets}">퀴즈셋 관리</a>
-                    <a class="btn secondary" th:if="${qaToolsEnabled}" th:href="@{/admin/time-override}">시간 조정</a>
-                    <a class="btn secondary" th:href="@{/admin/matching}">매칭 실행</a>
+                <h2>이번 주 퀴즈셋</h2>
+                <div class="alert error" style="margin-bottom:12px" th:unless="${#lists.contains(weekQuizSets.![isActive], true)}">
+                    이번 주 활성 퀴즈셋이 없습니다. 회원이 풀 퀴즈가 없으니 퀴즈셋 관리에서 만들고 활성화하세요.
+                </div>
+                <p class="muted" th:if="${weekQuizSets.isEmpty()}" style="margin:0">이번 주 퀴즈셋이 없습니다.</p>
+                <div class="tbl-scroll" th:unless="${weekQuizSets.isEmpty()}">
+                    <table class="tbl">
+                        <thead><tr><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>
+                        <tbody>
+                        <tr th:each="qs : ${weekQuizSets}">
+                            <td th:text="${qs.title}">title</td>
+                            <td class="num" th:text="${@matchingTypeLabel.of(qs.matchingType)}">1:1</td>
+                            <td>
+                                <span class="badge ok" th:if="${qs.isActive}">활성</span>
+                                <span class="badge neutral" th:unless="${qs.isActive}">비활성</span>
+                            </td>
+                            <td class="actions">
+                                <a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}">상세</a>
+                                <a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}/participants(id=${qs.id})}">참여 현황</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </main>

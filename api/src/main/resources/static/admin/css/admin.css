@@ -115,6 +115,11 @@ h1.page-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; letter-spaci
 .stat .label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
 .stat .value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
 
+/* 대시보드 */
+.dashboard-heading { font-size: 15px; font-weight: 700; margin: 8px 0 10px; }
+a.card.todo { transition: border-color 0.15s; }
+a.card.todo:hover { border-color: var(--primary); }
+
 /* Badges */
 .badge {
     display: inline-flex;
