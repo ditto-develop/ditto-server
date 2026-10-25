@@ -1036,7 +1036,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("신고 목록·상세 페이지가 렌더링된다")
+    @DisplayName("신고 목록은 상태마다 건수를 보이고, 상세는 결정을 비운 채로 렌더링된다")
     fun reportPages() {
         val reporter = memberRepository.save(MemberFixture.create(nickname = "신고자", status = MemberStatus.ACTIVE))
         val reported = memberRepository.save(MemberFixture.create(nickname = "피신고자", status = MemberStatus.ACTIVE))
@@ -1044,7 +1044,9 @@ class AdminWebTest {
             MemberReportFixture.create(reporterId = reporter.id, reportedMemberId = reported.id),
         )
 
-        mockMvc.perform(get("/admin/reports").with(authentication(admin()))).andExpect(status().isOk)
+        mockMvc.perform(get("/admin/reports").with(authentication(admin())))
+            .andExpect(status().isOk)
+            .andExpect(content().string(containsString(">검토 대기 1</a>")))
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))

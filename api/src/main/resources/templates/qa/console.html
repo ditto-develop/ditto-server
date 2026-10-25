@@ -18,12 +18,12 @@
 
             <div class="qa-bar" id="qa-bar" data-qa-live>
                 <span>서버 시각 <b th:text="${@qaTime.of(console.now)}">-</b>
-                    <span class="badge matching" th:if="${console.timeOverridden}">조정 중</span></span>
+                    <span class="badge danger" th:if="${console.timeOverridden}">조정 중</span></span>
                 <span>이번 주 <b th:text="${@weekLabel.of(console.weekStartedOn)}">-</b></span>
                 <span>더미 <b th:text="${console.dummyCount}">0</b>명</span>
                 <span class="qa-bar-links">
-                    <a th:href="@{/admin/dummy}">더미 생성 →</a>
-                    <a th:href="@{/admin/matching}">매칭 재생성 →</a>
+                    <a th:href="@{/admin/dummy}">더미 관리 →</a>
+                    <a th:href="@{/admin/matching}">매칭 다시 만들기 →</a>
                 </span>
                 <div class="qa-week" th:with="timeline=${console.timeline}">
                     <div class="qa-week-head">
@@ -76,9 +76,9 @@
                 <ol>
                     <li>퀴즈는 수요일 23:59까지만 풀 수 있습니다. 지금이 그 뒤라면 위 [퀴즈 마감 직전]으로 시각을 옮긴 뒤,
                         앱에서 테스트 계정으로 이번 주 퀴즈셋을 풉니다.</li>
-                    <li><a th:href="@{/admin/dummy}">더미 생성</a>에서 같은 퀴즈셋으로 더미를 만듭니다.
+                    <li><a th:href="@{/admin/dummy}">더미 관리</a>에서 같은 퀴즈셋으로 더미를 만듭니다.
                         특정 회원과의 매칭 점수를 조절하거나 퀴즈를 덜 푼 더미가 필요하면 같은 화면의 [직접 만들러 가기]를 누릅니다.</li>
-                    <li>위 [그룹 응답 마감 직전]으로 옮긴 뒤 <a th:href="@{/admin/matching}">매칭 실행</a>에서 그 퀴즈셋의 매칭을 재생성합니다.
+                    <li>위 [그룹 응답 마감 직전]으로 옮긴 뒤 <a th:href="@{/admin/matching}">매칭 수동 실행</a>에서 그 퀴즈셋의 매칭을 다시 만듭니다.
                         금요일 00:00 이후에 재생성하면 스케줄러가 1분 안에 새 그룹 초대를 자동 거절합니다.
                         매칭 배치는 실제 시각(목 00:01)에만 돌아, [퀴즈 마감 직후]로 옮겨도 매칭은 직접 돌려야 합니다.</li>
                     <li>1:1은 앱에서 더미에게 신청하거나, 아래에서 더미가 신청을 보냅니다. 받은 쪽이 수락하면 성사됩니다.</li>
@@ -101,10 +101,21 @@
                         금요일 00:00(그룹 응답 마감)이나 다음 주 월요일 00:00(채팅 마감)을 넘기면 되돌릴 수 없어 확인을 받습니다.
                         QA를 마치면 [시간 조정 끄기]를 누르세요. 제재 기간은 옮긴 시각 기준이라 끄면 실제보다 오래 남거나 늦게 시작하니,
                         신고 QA로 건 제재는 해제하거나 더미 정리로 지우세요. 제재 관리에서 직접 건 제재는 더미 정리로 지워지지 않습니다.</li>
-                    <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 생성</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
+                    <li>다시 하려면 <a th:href="@{/admin/dummy}">더미 관리</a>에서 더미를 모두 지우고 다시 만든 뒤 매칭을 재생성합니다.
                         더미가 낀 방·매칭을 지우면 같은 방 실회원의 메시지·알림도 함께 지워지고, 더미 신고에서 나온 제재도 풀립니다.</li>
                 </ol>
             </details>
+
+            <nav class="qa-bar qa-section-nav" aria-label="QA 콘솔 목차">
+                <span class="muted">바로 가기</span>
+                <span class="qa-bar-links">
+                    <a href="#rooms">채팅방</a>
+                    <a href="#personal">1:1 받은 신청</a>
+                    <a href="#personal-sent">1:1 보낸 신청</a>
+                    <a href="#group">그룹</a>
+                    <a href="#report">신고</a>
+                </span>
+            </nav>
 
             <section class="card" id="rooms" data-qa-live>
                 <h2>채팅방 <span class="count" th:text="${rooms.size()}">0</span></h2>

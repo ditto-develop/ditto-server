@@ -99,7 +99,10 @@
                 <form th:action="@{/admin/reports/{id}/action(id=${report.id})}" method="post"
                       onsubmit="return confirm('결정: ' + this.decision.selectedOptions[0].text + '\n검토는 신고당 한 번만 할 수 있고 되돌릴 수 없습니다. 계속할까요?');">
                     <div class="field">
-                        <label for="decision">결정</label>
+                        <div class="with-info stats-filter-label">
+                            <label for="decision">결정</label>
+                            <th:block th:replace="~{fragments :: info('info-report-decision', '결정', '영구 차단은 관리자가 거는 제재라 앱 사용이 막힙니다. 회원끼리 서로 안 보이게 하는 사용자 차단과는 다르고, 사용자 차단은 제재가 아닙니다.')}"></th:block>
+                        </div>
                         <select id="decision" name="decision" required>
                             <option value="" selected disabled>결정을 고르세요</option>
                             <option th:each="d : ${decisions}" th:value="${d.name()}" th:text="${d.description}">결정</option>

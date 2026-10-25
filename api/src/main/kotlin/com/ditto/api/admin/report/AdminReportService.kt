@@ -31,6 +31,10 @@ class AdminReportService(
 ) {
 
     @Transactional(readOnly = true)
+    fun countReportsByStatus(): Map<MemberReportStatus, Long> =
+        MemberReportStatus.entries.associateWith { memberReportRepository.countByStatus(it) }
+
+    @Transactional(readOnly = true)
     fun listReports(status: MemberReportStatus, now: LocalDateTime): List<ReportListItem> {
         val reports = memberReportRepository.findAllByStatusOrderByCreatedAtAsc(status)
         val nicknames = nicknamesOf(reports.flatMap { listOf(it.reporterId, it.reportedMemberId) })

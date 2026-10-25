@@ -37,7 +37,7 @@
                                 <span class="badge on" th:if="${qs.isActive}">활성</span>
                                 <span class="badge off" th:unless="${qs.isActive}">비활성</span>
                             </td>
-                            <td class="actions"><a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}">관리</a></td>
+                            <td class="actions"><a class="btn secondary sm" th:href="@{/admin/quiz-sets/{id}(id=${qs.id})}">상세</a></td>
                         </tr>
                         </tbody>
                     </table>

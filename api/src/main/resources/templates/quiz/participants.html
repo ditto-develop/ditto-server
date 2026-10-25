@@ -76,7 +76,8 @@
                         <table class="tbl">
                             <thead>
                             <tr>
-                                <th title="정상 회원이 아니면 회원 상태를 배지로 보여 줍니다">회원</th><th>진행</th><th>프로필</th><th>매칭</th>
+                                <th><span class="with-info">회원
+                                    <th:block th:replace="~{fragments :: info('info-participant-member', '회원', '정상 회원이 아니면 회원 상태를 배지로 보여 줍니다.')}"></th:block></span></th><th>진행</th><th>프로필</th><th>매칭</th>
                                 <th th:each="quiz, stat : ${view.quizzes}" th:title="${quiz.question}" th:text="|Q${stat.count}|">Q1</th>
                             </tr>
                             </thead>

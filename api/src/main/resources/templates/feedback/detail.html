@@ -7,6 +7,7 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
+            <a class="muted" th:href="@{/admin/feedbacks}">← 의견 확인</a>
             <h1 class="page-title">
                 의견 #<span th:text="${feedback.id}">0</span>
                 <span class="badge cat" th:text="${feedback.typeDescription}">유형</span>
@@ -67,7 +68,6 @@
                 </p>
             </div>
 
-            <p><a class="btn secondary sm" th:href="@{/admin/feedbacks}">목록으로</a></p>
         </main>
     </div>
 </div>

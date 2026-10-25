@@ -7,7 +7,8 @@
     <div class="main-wrap">
         <header th:replace="~{fragments :: topbar}"></header>
         <main class="content">
-            <h1 class="page-title">출시 알림 신청</h1>
+            <h1 class="page-title with-info">출시 알림 신청자(웹)
+                <th:block th:replace="~{fragments :: info('info-launch-notification', '출시 알림 신청자', '앱 출시 전에 웹사이트에서 이메일을 남긴 방문자 목록입니다. 앱 푸시 알림과는 관계없고, 메일은 CSV를 내려받아 따로 보냅니다.')}"></th:block></h1>
             <p class="page-desc">웹 방문자가 남긴 앱 출시 알림 신청입니다. 이메일은 화면에 보여 주지 않고 CSV로만 내보냅니다.</p>
             <div th:replace="~{fragments :: alerts}"></div>
 
