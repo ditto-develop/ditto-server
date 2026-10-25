@@ -65,7 +65,7 @@ class MemberStatsQueryTest(
             save("a")
             save("admin", role = MemberRole.ADMIN)
 
-            memberRepository.countMembersByStatus(MemberFilter(includesAdmins = true)) shouldBe
+            memberRepository.countMembersByStatus(MemberFilter(includeAdmins = true)) shouldBe
                 mapOf(MemberStatus.ACTIVE to 2L)
         }
 

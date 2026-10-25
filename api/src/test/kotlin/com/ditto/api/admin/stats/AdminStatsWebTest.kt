@@ -143,13 +143,11 @@ class AdminStatsWebTest(
 
             mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
                 .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":1}""")))
-                .andExpect(content().string(pageJsonContaining(""""includesAdmins":false""")))
             mockMvc.perform(
                 get("/admin/stats").param("week", "2026-04-08").param("includeAdmins", "true").with(authentication(admin)),
             )
                 .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":2}""")))
-                .andExpect(content().string(pageJsonContaining(""""includesAdmins":true""")))
-                .andExpect(content().string(containsString("<b>관리자 포함</b>")))
+                .andExpect(content().string(containsString("관리자 계정 <b>포함</b>")))
                 .andExpect(content().string(containsString("name=\"includeAdmins\" value=\"true\" checked=\"checked\"")))
         }
 

@@ -25,7 +25,6 @@ data class StatsPageData(
     val memberReportStats: MemberReportStatsData,
     val memberBlockCount: Long,
     val pushSendHistoryCounts: List<PushSendHistoryCount>,
-    val includesAdmins: Boolean,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val locationLabels: Map<String, String> = Location.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,

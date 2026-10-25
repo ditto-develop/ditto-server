@@ -32,6 +32,6 @@ data class StatsFilter(
         gender = gender,
         birthDateRange = ageBand?.birthDateRange(today),
         joinedAtRange = joinedWeek?.let { OperationWeek.containing(it).dateTimeRange },
-        includesAdmins = includeAdmins,
+        includeAdmins = includeAdmins,
     )
 }

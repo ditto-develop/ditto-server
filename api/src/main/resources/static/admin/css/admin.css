@@ -269,8 +269,14 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 /* 운영 지표 */
 .stats-filter { align-items: flex-end; }
 .stats-filter .field { margin-bottom: 0; }
-.stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+/* 버튼과 체크박스 칸은 입력칸처럼 늘거나 줄지 않고 제 폭만 쓴다. */
+.stats-filter .field.stats-filter-actions { display: flex; gap: 8px; flex: 0 0 auto; min-width: 0; }
 .stats-filter .field.stats-week-field { min-width: 168px; }
+.stats-filter .field.stats-include-admins { flex: 0 0 auto; min-width: 0; }
+/* 라벨 전체를 눌리게 해 옆 입력칸 높이만큼 누를 곳을 준다. */
+.stats-include-admins .check { display: flex; align-items: center; gap: 8px; min-height: 41px; margin: 0; font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; }
+.stats-include-admins .check input { accent-color: var(--primary); }
+.stats-include-admins .check input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 /* 라벨과 (i)를 한 줄로 묶고, 아래 여백은 label 대신 이 줄에 둔다. (i)가 없는 칸도 같은 줄 높이를 쓴다. */
 .field-label-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
 .field .field-label-row label { margin-bottom: 0; }
@@ -385,10 +391,6 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 td.period-cell span { white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input { width: auto; }
-/* 운영 지표 필터의 체크박스 칸은 체크박스 폭만 쓰고 옆 입력칸 높이에 맞춘다. */
-.stats-filter .field.stats-include-admins { flex: 0 0 auto; min-width: 0; }
-.stats-include-admins .check { min-height: 41px; }
-.stats-include-admins .check label { margin: 0; font-weight: 500; color: var(--text); }
 .dummy-options { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
 /* .field 안에 놓여도 필드 라벨·입력칸 스타일을 받지 않게 덮는다. */
 .dummy-options .check {
@@ -1082,6 +1084,7 @@ table.tbl tr.qa-row-ended td { color: var(--text-muted); }
     .stats-totals .value { font-size: 19px; }
     .stats-section table.tbl :is(th, td) { padding: 9px 8px; }
     .stats-filter-actions .btn, .field-row > .field:has(> .btn:only-child) > .btn { padding-top: 12px; padding-bottom: 12px; }
+    .stats-include-admins .check input { width: 20px; height: 20px; }
     /* 상단바가 고정이 아니라 목차만 맨 위에 붙는다. 링크는 줄을 바꾸지 않고 옆으로 민다. */
     .stats-nav { top: 0; gap: 6px 14px; }
     .stats-nav-links { flex: 1 1 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }

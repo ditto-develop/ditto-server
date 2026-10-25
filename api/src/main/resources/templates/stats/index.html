@@ -13,7 +13,7 @@
                        roundLabel=${(selectedWeekOption.round != null ? selectedWeekOption.round + '회차' : '회차 없음') + ' · ' + weekLabel}">
             <h1 class="page-title">운영 지표</h1>
             <p class="page-desc with-info">회차와 회원 조건으로 좁혀 봅니다. 항목마다 붙은 배지가 어느 기간을 세는지 알려 줍니다.
-                <th:block th:replace="~{fragments :: info('info-stats-page', '운영 지표', '관리자 계정은 기본으로 지표에서 빼고, 필터에서 관리자 계정 포함을 켜면 함께 셉니다. 채팅과 쌍·그룹 단위 지표는 늘 관리자가 낀 것도 셉니다. 성별과 생년월일은 회원이 직접 넣었거나 소셜 로그인에서 받은 값이라 본인인증을 거치지 않았습니다.')}"></th:block></p>
+                <th:block th:replace="~{fragments :: info('info-stats-page', '운영 지표', '관리자 계정은 기본으로 지표에서 빼고, 필터에서 관리자 계정을 지표에 포함하면 함께 셉니다. 채팅과 쌍·그룹 단위 지표는 늘 관리자가 낀 것도 셉니다. 성별과 생년월일은 회원이 직접 넣었거나 소셜 로그인에서 받은 값이라 본인인증을 거치지 않았습니다.')}"></th:block></p>
             <div th:replace="~{fragments :: alerts}"></div>
 
             <div class="card">
@@ -75,12 +75,12 @@
                     <div class="field stats-include-admins">
                         <div class="with-info field-label-row">
                             <label for="includeAdmins">관리자 계정</label>
-                            <th:block th:replace="~{fragments :: info('info-stats-include-admins', '관리자 계정', '팀원이 관리자 계정으로 퀴즈와 매칭에 참여하면 기본으로는 지표에서 빠집니다. 켜면 관리자 계정도 일반 회원처럼 셉니다.')}"></th:block>
+                            <th:block th:replace="~{fragments :: info('info-stats-include-admins', '관리자 계정', '관리자 계정은 기본으로 지표에서 뺍니다. 켜면 일반 회원처럼 셉니다. 채팅과 쌍·그룹 단위 지표는 이 설정과 상관없이 관리자가 낀 것도 셉니다.')}"></th:block>
                         </div>
-                        <div class="check">
+                        <label class="check">
                             <input type="checkbox" id="includeAdmins" name="includeAdmins" value="true" th:checked="${filter.includeAdmins}"/>
-                            <label for="includeAdmins">포함</label>
-                        </div>
+                            지표에 포함
+                        </label>
                     </div>
                     <div class="field stats-filter-actions">
                         <button class="btn" type="submit">조회</button>
@@ -104,8 +104,8 @@
                 <span>매칭 유형 <b th:text="${filter.matchingType.description}">전체</b></span>
                 <span th:if="${filter.gender != null}">성별 <b th:text="${filter.gender.description}">여성</b></span>
                 <span th:if="${filter.ageBand != null}">연령대 <b th:text="${filter.ageBand.description}">20대 초반</b></span>
-                <span th:if="${filter.includeAdmins}"><b>관리자 포함</b></span>
                 <span th:if="${filter.joinedWeek != null}">가입 주차 <b th:text="|${#temporals.format(filter.joinedWeek, 'M/d')}가 속한 주|">10/19가 속한 주</b></span>
+                <span th:if="${filter.includeAdmins}">관리자 계정 <b>포함</b></span>
                 <span class="qa-bar-links stats-nav-links">
                     <a href="#members">회원</a>
                     <span class="stats-nav-sep" aria-hidden="true">|</span>

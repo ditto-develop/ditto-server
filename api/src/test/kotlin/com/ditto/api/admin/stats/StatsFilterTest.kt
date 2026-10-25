@@ -26,8 +26,8 @@ class StatsFilterTest : FreeSpec(
         "toMemberFilter" - {
             "관리자 포함은 켤 때만 회원 조건으로 넘긴다" {
                 val today = LocalDate.of(2026, 10, 25)
-                StatsFilter().toMemberFilter(today).includesAdmins shouldBe false
-                StatsFilter(includeAdmins = true).toMemberFilter(today).includesAdmins shouldBe true
+                StatsFilter().toMemberFilter(today).includeAdmins shouldBe false
+                StatsFilter(includeAdmins = true).toMemberFilter(today).includeAdmins shouldBe true
             }
         }
 
