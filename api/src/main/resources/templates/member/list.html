@@ -16,7 +16,7 @@
                     <div class="field" style="flex:1">
                         <div class="with-info stats-filter-label">
                             <label for="memberQuery">닉네임, #회원 ID 또는 이메일</label>
-                            <th:block th:replace="~{fragments :: info('info-member-search', '회원 검색', '닉네임은 일부만 넣어도 찾고, 회원 ID는 #123처럼 #을 붙입니다. 이메일은 전체를 정확히 넣어야 찾습니다. 권한은 사람을 정확히 특정할 수 있게 이메일로 찾았을 때와 현재 관리자 목록에서만 바꿀 수 있습니다.')}"></th:block>
+                            <th:block th:replace="~{fragments :: info('info-member-search', '회원 검색', '닉네임은 일부만 넣어도 찾고, 회원 ID는 #123처럼 #을 붙입니다. 이메일은 전체를 정확히 넣어야 찾습니다. 권한은 이메일로 찾았을 때와 현재 관리자 목록에서만 바꿀 수 있습니다.')}"></th:block>
                         </div>
                         <input type="search" id="memberQuery" name="q" th:value="${q}" placeholder="예: dummy-female, #123, member@example.com" autocomplete="off"/>
                     </div>

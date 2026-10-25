@@ -151,7 +151,7 @@
         );
         byId('accountStatusNote').textContent =
             `활성 = ${activeRoundWeeksText(currentActiveRoundWeeks)} 완주자. ` +
-            '퀴즈 참여 장의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
+            '퀴즈 참여 항목의 활성 회원은 고른 회차 기준이고 정지·탈퇴 회원도 세며 ' +
             '매칭 유형 조건도 걸려서 이 숫자와 다를 수 있습니다.';
     };
 
@@ -165,7 +165,7 @@
             ? ''
             : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
         notice.textContent =
-            `관리자 계정 ${countText(adminMemberCount, '명')}은 채팅 장을 뺀 모든 지표에서 빠집니다.${completedText}`;
+            `관리자 계정 ${countText(adminMemberCount, '명')}은 지표에서 빠집니다. 채팅과 쌍·그룹 단위 지표만 관리자가 낀 것도 셉니다.${completedText}`;
     };
 
     const renderMemberSection = (
@@ -415,7 +415,7 @@
             : [
                 `중앙값 ${hourText(messages.medianFirstMessageHours)}`,
                 ...(messages.beforeOpenRoomCount > 0
-                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시각 조정)`]
+                    ? [`열린 시각 전 메시지 방 ${countText(messages.beforeOpenRoomCount, '개')}(시간 조정)`]
                     : []),
             ];
         fillNowrapPieces('chatFirstMessageSummary', firstMessagePieces);

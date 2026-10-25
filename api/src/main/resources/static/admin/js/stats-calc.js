@@ -336,7 +336,7 @@ const StatsCalc = (() => {
         { label: '72시간 뒤', max: Infinity },
     ];
     // 메시지 시각은 실제 시각이고 방 열린 시각은 시각 조정을 따라서, 시각을 옮긴 dev 에서는 음수가 나올 수 있다.
-    const BEFORE_OPEN_LABEL = '열린 시각 전(시각 조정)';
+    const BEFORE_OPEN_LABEL = '열린 시각 전(시간 조정)';
 
     // 구간마다 max 이하이고 앞 구간 max 보다 큰 값을 센다. 음수는 맨 앞 칸에 따로 모은다.
     const binCounts = (values, bins) => {

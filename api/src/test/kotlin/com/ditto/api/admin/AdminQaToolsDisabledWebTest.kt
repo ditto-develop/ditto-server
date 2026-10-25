@@ -82,7 +82,7 @@ class AdminQaToolsDisabledWebTest(
                 }
         }
 
-        "사이드바와 대시보드에 QA 화면 링크·켜짐 배지·시간 조정 안내가 없고 매칭 실행은 남는다" {
+        "사이드바와 대시보드에 QA 화면 링크·켜짐 배지·시간 조정 안내가 없고 매칭 수동 실행은 남는다" {
             mockMvc.perform(get("/admin").with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(not(containsString("href=\"/admin/qa\""))))
@@ -90,10 +90,11 @@ class AdminQaToolsDisabledWebTest(
                 .andExpect(content().string(not(containsString("href=\"/admin/time-override\""))))
                 .andExpect(content().string(not(containsString("QA 도구 켜짐"))))
                 .andExpect(content().string(not(containsString("시간 조정을 켜 두면"))))
+                .andExpect(content().string(not(containsString("QA 전용"))))
                 .andExpect(content().string(containsString("href=\"/admin/matching\"")))
         }
 
-        "매칭 실행 화면과 재생성 실패 안내가 꺼진 QA 도구를 가리키지 않는다" {
+        "매칭 수동 실행 화면과 다시 만들기 실패 안내가 꺼진 QA 도구를 가리키지 않는다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create(matchingType = MatchingType.GROUP))
             groupMatchRepository.save(GroupMatchFixture.create(quizSetId = quizSet.id, acceptedCount = 3))
 
@@ -104,7 +105,7 @@ class AdminQaToolsDisabledWebTest(
                 post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin)).with(csrf()),
             )
                 .andExpect(redirectedUrl("/admin/matching"))
-                .andExpect(flash().attribute("error", containsString("매칭 재생성 실패")))
+                .andExpect(flash().attribute("error", containsString("매칭 다시 만들기 실패")))
                 .andExpect(flash().attribute("error", not(containsString("매칭 기록 초기화"))))
         }
 
@@ -132,7 +133,7 @@ class AdminQaToolsDisabledWebTest(
             serverTimeOverrideRepository.findFirstByOrderByIdAsc() shouldBe null
         }
 
-        "시간 조정 해제 요청도 거부해 남은 값을 건드리지 않는다" {
+        "시간 조정 해제 요청도 거부해 남은 값을 건드리지 않고, 남은 값이 있어도 상단바에 조정 중으로 보이지 않는다" {
             serverTimeOverrideRepository.save(
                 ServerTimeOverride.disabled().apply { override(LocalDateTime.of(2026, 6, 18, 9, 0), null, null) },
             )
@@ -145,6 +146,8 @@ class AdminQaToolsDisabledWebTest(
             }
 
             serverTimeOverrideRepository.findFirstByOrderByIdAsc()?.enabled shouldBe true
+            mockMvc.perform(get("/admin").with(authentication(admin)))
+                .andExpect(content().string(not(containsString("시간 조정 중"))))
         }
 
         "매칭이 끝난 퀴즈셋 상세에도 QA 도구 카드와 안내가 없다" {

@@ -26,7 +26,7 @@ enum class QaTimeShortcut(
         QuizResponsePeriod(week).endsAt.minusMinutes(JUST_BEFORE_MINUTES)
     }),
 
-    QUIZ_CLOSED("퀴즈 마감 직후", "매칭은 [자동 매칭 실행]으로", { week, _ ->
+    QUIZ_CLOSED("퀴즈 마감 직후", "매칭은 [정기 매칭 지금 돌리기]로", { week, _ ->
         matchingDayOf(week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 

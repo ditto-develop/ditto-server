@@ -21,7 +21,7 @@
                     신고 내용
                     <span class="badge cat" th:each="d : ${report.reasonDescriptions}" th:text="${d}">사유</span>
                     <span class="with-info" th:if="${report.isSevere}"><span class="badge danger">심각 사유</span>
-                        <th:block th:replace="~{fragments :: info('info-severe', '심각 사유', '기획상 즉시 정지를 검토할 사유라는 표시입니다. 시스템이 제재를 정한 것은 아니고, 최종 제재 종류는 관리자가 고릅니다.')}"></th:block></span>
+                        <th:block th:replace="~{fragments :: info('info-severe', '심각 사유', '바로 정지를 검토해 볼 만한 사유라는 표시입니다. 제재는 자동으로 걸리지 않고 관리자가 고릅니다.')}"></th:block></span>
                 </h2>
                 <p class="muted">
                     접수 위치: <span th:text="${report.sourceDescription}">위치</span> ·
@@ -101,7 +101,7 @@
                     <div class="field">
                         <div class="with-info stats-filter-label">
                             <label for="decision">결정</label>
-                            <th:block th:replace="~{fragments :: info('info-report-decision', '결정', '영구 차단은 관리자가 거는 제재라 앱 사용이 막힙니다. 회원끼리 서로 안 보이게 하는 사용자 차단과는 다르고, 사용자 차단은 제재가 아닙니다.')}"></th:block>
+                            <th:block th:replace="~{fragments :: info('info-report-decision', '결정', '영구 차단은 앱을 아예 못 쓰게 하는 제재입니다. 회원이 상대를 안 보이게 하는 사용자 차단과는 다릅니다.')}"></th:block>
                         </div>
                         <select id="decision" name="decision" required>
                             <option value="" selected disabled>결정을 고르세요</option>

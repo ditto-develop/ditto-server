@@ -85,11 +85,11 @@
                     <th:block th:if="${answerResetPreview.isCurrentWeek}">
                         <ul class="muted" style="margin:0 0 12px; padding-left:20px">
                             <li>
-                                재생성하기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
+                                다시 만들기 전에 서버 시각을 그 주 목요일(금 00:00 전)로 맞추세요. 금요일 이후면 새 그룹 초대가 바로 자동 거절됩니다.
                                 <a class="text-link" th:href="@{/admin/time-override}">시간 조정</a>
                             </li>
                             <li>
-                                초기화한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 화면</a>에서 재생성하면
+                                초기화한 뒤 <a class="text-link" th:href="@{/admin/matching}">매칭 수동 실행</a>에서 다시 만들면
                                 이 퀴즈셋 참여자 전원(실회원 포함)에게 매칭 결과 알림이 다시 갑니다.
                             </li>
                             <li>정지된 더미는 계속 매칭에서 빠지고, 차단한 사이는 짝이 되지 않습니다.</li>

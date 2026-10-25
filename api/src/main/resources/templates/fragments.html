@@ -47,7 +47,7 @@
        th:text="|시간 조정 중 · ${#temporals.format(timeOverrideAt, 'yyyy-MM-dd HH:mm')}|">시간 조정 중</a>
     <span class="with-info" th:if="${qaToolsEnabled}">
         <span class="badge caution">QA 도구 켜짐</span>
-        <th:block th:replace="~{fragments :: info('info-qa-tools', 'QA 도구', '더미 관리, QA 콘솔, 시간 조정, 퀴즈셋 초기화를 쓸 수 있는 상태입니다. 여기서 한 작업도 실제 DB와 실회원에게 적용됩니다. 실서비스에서는 꺼야 하며, 끄려면 서버 담당자에게 ADMIN_QA_TOOLS_ENABLED 끄기를 요청하세요.')}"></th:block>
+        <th:block th:replace="~{fragments :: info('info-qa-tools', 'QA 도구', '더미 관리, QA 콘솔, 시간 조정, 퀴즈셋 초기화를 쓸 수 있는 상태입니다. 여기서 한 작업은 실제 데이터와 실회원에게 그대로 반영됩니다. 실서비스에서는 꺼야 하며, 끄려면 서버 담당자에게 ADMIN_QA_TOOLS_ENABLED 끄기를 요청하세요.')}"></th:block>
     </span>
     <span class="who" th:if="${admin != null}">
         <strong th:text="${admin.displayName}">관리자</strong> 님

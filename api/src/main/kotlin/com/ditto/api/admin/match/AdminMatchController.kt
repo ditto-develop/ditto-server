@@ -40,7 +40,7 @@ class AdminMatchController(
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
         val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
         matchResultNotifier.notifyFor(quizSetIds)
-        redirectAttributes.addFlashAttribute("message", "자동 매칭을 실행했습니다.")
+        redirectAttributes.addFlashAttribute("message", "정기 매칭을 지금 돌렸습니다.")
         return "redirect:/admin/matching"
     }
 
@@ -58,7 +58,7 @@ class AdminMatchController(
                     matchResultNotifier.notifyFor(listOf(id))
                     redirectAttributes.addFlashAttribute(
                         "message",
-                        "퀴즈셋 #$id 매칭 후보를 재생성했습니다.",
+                        "퀴즈셋 #$id 매칭 후보를 다시 만들었습니다.",
                     )
                     redirectAttributes.addFlashAttribute("regeneration", summary)
                     OneToOneCandidateCounts.of(summary)?.let {
@@ -74,10 +74,10 @@ class AdminMatchController(
     }
 
     private fun regenerationFailedMessage(quizSetId: Long, exception: WarnException): String {
-        val failed = "퀴즈셋 #$quizSetId 매칭 재생성 실패: ${exception.message}"
+        val failed = "퀴즈셋 #$quizSetId 매칭 다시 만들기 실패: ${exception.message}"
         if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
         // 매칭 기록 초기화는 QA 도구라 꺼진 서버에서는 안내할 곳이 없다.
         if (!adminQaToolsProperties.enabled) return failed
-        return "$failed. 퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요."
+        return "$failed. 퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요."
     }
 }

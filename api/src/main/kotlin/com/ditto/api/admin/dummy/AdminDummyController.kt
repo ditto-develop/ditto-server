@@ -23,7 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
  * 더미 생성(서버 렌더링). 선택한 퀴즈셋을 무작위 답으로 끝까지 푼 더미를 남녀 인원수만큼 만든다.
- * 데이터(회원·진행·답변)만 생성하며, 매칭 후보는 '매칭 실행'에서 별도로 재생성한다.
+ * 데이터(회원·진행·답변)만 생성하며, 매칭 후보는 '매칭 수동 실행'에서 따로 만든다.
  */
 @Controller
 class AdminDummyController(

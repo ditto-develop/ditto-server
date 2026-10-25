@@ -28,7 +28,7 @@ class QaToolsSwitchInterceptor(
     }
 
     companion object {
-        // 매칭 실행은 배치가 실패했을 때 손으로 다시 돌리는 운영 수단이라 넣지 않는다.
+        // 매칭 수동 실행은 배치가 실패했을 때 손으로 다시 돌리는 운영 수단이라 넣지 않는다.
         val QA_TOOL_PATHS = listOf(
             "/admin/qa/**",
             "/admin/dummy/**",

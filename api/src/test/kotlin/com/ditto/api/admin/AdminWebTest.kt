@@ -1012,7 +1012,7 @@ class AdminWebTest {
                 .flashAttr("candidateCounts", OneToOneCandidateCounts.of(summary).shouldNotBeNull()),
         )
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("재생성 결과")))
+            .andExpect(content().string(containsString("다시 만든 결과")))
             .andExpect(content().string(containsString("후보 0명인 회원 <b>1</b>명")))
             .andExpect(content().string(containsString("<span class=\"badge cat\">1:1</span>")))
             .andExpect(content().string(containsString("매칭 대상 <b>3</b>명")))
@@ -1031,7 +1031,7 @@ class AdminWebTest {
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
             .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어")))
-            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 [매칭 기록 초기화] 뒤 다시 재생성하세요.")))
+            .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요.")))
             .andExpect(flash().attribute("message", null))
     }
 
