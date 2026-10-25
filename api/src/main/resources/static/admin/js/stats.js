@@ -155,16 +155,18 @@
     };
 
     // 팀원이 관리자 계정으로 실제 참여하면 숫자가 작게 보여서 빠진 인원을 알린다.
-    const renderAdminExcludedNotice = ({ memberStats, quizStats }) => {
+    const renderAdminNotice = ({ memberStats, quizStats, includesAdmins }) => {
         const { adminMemberCount } = memberStats;
         const { adminCompletedCount } = quizStats;
-        const notice = byId('adminExcludedNotice');
+        const notice = byId('adminNotice');
         notice.hidden = adminMemberCount === 0;
         const completedText = adminCompletedCount === 0
             ? ''
             : ` 이 회차에는 그중 ${countText(adminCompletedCount, '명')}이 퀴즈를 끝까지 풀었습니다.`;
-        notice.textContent =
-            `관리자 계정 ${countText(adminMemberCount, '명')}은 지표에서 뺍니다. 단, 채팅과 쌍·그룹 단위로 세는 지표에는 관리자가 낀 방·쌍·그룹도 들어갑니다.${completedText}`;
+        const admins = `관리자 계정 ${countText(adminMemberCount, '명')}`;
+        notice.textContent = includesAdmins
+            ? `${admins}도 지표에 함께 셉니다.${completedText}`
+            : `${admins}은 지표에서 뺍니다. 함께 보려면 필터에서 관리자 계정 포함을 켜세요. 채팅과 쌍·그룹 단위로 세는 지표에는 늘 관리자가 낀 방·쌍·그룹도 들어갑니다.${completedText}`;
     };
 
     const renderMemberSection = (
@@ -707,7 +709,7 @@
         ]);
     };
 
-    renderAdminExcludedNotice(pageData);
+    renderAdminNotice(pageData);
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);

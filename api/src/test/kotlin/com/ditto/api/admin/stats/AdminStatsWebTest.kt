@@ -19,6 +19,7 @@ import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberBlock
+import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
@@ -124,6 +125,32 @@ class AdminStatsWebTest(
                         ),
                     ),
                 )
+        }
+
+        "관리자 계정은 기본으로 빼고, 관리자 계정 포함을 켜면 함께 센다" {
+            quizSetRepository.save(QuizSetFixture.create())
+            memberRepository.save(
+                MemberFixture.create(nickname = "일반회원", status = MemberStatus.ACTIVE, joinedAt = LocalDateTime.of(2026, 4, 7, 10, 0)),
+            )
+            memberRepository.save(
+                MemberFixture.create(
+                    nickname = "관리자회원",
+                    status = MemberStatus.ACTIVE,
+                    role = MemberRole.ADMIN,
+                    joinedAt = LocalDateTime.of(2026, 4, 7, 11, 0),
+                ),
+            )
+
+            mockMvc.perform(get("/admin/stats").param("week", "2026-04-08").with(authentication(admin)))
+                .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":1}""")))
+                .andExpect(content().string(pageJsonContaining(""""includesAdmins":false""")))
+            mockMvc.perform(
+                get("/admin/stats").param("week", "2026-04-08").param("includeAdmins", "true").with(authentication(admin)),
+            )
+                .andExpect(content().string(pageJsonContaining(""""countsByStatus":{"ACTIVE":2}""")))
+                .andExpect(content().string(pageJsonContaining(""""includesAdmins":true""")))
+                .andExpect(content().string(containsString("<b>관리자 포함</b>")))
+                .andExpect(content().string(containsString("name=\"includeAdmins\" value=\"true\" checked=\"checked\"")))
         }
 
         "퀴즈 참여·문항 분포 집계를 페이지 JSON 에 넣는다" {

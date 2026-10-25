@@ -45,6 +45,7 @@ class AdminStatsController(
             memberReportStats = memberReportStatsService.findStats(filter, week, today),
             memberBlockCount = memberBlockStatsService.countBlocks(filter, week, today),
             pushSendHistoryCounts = pushSendStatsService.countHistories(filter, week, today),
+            includesAdmins = filter.includeAdmins,
             quizMatchingTypeLabels = filter.matchingType.quizMatchingTypeLabels(),
             memberReviewMatchTypeLabels = filter.matchingType.memberReviewMatchTypeLabels(),
         )

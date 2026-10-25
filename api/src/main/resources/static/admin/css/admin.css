@@ -385,6 +385,10 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 td.period-cell span { white-space: nowrap; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input { width: auto; }
+/* 운영 지표 필터의 체크박스 칸은 체크박스 폭만 쓰고 옆 입력칸 높이에 맞춘다. */
+.stats-filter .field.stats-include-admins { flex: 0 0 auto; min-width: 0; }
+.stats-include-admins .check { min-height: 41px; }
+.stats-include-admins .check label { margin: 0; font-weight: 500; color: var(--text); }
 .dummy-options { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
 /* .field 안에 놓여도 필드 라벨·입력칸 스타일을 받지 않게 덮는다. */
 .dummy-options .check {
