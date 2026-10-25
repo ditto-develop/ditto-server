@@ -1,6 +1,7 @@
 package com.ditto.api.admin.system
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.admin.qa.dto.QaTimeMoveGuide
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.system.ServerTimeService
 import com.ditto.api.system.SystemStateProvider
@@ -26,8 +27,10 @@ class AdminTimeController(
 ) {
     @GetMapping("/admin/time-override")
     fun page(model: Model): String {
+        val now = serverTimeProvider.now()
         model.addAttribute("override", serverTimeService.getOverride())
-        model.addAttribute("currentTime", serverTimeProvider.now())
+        model.addAttribute("currentTime", now)
+        model.addAttribute("timeMoveGuide", QaTimeMoveGuide.of(now, LocalDateTime.now()))
         model.addAttribute("state", systemStateProvider.current())
         model.addAttribute("active", "time")
         return "time-override"

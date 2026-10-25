@@ -35,8 +35,14 @@
             <div class="card">
                 <h2 class="with-info">시각 설정
                     <th:block th:replace="~{fragments :: info('info-time-override', '시각 설정', '설정한 시각은 흐르지 않고 그 자리에 멈춰 있습니다. 금 00:00(그룹 응답 마감)이나 다음 주 월 00:00(채팅 마감·평가 열림)을 넘기면 1분 안에 마감 처리가 자동으로 돌아 되돌릴 수 없습니다.')}"></th:block></h2>
-                <form th:action="@{/admin/time-override}" method="post" class="field-row" style="align-items:flex-end"
-                      onsubmit="return confirm('서버 시각을 ' + this.dateTime.value.replace('T', ' ') + '(으)로 바꿉니다. 실회원에게도 적용되고, 금 00:00이나 월 00:00을 넘기면 되돌릴 수 없습니다. 계속할까요?');">
+                <form id="timeOverrideForm" th:action="@{/admin/time-override}" method="post" class="field-row" style="align-items:flex-end"
+                      th:attr="data-now=${#temporals.format(timeMoveGuide.now, 'yyyy-MM-dd''T''HH:mm')},
+                               data-group-deadline=${#temporals.format(timeMoveGuide.groupDeadline, 'yyyy-MM-dd''T''HH:mm')},
+                               data-chat-end=${#temporals.format(timeMoveGuide.chatEnd, 'yyyy-MM-dd''T''HH:mm')},
+                               data-back-to-past=${timeMoveGuide.backToPastMessage},
+                               data-past-group-deadline=${timeMoveGuide.groupDeadlineMessage},
+                               data-past-chat-end=${timeMoveGuide.chatEndMessage},
+                               data-irreversible=${timeMoveGuide.irreversibleNotice}">
                     <div class="field" style="flex:1">
                         <label for="dateTime">서버 시각</label>
                         <input type="datetime-local" id="dateTime" name="dateTime" required
@@ -45,12 +51,29 @@
                     <div class="field"><button class="btn" type="submit">이 시각으로 설정</button></div>
                 </form>
                 <hr class="sep"/>
-                <form th:action="@{/admin/time-override/disable}" method="post" class="inline-form">
+                <form th:action="@{/admin/time-override/disable}" method="post" class="inline-form"
+                      th:attr="data-confirm=${timeMoveGuide.disableConfirmMessage}"
+                      onsubmit="return !this.dataset.confirm || confirm(this.dataset.confirm);">
                     <button class="btn secondary" type="submit">시간 조정 끄기</button>
                 </form>
             </div>
         </main>
     </div>
 </div>
+<script>
+    // QA 콘솔의 QaTimeMoveWarning 과 같은 기준이다. 마감을 넘기거나 지난 시점으로 갈 때만 묻는다.
+    document.getElementById('timeOverrideForm').addEventListener('submit', (event) => {
+        const form = event.currentTarget;
+        const { now, groupDeadline, chatEnd } = form.dataset;
+        const target = form.dateTime.value;
+        const crosses = (boundary) => now < boundary && target >= boundary;
+        const warnings = target < now
+            ? [form.dataset.backToPast]
+            : [crosses(groupDeadline) && form.dataset.pastGroupDeadline, crosses(chatEnd) && form.dataset.pastChatEnd].filter(Boolean);
+        if (warnings.length === 0) return;
+        const irreversible = target < now ? [] : [form.dataset.irreversible];
+        if (!window.confirm([...warnings, ...irreversible, '옮길까요?'].join(' '))) event.preventDefault();
+    });
+</script>
 </body>
 </html>

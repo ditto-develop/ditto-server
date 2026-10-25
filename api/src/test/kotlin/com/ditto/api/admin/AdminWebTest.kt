@@ -671,6 +671,11 @@ class AdminWebTest {
             .andExpect(flash().attribute("message", "서버 시각을 맞췄습니다: 2026-06-18 09:00"))
         mockMvc.perform(get("/admin/reports").with(authentication(admin())))
             .andExpect(content().string(containsString("시간 조정 중 · 2026-06-18 09:00")))
+        // 조정 시각이 실제보다 과거라 끄면 마감을 넘겨 앞으로 간다. 끄기에 확인을 붙이고, 직접 고를 때 비교할 경계를 내린다.
+        mockMvc.perform(get("/admin/time-override").with(authentication(admin())))
+            .andExpect(content().string(containsString("data-now=\"2026-06-18T09:00\"")))
+            .andExpect(content().string(containsString("data-group-deadline=\"2026-06-19T00:00\"")))
+            .andExpect(content().string(stringContainsInOrder("data-confirm=\"", "되돌릴 수 없습니다. 끌까요?\"")))
 
         mockMvc.perform(post("/admin/time-override/disable").with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)

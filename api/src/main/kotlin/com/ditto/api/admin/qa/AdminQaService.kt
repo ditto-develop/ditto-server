@@ -30,6 +30,7 @@ import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.system.OperationWeek
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 /** QA 콘솔의 1:1·그룹 응답 화면 조회. 더미가 움직이는 쓰기는 동작별 컨트롤러가 맡는다. */
 @Service
@@ -58,6 +59,7 @@ class AdminQaService(
         return QaConsoleView(
             now = now,
             isTimeOverridden = serverTimeService.getOverride().enabled,
+            disableTimeOverrideConfirmMessage = QaTimeMoveWarning.disableConfirmMessageOf(now, LocalDateTime.now()),
             weekStartedOn = week.startedOn,
             dummyCount = dummyIds.size,
             personal = composePersonalSection(personalQuizSets, dummyIds),

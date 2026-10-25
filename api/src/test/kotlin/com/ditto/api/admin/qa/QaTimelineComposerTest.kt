@@ -9,6 +9,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldEndWith
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -127,6 +128,13 @@ class QaTimelineComposerTest : FreeSpec({
 
             shortcut.confirmMessage.shouldNotBeNull() shouldContain "지난 시점으로 돌아갑니다"
             shortcut.isIrreversible shouldBe false
+        }
+
+        "시간 조정을 끄면 실제 시각으로 옮겨 가는 것과 같아서, 마감을 넘길 때만 끌지 묻는다" {
+            QaTimeMoveWarning.disableConfirmMessageOf(at(1, 12), realNow = at(2, 12)).shouldBeNull()
+            val message = QaTimeMoveWarning.disableConfirmMessageOf(at(3, 12), realNow = at(4, 12)).shouldNotBeNull()
+            message shouldContain "그룹 응답 마감을 넘깁니다"
+            message shouldEndWith "되돌릴 수 없습니다. 끌까요?"
         }
     }
 })

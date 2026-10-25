@@ -34,7 +34,8 @@
                             <button class="btn secondary sm" type="submit" th:classappend="${step.irreversible} ? 'qa-week-irreversible'"
                                     th:text="|${step.label} · ${@qaTime.of(step.dateTime)}|">+1시간 · 10/08(목) 01:01</button>
                         </form>
-                        <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}">
+                        <form class="inline-form" method="post" th:action="@{/admin/qa/server-time/disable}" th:if="${console.timeOverridden}"
+                              th:attr="data-confirm=${console.disableTimeOverrideConfirmMessage}">
                             <button class="btn secondary sm" type="submit">시간 조정 끄기</button>
                         </form>
                         <a th:href="@{/admin/time-override}">직접 설정 →</a>

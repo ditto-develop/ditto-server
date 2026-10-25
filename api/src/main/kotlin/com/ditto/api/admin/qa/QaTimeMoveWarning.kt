@@ -29,11 +29,17 @@ enum class QaTimeMoveWarning(val message: String, val isIrreversible: Boolean) {
             )
         }
 
-        fun confirmMessageOf(warnings: List<QaTimeMoveWarning>): String? {
+        fun confirmMessageOf(warnings: List<QaTimeMoveWarning>, question: String = "옮길까요?"): String? {
             if (warnings.isEmpty()) return null
-            val irreversible = "되돌릴 수 없습니다.".takeIf { warnings.any { it.isIrreversible } }
-            return (warnings.map { it.message } + listOfNotNull(irreversible, "옮길까요?")).joinToString(" ")
+            val irreversible = IRREVERSIBLE_NOTICE.takeIf { warnings.any { it.isIrreversible } }
+            return (warnings.map { it.message } + listOfNotNull(irreversible, question)).joinToString(" ")
         }
+
+        /** 시간 조정을 끄면 실제 시각으로 옮겨 가는 것과 같아서 같은 경고를 쓴다. */
+        fun disableConfirmMessageOf(now: LocalDateTime, realNow: LocalDateTime): String? =
+            confirmMessageOf(of(OperationWeek.containing(now.toLocalDate()), now, realNow), "끌까요?")
+
+        const val IRREVERSIBLE_NOTICE = "되돌릴 수 없습니다."
 
         private fun crosses(now: LocalDateTime, target: LocalDateTime, boundary: LocalDateTime): Boolean =
             now < boundary && target >= boundary

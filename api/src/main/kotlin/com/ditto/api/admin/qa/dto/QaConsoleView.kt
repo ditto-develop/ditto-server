@@ -11,6 +11,7 @@ import java.time.LocalDateTime
 class QaConsoleView(
     val now: LocalDateTime,
     val isTimeOverridden: Boolean,
+    val disableTimeOverrideConfirmMessage: String?,
     val weekStartedOn: LocalDate,
     val dummyCount: Int,
     val personal: QaPersonalSection,
