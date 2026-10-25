@@ -10,4 +10,6 @@ interface FeedbackRepository : JpaRepository<Feedback, Long> {
     fun findAllByStatusOrderByIdDesc(status: FeedbackStatus): List<Feedback>
 
     fun findAllByStatusAndTypeOrderByIdDesc(status: FeedbackStatus, type: FeedbackType): List<Feedback>
+
+    fun countByStatus(status: FeedbackStatus): Long
 }

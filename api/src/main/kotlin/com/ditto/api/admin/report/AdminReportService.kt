@@ -35,6 +35,13 @@ class AdminReportService(
         MemberReportStatus.entries.associateWith { memberReportRepository.countByStatus(it) }
 
     @Transactional(readOnly = true)
+    fun countReceivedReports(): Long = memberReportRepository.countByStatus(MemberReportStatus.RECEIVED)
+
+    @Transactional(readOnly = true)
+    fun countOverdueReports(now: LocalDateTime): Long =
+        memberReportRepository.countByStatusAndCreatedAtBefore(MemberReportStatus.RECEIVED, now.minus(REVIEW_SLA))
+
+    @Transactional(readOnly = true)
     fun listReports(status: MemberReportStatus, now: LocalDateTime): List<ReportListItem> {
         val reports = memberReportRepository.findAllByStatusOrderByCreatedAtAsc(status)
         val nicknames = nicknamesOf(reports.flatMap { listOf(it.reporterId, it.reportedMemberId) })

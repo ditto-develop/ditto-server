@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- 회원 표(재사용). 호출 컨텍스트의 ${roles}, ${q}, ${admin} 을 사용한다. -->
-<div th:fragment="memberTable(rows)" class="tbl-scroll">
+<!-- 회원 표(재사용). 한 화면에 두 번 그려질 수 있어 (i) id 를 받는다. 호출 컨텍스트의 ${roles}, ${q}, ${admin} 을 사용한다. -->
+<div th:fragment="memberTable(rows, roleInfoId)" class="tbl-scroll">
     <table class="tbl">
         <thead>
         <tr><th>ID</th><th>닉네임</th><th>이메일</th><th>상태</th><th>현재 권한</th>
             <th><span class="with-info">권한 바꾸기
-                <th:block th:replace="~{fragments :: info('info-member-role', '권한 바꾸기', '관리자 권한이 있는 계정만 어드민에 로그인할 수 있습니다. 본인 권한은 여기서 바꿀 수 없습니다.')}"></th:block></span></th>
+                <th:block th:replace="~{fragments :: info(${roleInfoId}, '권한 바꾸기', '관리자 권한이 있는 계정만 어드민에 로그인할 수 있습니다. 본인 권한은 여기서 바꿀 수 없습니다.')}"></th:block></span></th>
             <th></th></tr>
         </thead>
         <tbody>

@@ -161,7 +161,7 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("대시보드는 검토 대기 신고 수를 보여 주고, 이번 주 활성 퀴즈셋이 없으면 알린다")
+    @DisplayName("대시보드는 검토 대기 신고와 24시간 지난 건수를 보여 주고, 이번 주 활성 퀴즈셋이 없으면 알린다")
     fun dashboardShowsTodos() {
         val reporter = memberRepository.save(MemberFixture.create(nickname = "대시신고자", status = MemberStatus.ACTIVE))
         val reported = memberRepository.save(MemberFixture.create(nickname = "대시피신고자", status = MemberStatus.ACTIVE))
@@ -171,6 +171,12 @@ class AdminWebTest {
             .andExpect(status().isOk)
             .andExpect(content().string(stringContainsInOrder("검토 대기 신고", "1건", "24시간 지난 건 없음")))
             .andExpect(content().string(containsString("이번 주 활성 퀴즈셋이 없습니다.")))
+
+        // 서버 시각을 하루 넘게 옮기면 같은 신고가 24시간 지난 건으로 잡힌다.
+        val dayLater = LocalDateTime.now().plusHours(25).withSecond(0).withNano(0).toString()
+        mockMvc.perform(post("/admin/time-override").with(authentication(admin())).with(csrf()).param("dateTime", dayLater))
+        mockMvc.perform(get("/admin").with(authentication(admin())))
+            .andExpect(content().string(containsString("24시간 지남 1건")))
     }
 
     @Test
@@ -840,14 +846,14 @@ class AdminWebTest {
 
         mockMvc.perform(
             post("/admin/members/{id}/role", member.id).with(authentication(admin())).with(csrf())
-                .param("role", "ADMIN").param("q", "rolechg").param("email", "role@ditto.pics"),
+                .param("role", "ADMIN").param("q", "rolechg"),
         )
-            .andExpect(redirectedUrl("/admin/members?q=rolechg&email=role%40ditto.pics"))
+            .andExpect(redirectedUrl("/admin/members?q=rolechg"))
             .andExpect(flash().attribute("message", "회원 #${member.id}의 권한을 바꿨습니다: 관리자"))
     }
 
     @Test
-    @DisplayName("현재 관리자 표에서 본인 행은 권한을 바꿀 수 없다")
+    @DisplayName("본인 권한은 화면에서 바꿀 수 없고, 직접 요청해도 거부한다")
     fun memberRoleSelfRowLocked() {
         val me = memberRepository.save(MemberFixture.create(nickname = "본인관리자", email = "me@ditto.pics", role = MemberRole.ADMIN))
         val myAuthentication = UsernamePasswordAuthenticationToken(
@@ -859,6 +865,11 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/members").with(authentication(myAuthentication)))
             .andExpect(content().string(containsString("<span class=\"muted\">본인</span>")))
             .andExpect(content().string(not(containsString("/admin/members/${me.id}/role"))))
+        mockMvc.perform(
+            post("/admin/members/{id}/role", me.id).with(authentication(myAuthentication)).with(csrf()).param("role", "USER"),
+        )
+            .andExpect(flash().attribute("error", "본인 권한은 바꿀 수 없습니다."))
+        memberRepository.findById(me.id).get().role shouldBe MemberRole.ADMIN
     }
 
     @Test

@@ -49,8 +49,9 @@ class AdminMemberService(
     @Transactional(readOnly = true)
     fun listAdmins(): List<Member> = memberRepository.findByRoleOrderByIdAsc(MemberRole.ADMIN)
 
-    /** 회원 권한을 변경한다. */
-    fun changeRole(memberId: Long, role: MemberRole) {
+    /** 본인 권한을 내리면 그 자리에서 어드민에 다시 못 들어오므로 막는다. */
+    fun changeRole(memberId: Long, role: MemberRole, requesterId: Long) {
+        if (memberId == requesterId) throw WarnException(ErrorCode.BAD_REQUEST, "본인 권한은 바꿀 수 없습니다.")
         val member = memberRepository.findById(memberId).orElseThrow { WarnException(ErrorCode.NOT_FOUND, "없는 회원입니다: #$memberId") }
         member.changeRole(role)
     }

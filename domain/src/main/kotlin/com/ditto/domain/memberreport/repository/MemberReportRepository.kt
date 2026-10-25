@@ -31,6 +31,8 @@ interface MemberReportRepository : JpaRepository<MemberReport, Long>, MemberRepo
 
     fun countByStatus(status: MemberReportStatus): Long
 
+    fun countByStatusAndCreatedAtBefore(status: MemberReportStatus, createdAt: LocalDateTime): Long
+
     fun findByReporterIdInOrderByIdDesc(reporterIds: Collection<Long>, limit: Limit): List<MemberReport>
 
     /** 신고자 이력 통계용 — 총 신고 수 */

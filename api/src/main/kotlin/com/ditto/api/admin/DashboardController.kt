@@ -6,8 +6,6 @@ import com.ditto.api.admin.quiz.AdminQuizService
 import com.ditto.api.admin.report.AdminReportService
 import com.ditto.api.system.SystemStateProvider
 import com.ditto.domain.feedback.entity.FeedbackStatus
-import com.ditto.domain.launchnotification.entity.LaunchPlatform
-import com.ditto.domain.memberreport.entity.MemberReportStatus
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,16 +21,14 @@ class DashboardController(
     @GetMapping("/admin")
     fun dashboard(model: Model): String {
         val state = systemStateProvider.current()
-        val receivedReports = adminReportService.listReports(MemberReportStatus.RECEIVED, state.dateTime)
+        val weekQuizSets = adminQuizService.listQuizSetsInWeek(state.weekStartedOn)
         model.addAttribute("state", state)
-        model.addAttribute("receivedReportCount", receivedReports.size)
-        model.addAttribute("overdueReportCount", receivedReports.count { it.overdue })
-        model.addAttribute("receivedFeedbackCount", adminFeedbackService.listFeedbacks(FeedbackStatus.RECEIVED, null).size)
-        model.addAttribute(
-            "pendingLaunchNotificationCount",
-            LaunchPlatform.entries.sumOf { adminLaunchNotificationService.summary(it).pendingCount },
-        )
-        model.addAttribute("weekQuizSets", adminQuizService.listQuizSetsInWeek(state.weekStartedOn))
+        model.addAttribute("receivedReportCount", adminReportService.countReceivedReports())
+        model.addAttribute("overdueReportCount", adminReportService.countOverdueReports(state.dateTime))
+        model.addAttribute("receivedFeedbackCount", adminFeedbackService.countFeedbacks(FeedbackStatus.RECEIVED))
+        model.addAttribute("pendingLaunchNotificationCount", adminLaunchNotificationService.countPendingRequests())
+        model.addAttribute("weekQuizSets", weekQuizSets)
+        model.addAttribute("hasActiveQuizSetThisWeek", weekQuizSets.any { it.isActive })
         model.addAttribute("active", "dashboard")
         return "dashboard"
     }

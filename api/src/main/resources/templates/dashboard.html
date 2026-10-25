@@ -55,10 +55,9 @@
 
             <div class="card">
                 <h2>이번 주 퀴즈셋</h2>
-                <div class="alert error" style="margin-bottom:12px" th:unless="${#lists.contains(weekQuizSets.![isActive], true)}">
+                <div class="alert error dashboard-alert" th:unless="${hasActiveQuizSetThisWeek}">
                     이번 주 활성 퀴즈셋이 없습니다. 회원이 풀 퀴즈가 없으니 퀴즈셋 관리에서 만들고 활성화하세요.
                 </div>
-                <p class="muted" th:if="${weekQuizSets.isEmpty()}" style="margin:0">이번 주 퀴즈셋이 없습니다.</p>
                 <div class="tbl-scroll" th:unless="${weekQuizSets.isEmpty()}">
                     <table class="tbl">
                         <thead><tr><th>제목</th><th>매칭</th><th>상태</th><th></th></tr></thead>

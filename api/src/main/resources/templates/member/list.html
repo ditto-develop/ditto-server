@@ -58,7 +58,7 @@
                 <th:block th:if="${members != null}">
                     <p class="muted" style="margin:0" th:if="${members.isEmpty()}">검색 결과가 없습니다. 이메일 전체를 정확히 입력하세요.</p>
                     <th:block th:unless="${members.isEmpty()}">
-                        <div th:replace="~{member/parts :: memberTable(${members})}"></div>
+                        <div th:replace="~{member/parts :: memberTable(${members}, 'info-member-role-search')}"></div>
                     </th:block>
                 </th:block>
             </div>
@@ -67,7 +67,7 @@
                 <h2>현재 관리자 <span class="badge neutral" th:text="${admins.size()} + '명'">0명</span></h2>
                 <p class="muted" th:if="${admins.isEmpty()}">관리자가 없습니다.</p>
                 <th:block th:unless="${admins.isEmpty()}">
-                    <div th:replace="~{member/parts :: memberTable(${admins})}"></div>
+                    <div th:replace="~{member/parts :: memberTable(${admins}, 'info-member-role-admins')}"></div>
                 </th:block>
             </div>
         </main>

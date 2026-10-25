@@ -30,7 +30,7 @@
   - 그룹: 다른 사람의 수락으로 언제든 성사되고 성사는 수락자 전원으로 방을 만들어서, 막지 않으면 탈퇴자가 그룹 채팅방 멤버가 된다. 마감(금 00:00)이 지나 미성사로 끝난 그룹은 더 성사되지 않으므로 막지 않는다.
 - **애플 계정 삭제·연결 해제 알림은 탈퇴로 반영하되, 진행 중이면 미룬다**(`deferred_leave_reason`). 위의 진행 중 검사는 그대로 두고, 걸리면 세션만 끊고 사유를 남긴다. 스케줄러(`DeferredLeaveScheduler`, 매시 30분)가 회원 행을 잠근 뒤 진행이 끝났는지 다시 보고 그 사유로 탈퇴시킨다. 대기 중 재로그인하면 대기를 푼다. 탈퇴하면 대기 값을 비운다. 대기 중에도 이미 받은 access token 은 만료까지 유효하다. 주기는 `member.deferred-leave.scheduler.cron` 으로 바꿀 수 있다(로컬 확인용). [ADR 0042](../adr/0042-apple-server-notifications-and-token-revoke.md)
 - 탈퇴는 **미성사 재매칭 쌍을 취소한다**(`CANCELLED(MEMBER_LEFT)`). 그대로 두면 남은 한쪽의 제출로 성사돼 탈퇴자와의 채팅방이 열린다. 상세는 [rematch 도메인](rematch.md).
-- TODO: 역할(Role) 부여 규칙.
+- 역할(`MemberRole`)은 어드민 회원 관리에서 바꾼다. 어드민에는 관리자 역할만 로그인하므로 본인 역할은 바꿀 수 없다(`AdminMemberService.changeRole`). 다른 관리자를 일반 회원으로 내리는 것은 막지 않는다.
 
 ## 상태 전이
 

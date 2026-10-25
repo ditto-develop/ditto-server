@@ -92,16 +92,24 @@ class AdminMemberServiceTest : FreeSpec({
         val member = MemberFixture.create(role = MemberRole.USER, id = 1L)
         every { repository.findById(1L) } returns Optional.of(member)
 
-        AdminMemberService(repository).changeRole(1L, MemberRole.ADMIN)
+        AdminMemberService(repository).changeRole(1L, MemberRole.ADMIN, requesterId = 2L)
 
         member.role shouldBe MemberRole.ADMIN
+    }
+
+    "changeRole 은 본인 권한이면 조회 없이 거부한다" {
+        val repository = mockk<MemberRepository>()
+
+        shouldThrow<WarnException> { AdminMemberService(repository).changeRole(1L, MemberRole.USER, requesterId = 1L) }
+
+        verify(exactly = 0) { repository.findById(any()) }
     }
 
     "changeRole 은 없는 회원이면 예외" {
         val repository = mockk<MemberRepository>()
         every { repository.findById(99L) } returns Optional.empty()
 
-        shouldThrow<WarnException> { AdminMemberService(repository).changeRole(99L, MemberRole.ADMIN) }
+        shouldThrow<WarnException> { AdminMemberService(repository).changeRole(99L, MemberRole.ADMIN, requesterId = 1L) }
     }
 
     "listAdmins 는 ADMIN 권한 회원을 조회한다" {
