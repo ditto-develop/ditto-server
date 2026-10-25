@@ -282,8 +282,8 @@ class AdminWebTest {
             .andExpect(content().string(containsString("dummy-female-0001 (#$receiver)")))
             .andExpect(content().string(containsString("/admin/quiz-sets/${quizSet.id}/participants?q=%23$receiver")))
             .andExpect(content().string(containsString("66.7 (2/3)")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">신청함</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">신청 받음</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">신청함</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">신청 받음</span>")))
             .andExpect(content().string(containsString("<span class=\"muted\">퀴즈 미완료</span>")))
             .andExpect(content().string(containsString("→ 퀴즈를 끝까지 풀기")))
     }
@@ -300,8 +300,8 @@ class AdminWebTest {
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
             .andExpect(content().string(containsString("그룹 #${group.id} · 75.0 · 수락 1/3")))
-            .andExpect(content().string(containsString("<span class=\"badge on\">수락</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">대기</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge ok\">수락</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge caution\">대기</span>")))
     }
 
     @Test
@@ -331,7 +331,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/quiz-sets/{id}/participants", quizSet.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">탈퇴</span>")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
     }
 
@@ -387,11 +387,11 @@ class AdminWebTest {
             .andExpect(content().string(containsString(">즉흥적으로<")))
             .andExpect(content().string(containsString(">f3<")))
             .andExpect(content().string(containsString("실회원테스터")))
-            .andExpect(content().string(containsString("<span class=\"badge cat\">실회원</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge on\">완료</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge matching\">진행 중</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge off\">시작 전</span>")))
-            .andExpect(content().string(containsString("<span class=\"badge off\">삭제된 회원</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge info\">실회원</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge ok\">완료</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge info\">진행 중</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">시작 전</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">삭제된 회원</span>")))
             .andExpect(content().string(containsString(">여성<")))
             .andExpect(content().string(containsString(">서울<")))
             .andExpect(content().string(containsString(">디자인<")))
@@ -876,11 +876,11 @@ class AdminWebTest {
     @DisplayName("제재 관리 화면은 회원 상태마다 한글 배지를 보여 준다")
     fun memberStatusBadgeLabels() {
         val expectedBadges = mapOf(
-            MemberStatus.ACTIVE to "<span class=\"badge on\">정상</span>",
-            MemberStatus.PENDING to "<span class=\"badge matching\">가입 미완료</span>",
-            MemberStatus.SUSPENDED to "<span class=\"badge warn\">이용 정지</span>",
-            MemberStatus.BANNED to "<span class=\"badge warn\">영구 차단</span>",
-            MemberStatus.LEFT to "<span class=\"badge matching\">탈퇴</span>",
+            MemberStatus.ACTIVE to "<span class=\"badge ok\">정상</span>",
+            MemberStatus.PENDING to "<span class=\"badge neutral\">가입 미완료</span>",
+            MemberStatus.SUSPENDED to "<span class=\"badge danger\">이용 정지</span>",
+            MemberStatus.BANNED to "<span class=\"badge danger\">영구 차단</span>",
+            MemberStatus.LEFT to "<span class=\"badge neutral\">탈퇴</span>",
         )
 
         expectedBadges.forEach { (memberStatus, badge) ->
@@ -1049,7 +1049,7 @@ class AdminWebTest {
             .andExpect(content().string(containsString(">검토 대기 1</a>")))
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge on\">정상</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge ok\">정상</span>")))
             .andExpect(content().string(containsString("이번이 1차 제재")))
             .andExpect(content().string(not(containsString(">ACTIVE<"))))
             .andExpect(content().string(containsString("<option value=\"\" selected disabled>결정을 고르세요</option>")))
@@ -1065,7 +1065,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/reports/{id}", report.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge matching\">탈퇴</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge neutral\">탈퇴</span>")))
     }
 
     @Test
@@ -1130,7 +1130,7 @@ class AdminWebTest {
 
         mockMvc.perform(get("/admin/members/{id}/sanctions", member.id).with(authentication(admin())))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("<span class=\"badge warn\">이용 정지</span>")))
+            .andExpect(content().string(containsString("<span class=\"badge danger\">이용 정지</span>")))
             .andExpect(content().string(containsString("누적 제재 <strong>1</strong>건")))
     }
 

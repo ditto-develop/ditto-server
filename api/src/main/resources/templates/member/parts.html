@@ -44,11 +44,11 @@
 <!-- 회원 상태 배지(재사용). 회원 행이 지워져 status 가 null 이면 탈퇴로 보여 준다. -->
 <th:block th:fragment="memberStatusBadge(status)">
     <th:block th:switch="${status?.name()}">
-        <span class="badge on" th:case="'ACTIVE'">정상</span>
-        <span class="badge matching" th:case="'PENDING'">가입 미완료</span>
-        <span class="badge warn" th:case="'SUSPENDED'">이용 정지</span>
-        <span class="badge warn" th:case="'BANNED'">영구 차단</span>
-        <span class="badge matching" th:case="*">탈퇴</span>
+        <span class="badge ok" th:case="'ACTIVE'">정상</span>
+        <span class="badge neutral" th:case="'PENDING'">가입 미완료</span>
+        <span class="badge danger" th:case="'SUSPENDED'">이용 정지</span>
+        <span class="badge danger" th:case="'BANNED'">영구 차단</span>
+        <span class="badge neutral" th:case="*">탈퇴</span>
     </th:block>
 </th:block>
 </body>

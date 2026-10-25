@@ -200,11 +200,11 @@
                             <td th:text="${request.receiver.nickname}">홍길동</td>
                             <td th:text="${request.quizSetTitle}">퀴즈셋</td>
                             <td th:switch="${request.status.name()}">
-                                <span class="badge matching" th:case="'PENDING'">대기</span>
-                                <span class="badge on" th:case="'ACCEPTED'">수락됨</span>
-                                <span class="badge off" th:case="'REJECTED'">거절됨</span>
-                                <span class="badge off" th:case="'CANCELLED'">취소됨 (다른 신청 성사)</span>
-                                <span class="badge off" th:case="*" th:text="${request.status}">상태</span>
+                                <span class="badge caution" th:case="'PENDING'">대기</span>
+                                <span class="badge ok" th:case="'ACCEPTED'">수락됨</span>
+                                <span class="badge neutral" th:case="'REJECTED'">거절됨</span>
+                                <span class="badge neutral" th:case="'CANCELLED'">취소됨 (다른 신청 성사)</span>
+                                <span class="badge neutral" th:case="*" th:text="${request.status}">상태</span>
                             </td>
                             <td class="num" th:text="${#temporals.format(request.requestedAt, 'MM/dd HH:mm')}">-</td>
                         </tr>
@@ -259,7 +259,7 @@
                             <b th:text="|그룹 #${group.groupMatchId}|">그룹 #31</b>
                             <span class="muted" th:text="${group.quizSetTitle}">퀴즈셋</span>
                             <span class="muted" th:text="|수락 ${group.acceptedCount} / ${group.requiredCount}|">수락 1 / 3</span>
-                            <span class="badge on" th:if="${group.formed}">성사됨</span>
+                            <span class="badge ok" th:if="${group.formed}">성사됨</span>
                             <a class="btn secondary sm" th:if="${group.chatRoomId != null}"
                                th:href="@{/admin/qa/rooms/{id}(id=${group.chatRoomId})}">방 열기</a>
                         </div>
@@ -277,13 +277,13 @@
                                 <td>
                                     <a class="member-search-link" th:href="@{/admin/members/{id}/quizzes(id=${groupMember.member.id})}"
                                        th:text="${groupMember.member.nickname}" title="회원별 퀴즈 현황">홍길동</a>
-                                    <span class="badge cat" th:unless="${groupMember.dummy}">실회원</span>
+                                    <span class="badge info" th:unless="${groupMember.dummy}">실회원</span>
                                     <span th:replace="~{qa/parts :: unavailabilityWithSanctionLink(${groupMember.member})}"></span>
                                 </td>
                                 <td th:switch="${groupMember.status.name()}">
-                                    <span class="badge on" th:case="'ACCEPTED'">수락</span>
-                                    <span class="badge matching" th:case="'PENDING'">대기</span>
-                                    <span class="badge off" th:case="*">거절</span>
+                                    <span class="badge ok" th:case="'ACCEPTED'">수락</span>
+                                    <span class="badge caution" th:case="'PENDING'">대기</span>
+                                    <span class="badge neutral" th:case="*">거절</span>
                                 </td>
                                 <td class="actions">
                                     <th:block th:if="${groupMember.dummy and groupMember.pending}">

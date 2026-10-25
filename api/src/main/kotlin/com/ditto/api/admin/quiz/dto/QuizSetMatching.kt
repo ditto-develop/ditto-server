@@ -98,11 +98,11 @@ class OutsideRequest(
     }
 }
 
-/** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 on, 대기는 matching, 끝난 것은 off. */
+/** 어드민 화면 배지. 다른 어드민 화면과 같은 뜻으로 쓴다: 성사·수락은 ok, 대기는 caution, 끝난 것은 neutral. */
 enum class BadgeTone(val cssClass: String) {
-    POSITIVE("badge on"),
-    PENDING("badge matching"),
-    CLOSED("badge off"),
+    POSITIVE("badge ok"),
+    PENDING("badge caution"),
+    CLOSED("badge neutral"),
 }
 
 enum class PersonalRequestState(val label: String, val tone: BadgeTone) {
@@ -184,7 +184,7 @@ enum class GroupResponse(val label: String, val tone: BadgeTone) {
 enum class MissEmphasis(val cssClass: String) {
     EXPECTED("muted"),
     NORMAL(""),
-    ACTION_NEEDED("badge matching"),
+    ACTION_NEEDED("badge caution"),
 }
 
 /**

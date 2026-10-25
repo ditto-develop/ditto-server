@@ -11,7 +11,7 @@
             <h1 class="page-title">
                 의견 #<span th:text="${feedback.id}">0</span>
                 <span class="badge cat" th:text="${feedback.typeDescription}">유형</span>
-                <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'matching' : 'on'" th:text="${feedback.statusDescription}">상태</span>
+                <span class="badge" th:classappend="${feedback.awaitingCompletion} ? 'caution' : 'ok'" th:text="${feedback.statusDescription}">상태</span>
             </h1>
             <p class="page-desc" style="word-break:keep-all">
                 보낸 회원:

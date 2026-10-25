@@ -39,14 +39,14 @@
 </th:block>
 
 <th:block th:fragment="rematchStatus(pair)" th:switch="${pair.outcome?.name()}">
-    <span class="badge on" th:case="'MATCHED'">성사</span>
-    <span class="badge off" th:case="'NOT_MUTUAL'">불성사</span>
-    <span class="badge off" th:case="'CANCELLED_BY_MEMBER_LEAVE'">탈퇴로 취소</span>
-    <span class="badge matching" th:case="*">대기</span>
+    <span class="badge ok" th:case="'MATCHED'">성사</span>
+    <span class="badge neutral" th:case="'NOT_MUTUAL'">불성사</span>
+    <span class="badge neutral" th:case="'CANCELLED_BY_MEMBER_LEAVE'">탈퇴로 취소</span>
+    <span class="badge caution" th:case="*">대기</span>
 </th:block>
 
 <th:block th:fragment="unavailabilityBadge(member)">
-    <span class="badge" th:if="${member.unavailable}" th:classappend="${member.sanctioned} ? 'warn' : 'off'"
+    <span class="badge" th:if="${member.unavailable}" th:classappend="${member.sanctioned} ? 'danger' : 'neutral'"
           th:text="${member.unavailability.text}">이용 정지 ~10/21(화) 14:00</span>
 </th:block>
 
@@ -59,21 +59,21 @@
 
 <th:block th:fragment="currentAvailability(member)">
     <span th:replace="~{qa/parts :: unavailabilityBadge(${member})}"></span>
-    <span class="badge off" th:if="${!member.unavailable and member.suspensionOverdue}">정지 기간 지남(로그인하면 풀림)</span>
-    <span class="badge off" th:if="${!member.unavailable and !member.suspensionOverdue}">정상</span>
+    <span class="badge neutral" th:if="${!member.unavailable and member.suspensionOverdue}">정지 기간 지남(로그인하면 풀림)</span>
+    <span class="badge neutral" th:if="${!member.unavailable and !member.suspensionOverdue}">정상</span>
 </th:block>
 
 <th:block th:fragment="reportStatus(status)" th:switch="${status.name()}">
-    <span class="badge matching" th:case="'RECEIVED'" th:text="${status.description}">검토 대기</span>
-    <span class="badge cat" th:case="'ACTIONED'" th:text="${status.description}">제재 적용</span>
-    <span class="badge warn" th:case="'REJECTED_ABUSIVE'" th:text="${status.description}">허위 신고로 기각</span>
-    <span class="badge off" th:case="*" th:text="${status.description}">기각</span>
+    <span class="badge caution" th:case="'RECEIVED'" th:text="${status.description}">검토 대기</span>
+    <span class="badge danger" th:case="'ACTIONED'" th:text="${status.description}">제재 적용</span>
+    <span class="badge danger" th:case="'REJECTED_ABUSIVE'" th:text="${status.description}">허위 신고로 기각</span>
+    <span class="badge neutral" th:case="*" th:text="${status.description}">기각</span>
 </th:block>
 
 <th:block th:fragment="roomStatus(status)" th:switch="${status.name()}">
-    <span class="badge matching" th:case="'SCHEDULED'">열리기 전</span>
-    <span class="badge on" th:case="'ACTIVE'">진행 중</span>
-    <span class="badge off" th:case="*">종료</span>
+    <span class="badge info" th:case="'SCHEDULED'">열리기 전</span>
+    <span class="badge ok" th:case="'ACTIVE'">진행 중</span>
+    <span class="badge neutral" th:case="*">종료</span>
 </th:block>
 
 </body>

@@ -131,13 +131,10 @@ a.card.todo:hover { border-color: var(--primary); }
     font-weight: 700;
     white-space: nowrap;
 }
-.badge.on { background: rgba(34, 176, 125, 0.13); color: var(--success); }
-.badge.off { background: rgba(154, 160, 180, 0.16); color: var(--text-muted); }
 .badge.quiz, .qa-week-period.quiz_period { background: rgba(58, 134, 255, 0.13); color: var(--blue); }
 .badge.matching, .qa-week-period.matching_period { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
 .badge.chatting, .qa-week-period.chatting_period { background: rgba(34, 176, 125, 0.13); color: var(--success); }
 .badge.cat { background: rgba(108, 92, 231, 0.1); color: var(--primary); }
-.badge.warn { background: rgba(232, 90, 107, 0.12); color: var(--danger); }
 .badge.locked { background: rgba(224, 161, 6, 0.15); color: var(--warning); }
 /* 상태 배지는 뜻으로 색을 고른다. 기간 배지(quiz·matching·chatting)와 섞어 쓰지 않는다. */
 .badge.ok { background: rgba(34, 176, 125, 0.13); color: var(--success); }

@@ -42,7 +42,7 @@
                             <td>
                                 <a class="text-link" th:href="@{/admin/quiz-sets/{id}(id=${quizSet.id})}" th:text="${quizSet.title}">제목</a>
                                 <span class="muted" th:text="${@matchingTypeLabel.of(quizSet.matchingType)}">1:1</span>
-                                <span class="badge off" th:unless="${quizSet.isActive}">비활성</span>
+                                <span class="badge neutral" th:unless="${quizSet.isActive}">비활성</span>
                                 <div th:if="${progress != null}">
                                     <a class="text-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSet.id},q=|#${member.memberId}|)}"
                                        th:aria-label="|${quizSet.title} 참여 현황에서 보기|">참여 현황에서 보기</a>
@@ -52,9 +52,9 @@
                                 <span th:if="${progress == null}">참여 안 함</span>
                                 <th:block th:unless="${progress == null}">
                                     <th:block th:switch="${progress.status.name()}">
-                                        <span class="badge on" th:case="'COMPLETED'">완료</span>
-                                        <span class="badge matching" th:case="'IN_PROGRESS'">진행 중</span>
-                                        <span class="badge off" th:case="*">시작 전</span>
+                                        <span class="badge ok" th:case="'COMPLETED'">완료</span>
+                                        <span class="badge info" th:case="'IN_PROGRESS'">진행 중</span>
+                                        <span class="badge neutral" th:case="*">시작 전</span>
                                     </th:block>
                                     <span class="num" th:text="|${progress.answeredCount}/${progress.totalCount}|">3/3</span>
                                     <div class="muted" th:switch="${progress.preferredGender.name()}">

@@ -119,7 +119,7 @@
 
             <!-- 검토 결과 (종결 건) -->
             <div class="card" th:if="${report.review != null}">
-                <h2>검토 결과 <span class="badge cat" th:text="${report.review.statusDescription}">결과</span></h2>
+                <h2>검토 결과 <span class="badge neutral" th:text="${report.review.statusDescription}">결과</span></h2>
                 <p class="muted">
                     검토자: <span th:text="${report.review.reviewerName}">이름</span> ·
                     <span th:text="${#temporals.format(report.review.reviewedAt, 'yyyy-MM-dd HH:mm')}">일시</span>
