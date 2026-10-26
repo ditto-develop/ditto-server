@@ -27,6 +27,7 @@ enum class ErrorCode(
     INVALID_CHOICE(400, "4002", "이 퀴즈에 없는 선택지입니다."),
     QUIZ_ALREADY_COMPLETED(400, "4003", "이미 완료된 퀴즈는 수정할 수 없습니다."),
     QUIZ_NOT_AVAILABLE_DAY(400, "4004", "퀴즈에 참여할 수 있는 요일이 아닙니다."),
+    QUIZ_OTHER_TYPE_ALREADY_COMPLETED(409, "4005", "이번 주에는 이미 다른 유형의 퀴즈를 완료했습니다."),
     CANNOT_REQUEST_SELF(400, "5001", "자기 자신에게는 매칭 신청할 수 없습니다."),
     MATCH_REQUEST_ALREADY_EXISTS(409, "5002", "두 사람 사이에 이미 매칭 신청이 있습니다."),
     ALREADY_MATCHED(409, "5003", "이미 매칭된 상태입니다."),

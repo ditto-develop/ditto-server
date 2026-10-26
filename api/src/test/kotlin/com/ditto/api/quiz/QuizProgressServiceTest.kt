@@ -10,6 +10,7 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
@@ -228,6 +229,82 @@ class QuizProgressServiceTest(
 
     }
 
+    "한 주에는 한 유형만 완주" - {
+        fun setupQuizSet(matchingType: MatchingType, quizCount: Int): List<QuizWithChoice> {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = now.minusDays(1),
+                    endDate = now.plusDays(1),
+                    matchingType = matchingType,
+                ),
+            )
+            return (1..quizCount).map { order ->
+                val quiz = quizRepository.save(
+                    QuizFixture.create(quizSetId = quizSet.id, question = "질문$order", displayOrder = order),
+                )
+                val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+                QuizWithChoice(quizId = quiz.id, choiceId = choice.id)
+            }
+        }
+
+        fun submit(memberId: Long, quizWithChoice: QuizWithChoice) {
+            val request = SubmitAnswerRequest(quizWithChoice.quizId, quizWithChoice.choiceId)
+            quizProgressService.submitAnswer(memberId, request, now)
+        }
+
+        "다른 유형을 완주했으면 답을 낼 수 없다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 1)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 1)
+            submit(memberId, oneToOneQuizzes[0])
+
+            val exception = shouldThrow<WarnException> { submit(memberId, groupQuizzes[0]) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+        }
+
+        "다른 유형을 풀다 말고 새 유형에 답하면 풀던 답과 진행이 지워진다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, oneToOneQuizzes[0].quizId) shouldBe null
+            quizProgressRepository.findByMemberId(memberId).size shouldBe 1
+            val result = quizProgressService.getProgress(memberId, now)
+            result.status shouldBe QuizProgressStatus.IN_PROGRESS
+            result.answeredQuizzes shouldBe 1
+        }
+
+        "갈아탄 유형을 그대로 완주할 수 있다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+            submit(memberId, groupQuizzes[1])
+
+            quizProgressService.getProgress(memberId, now).status shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "다른 회원의 진행은 지우지 않는다" {
+            val memberId = setupMember("갈아타는유저")
+            val otherMemberId = setupMember("다른유저")
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(otherMemberId, oneToOneQuizzes[0])
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+
+            quizAnswerRepository.findByMemberIdAndQuizId(otherMemberId, oneToOneQuizzes[0].quizId) shouldNotBe null
+            quizProgressRepository.findByMemberId(otherMemberId).size shouldBe 1
+        }
+    }
+
     "퀴즈 진행률 조회" - {
         "퀴즈를 풀지 않았으면 NOT_STARTED를 반환한다" {
             val memberId = setupMember()
@@ -421,3 +498,5 @@ class QuizProgressServiceTest(
         }
     }
 })
+
+private data class QuizWithChoice(val quizId: Long, val choiceId: Long)

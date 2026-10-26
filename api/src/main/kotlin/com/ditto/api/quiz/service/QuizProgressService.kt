@@ -51,6 +51,9 @@ class QuizProgressService(
         validateActiveQuizSet(quiz.quizSetId, now)
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
+        val otherTypeProgresses = findOtherTypeProgressesThisWeek(memberId, quiz.quizSetId, now)
+        validateNoOtherTypeCompleted(otherTypeProgresses)
+        discardOtherTypeProgresses(memberId, otherTypeProgresses)
 
         val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
 
@@ -108,13 +111,11 @@ class QuizProgressService(
         memberId: Long,
         quizSets: List<QuizSet>,
     ): QuizProgress? {
-        val progresses =
-            quizSets
-                .map { it.id }
-                .let { quizSetIds -> quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, quizSetIds) }
+        val quizSetIds = quizSets.map { it.id }
+        val progresses = quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, quizSetIds)
 
         if (progresses.size > 1) {
-            log.error { "한 주에 여러 퀴즈셋에 참여한 사용자 발견: memberId=$memberId, quizSetIds=quizSetIds" }
+            log.error { "한 주에 여러 퀴즈셋에 참여한 사용자 발견: memberId=$memberId, quizSetIds=$quizSetIds" }
             throw ErrorException(ErrorCode.INTERNAL_ERROR)
         }
 
@@ -212,6 +213,37 @@ class QuizProgressService(
         if (progress?.status == QuizProgressStatus.COMPLETED) {
             throw ErrorException(ErrorCode.QUIZ_ALREADY_COMPLETED)
         }
+    }
+
+    // 주차·유형당 활성 셋이 하나라, 다른 활성 셋은 곧 다른 유형이다.
+    private fun findOtherTypeProgressesThisWeek(
+        memberId: Long,
+        quizSetId: Long,
+        now: LocalDateTime,
+    ): List<QuizProgress> {
+        val otherQuizSetIds = quizSetRepository.findCurrentWeekActive(now).map { it.id } - quizSetId
+        if (otherQuizSetIds.isEmpty()) return emptyList()
+
+        return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
+    }
+
+    private fun validateNoOtherTypeCompleted(otherTypeProgresses: List<QuizProgress>) {
+        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
+            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
+        }
+    }
+
+    // 한 주에는 한 유형만 푼다. 다른 유형을 풀다 말았으면 그 답을 지우고 이 유형으로 갈아탄다.
+    private fun discardOtherTypeProgresses(
+        memberId: Long,
+        otherTypeProgresses: List<QuizProgress>,
+    ) {
+        if (otherTypeProgresses.isEmpty()) return
+
+        val quizSetIds = otherTypeProgresses.map { it.quizSetId }
+        val quizIds = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(quizSetIds).map { it.id }
+        quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, quizIds)
+        quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, quizSetIds)
     }
 
     private fun validateChoice(
