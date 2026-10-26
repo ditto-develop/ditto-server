@@ -230,7 +230,7 @@ class QuizProgressServiceTest(
     }
 
     "한 주에는 한 유형만 완주" - {
-        fun setupQuizSet(matchingType: MatchingType, quizCount: Int): List<Pair<Long, Long>> {
+        fun setupQuizSet(matchingType: MatchingType, quizCount: Int): List<QuizWithChoice> {
             val quizSet = quizSetRepository.save(
                 QuizSetFixture.create(
                     startDate = now.minusDays(1),
@@ -243,13 +243,13 @@ class QuizProgressServiceTest(
                     QuizFixture.create(quizSetId = quizSet.id, question = "질문$order", displayOrder = order),
                 )
                 val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
-                quiz.id to choice.id
+                QuizWithChoice(quizId = quiz.id, choiceId = choice.id)
             }
         }
 
-        fun submit(memberId: Long, quizAndChoice: Pair<Long, Long>) {
-            val (quizId, choiceId) = quizAndChoice
-            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), now)
+        fun submit(memberId: Long, quizWithChoice: QuizWithChoice) {
+            val request = SubmitAnswerRequest(quizWithChoice.quizId, quizWithChoice.choiceId)
+            quizProgressService.submitAnswer(memberId, request, now)
         }
 
         "다른 유형을 완주했으면 답을 낼 수 없다" {
@@ -271,7 +271,7 @@ class QuizProgressServiceTest(
 
             submit(memberId, groupQuizzes[0])
 
-            quizAnswerRepository.findByMemberIdAndQuizId(memberId, oneToOneQuizzes[0].first) shouldBe null
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, oneToOneQuizzes[0].quizId) shouldBe null
             quizProgressRepository.findByMemberId(memberId).size shouldBe 1
             val result = quizProgressService.getProgress(memberId, now)
             result.status shouldBe QuizProgressStatus.IN_PROGRESS
@@ -300,7 +300,7 @@ class QuizProgressServiceTest(
 
             submit(memberId, groupQuizzes[0])
 
-            quizAnswerRepository.findByMemberIdAndQuizId(otherMemberId, oneToOneQuizzes[0].first) shouldNotBe null
+            quizAnswerRepository.findByMemberIdAndQuizId(otherMemberId, oneToOneQuizzes[0].quizId) shouldNotBe null
             quizProgressRepository.findByMemberId(otherMemberId).size shouldBe 1
         }
     }
@@ -498,3 +498,5 @@ class QuizProgressServiceTest(
         }
     }
 })
+
+private data class QuizWithChoice(val quizId: Long, val choiceId: Long)

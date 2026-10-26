@@ -215,7 +215,7 @@ class QuizProgressService(
         }
     }
 
-    // 활성 셋은 주차·유형당 하나라 이번 주 다른 활성 셋이 곧 다른 유형 셋이다.
+    // 주차·유형당 활성 셋이 하나라, 다른 활성 셋은 곧 다른 유형이다.
     private fun findOtherTypeProgressesThisWeek(
         memberId: Long,
         quizSetId: Long,

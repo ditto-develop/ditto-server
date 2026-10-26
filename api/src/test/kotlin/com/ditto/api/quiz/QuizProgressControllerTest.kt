@@ -64,9 +64,7 @@ class QuizProgressControllerTest : ControllerUnitTest() {
                             .summary("퀴즈 답안 제출")
                             .description(
                                 "퀴즈에 대한 답안을 제출합니다. 이미 답변한 퀴즈에 재제출하면 선택지가 업데이트됩니다. " +
-                                    "한 주에는 1:1·그룹 중 한 유형만 완료할 수 있어, 이번 주에 다른 유형을 완료했으면 " +
-                                    "4005(QUIZ_OTHER_TYPE_ALREADY_COMPLETED)로 거부합니다. " +
-                                    "다른 유형을 풀다 만 상태에서 이 유형에 답하면, 풀던 다른 유형의 답과 진행은 지워집니다.",
+                                    "이번 주에 다른 유형을 완료했으면 4005로 거부하고, 풀다 만 상태면 그 유형의 답과 진행을 지웁니다.",
                             )
                             .requestFields(
                                 fieldWithPath("quizId").description("퀴즈 ID"),
