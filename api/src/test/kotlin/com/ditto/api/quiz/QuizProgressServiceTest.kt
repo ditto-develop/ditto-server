@@ -10,6 +10,7 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
@@ -226,6 +227,41 @@ class QuizProgressServiceTest(
             exception.errorCode shouldBe ErrorCode.INVALID_CHOICE
         }
 
+    }
+
+    "한 주에는 한 유형만 완주" - {
+        fun setupQuizSet(matchingType: MatchingType, quizCount: Int): List<Pair<Long, Long>> {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = now.minusDays(1),
+                    endDate = now.plusDays(1),
+                    matchingType = matchingType,
+                ),
+            )
+            return (1..quizCount).map { order ->
+                val quiz = quizRepository.save(
+                    QuizFixture.create(quizSetId = quizSet.id, question = "질문$order", displayOrder = order),
+                )
+                val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+                quiz.id to choice.id
+            }
+        }
+
+        fun submit(memberId: Long, quizAndChoice: Pair<Long, Long>) {
+            val (quizId, choiceId) = quizAndChoice
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizId, choiceId), now)
+        }
+
+        "다른 유형을 완주했으면 답을 낼 수 없다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 1)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 1)
+            submit(memberId, oneToOneQuizzes[0])
+
+            val exception = shouldThrow<WarnException> { submit(memberId, groupQuizzes[0]) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+        }
     }
 
     "퀴즈 진행률 조회" - {

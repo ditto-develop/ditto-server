@@ -51,6 +51,8 @@ class QuizProgressService(
         validateActiveQuizSet(quiz.quizSetId, now)
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
+        val otherTypeProgresses = findOtherTypeProgressesThisWeek(memberId, quiz.quizSetId, now)
+        validateNoOtherTypeCompleted(otherTypeProgresses)
 
         val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
 
@@ -211,6 +213,24 @@ class QuizProgressService(
         val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
         if (progress?.status == QuizProgressStatus.COMPLETED) {
             throw ErrorException(ErrorCode.QUIZ_ALREADY_COMPLETED)
+        }
+    }
+
+    // 활성 셋은 주차·유형당 하나라 이번 주 다른 활성 셋이 곧 다른 유형 셋이다.
+    private fun findOtherTypeProgressesThisWeek(
+        memberId: Long,
+        quizSetId: Long,
+        now: LocalDateTime,
+    ): List<QuizProgress> {
+        val otherQuizSetIds = quizSetRepository.findCurrentWeekActive(now).map { it.id } - quizSetId
+        if (otherQuizSetIds.isEmpty()) return emptyList()
+
+        return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
+    }
+
+    private fun validateNoOtherTypeCompleted(otherTypeProgresses: List<QuizProgress>) {
+        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
+            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
         }
     }
 

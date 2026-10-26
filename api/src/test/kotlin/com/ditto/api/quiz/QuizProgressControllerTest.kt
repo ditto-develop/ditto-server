@@ -10,6 +10,7 @@ import com.ditto.api.support.ControllerUnitTest
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
@@ -61,7 +62,11 @@ class QuizProgressControllerTest : ControllerUnitTest() {
                         ResourceSnippetParameters.builder()
                             .tag("QuizProgress")
                             .summary("퀴즈 답안 제출")
-                            .description("퀴즈에 대한 답안을 제출합니다. 이미 답변한 퀴즈에 재제출하면 선택지가 업데이트됩니다.")
+                            .description(
+                                "퀴즈에 대한 답안을 제출합니다. 이미 답변한 퀴즈에 재제출하면 선택지가 업데이트됩니다. " +
+                                    "한 주에는 1:1·그룹 중 한 유형만 완료할 수 있어, 이번 주에 다른 유형을 완료했으면 " +
+                                    "4005(QUIZ_OTHER_TYPE_ALREADY_COMPLETED)로 거부합니다.",
+                            )
                             .requestFields(
                                 fieldWithPath("quizId").description("퀴즈 ID"),
                                 fieldWithPath("choiceId").description("선택한 선택지 ID"),
@@ -231,6 +236,23 @@ class QuizProgressControllerTest : ControllerUnitTest() {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(false))
             .andExpect(jsonPath("$.error.code").value("4002"))
+    }
+
+    @Test
+    @DisplayName("이번 주에 다른 유형 퀴즈를 완료했으면 답안 제출에 에러를 반환한다")
+    fun submitAnswerOtherTypeAlreadyCompleted() {
+        every { quizProgressService.submitAnswer(any(), any(), any()) } throws
+            WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
+        val request = mapOf("quizId" to 1L, "choiceId" to 2L)
+
+        mockMvc.perform(
+            post("/api/v1/quiz-progress/answers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("4005"))
     }
 
     @Test
