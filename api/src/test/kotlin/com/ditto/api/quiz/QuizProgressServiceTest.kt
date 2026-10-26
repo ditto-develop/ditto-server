@@ -262,6 +262,47 @@ class QuizProgressServiceTest(
 
             exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
         }
+
+        "다른 유형을 풀다 말고 새 유형에 답하면 풀던 답과 진행이 지워진다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, oneToOneQuizzes[0].first) shouldBe null
+            quizProgressRepository.findByMemberId(memberId).size shouldBe 1
+            val result = quizProgressService.getProgress(memberId, now)
+            result.status shouldBe QuizProgressStatus.IN_PROGRESS
+            result.answeredQuizzes shouldBe 1
+        }
+
+        "갈아탄 유형을 그대로 완주할 수 있다" {
+            val memberId = setupMember()
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+            submit(memberId, groupQuizzes[1])
+
+            quizProgressService.getProgress(memberId, now).status shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "다른 회원의 진행은 지우지 않는다" {
+            val memberId = setupMember("갈아타는유저")
+            val otherMemberId = setupMember("다른유저")
+            val oneToOneQuizzes = setupQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            val groupQuizzes = setupQuizSet(MatchingType.GROUP, quizCount = 2)
+            submit(otherMemberId, oneToOneQuizzes[0])
+            submit(memberId, oneToOneQuizzes[0])
+
+            submit(memberId, groupQuizzes[0])
+
+            quizAnswerRepository.findByMemberIdAndQuizId(otherMemberId, oneToOneQuizzes[0].first) shouldNotBe null
+            quizProgressRepository.findByMemberId(otherMemberId).size shouldBe 1
+        }
     }
 
     "퀴즈 진행률 조회" - {
