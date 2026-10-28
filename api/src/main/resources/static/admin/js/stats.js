@@ -91,6 +91,70 @@
         byId(`${sectionName}SectionBody`).hidden = !hasData;
     };
 
+    // 서버는 일시를 'yyyy-MM-dd HH:mm:ss' 로 준다.
+    const shortDateTime = (dateTime) => `${shortDate(dateTime)} ${dateTime.slice(11, 16)}`;
+
+    const renderSignupDropoutSection = ({ signupDropoutStats }) => {
+        const dropouts = StatsCalc.signupDropoutSummary(signupDropoutStats);
+        byId('signupDropoutBasis').textContent =
+            `관리자·더미 제외 · 가입 이탈은 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간 안에 마치지 않은 회원`;
+        showSectionIfAny('signupDropout', dropouts.startedCount > 0);
+        if (dropouts.startedCount === 0) return;
+
+        renderSignupDropoutTotals(dropouts);
+        renderSignupDropoutMembers(dropouts);
+        renderQuizBlockedMembers(signupDropoutStats);
+    };
+
+    const renderSignupDropoutTotals = (dropouts) => {
+        byId('signupDropoutCount').textContent = countText(dropouts.dropoutCount, '명');
+        byId('signupDropoutCountBasis').textContent =
+            `가입 시작 ${countText(dropouts.startedCount, '명')} 중 `
+            + `${StatsCalc.percentText(dropouts.dropoutCount, dropouts.startedCount)} · `
+            + `최근 ${dropouts.recentDays}일 ${countText(dropouts.recentDropoutCount, '명')}`;
+        fillShares('signupDropoutStageShares', dropouts.stageCounts, { className: 'share-row wide-label-row' });
+        fillRows('signupDropoutProviderRows', dropouts.providerRows, (row) => [
+            cell(row.label),
+            countCell(row.dropoutCount),
+            countCell(row.startedCount),
+            rateCell(row.dropoutCount, row.startedCount),
+        ]);
+    };
+
+    const renderSignupDropoutMembers = ({ dropoutCount, rows }) => {
+        byId('signupDropoutMembersTitle').textContent = `가입 이탈 회원 · ${countText(dropoutCount, '명')}`;
+        byId('signupDropoutMembersEmpty').hidden = rows.length > 0;
+        byId('signupDropoutMembersTable').hidden = rows.length === 0;
+        fillRows('signupDropoutMembersRows', rows, (row) => [
+            // 가입 중인 회원의 닉네임은 임시값이라 내리지 않고 id 로 회원 검색에 건다.
+            memberLinkCell({ memberId: row.memberId, nickname: `#${row.memberId}` }),
+            cell(shortDateTime(row.signupStartedAt)),
+            cell(row.socialProviderLabel),
+            cell(row.hasPushDevice ? '있음' : '없음', row.hasPushDevice ? '' : 'empty'),
+            cell(row.stageLabel),
+        ]);
+    };
+
+    const renderQuizBlockedMembers = ({ quizBlockedMembers, activeStatusMemberCount, minIntroNoteCountForQuiz }) => {
+        byId('quizBlockedCount').textContent = countText(quizBlockedMembers.length, '명');
+        byId('quizBlockedCountBasis').textContent =
+            `이용 중인 회원 ${countText(activeStatusMemberCount, '명')} 중 `
+            + `${StatsCalc.percentText(quizBlockedMembers.length, activeStatusMemberCount)} · `
+            + `소개노트 ${minIntroNoteCountForQuiz}개 미만`;
+
+        byId('quizBlockedMembersTitle').textContent =
+            `가입했지만 퀴즈를 못 하는 회원 · ${countText(quizBlockedMembers.length, '명')}`;
+        byId('quizBlockedMembersEmpty').hidden = quizBlockedMembers.length > 0;
+        byId('quizBlockedMembersTable').hidden = quizBlockedMembers.length === 0;
+        fillRows('quizBlockedMembersRows', quizBlockedMembers, (blockedMember) => [
+            memberLinkCell(blockedMember),
+            cell(blockedMember.joinedAt ? shortDateTime(blockedMember.joinedAt) : '-'),
+            cell(blockedMember.hasStartedQuiz ? '시작함' : '안 함', blockedMember.hasStartedQuiz ? '' : 'empty'),
+            memberIdCell(blockedMember),
+            countCell(blockedMember.introNoteCount),
+        ]);
+    };
+
     const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
         const pendingBasis = byId('memberJoinedCountBasis');
@@ -676,26 +740,34 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
-    // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
-    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
-        if (activeMemberCount === 0) {
-            byId('pushDeviceRate').textContent = '활성 회원 없음';
-            byId('pushDeviceRateBasis').textContent = '';
-            return;
-        }
-        fillRateCard('pushDeviceRate', {
-            part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
-        });
+    const renderPushDeviceMissing = (pushDeviceCoverage) => {
+        const missingCount = StatsCalc.membersWithoutPushDevice(pushDeviceCoverage);
+        const { memberCount } = pushDeviceCoverage;
+        byId('pushDeviceMissingCount').textContent = countText(missingCount, '명');
+        byId('pushDeviceMissingCountBasis').textContent = memberCount === 0
+            ? '이용 중인 회원 0명'
+            : `이용 중인 회원 ${countText(memberCount, '명')} 중 ${StatsCalc.percentText(missingCount, memberCount)}`;
     };
 
-    const renderPushSendSection = ({ quizStats, pushSendHistoryCounts, pushSkipReasonLabels }) => {
+    // 퀴즈를 하는 회원 기준 등록률은 보조 줄이다.
+    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
+        if (activeMemberCount === 0) {
+            byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 0명';
+            return;
+        }
+        const rate = StatsCalc.percentText(activeMemberWithPushDeviceCount, activeMemberCount);
+        byId('pushDeviceRateBasis').textContent =
+            `최근 4회차 활성 회원 ${countText(activeMemberCount, '명')} 중 기기 있음 ${rate}`;
+    };
+
+    const renderPushSendSection = (pageData) => {
+        const { quizStats, pushDeviceCoverage, pushSendHistoryCounts, pushSkipReasonLabels } = pageData;
+        // 기기 카드는 이력 영역 밖이라 빈 상태 안내를 못 받아, 분모가 0이면 카드에 직접 적는다.
+        renderPushDeviceMissing(pushDeviceCoverage);
         renderPushDeviceRate(quizStats);
         const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);
         showSectionIfAny('pushSend', counts.notificationCount > 0);
 
-        byId('pushNotificationCount').textContent = countText(counts.notificationCount, '건');
-        byId('pushNotificationCountBasis').textContent =
-            `보냄 ${countText(counts.sentCount, '건')} · 건너뜀 ${countText(counts.skippedCount, '건')}`;
         fillRateCard('pushFailureRate', {
             part: counts.failedCount, whole: counts.sentCount, unit: '건', wholeLabel: '보냄',
         });
@@ -711,6 +783,7 @@
     };
 
     renderAdminNotice(pageData);
+    renderSignupDropoutSection(pageData);
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);

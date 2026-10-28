@@ -4,6 +4,7 @@ import com.ditto.api.admin.stats.AgeBand
 import com.ditto.api.admin.stats.MatchingTypeFilter
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
+import com.ditto.domain.member.repository.querydsl.PushDeviceCoverage
 import com.ditto.domain.memberreport.entity.MemberReportReason
 import com.ditto.domain.memberreport.entity.MemberReportStatus
 import com.ditto.domain.notification.entity.PushSkipReason
@@ -16,6 +17,7 @@ import java.time.LocalDate
 data class StatsPageData(
     val weekStartedOn: LocalDate,
     val today: LocalDate,
+    val signupDropoutStats: SignupDropoutStatsData,
     val memberStats: MemberStatsData,
     val quizStats: QuizStatsData,
     val matchStats: MatchStatsData,
@@ -25,6 +27,7 @@ data class StatsPageData(
     val memberReportStats: MemberReportStatsData,
     val memberBlockCount: Long,
     val pushSendHistoryCounts: List<PushSendHistoryCount>,
+    val pushDeviceCoverage: PushDeviceCoverage,
     val genderLabels: Map<String, String> = Gender.entries.associate { it.name to it.description },
     val locationLabels: Map<String, String> = Location.entries.associate { it.name to it.description },
     val quizMatchingTypeLabels: Map<String, String>,

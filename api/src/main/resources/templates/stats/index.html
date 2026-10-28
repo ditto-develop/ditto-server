@@ -107,6 +107,7 @@
                 <span th:if="${filter.joinedWeek != null}">가입 주차 <b th:text="|${#temporals.format(filter.joinedWeek, 'M/d')}가 속한 주|">10/19가 속한 주</b></span>
                 <span th:if="${filter.includeAdmins}">관리자 계정 <b>포함</b></span>
                 <span class="qa-bar-links stats-nav-links">
+                    <a href="#signup-dropouts">가입 이탈</a>
                     <a href="#members">회원</a>
                     <span class="stats-nav-sep" aria-hidden="true">|</span>
                     <a href="#quiz-participation">퀴즈</a>
@@ -120,6 +121,69 @@
                     <a href="#push-sends">알림</a>
                 </span>
             </nav>
+
+            <section class="stats-section" id="signup-dropouts">
+                <div class="stats-section-head">
+                    <h2 class="stats-section-title">가입 이탈</h2>
+                    <th:block th:replace="~{fragments :: info('info-stats-signup-dropouts', '가입 이탈', '소셜 로그인으로 가입을 시작했지만 마지막 가입 버튼을 누르지 않은 회원입니다. 막 가입을 시작한 회원은 아직 가입 중일 수 있어서 24시간이 지나야 셉니다. 회원 현황의 가입 미완료는 24시간이 안 된 회원도 세서 숫자가 다를 수 있습니다. 가입 중인 회원은 성별·생년월일이 없어 회원 조건을 걸지 않고, 관리자 계정 포함을 켜도 관리자는 빼고 셉니다. 더미도 뺍니다.')}"></th:block>
+                    <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
+                    <span class="badge caution" th:if="${filter.hasMemberConditions()}">회원 조건 미적용</span>
+                </div>
+                <p class="stats-basis"><span th:replace="~{fragments :: scope('now')}"></span> <span id="signupDropoutBasis"></span><th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
+                <p class="alert info" id="signupDropoutEmptyNotice" hidden>가입을 시작한 회원이 없습니다.</p>
+                <div id="signupDropoutSectionBody">
+                    <div class="grid stats-totals two">
+                        <div class="card stat">
+                            <span class="label">현재 가입 이탈</span>
+                            <span class="value" id="signupDropoutCount">-</span>
+                            <span class="basis" id="signupDropoutCountBasis"></span>
+                        </div>
+                        <div class="card stat">
+                            <span class="label with-info">가입했지만 퀴즈를 못 하는 회원
+                                <th:block th:replace="~{fragments :: info('info-stats-quiz-blocked', '가입했지만 퀴즈를 못 하는 회원', '가입을 마쳤지만 소개노트가 3개 미만이라 앱이 퀴즈 시작을 막는 회원입니다. 빈 답은 세지 않습니다. 가입 때 건너뛰었는지는 알 수 없고 지금 쓴 개수만 봅니다. 이용 중인 회원은 가입을 마쳤고 탈퇴·정지·영구 차단이 아닌 회원입니다.')}"></th:block></span>
+                            <span class="value" id="quizBlockedCount">-</span>
+                            <span class="basis" id="quizBlockedCountBasis"></span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3 class="with-info">이탈 단계
+                                <th:block th:replace="~{fragments :: info('info-stats-signup-dropout-stage', '이탈 단계', '프로필 화면에서 닉네임 확인을 했으면 프로필·소개노트 작성 중 이탈, 안 했으면 소셜 로그인 후 이탈입니다. 프로필을 넘겼는지, 소개노트를 썼는지는 가입 버튼을 누르기 전까지 서버가 알 수 없어 더 나누지 못합니다. 이미 쓰는 닉네임을 확인했거나, 확인한 닉네임을 나중에 다른 회원이 가져가면 소셜 로그인 후 이탈로 보입니다.')}"></th:block></h3>
+                            <div id="signupDropoutStageShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3>로그인 수단별</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>수단</th><th class="num">이탈</th><th class="num">가입 시작</th><th class="num">이탈 비율</th></tr></thead>
+                                    <tbody id="signupDropoutProviderRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 id="signupDropoutMembersTitle">가입 이탈 회원</h3>
+                        <p class="muted" id="signupDropoutMembersEmpty" hidden>이탈한 회원이 없습니다.</p>
+                        <div class="tbl-scroll stats-member-list" id="signupDropoutMembersTable">
+                            <table class="tbl signup-dropout-table">
+                                <thead><tr><th>회원 id</th><th>가입 시작</th><th>로그인 수단</th><th>푸시 기기</th><th>멈춘 단계</th></tr></thead>
+                                <tbody id="signupDropoutMembersRows"></tbody>
+                            </table>
+                        </div>
+                        <p class="muted">푸시 기기가 있으면 가입 안내 알림이 닿을 수 있는 회원입니다.</p>
+                    </div>
+                    <div class="card">
+                        <h3 id="quizBlockedMembersTitle">가입했지만 퀴즈를 못 하는 회원</h3>
+                        <p class="muted" id="quizBlockedMembersEmpty" hidden>퀴즈를 못 하는 회원이 없습니다.</p>
+                        <div class="tbl-scroll stats-member-list" id="quizBlockedMembersTable">
+                            <table class="tbl">
+                                <thead><tr><th>닉네임</th><th>가입 완료</th><th>퀴즈 시작</th><th class="num">회원 id</th><th class="num">소개노트</th></tr></thead>
+                                <tbody id="quizBlockedMembersRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <section class="stats-section" id="members">
                 <div class="stats-section-head">
@@ -648,24 +712,20 @@
                     <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
                 </div>
                 <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
-                <div class="grid stats-totals">
+                <div class="grid stats-totals two">
                     <div class="card stat">
-                        <span class="label">알림 건수</span>
-                        <span class="value" id="pushNotificationCount">-</span>
-                        <span class="basis" id="pushNotificationCountBasis"></span>
+                        <span class="label with-info">푸시 기기 없는 회원
+                            <th:block th:replace="~{fragments :: info('info-stats-push-device', '푸시 기기 없는 회원', '이용 중인 회원(가입을 마쳤고 탈퇴·정지·영구 차단이 아닌 회원) 중 지금 푸시 기기가 하나도 등록되지 않은 회원입니다. 이 회원에게 가는 알림은 등록된 기기 없음으로 건너뜁니다. 기기가 있어도 iOS 알림 권한을 끈 회원은 받지 못하는데, 서버는 이를 알 수 없습니다. 더미는 기기가 없어 뺍니다. 최근 4회차 활성 회원 줄은 그 기간에 퀴즈를 끝까지 푼 회원 중 기기가 있는 비율입니다.')}"></th:block></span>
+                        <span class="value" id="pushDeviceMissingCount">-</span>
+                        <span class="basis" id="pushDeviceMissingCountBasis"></span>
+                        <span class="basis" id="pushDeviceRateBasis"></span>
+                        <span class="basis"><span th:replace="~{fragments :: scope('now')}"></span></span>
                     </div>
                     <div class="card stat">
                         <span class="label with-info">실패율
                             <th:block th:replace="~{fragments :: info('info-stats-push-failure', '실패율', '보낸 알림 중 기기 하나라도 구글 푸시 서버가 받지 않은 비율입니다. 폰에 실제로 떴는지는 알 수 없고, iOS 알림 권한을 끈 기기도 보낸 것으로 셉니다.')}"></th:block></span>
                         <span class="value" id="pushFailureRate">-</span>
                         <span class="basis" id="pushFailureRateBasis"></span>
-                    </div>
-                    <div class="card stat">
-                        <span class="label with-info">푸시 기기 등록률
-                            <th:block th:replace="~{fragments :: info('info-stats-push-device', '푸시 기기 등록률', '최근 4회차 활성 회원 중 지금 푸시 기기가 등록된 회원 비율입니다. 등록 여부는 오늘 기준이라 지난 회차를 골라도 지금 값입니다.')}"></th:block></span>
-                        <span class="value" id="pushDeviceRate">-</span>
-                        <span class="basis" id="pushDeviceRateBasis"></span>
-                        <span class="basis"><span th:replace="~{fragments :: scope('now')}"></span></span>
                     </div>
                 </div>
                 <p class="alert info" id="pushSendEmptyNotice" hidden

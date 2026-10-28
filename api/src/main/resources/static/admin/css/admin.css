@@ -308,6 +308,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
 .stats-section .stat .basis { color: var(--text-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stats-totals { grid-template-columns: repeat(3, 1fr); }
+.stats-totals.two { grid-template-columns: repeat(2, 1fr); }
 .stats-totals.four { grid-template-columns: repeat(4, 1fr); }
 .stats-align-start { align-items: start; }
 /* 회원 목록은 길어질 수 있어 카드 안에서 스크롤한다. */
@@ -320,6 +321,8 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section table.tbl td.empty { color: var(--text-muted); }
 /* 알림 표는 칸이 많아 폰 폭에서 "25.0 / %"처럼 갈린다. 넘치면 가로 스크롤로 받는다. */
 .stats-section .push-type-table td.num { white-space: nowrap; }
+/* 폰 폭에서 셀이 꺾이면 행이 높아져 목록 상자 안에서 아래 행이 가려진다. 넘치면 가로로 민다. */
+.stats-section .signup-dropout-table td { white-space: nowrap; }
 /* 회차 칸이 계속 늘어나서 줄바꿈 없이 가로 스크롤로 받는다. */
 .stats-section .cohort-table :is(th, td) { white-space: nowrap; }
 .stats-section table.tbl tr.today td { font-weight: 700; }

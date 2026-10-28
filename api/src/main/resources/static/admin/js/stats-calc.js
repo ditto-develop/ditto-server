@@ -52,6 +52,14 @@ const StatsCalc = (() => {
         SANCTION_IMPOSED: '제재 안내',
     };
 
+    // 로그인 수단 라벨은 어드민 화면에서만 써서 서버 enum 이 아니라 여기 둔다.
+    const SOCIAL_PROVIDER_LABELS = { KAKAO: '카카오', APPLE: '애플' };
+    const SOCIAL_PROVIDER_UNKNOWN_LABEL = '알 수 없음';
+    // 닉네임을 확인하면 예약이 생긴다(NicknameService.reserve). 프로필 통과·소개노트 작성은 가입 요청 전까지 서버에 남지 않는다.
+    const SIGNUP_STAGE_LOGIN_ONLY = '소셜 로그인 후 이탈';
+    const SIGNUP_STAGE_PROFILE_OR_INTRO = '프로필·소개노트 작성 중 이탈';
+    const RECENT_SIGNUP_DROPOUT_DAYS = 7;
+
     // 'yyyy-MM-dd' 를 브라우저 시간대와 상관없이 다루려고 UTC 로 계산한다.
     const toUtcDate = (isoDate) => new Date(`${isoDate}T00:00:00Z`);
     const addDays = (isoDate, days) => {
@@ -94,6 +102,54 @@ const StatsCalc = (() => {
     const formatCount = (count) => count.toLocaleString('ko-KR');
     const percent = (part, whole) => (whole === 0 ? 0 : (part * 100) / whole);
     const percentText = (part, whole) => (whole === 0 ? '-' : `${percent(part, whole).toFixed(1)}%`);
+
+    const socialProviderLabel = (socialProvider) =>
+        SOCIAL_PROVIDER_LABELS[socialProvider] || socialProvider || SOCIAL_PROVIDER_UNKNOWN_LABEL;
+
+    const signupStageOf = (signupDropout) =>
+        (signupDropout.hasNicknameReservation ? SIGNUP_STAGE_PROFILE_OR_INTRO : SIGNUP_STAGE_LOGIN_ONLY);
+
+    // 카카오·애플은 0명이어도 보인다. 그 밖의 키는 실제 행에서만 나와서 수단을 모르는 회원은 있을 때만 보인다.
+    const signupDropoutProviderRows = (joinedCounts, dropoutCounts) => {
+        const providers = new Set([
+            ...Object.keys(SOCIAL_PROVIDER_LABELS),
+            ...joinedCounts.keys(),
+            ...dropoutCounts.keys(),
+        ]);
+        return [...providers].map((provider) => {
+            const dropoutCount = dropoutCounts.get(provider) || 0;
+            return {
+                label: socialProviderLabel(provider),
+                dropoutCount,
+                startedCount: (joinedCounts.get(provider) || 0) + dropoutCount,
+            };
+        });
+    };
+
+    // 가입 시작 = 가입을 마친 회원(탈퇴 포함) + 이탈한 회원. 막 가입을 시작한 회원은 양쪽 모두에서 빠진다.
+    // 가입 시작 시각이 실제 시각이라 최근 7일도 서버가 준 실제 날짜로 센다.
+    const signupDropoutSummary = ({ signupDropouts: dropouts, joinedCountsBySocialProvider, realToday }) => {
+        const joinedCounts = sumCountsBy(joinedCountsBySocialProvider, (countRow) => countRow.socialProvider);
+        const dropoutCounts = countBy(dropouts, (dropout) => dropout.socialProvider);
+        const stageCounts = countBy(dropouts, signupStageOf);
+        const recentFrom = addDays(realToday, -(RECENT_SIGNUP_DROPOUT_DAYS - 1));
+        return {
+            dropoutCount: dropouts.length,
+            startedCount: sumCounts(joinedCountsBySocialProvider) + dropouts.length,
+            recentDropoutCount: dropouts.filter((dropout) => dateOf(dropout.signupStartedAt) >= recentFrom).length,
+            recentDays: RECENT_SIGNUP_DROPOUT_DAYS,
+            stageCounts: [SIGNUP_STAGE_LOGIN_ONLY, SIGNUP_STAGE_PROFILE_OR_INTRO]
+                .map((label) => ({ label, count: stageCounts.get(label) || 0 })),
+            providerRows: signupDropoutProviderRows(joinedCounts, dropoutCounts),
+            rows: dropouts.map((dropout) => ({
+                memberId: dropout.memberId,
+                signupStartedAt: dropout.signupStartedAt,
+                socialProviderLabel: socialProviderLabel(dropout.socialProvider),
+                stageLabel: signupStageOf(dropout),
+                hasPushDevice: dropout.hasPushDevice,
+            })),
+        };
+    };
 
     // 가입을 마치지 않은 PENDING 은 누적 가입자에 넣지 않는다.
     const memberTotals = (countsByStatus) => {
@@ -654,6 +710,9 @@ const StatsCalc = (() => {
     const repeatedlyReportedMembers = (mostReportedMembers) =>
         mostReportedMembers.filter((reportedMember) => reportedMember.count >= MIN_REPEATED_REPORT_COUNT);
 
+    const membersWithoutPushDevice = ({ memberCount, memberWithPushDeviceCount }) =>
+        memberCount - memberWithPushDeviceCount;
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -705,6 +764,7 @@ const StatsCalc = (() => {
         formatCount,
         percent,
         percentText,
+        signupDropoutSummary,
         memberTotals,
         accountStatusCounts,
         locationCounts,
@@ -741,6 +801,7 @@ const StatsCalc = (() => {
         matchScores,
         activeGroupSizeRows,
         memberReportCounts,
+        membersWithoutPushDevice,
         pushSendCounts,
     };
 })();

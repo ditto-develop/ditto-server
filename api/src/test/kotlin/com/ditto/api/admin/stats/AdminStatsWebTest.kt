@@ -114,6 +114,22 @@ class AdminStatsWebTest(
                 .andExpect(content().string(pageJsonContaining(""""recentJoinedAts":["2026-04-07 10:00:00"]""")))
                 .andExpect(
                     content().string(
+                        pageJsonContaining(
+                            """"signupDropouts":[],""" +
+                                """"joinedCountsBySocialProvider":[{"socialProvider":null,"count":1}],""" +
+                                """"minIntroNoteCountForQuiz":3,"quizBlockedMembers":[{"memberId":""",
+                        ),
+                    ),
+                )
+                .andExpect(
+                    content().string(
+                        pageJsonContaining(
+                            """"pushDeviceCoverage":{"memberCount":1,"memberWithPushDeviceCount":0}""",
+                        ),
+                    ),
+                )
+                .andExpect(
+                    content().string(
                         pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
                     ),
                 )

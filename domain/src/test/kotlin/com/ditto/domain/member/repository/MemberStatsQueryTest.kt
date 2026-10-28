@@ -1,15 +1,31 @@
 package com.ditto.domain.member.repository
 
+import com.ditto.domain.intronote.entity.IntroNote
+import com.ditto.domain.intronote.entity.IntroQuestion
+import com.ditto.domain.intronote.repository.IntroNoteRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.entity.NicknameReservation
 import com.ditto.domain.member.repository.querydsl.GenderBirthDateCount
 import com.ditto.domain.member.repository.querydsl.LeaveReasonCount
 import com.ditto.domain.member.repository.querydsl.LocationCount
 import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.PushDeviceCoverage
+import com.ditto.domain.member.repository.querydsl.QuizBlockedMember
+import com.ditto.domain.member.repository.querydsl.SignupDropout
+import com.ditto.domain.member.repository.querydsl.SocialProviderCount
+import com.ditto.domain.notification.MemberDeviceFixture
+import com.ditto.domain.notification.repository.MemberDeviceRepository
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.socialaccount.entity.SocialAccount
+import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.domain.support.IntegrationTest
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.maps.shouldBeEmpty
@@ -19,9 +35,15 @@ import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private val JOINED_AT = LocalDateTime.of(2026, 10, 20, 12, 0)
+private const val DUMMY_PREFIX = "dummy-"
 
 class MemberStatsQueryTest(
     private val memberRepository: MemberRepository,
+    private val socialAccountRepository: SocialAccountRepository,
+    private val nicknameReservationRepository: NicknameReservationRepository,
+    private val memberDeviceRepository: MemberDeviceRepository,
+    private val introNoteRepository: IntroNoteRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -47,6 +69,11 @@ class MemberStatsQueryTest(
             joinedAt = joinedAt,
         ).apply { leftAt?.let { leave(leaveReason, it) } },
     )
+
+    fun linkSocialAccount(memberId: Long, provider: SocialProvider) =
+        socialAccountRepository.save(
+            SocialAccount.create(memberId = memberId, provider = provider, providerUserId = "$provider-$memberId"),
+        )
 
     "countMembersByStatus" - {
         "가입 전 회원까지 상태별로 세고 관리자와 가입하지 않고 탈퇴한 회원은 뺀다" {
@@ -156,6 +183,110 @@ class MemberStatsQueryTest(
                 LeaveReasonCount("low_usage", 2L),
                 LeaveReasonCount(null, 1L),
             )
+        }
+    }
+
+    "findSignupDropoutsStartedBefore" - {
+        "기준 시각 전에 가입을 시작하고 마치지 않은 회원을 닉네임 예약·푸시 기기 여부와 함께 찾는다" {
+            val nicknameChecked = save("nickname-checked", status = MemberStatus.PENDING, joinedAt = null)
+            linkSocialAccount(nicknameChecked.id, SocialProvider.KAKAO)
+            nicknameReservationRepository.save(NicknameReservation.reserve(nicknameChecked.id, "checked", JOINED_AT))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = nicknameChecked.id, token = "token-1"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = nicknameChecked.id, token = "token-2"))
+            val loginOnly = save("login-only", status = MemberStatus.PENDING, joinedAt = null)
+            linkSocialAccount(loginOnly.id, SocialProvider.APPLE)
+            save("joined")
+            save("admin", status = MemberStatus.PENDING, role = MemberRole.ADMIN, joinedAt = null)
+
+            val dropouts = memberRepository.findSignupDropoutsStartedBefore(LocalDateTime.now().plusMinutes(1))
+
+            dropouts.map { it.copy(signupStartedAt = JOINED_AT) } shouldContainExactlyInAnyOrder listOf(
+                SignupDropout(
+                    nicknameChecked.id,
+                    JOINED_AT,
+                    SocialProvider.KAKAO,
+                    hasNicknameReservation = true,
+                    hasPushDevice = true,
+                ),
+                SignupDropout(
+                    loginOnly.id,
+                    JOINED_AT,
+                    SocialProvider.APPLE,
+                    hasNicknameReservation = false,
+                    hasPushDevice = false,
+                ),
+            )
+        }
+
+        "기준 시각 뒤에 가입을 시작한 회원은 아직 가입 중이라 뺀다" {
+            save("signing-up", status = MemberStatus.PENDING, joinedAt = null)
+
+            memberRepository.findSignupDropoutsStartedBefore(LocalDateTime.now().minusMinutes(1)).shouldBeEmpty()
+        }
+    }
+
+    "countJoinedMembersBySocialProvider" - {
+        "가입을 마친 회원을 로그인 수단별로 세고 탈퇴한 회원은 넣고 가입 중인 회원·관리자·더미는 뺀다" {
+            linkSocialAccount(save("kakao").id, SocialProvider.KAKAO)
+            linkSocialAccount(save("kakao-left", status = MemberStatus.LEFT).id, SocialProvider.KAKAO)
+            linkSocialAccount(save("apple").id, SocialProvider.APPLE)
+            save("no-social-account")
+            linkSocialAccount(save("pending", status = MemberStatus.PENDING, joinedAt = null).id, SocialProvider.KAKAO)
+            linkSocialAccount(save("admin", role = MemberRole.ADMIN).id, SocialProvider.KAKAO)
+            save("${DUMMY_PREFIX}1")
+
+            memberRepository.countJoinedMembersBySocialProvider(DUMMY_PREFIX) shouldContainExactlyInAnyOrder listOf(
+                SocialProviderCount(SocialProvider.KAKAO, 2L),
+                SocialProviderCount(SocialProvider.APPLE, 1L),
+                SocialProviderCount(null, 1L),
+            )
+        }
+    }
+
+    "findActiveMembersWithIntroNotesUnder" - {
+        "빈 답을 빼고 소개노트가 기준보다 적은 이용 중인 회원을 퀴즈 시작 여부와 함께 찾고 더미는 뺀다" {
+            fun writeIntroNotes(memberId: Long, vararg answers: String) = answers.forEachIndexed { index, answer ->
+                introNoteRepository.save(IntroNote.create(memberId, IntroQuestion.entries[index], answer))
+            }
+            val noNote = save("no-note")
+            val blankNotes = save("blank-notes")
+            writeIntroNotes(blankNotes.id, "답", "답", " ")
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = blankNotes.id))
+            writeIntroNotes(save("enough").id, "답", "답", "답")
+            save("left", status = MemberStatus.LEFT)
+            save("pending", status = MemberStatus.PENDING, joinedAt = null)
+            save("admin", role = MemberRole.ADMIN)
+            save("${DUMMY_PREFIX}1")
+
+            memberRepository.findActiveMembersWithIntroNotesUnder(3L, DUMMY_PREFIX) shouldContainExactlyInAnyOrder listOf(
+                QuizBlockedMember(noNote.id, "no-note", JOINED_AT, introNoteCount = 0L, hasStartedQuiz = false),
+                QuizBlockedMember(blankNotes.id, "blank-notes", JOINED_AT, introNoteCount = 2L, hasStartedQuiz = true),
+            )
+        }
+    }
+
+    "countPushDeviceCoverage" - {
+        "이용 중인 회원을 세고 기기가 여러 대여도 한 명으로 세며 더미는 뺀다" {
+            val withTwoDevices = save("two-devices")
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = withTwoDevices.id, token = "token-1"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = withTwoDevices.id, token = "token-2"))
+            save("no-device")
+            val left = save("left", status = MemberStatus.LEFT)
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = left.id, token = "token-3"))
+            save("admin", role = MemberRole.ADMIN)
+            save("${DUMMY_PREFIX}1")
+
+            memberRepository.countPushDeviceCoverage(MemberFilter.NONE, DUMMY_PREFIX) shouldBe
+                PushDeviceCoverage(memberCount = 2L, memberWithPushDeviceCount = 1L)
+        }
+
+        "성별 조건을 걸면 그 성별의 이용 중인 회원만 센다" {
+            save("female", gender = Gender.FEMALE)
+            save("male", gender = Gender.MALE)
+
+            val femaleOnly = MemberFilter(gender = Gender.FEMALE)
+            memberRepository.countPushDeviceCoverage(femaleOnly, DUMMY_PREFIX) shouldBe
+                PushDeviceCoverage(memberCount = 1L, memberWithPushDeviceCount = 0L)
         }
     }
 })

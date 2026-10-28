@@ -23,4 +23,19 @@ interface MemberRepositoryCustom {
         leftAtRange: OpenEndRange<LocalDateTime>,
         filter: MemberFilter,
     ): List<LeaveReasonCount>
+
+    /** 회원 행이 생긴 시각을 가입 시작으로 본다. 관리자는 뺀다. */
+    fun findSignupDropoutsStartedBefore(signupStartedBefore: LocalDateTime): List<SignupDropout>
+
+    /** 탈퇴한 회원도 센다. 관리자와 닉네임이 [excludedNicknamePrefix] 로 시작하는 회원은 뺀다. */
+    fun countJoinedMembersBySocialProvider(excludedNicknamePrefix: String): List<SocialProviderCount>
+
+    /** 이용 중인(ACTIVE) 회원만 센다. 닉네임이 [excludedNicknamePrefix] 로 시작하는 회원은 뺀다. */
+    fun countPushDeviceCoverage(filter: MemberFilter, excludedNicknamePrefix: String): PushDeviceCoverage
+
+    /** 빈 답은 소개노트로 세지 않는다. 관리자와 닉네임이 [excludedNicknamePrefix] 로 시작하는 회원은 뺀다. */
+    fun findActiveMembersWithIntroNotesUnder(
+        minIntroNoteCount: Long,
+        excludedNicknamePrefix: String,
+    ): List<QuizBlockedMember>
 }
