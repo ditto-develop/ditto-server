@@ -5,11 +5,20 @@ import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.entity.NicknameReservation
 import com.ditto.domain.member.repository.querydsl.GenderBirthDateCount
 import com.ditto.domain.member.repository.querydsl.LeaveReasonCount
 import com.ditto.domain.member.repository.querydsl.LocationCount
 import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.SignupDropout
+import com.ditto.domain.member.repository.querydsl.SocialProviderCount
+import com.ditto.domain.notification.MemberDeviceFixture
+import com.ditto.domain.notification.repository.MemberDeviceRepository
+import com.ditto.domain.socialaccount.entity.SocialAccount
+import com.ditto.domain.socialaccount.entity.SocialProvider
+import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import com.ditto.domain.support.IntegrationTest
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.maps.shouldBeEmpty
@@ -22,6 +31,9 @@ private val JOINED_AT = LocalDateTime.of(2026, 10, 20, 12, 0)
 
 class MemberStatsQueryTest(
     private val memberRepository: MemberRepository,
+    private val socialAccountRepository: SocialAccountRepository,
+    private val nicknameReservationRepository: NicknameReservationRepository,
+    private val memberDeviceRepository: MemberDeviceRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -155,6 +167,55 @@ class MemberStatsQueryTest(
             counts shouldContainExactlyInAnyOrder listOf(
                 LeaveReasonCount("low_usage", 2L),
                 LeaveReasonCount(null, 1L),
+            )
+        }
+    }
+
+    fun signUpWith(memberId: Long, provider: SocialProvider) =
+        socialAccountRepository.save(
+            SocialAccount.create(memberId = memberId, provider = provider, providerUserId = "$provider-$memberId"),
+        )
+
+    "findSignupDropoutsStartedBefore" - {
+        "기준 시각 전에 가입을 시작하고 마치지 않은 회원을 닉네임 예약·푸시 기기 여부와 함께 찾는다" {
+            val checked = save("checked", status = MemberStatus.PENDING, joinedAt = null)
+            signUpWith(checked.id, SocialProvider.KAKAO)
+            nicknameReservationRepository.save(NicknameReservation.reserve(checked.id, "checked", JOINED_AT))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = checked.id, token = "token-1"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = checked.id, token = "token-2"))
+            val loginOnly = save("login-only", status = MemberStatus.PENDING, joinedAt = null)
+            signUpWith(loginOnly.id, SocialProvider.APPLE)
+            save("joined")
+            save("admin", status = MemberStatus.PENDING, role = MemberRole.ADMIN, joinedAt = null)
+
+            val dropouts = memberRepository.findSignupDropoutsStartedBefore(LocalDateTime.now().plusMinutes(1))
+
+            dropouts.map { it.copy(signupStartedAt = JOINED_AT) } shouldContainExactlyInAnyOrder listOf(
+                SignupDropout(checked.id, JOINED_AT, SocialProvider.KAKAO, true, true),
+                SignupDropout(loginOnly.id, JOINED_AT, SocialProvider.APPLE, false, false),
+            )
+        }
+
+        "기준 시각 뒤에 가입을 시작한 회원은 아직 가입 중이라 뺀다" {
+            save("signing-up", status = MemberStatus.PENDING, joinedAt = null)
+
+            memberRepository.findSignupDropoutsStartedBefore(LocalDateTime.now().minusMinutes(1)).shouldBeEmpty()
+        }
+    }
+
+    "countJoinedMembersBySocialProvider" - {
+        "가입을 마친 회원을 로그인 수단별로 세고 탈퇴한 회원은 넣고 가입 중인 회원과 관리자는 뺀다" {
+            signUpWith(save("kakao").id, SocialProvider.KAKAO)
+            signUpWith(save("kakao-left", status = MemberStatus.LEFT).id, SocialProvider.KAKAO)
+            signUpWith(save("apple").id, SocialProvider.APPLE)
+            save("no-social-account")
+            signUpWith(save("pending", status = MemberStatus.PENDING, joinedAt = null).id, SocialProvider.KAKAO)
+            signUpWith(save("admin", role = MemberRole.ADMIN).id, SocialProvider.KAKAO)
+
+            memberRepository.countJoinedMembersBySocialProvider() shouldContainExactlyInAnyOrder listOf(
+                SocialProviderCount(SocialProvider.KAKAO, 2L),
+                SocialProviderCount(SocialProvider.APPLE, 1L),
+                SocialProviderCount(null, 1L),
             )
         }
     }

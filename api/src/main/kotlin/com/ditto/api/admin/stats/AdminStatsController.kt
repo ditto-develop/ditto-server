@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 class AdminStatsController(
     private val serverTimeProvider: ServerTimeProvider,
     private val statsRoundFinder: StatsRoundFinder,
+    private val signupDropoutStatsService: SignupDropoutStatsService,
     private val memberStatsService: MemberStatsService,
     private val quizStatsService: QuizStatsService,
     private val matchStatsService: MatchStatsService,
@@ -36,6 +37,7 @@ class AdminStatsController(
         val pageData = StatsPageData(
             weekStartedOn = week.startedOn,
             today = today,
+            signupDropoutStats = signupDropoutStatsService.findStats(),
             memberStats = memberStatsService.findStats(filter, week, today),
             quizStats = quizStatsService.findStats(filter, week, today),
             matchStats = matchStatsService.findStats(filter, week, today),

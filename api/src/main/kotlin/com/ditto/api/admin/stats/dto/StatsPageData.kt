@@ -16,6 +16,7 @@ import java.time.LocalDate
 data class StatsPageData(
     val weekStartedOn: LocalDate,
     val today: LocalDate,
+    val signupDropoutStats: SignupDropoutStatsData,
     val memberStats: MemberStatsData,
     val quizStats: QuizStatsData,
     val matchStats: MatchStatsData,

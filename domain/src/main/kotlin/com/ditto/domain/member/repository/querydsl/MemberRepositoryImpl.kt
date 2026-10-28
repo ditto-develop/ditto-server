@@ -2,6 +2,9 @@ package com.ditto.domain.member.repository.querydsl
 
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
+import com.ditto.domain.member.entity.QNicknameReservation.nicknameReservation
+import com.ditto.domain.notification.entity.QMemberDevice.memberDevice
+import com.ditto.domain.socialaccount.entity.QSocialAccount.socialAccount
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -99,6 +102,51 @@ class MemberRepositoryImpl(
             .fetch()
             .map { row ->
                 LeaveReasonCount(leaveReason = row.get(member.leaveReason), count = row.get(countExpression) ?: 0L)
+            }
+    }
+
+    override fun findSignupDropoutsStartedBefore(signupStartedBefore: LocalDateTime): List<SignupDropout> {
+        val deviceCount = memberDevice.id.countDistinct()
+        return queryFactory
+            .select(member.id, member.createdAt, socialAccount.provider, nicknameReservation.id, deviceCount)
+            .from(member)
+            .leftJoin(socialAccount).on(socialAccount.memberId.eq(member.id))
+            .leftJoin(nicknameReservation).on(nicknameReservation.memberId.eq(member.id))
+            .leftJoin(memberDevice).on(memberDevice.memberId.eq(member.id))
+            .where(
+                member.status.eq(MemberStatus.PENDING),
+                member.createdAt.lt(signupStartedBefore),
+                member.matchesFilter(MemberFilter.NONE),
+            )
+            .groupBy(member.id, member.createdAt, socialAccount.provider, nicknameReservation.id)
+            .orderBy(member.createdAt.desc())
+            .fetch()
+            .map { row ->
+                SignupDropout(
+                    memberId = row.get(member.id) ?: throw IllegalStateException("group by 키 member.id 가 비었다"),
+                    signupStartedAt = row.get(member.createdAt)
+                        ?: throw IllegalStateException("group by 키 member.createdAt 이 비었다"),
+                    socialProvider = row.get(socialAccount.provider),
+                    hasNicknameReservation = row.get(nicknameReservation.id) != null,
+                    hasPushDevice = (row.get(deviceCount) ?: 0L) > 0L,
+                )
+            }
+    }
+
+    override fun countJoinedMembersBySocialProvider(): List<SocialProviderCount> {
+        val countExpression = member.count()
+        return queryFactory
+            .select(socialAccount.provider, countExpression)
+            .from(member)
+            .leftJoin(socialAccount).on(socialAccount.memberId.eq(member.id))
+            .where(member.joinedAt.isNotNull, member.matchesFilter(MemberFilter.NONE))
+            .groupBy(socialAccount.provider)
+            .fetch()
+            .map { row ->
+                SocialProviderCount(
+                    socialProvider = row.get(socialAccount.provider),
+                    count = row.get(countExpression) ?: 0L,
+                )
             }
     }
 }

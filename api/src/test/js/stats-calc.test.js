@@ -32,6 +32,74 @@ describe('percentText', () => {
     });
 });
 
+describe('signupDropouts', () => {
+    const dropout = (memberId, overrides = {}) => ({
+        memberId,
+        signupStartedAt: '2026-10-20 13:00:00',
+        socialProvider: 'KAKAO',
+        hasNicknameReservation: false,
+        hasPushDevice: false,
+        ...overrides,
+    });
+
+    test('가입 시작은 가입을 마친 회원과 이탈한 회원을 더한 수다', () => {
+        const result = StatsCalc.signupDropouts({
+            signupDropouts: [dropout(1), dropout(2, { socialProvider: 'APPLE' })],
+            joinedCountsBySocialProvider: [{ socialProvider: 'KAKAO', count: 30 }, { socialProvider: 'APPLE', count: 8 }],
+        }, '2026-10-28');
+
+        assert.equal(result.dropoutCount, 2);
+        assert.equal(result.startedCount, 40);
+    });
+
+    test('닉네임 예약이 있으면 프로필·소개노트 작성 중, 없으면 소셜 로그인 후 이탈로 나눈다', () => {
+        const result = StatsCalc.signupDropouts({
+            signupDropouts: [dropout(1), dropout(2, { hasNicknameReservation: true }), dropout(3, { hasNicknameReservation: true })],
+            joinedCountsBySocialProvider: [],
+        }, '2026-10-28');
+
+        assert.deepEqual(result.stageCounts, [
+            { label: '소셜 로그인 후 이탈', count: 1 },
+            { label: '프로필·소개노트 작성 중 이탈', count: 2 },
+        ]);
+        assert.deepEqual(result.rows.map((row) => row.stageLabel), [
+            '소셜 로그인 후 이탈',
+            '프로필·소개노트 작성 중 이탈',
+            '프로필·소개노트 작성 중 이탈',
+        ]);
+    });
+
+    test('카카오·애플은 0명이어도 보이고 수단을 모르는 회원은 있을 때만 보인다', () => {
+        const withoutUnknown = StatsCalc.signupDropouts({
+            signupDropouts: [dropout(1)],
+            joinedCountsBySocialProvider: [{ socialProvider: 'KAKAO', count: 3 }],
+        }, '2026-10-28');
+        const withUnknown = StatsCalc.signupDropouts({
+            signupDropouts: [],
+            joinedCountsBySocialProvider: [{ socialProvider: null, count: 1 }],
+        }, '2026-10-28');
+
+        assert.deepEqual(withoutUnknown.providerRows, [
+            { label: '카카오', dropoutCount: 1, startedCount: 4 },
+            { label: '애플', dropoutCount: 0, startedCount: 0 },
+        ]);
+        assert.deepEqual(withUnknown.providerRows.map((row) => row.label), ['카카오', '애플', '알 수 없음']);
+    });
+
+    test('최근 7일은 오늘을 넣어 7일 안에 가입을 시작한 이탈 회원이다', () => {
+        const result = StatsCalc.signupDropouts({
+            signupDropouts: [
+                dropout(1, { signupStartedAt: '2026-10-22 00:00:00' }),
+                dropout(2, { signupStartedAt: '2026-10-21 23:59:59' }),
+            ],
+            joinedCountsBySocialProvider: [],
+        }, '2026-10-28');
+
+        assert.equal(result.recentDropoutCount, 1);
+        assert.equal(result.recentDays, 7);
+    });
+});
+
 describe('memberTotals', () => {
     test('누적 가입은 탈퇴를 포함하고 현재 회원은 탈퇴를 뺀다', () => {
         const totals = StatsCalc.memberTotals({ ACTIVE: 5, SUSPENDED: 1, LEFT: 2 });

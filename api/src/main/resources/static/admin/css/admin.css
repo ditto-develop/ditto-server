@@ -308,6 +308,7 @@ table.tbl td.num { color: var(--text-sub); font-variant-numeric: tabular-nums; }
 .stats-section .card h3 { font-size: 15px; font-weight: 700; margin: 0 0 16px; }
 .stats-section .stat .basis { color: var(--text-sub); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stats-totals { grid-template-columns: repeat(3, 1fr); }
+.stats-totals.two { grid-template-columns: repeat(2, 1fr); }
 .stats-totals.four { grid-template-columns: repeat(4, 1fr); }
 .stats-align-start { align-items: start; }
 /* 회원 목록은 길어질 수 있어 카드 안에서 스크롤한다. */

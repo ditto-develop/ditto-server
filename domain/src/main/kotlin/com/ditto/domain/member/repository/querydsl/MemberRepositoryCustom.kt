@@ -23,4 +23,10 @@ interface MemberRepositoryCustom {
         leftAtRange: OpenEndRange<LocalDateTime>,
         filter: MemberFilter,
     ): List<LeaveReasonCount>
+
+    /** 회원 행이 생긴 시각을 가입 시작으로 본다. 관리자는 뺀다. */
+    fun findSignupDropoutsStartedBefore(signupStartedBefore: LocalDateTime): List<SignupDropout>
+
+    /** 탈퇴한 회원도 센다. 관리자는 뺀다. */
+    fun countJoinedMembersBySocialProvider(): List<SocialProviderCount>
 }

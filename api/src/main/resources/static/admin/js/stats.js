@@ -91,6 +91,41 @@
         byId(`${sectionName}SectionBody`).hidden = !hasData;
     };
 
+    // 서버는 일시를 'yyyy-MM-dd HH:mm:ss' 로 준다.
+    const shortDateTime = (dateTime) => `${shortDate(dateTime)} ${dateTime.slice(11, 16)}`;
+
+    const renderSignupDropoutSection = ({ signupDropoutStats, today }) => {
+        const dropouts = StatsCalc.signupDropouts(signupDropoutStats, today);
+        byId('signupDropoutBasis').textContent =
+            `관리자 제외 · 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간이 지난 회원`;
+        showSectionIfAny('signupDropout', dropouts.startedCount > 0);
+        if (dropouts.startedCount === 0) return;
+
+        byId('signupDropoutCount').textContent = countText(dropouts.dropoutCount, '명');
+        byId('signupDropoutCountBasis').textContent =
+            `가입 시작 ${countText(dropouts.startedCount, '명')} 중 `
+            + `${StatsCalc.percentText(dropouts.dropoutCount, dropouts.startedCount)} · `
+            + `최근 ${dropouts.recentDays}일 ${countText(dropouts.recentDropoutCount, '명')}`;
+        fillShares('signupDropoutStageShares', dropouts.stageCounts, { className: 'share-row wide-label-row' });
+        fillRows('signupDropoutProviderRows', dropouts.providerRows, (row) => [
+            cell(row.label),
+            countCell(row.dropoutCount),
+            countCell(row.startedCount),
+            rateCell(row.dropoutCount, row.startedCount),
+        ]);
+
+        byId('signupDropoutMembersTitle').textContent = `가입 이탈 회원 · ${countText(dropouts.dropoutCount, '명')}`;
+        byId('signupDropoutMembersEmpty').hidden = dropouts.rows.length > 0;
+        byId('signupDropoutMembersTable').hidden = dropouts.rows.length === 0;
+        fillRows('signupDropoutMembersRows', dropouts.rows, (row) => [
+            memberLinkCell({ memberId: row.memberId, nickname: `#${row.memberId}` }),
+            cell(shortDateTime(row.signupStartedAt)),
+            cell(row.socialProviderLabel),
+            cell(row.stageLabel),
+            cell(row.hasPushDevice ? '있음' : '없음', row.hasPushDevice ? '' : 'empty'),
+        ]);
+    };
+
     const renderMemberTotals = (totals) => {
         byId('memberJoinedCount').textContent = countText(totals.joined, '명');
         const pendingBasis = byId('memberJoinedCountBasis');
@@ -711,6 +746,7 @@
     };
 
     renderAdminNotice(pageData);
+    renderSignupDropoutSection(pageData);
     renderMemberSection(pageData);
     renderQuizSection(pageData);
     renderQuestionSection(pageData);

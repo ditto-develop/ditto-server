@@ -107,6 +107,7 @@
                 <span th:if="${filter.joinedWeek != null}">가입 주차 <b th:text="|${#temporals.format(filter.joinedWeek, 'M/d')}가 속한 주|">10/19가 속한 주</b></span>
                 <span th:if="${filter.includeAdmins}">관리자 계정 <b>포함</b></span>
                 <span class="qa-bar-links stats-nav-links">
+                    <a href="#signup-dropouts">가입 이탈</a>
                     <a href="#members">회원</a>
                     <span class="stats-nav-sep" aria-hidden="true">|</span>
                     <a href="#quiz-participation">퀴즈</a>
@@ -120,6 +121,53 @@
                     <a href="#push-sends">알림</a>
                 </span>
             </nav>
+
+            <section class="stats-section" id="signup-dropouts">
+                <div class="stats-section-head">
+                    <h2 class="stats-section-title">가입 이탈</h2>
+                    <th:block th:replace="~{fragments :: info('info-stats-signup-dropouts', '가입 이탈', '소셜 로그인으로 가입을 시작했지만 마지막 가입 버튼까지 가지 못한 회원입니다. 막 가입을 시작한 회원은 아직 가입 중일 수 있어서 하루가 지나야 셉니다. 가입 중인 회원은 성별·생년월일이 없어 회원 조건을 걸지 않고, 관리자는 늘 뺍니다.')}"></th:block>
+                    <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
+                    <span class="badge caution" th:if="${filter.hasMemberConditions()}">회원 조건 미적용</span>
+                </div>
+                <p class="stats-basis"><span th:replace="~{fragments :: scope('now')}"></span> <span id="signupDropoutBasis"></span></p>
+                <p class="alert info" id="signupDropoutEmptyNotice" hidden>가입을 시작한 회원이 없습니다.</p>
+                <div id="signupDropoutSectionBody">
+                    <div class="grid stats-totals two">
+                        <div class="card stat">
+                            <span class="label">가입 이탈</span>
+                            <span class="value" id="signupDropoutCount">-</span>
+                            <span class="basis" id="signupDropoutCountBasis"></span>
+                        </div>
+                    </div>
+                    <div class="grid cols-2 stats-align-start">
+                        <div class="card">
+                            <h3 class="with-info">이탈 단계
+                                <th:block th:replace="~{fragments :: info('info-stats-signup-dropout-stage', '이탈 단계', '프로필 단계에서 닉네임 확인을 했으면 프로필·소개노트 작성 중 이탈, 안 했으면 소셜 로그인 후 이탈입니다. 프로필을 넘긴 것과 소개노트를 쓰는 것은 가입 버튼을 누르기 전까지 서버에 남지 않아 둘을 더 나눌 수 없습니다. 확인한 닉네임이 이미 쓰는 것이었거나, 예약이 끝난 뒤 다른 회원이 그 닉네임을 가져가면 소셜 로그인 후 이탈로 셉니다.')}"></th:block></h3>
+                            <div id="signupDropoutStageShares"></div>
+                        </div>
+                        <div class="card">
+                            <h3>로그인 수단별</h3>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead><tr><th>수단</th><th class="num">이탈</th><th class="num">가입 시작</th><th class="num">이탈 비율</th></tr></thead>
+                                    <tbody id="signupDropoutProviderRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 id="signupDropoutMembersTitle">가입 이탈 회원</h3>
+                        <p class="muted" id="signupDropoutMembersEmpty" hidden>이탈한 회원이 없습니다.</p>
+                        <div class="tbl-scroll stats-member-list" id="signupDropoutMembersTable">
+                            <table class="tbl">
+                                <thead><tr><th>회원 id</th><th>가입 시작</th><th>로그인 수단</th><th>멈춘 단계</th><th>푸시 기기</th></tr></thead>
+                                <tbody id="signupDropoutMembersRows"></tbody>
+                            </table>
+                        </div>
+                        <p class="muted">푸시 기기가 있는 회원에게는 가입을 마치라는 알림을 보낼 수 있습니다.</p>
+                    </div>
+                </div>
+            </section>
 
             <section class="stats-section" id="members">
                 <div class="stats-section-head">
