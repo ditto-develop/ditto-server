@@ -59,5 +59,16 @@ class SignupDropoutStatsServiceTest(
             stats.signupDropouts.map { it.memberId } shouldContainExactly listOf(dropout.id)
             stats.joinedCountsBySocialProvider shouldContainExactly listOf(SocialProviderCount(SocialProvider.APPLE, 1L))
         }
+
+        "소개노트가 3개보다 적은 이용 중인 회원과 이용 중인 회원 수를 함께 준다" {
+            val joined = save("joined", MemberStatus.ACTIVE, SocialProvider.KAKAO)
+            save("left", MemberStatus.LEFT, SocialProvider.KAKAO)
+
+            val stats = signupDropoutStatsService.findStats()
+
+            stats.minIntroNoteCountForQuiz shouldBe 3L
+            stats.quizBlockedMembers.map { it.memberId } shouldContainExactly listOf(joined.id)
+            stats.activeMemberCount shouldBe 1L
+        }
     }
 })

@@ -116,7 +116,8 @@ class AdminStatsWebTest(
                     content().string(
                         pageJsonContaining(
                             """"signupDropoutStats":{"dropoutHours":24,"signupDropouts":[],""" +
-                                """"joinedCountsBySocialProvider":[{"socialProvider":null,"count":1}]}""",
+                                """"joinedCountsBySocialProvider":[{"socialProvider":null,"count":1}],""" +
+                                """"minIntroNoteCountForQuiz":3,"quizBlockedMembers":[{"memberId":""",
                         ),
                     ),
                 )

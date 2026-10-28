@@ -1,9 +1,11 @@
 package com.ditto.domain.member.repository.querydsl
 
+import com.ditto.domain.intronote.entity.QIntroNote.introNote
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.QMember.member
 import com.ditto.domain.member.entity.QNicknameReservation.nicknameReservation
 import com.ditto.domain.notification.entity.QMemberDevice.memberDevice
+import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
 import com.ditto.domain.socialaccount.entity.QSocialAccount.socialAccount
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
@@ -146,6 +148,31 @@ class MemberRepositoryImpl(
                 SocialProviderCount(
                     socialProvider = row.get(socialAccount.provider),
                     count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    override fun findActiveMembersWithIntroNotesUnder(minIntroNoteCount: Long): List<QuizBlockedMember> {
+        val introNoteCount = introNote.id.countDistinct()
+        val quizProgressCount = quizProgress.id.countDistinct()
+        return queryFactory
+            .select(member.id, member.nickname, member.joinedAt, introNoteCount, quizProgressCount)
+            .from(member)
+            .leftJoin(introNote).on(introNote.memberId.eq(member.id), introNote.answer.trim().isNotEmpty)
+            .leftJoin(quizProgress).on(quizProgress.memberId.eq(member.id))
+            .where(member.status.eq(MemberStatus.ACTIVE), member.matchesFilter(MemberFilter.NONE))
+            .groupBy(member.id, member.nickname, member.joinedAt)
+            .having(introNoteCount.lt(minIntroNoteCount))
+            .orderBy(member.joinedAt.desc())
+            .fetch()
+            .map { row ->
+                QuizBlockedMember(
+                    memberId = row.get(member.id) ?: throw IllegalStateException("group by 키 member.id 가 비었다"),
+                    nickname = row.get(member.nickname)
+                        ?: throw IllegalStateException("group by 키 member.nickname 이 비었다"),
+                    joinedAt = row.get(member.joinedAt),
+                    introNoteCount = row.get(introNoteCount) ?: 0L,
+                    hasStartedQuiz = (row.get(quizProgressCount) ?: 0L) > 0L,
                 )
             }
     }

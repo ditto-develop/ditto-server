@@ -1,6 +1,8 @@
 package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.stats.dto.SignupDropoutStatsData
+import com.ditto.domain.member.entity.MemberRole
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,10 +19,16 @@ class SignupDropoutStatsService(
         dropoutHours = DROPOUT_HOURS,
         signupDropouts = memberRepository.findSignupDropoutsStartedBefore(LocalDateTime.now().minusHours(DROPOUT_HOURS)),
         joinedCountsBySocialProvider = memberRepository.countJoinedMembersBySocialProvider(),
+        minIntroNoteCountForQuiz = MIN_INTRO_NOTE_COUNT_FOR_QUIZ,
+        quizBlockedMembers = memberRepository.findActiveMembersWithIntroNotesUnder(MIN_INTRO_NOTE_COUNT_FOR_QUIZ),
+        activeMemberCount = memberRepository.countByRoleAndStatus(MemberRole.USER, MemberStatus.ACTIVE),
     )
 
     companion object {
         // 막 가입을 시작한 회원은 아직 가입 중일 수 있어 하루가 지나야 이탈로 센다.
         const val DROPOUT_HOURS = 24L
+
+        // 앱 홈이 소개노트가 이보다 적으면 퀴즈 시작을 막는다(FE MIN_INTRO_NOTE_ANSWERS). 서버는 막지 않는다.
+        const val MIN_INTRO_NOTE_COUNT_FOR_QUIZ = 3L
     }
 }

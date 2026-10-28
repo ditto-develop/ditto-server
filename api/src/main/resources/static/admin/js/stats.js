@@ -124,6 +124,27 @@
             cell(row.stageLabel),
             cell(row.hasPushDevice ? '있음' : '없음', row.hasPushDevice ? '' : 'empty'),
         ]);
+        renderQuizBlockedMembers(signupDropoutStats);
+    };
+
+    const renderQuizBlockedMembers = ({ quizBlockedMembers, activeMemberCount, minIntroNoteCountForQuiz }) => {
+        byId('quizBlockedCount').textContent = countText(quizBlockedMembers.length, '명');
+        byId('quizBlockedCountBasis').textContent =
+            `이용 중인 회원 ${countText(activeMemberCount, '명')} 중 `
+            + `${StatsCalc.percentText(quizBlockedMembers.length, activeMemberCount)} · `
+            + `소개노트 ${minIntroNoteCountForQuiz}개 미만`;
+
+        byId('quizBlockedMembersTitle').textContent =
+            `가입했지만 퀴즈를 못 하는 회원 · ${countText(quizBlockedMembers.length, '명')}`;
+        byId('quizBlockedMembersEmpty').hidden = quizBlockedMembers.length > 0;
+        byId('quizBlockedMembersTable').hidden = quizBlockedMembers.length === 0;
+        fillRows('quizBlockedMembersRows', quizBlockedMembers, (blockedMember) => [
+            memberLinkCell(blockedMember),
+            memberIdCell(blockedMember),
+            cell(blockedMember.joinedAt ? shortDateTime(blockedMember.joinedAt) : '-'),
+            countCell(blockedMember.introNoteCount),
+            cell(blockedMember.hasStartedQuiz ? '함' : '안 함', blockedMember.hasStartedQuiz ? '' : 'empty'),
+        ]);
     };
 
     const renderMemberTotals = (totals) => {

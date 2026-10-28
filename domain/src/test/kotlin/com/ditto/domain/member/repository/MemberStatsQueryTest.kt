@@ -1,5 +1,8 @@
 package com.ditto.domain.member.repository
 
+import com.ditto.domain.intronote.entity.IntroNote
+import com.ditto.domain.intronote.entity.IntroQuestion
+import com.ditto.domain.intronote.repository.IntroNoteRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.Location
@@ -10,10 +13,13 @@ import com.ditto.domain.member.repository.querydsl.GenderBirthDateCount
 import com.ditto.domain.member.repository.querydsl.LeaveReasonCount
 import com.ditto.domain.member.repository.querydsl.LocationCount
 import com.ditto.domain.member.repository.querydsl.MemberFilter
+import com.ditto.domain.member.repository.querydsl.QuizBlockedMember
 import com.ditto.domain.member.repository.querydsl.SignupDropout
 import com.ditto.domain.member.repository.querydsl.SocialProviderCount
 import com.ditto.domain.notification.MemberDeviceFixture
 import com.ditto.domain.notification.repository.MemberDeviceRepository
+import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.socialaccount.entity.SocialAccount
 import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
@@ -34,6 +40,8 @@ class MemberStatsQueryTest(
     private val socialAccountRepository: SocialAccountRepository,
     private val nicknameReservationRepository: NicknameReservationRepository,
     private val memberDeviceRepository: MemberDeviceRepository,
+    private val introNoteRepository: IntroNoteRepository,
+    private val quizProgressRepository: QuizProgressRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -216,6 +224,27 @@ class MemberStatsQueryTest(
                 SocialProviderCount(SocialProvider.KAKAO, 2L),
                 SocialProviderCount(SocialProvider.APPLE, 1L),
                 SocialProviderCount(null, 1L),
+            )
+        }
+    }
+
+    "findActiveMembersWithIntroNotesUnder" - {
+        "빈 답을 빼고 소개노트가 기준보다 적은 이용 중인 회원을 퀴즈 시작 여부와 함께 찾는다" {
+            fun writeIntroNotes(memberId: Long, vararg answers: String) = answers.forEachIndexed { index, answer ->
+                introNoteRepository.save(IntroNote.create(memberId, IntroQuestion.entries[index], answer))
+            }
+            val noNote = save("no-note")
+            val blankNotes = save("blank-notes")
+            writeIntroNotes(blankNotes.id, "답", "답", " ")
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = blankNotes.id))
+            writeIntroNotes(save("enough").id, "답", "답", "답")
+            save("left", status = MemberStatus.LEFT)
+            save("pending", status = MemberStatus.PENDING, joinedAt = null)
+            save("admin", role = MemberRole.ADMIN)
+
+            memberRepository.findActiveMembersWithIntroNotesUnder(3L) shouldContainExactlyInAnyOrder listOf(
+                QuizBlockedMember(noNote.id, "no-note", JOINED_AT, introNoteCount = 0L, hasStartedQuiz = false),
+                QuizBlockedMember(blankNotes.id, "blank-notes", JOINED_AT, introNoteCount = 2L, hasStartedQuiz = true),
             )
         }
     }

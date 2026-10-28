@@ -29,4 +29,7 @@ interface MemberRepositoryCustom {
 
     /** 탈퇴한 회원도 센다. 관리자는 뺀다. */
     fun countJoinedMembersBySocialProvider(): List<SocialProviderCount>
+
+    /** 빈 답은 소개노트로 세지 않는다. 관리자는 뺀다. */
+    fun findActiveMembersWithIntroNotesUnder(minIntroNoteCount: Long): List<QuizBlockedMember>
 }
