@@ -156,7 +156,7 @@ class MemberRepositoryImpl(
             }
     }
 
-    override fun countActiveMembersWithPushDevice(
+    override fun countPushDeviceCoverage(
         filter: MemberFilter,
         excludedNicknamePrefix: String,
     ): PushDeviceCoverage {

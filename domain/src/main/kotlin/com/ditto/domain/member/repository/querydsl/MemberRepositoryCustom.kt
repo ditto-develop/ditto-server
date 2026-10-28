@@ -31,7 +31,7 @@ interface MemberRepositoryCustom {
     fun countJoinedMembersBySocialProvider(excludedNicknamePrefix: String): List<SocialProviderCount>
 
     /** 이용 중인(ACTIVE) 회원만 센다. 닉네임이 [excludedNicknamePrefix] 로 시작하는 회원은 뺀다. */
-    fun countActiveMembersWithPushDevice(filter: MemberFilter, excludedNicknamePrefix: String): PushDeviceCoverage
+    fun countPushDeviceCoverage(filter: MemberFilter, excludedNicknamePrefix: String): PushDeviceCoverage
 
     /** 빈 답은 소개노트로 세지 않는다. 관리자와 닉네임이 [excludedNicknamePrefix] 로 시작하는 회원은 뺀다. */
     fun findActiveMembersWithIntroNotesUnder(

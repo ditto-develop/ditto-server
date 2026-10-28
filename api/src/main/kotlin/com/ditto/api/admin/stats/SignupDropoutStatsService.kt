@@ -30,7 +30,7 @@ class SignupDropoutStatsService(
                 DummyMarker.NICKNAME_PREFIX,
             ),
             activeStatusMemberCount = memberRepository
-                .countActiveMembersWithPushDevice(MemberFilter.NONE, DummyMarker.NICKNAME_PREFIX)
+                .countPushDeviceCoverage(MemberFilter.NONE, DummyMarker.NICKNAME_PREFIX)
                 .memberCount,
         )
     }

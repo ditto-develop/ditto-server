@@ -265,7 +265,7 @@ class MemberStatsQueryTest(
         }
     }
 
-    "countActiveMembersWithPushDevice" - {
+    "countPushDeviceCoverage" - {
         "이용 중인 회원을 세고 기기가 여러 대여도 한 명으로 세며 더미는 뺀다" {
             val withTwoDevices = save("two-devices")
             memberDeviceRepository.save(MemberDeviceFixture.create(memberId = withTwoDevices.id, token = "token-1"))
@@ -276,7 +276,7 @@ class MemberStatsQueryTest(
             save("admin", role = MemberRole.ADMIN)
             save("${DUMMY_PREFIX}1")
 
-            memberRepository.countActiveMembersWithPushDevice(MemberFilter.NONE, DUMMY_PREFIX) shouldBe
+            memberRepository.countPushDeviceCoverage(MemberFilter.NONE, DUMMY_PREFIX) shouldBe
                 PushDeviceCoverage(memberCount = 2L, memberWithPushDeviceCount = 1L)
         }
 
@@ -284,7 +284,8 @@ class MemberStatsQueryTest(
             save("female", gender = Gender.FEMALE)
             save("male", gender = Gender.MALE)
 
-            memberRepository.countActiveMembersWithPushDevice(MemberFilter(gender = Gender.FEMALE), DUMMY_PREFIX) shouldBe
+            val femaleOnly = MemberFilter(gender = Gender.FEMALE)
+            memberRepository.countPushDeviceCoverage(femaleOnly, DUMMY_PREFIX) shouldBe
                 PushDeviceCoverage(memberCount = 1L, memberWithPushDeviceCount = 0L)
         }
     }

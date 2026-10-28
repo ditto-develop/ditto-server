@@ -749,7 +749,7 @@
             : `이용 중인 회원 ${countText(memberCount, '명')} 중 ${StatsCalc.percentText(missingCount, memberCount)}`;
     };
 
-    // 퀴즈를 하는 회원 기준 등록률은 보조 줄로 남긴다. 이력 영역 밖이라 분모가 0이면 직접 적는다.
+    // 퀴즈를 하는 회원 기준 등록률은 보조 줄이다.
     const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
         if (activeMemberCount === 0) {
             byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 0명';
@@ -762,6 +762,7 @@
 
     const renderPushSendSection = (pageData) => {
         const { quizStats, pushDeviceCoverage, pushSendHistoryCounts, pushSkipReasonLabels } = pageData;
+        // 기기 카드는 이력 영역 밖이라 빈 상태 안내를 못 받아, 분모가 0이면 카드에 직접 적는다.
         renderPushDeviceMissing(pushDeviceCoverage);
         renderPushDeviceRate(quizStats);
         const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);

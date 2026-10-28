@@ -25,5 +25,5 @@ class PushSendStatsService(
     // 기기는 지금 등록된 것만 알 수 있어 회차와 관계없이 오늘 기준이다. 더미는 기기가 없어 뺀다.
     @Transactional(readOnly = true)
     fun findPushDeviceCoverage(filter: StatsFilter, today: LocalDate): PushDeviceCoverage =
-        memberRepository.countActiveMembersWithPushDevice(filter.toMemberFilter(today), DummyMarker.NICKNAME_PREFIX)
+        memberRepository.countPushDeviceCoverage(filter.toMemberFilter(today), DummyMarker.NICKNAME_PREFIX)
 }

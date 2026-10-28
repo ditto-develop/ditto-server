@@ -109,7 +109,7 @@ const StatsCalc = (() => {
     const signupStageOf = (signupDropout) =>
         (signupDropout.hasNicknameReservation ? SIGNUP_STAGE_PROFILE_OR_INTRO : SIGNUP_STAGE_LOGIN_ONLY);
 
-    // 카카오·애플은 0명이어도 보이고, 수단을 모르는 회원은 있을 때만 보인다.
+    // 카카오·애플은 0명이어도 보인다. 그 밖의 키는 실제 행에서만 나와서 수단을 모르는 회원은 있을 때만 보인다.
     const signupDropoutProviderRows = (joinedCounts, dropoutCounts) => {
         const providers = new Set([
             ...Object.keys(SOCIAL_PROVIDER_LABELS),
