@@ -42,9 +42,6 @@ interface MemberRepository : JpaRepository<Member, Long>, MemberRepositoryCustom
     /** 운영 지표에서 빠지는 관리자 계정 수를 보여 주는 데 쓴다. */
     fun countByRoleAndStatusNot(role: MemberRole, status: MemberStatus): Long
 
-    /** 운영 지표에서 이용 중인 일반 회원 수를 분모로 쓴다. */
-    fun countByRoleAndStatus(role: MemberRole, status: MemberStatus): Long
-
     /** 알림 적재에서 탈퇴자를 거르는 데 쓴다. */
     fun existsByIdAndStatus(id: Long, status: MemberStatus): Boolean
 

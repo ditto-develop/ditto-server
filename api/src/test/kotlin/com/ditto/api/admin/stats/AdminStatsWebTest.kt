@@ -115,7 +115,7 @@ class AdminStatsWebTest(
                 .andExpect(
                     content().string(
                         pageJsonContaining(
-                            """"signupDropoutStats":{"dropoutHours":24,"signupDropouts":[],""" +
+                            """"signupDropouts":[],""" +
                                 """"joinedCountsBySocialProvider":[{"socialProvider":null,"count":1}],""" +
                                 """"minIntroNoteCountForQuiz":3,"quizBlockedMembers":[{"memberId":""",
                         ),
@@ -124,7 +124,7 @@ class AdminStatsWebTest(
                 .andExpect(
                     content().string(
                         pageJsonContaining(
-                            """"activePushDeviceCount":{"activeMemberCount":1,"activeMemberWithPushDeviceCount":0}""",
+                            """"pushDeviceCoverage":{"memberCount":1,"memberWithPushDeviceCount":0}""",
                         ),
                     ),
                 )

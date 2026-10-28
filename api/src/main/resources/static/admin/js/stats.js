@@ -94,8 +94,8 @@
     // 서버는 일시를 'yyyy-MM-dd HH:mm:ss' 로 준다.
     const shortDateTime = (dateTime) => `${shortDate(dateTime)} ${dateTime.slice(11, 16)}`;
 
-    const renderSignupDropoutSection = ({ signupDropoutStats, today }) => {
-        const dropouts = StatsCalc.signupDropouts(signupDropoutStats, today);
+    const renderSignupDropoutSection = ({ signupDropoutStats }) => {
+        const dropouts = StatsCalc.signupDropoutSummary(signupDropoutStats);
         byId('signupDropoutBasis').textContent =
             `관리자 제외 · 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간이 지난 회원`;
         showSectionIfAny('signupDropout', dropouts.startedCount > 0);
@@ -127,11 +127,11 @@
         renderQuizBlockedMembers(signupDropoutStats);
     };
 
-    const renderQuizBlockedMembers = ({ quizBlockedMembers, activeMemberCount, minIntroNoteCountForQuiz }) => {
+    const renderQuizBlockedMembers = ({ quizBlockedMembers, activeStatusMemberCount, minIntroNoteCountForQuiz }) => {
         byId('quizBlockedCount').textContent = countText(quizBlockedMembers.length, '명');
         byId('quizBlockedCountBasis').textContent =
-            `이용 중인 회원 ${countText(activeMemberCount, '명')} 중 `
-            + `${StatsCalc.percentText(quizBlockedMembers.length, activeMemberCount)} · `
+            `이용 중인 회원 ${countText(activeStatusMemberCount, '명')} 중 `
+            + `${StatsCalc.percentText(quizBlockedMembers.length, activeStatusMemberCount)} · `
             + `소개노트 ${minIntroNoteCountForQuiz}개 미만`;
 
         byId('quizBlockedMembersTitle').textContent =
@@ -733,12 +733,12 @@
     };
 
     // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
-    const renderPushDeviceMissing = (activePushDeviceCount) => {
-        const missingCount = StatsCalc.membersWithoutPushDevice(activePushDeviceCount);
-        const { activeMemberCount } = activePushDeviceCount;
+    const renderPushDeviceMissing = (pushDeviceCoverage) => {
+        const missingCount = StatsCalc.membersWithoutPushDevice(pushDeviceCoverage);
+        const { memberCount } = pushDeviceCoverage;
         byId('pushDeviceMissingCount').textContent = countText(missingCount, '명');
-        const rate = StatsCalc.percentText(missingCount, activeMemberCount);
-        byId('pushDeviceMissingCountBasis').textContent = `이용 중인 회원 ${countText(activeMemberCount, '명')} 중 ${rate}`;
+        const rate = StatsCalc.percentText(missingCount, memberCount);
+        byId('pushDeviceMissingCountBasis').textContent = `이용 중인 회원 ${countText(memberCount, '명')} 중 ${rate}`;
     };
 
     // 퀴즈를 하는 회원 기준 등록률은 보조로 남긴다.
@@ -753,8 +753,8 @@
     };
 
     const renderPushSendSection = (pageData) => {
-        const { quizStats, activePushDeviceCount, pushSendHistoryCounts, pushSkipReasonLabels } = pageData;
-        renderPushDeviceMissing(activePushDeviceCount);
+        const { quizStats, pushDeviceCoverage, pushSendHistoryCounts, pushSkipReasonLabels } = pageData;
+        renderPushDeviceMissing(pushDeviceCoverage);
         renderPushDeviceRate(quizStats);
         const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);
         showSectionIfAny('pushSend', counts.notificationCount > 0);

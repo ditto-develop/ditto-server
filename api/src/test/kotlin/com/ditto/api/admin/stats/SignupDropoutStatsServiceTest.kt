@@ -11,6 +11,7 @@ import com.ditto.domain.socialaccount.entity.SocialProvider
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -21,7 +22,7 @@ class SignupDropoutStatsServiceTest(
     private val dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    fun save(nickname: String, status: MemberStatus, provider: SocialProvider): Member {
+    fun saveMemberWithSocialAccount(nickname: String, status: MemberStatus, provider: SocialProvider): Member {
         val member = memberRepository.save(
             MemberFixture.create(
                 nickname = nickname,
@@ -47,28 +48,30 @@ class SignupDropoutStatsServiceTest(
     }
 
     "findStats" - {
-        "가입을 시작하고 하루가 지난 회원만 이탈로 세고 가입을 마친 회원은 로그인 수단별로 센다" {
-            val dropout = save("dropout", MemberStatus.PENDING, SocialProvider.KAKAO)
+        "가입을 시작하고 24시간이 지난 회원만 이탈로 세고 가입을 마친 회원은 로그인 수단별로 센다" {
+            val dropout = saveMemberWithSocialAccount("dropout", MemberStatus.PENDING, SocialProvider.KAKAO)
             moveCreatedAt(dropout, LocalDateTime.now().minusHours(25))
-            save("signing-up", MemberStatus.PENDING, SocialProvider.KAKAO)
-            save("joined", MemberStatus.ACTIVE, SocialProvider.APPLE)
+            saveMemberWithSocialAccount("signing-up", MemberStatus.PENDING, SocialProvider.KAKAO)
+            saveMemberWithSocialAccount("joined", MemberStatus.ACTIVE, SocialProvider.APPLE)
 
             val stats = signupDropoutStatsService.findStats()
 
             stats.dropoutHours shouldBe 24L
+            stats.realToday shouldBe LocalDate.now()
             stats.signupDropouts.map { it.memberId } shouldContainExactly listOf(dropout.id)
             stats.joinedCountsBySocialProvider shouldContainExactly listOf(SocialProviderCount(SocialProvider.APPLE, 1L))
         }
 
-        "소개노트가 3개보다 적은 이용 중인 회원과 이용 중인 회원 수를 함께 준다" {
-            val joined = save("joined", MemberStatus.ACTIVE, SocialProvider.KAKAO)
-            save("left", MemberStatus.LEFT, SocialProvider.KAKAO)
+        "소개노트가 3개보다 적은 이용 중인 회원과 이용 중인 회원 수를 함께 주고 더미는 뺀다" {
+            val joined = saveMemberWithSocialAccount("joined", MemberStatus.ACTIVE, SocialProvider.KAKAO)
+            saveMemberWithSocialAccount("left", MemberStatus.LEFT, SocialProvider.KAKAO)
+            memberRepository.save(MemberFixture.create(nickname = "dummy-1", status = MemberStatus.ACTIVE))
 
             val stats = signupDropoutStatsService.findStats()
 
             stats.minIntroNoteCountForQuiz shouldBe 3L
             stats.quizBlockedMembers.map { it.memberId } shouldContainExactly listOf(joined.id)
-            stats.activeMemberCount shouldBe 1L
+            stats.activeStatusMemberCount shouldBe 1L
         }
     }
 })

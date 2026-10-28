@@ -135,13 +135,17 @@ class MemberRepositoryImpl(
             }
     }
 
-    override fun countJoinedMembersBySocialProvider(): List<SocialProviderCount> {
+    override fun countJoinedMembersBySocialProvider(excludedNicknamePrefix: String): List<SocialProviderCount> {
         val countExpression = member.count()
         return queryFactory
             .select(socialAccount.provider, countExpression)
             .from(member)
             .leftJoin(socialAccount).on(socialAccount.memberId.eq(member.id))
-            .where(member.joinedAt.isNotNull, member.matchesFilter(MemberFilter.NONE))
+            .where(
+                member.joinedAt.isNotNull,
+                member.matchesFilter(MemberFilter.NONE),
+                member.nickname.startsWith(excludedNicknamePrefix).not(),
+            )
             .groupBy(socialAccount.provider)
             .fetch()
             .map { row ->
@@ -152,22 +156,32 @@ class MemberRepositoryImpl(
             }
     }
 
-    override fun countActiveMembersWithPushDevice(filter: MemberFilter): ActivePushDeviceCount {
+    override fun countActiveMembersWithPushDevice(
+        filter: MemberFilter,
+        excludedNicknamePrefix: String,
+    ): PushDeviceCoverage {
         val memberCount = member.id.countDistinct()
-        val withPushDeviceCount = memberDevice.memberId.countDistinct()
+        val memberWithPushDeviceCount = memberDevice.memberId.countDistinct()
         val row = queryFactory
-            .select(memberCount, withPushDeviceCount)
+            .select(memberCount, memberWithPushDeviceCount)
             .from(member)
             .leftJoin(memberDevice).on(memberDevice.memberId.eq(member.id))
-            .where(member.status.eq(MemberStatus.ACTIVE), member.matchesFilter(filter))
+            .where(
+                member.status.eq(MemberStatus.ACTIVE),
+                member.matchesFilter(filter),
+                member.nickname.startsWith(excludedNicknamePrefix).not(),
+            )
             .fetchOne()
-        return ActivePushDeviceCount(
-            activeMemberCount = row?.get(memberCount) ?: 0L,
-            activeMemberWithPushDeviceCount = row?.get(withPushDeviceCount) ?: 0L,
+        return PushDeviceCoverage(
+            memberCount = row?.get(memberCount) ?: 0L,
+            memberWithPushDeviceCount = row?.get(memberWithPushDeviceCount) ?: 0L,
         )
     }
 
-    override fun findActiveMembersWithIntroNotesUnder(minIntroNoteCount: Long): List<QuizBlockedMember> {
+    override fun findActiveMembersWithIntroNotesUnder(
+        minIntroNoteCount: Long,
+        excludedNicknamePrefix: String,
+    ): List<QuizBlockedMember> {
         val introNoteCount = introNote.id.countDistinct()
         val quizProgressCount = quizProgress.id.countDistinct()
         return queryFactory
@@ -175,7 +189,11 @@ class MemberRepositoryImpl(
             .from(member)
             .leftJoin(introNote).on(introNote.memberId.eq(member.id), introNote.answer.trim().isNotEmpty)
             .leftJoin(quizProgress).on(quizProgress.memberId.eq(member.id))
-            .where(member.status.eq(MemberStatus.ACTIVE), member.matchesFilter(MemberFilter.NONE))
+            .where(
+                member.status.eq(MemberStatus.ACTIVE),
+                member.matchesFilter(MemberFilter.NONE),
+                member.nickname.startsWith(excludedNicknamePrefix).not(),
+            )
             .groupBy(member.id, member.nickname, member.joinedAt)
             .having(introNoteCount.lt(minIntroNoteCount))
             .orderBy(member.joinedAt.desc())

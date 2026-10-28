@@ -110,7 +110,8 @@ const StatsCalc = (() => {
         (signupDropout.hasNicknameReservation ? SIGNUP_STAGE_PROFILE_OR_INTRO : SIGNUP_STAGE_LOGIN_ONLY);
 
     // 가입 시작 = 가입을 마친 회원(탈퇴 포함) + 이탈한 회원. 막 가입을 시작한 회원은 양쪽 모두에서 빠진다.
-    const signupDropouts = ({ signupDropouts: dropouts, joinedCountsBySocialProvider }, today) => {
+    // 가입 시작 시각이 실제 시각이라 최근 7일도 서버가 준 실제 날짜로 센다.
+    const signupDropoutSummary = ({ signupDropouts: dropouts, joinedCountsBySocialProvider, realToday }) => {
         const joinedCounts = sumCountsBy(joinedCountsBySocialProvider, (countRow) => countRow.socialProvider);
         const dropoutCounts = countBy(dropouts, (dropout) => dropout.socialProvider);
         // 카카오·애플은 0명이어도 보이고, 수단을 모르는 회원은 있을 때만 보인다.
@@ -128,7 +129,7 @@ const StatsCalc = (() => {
             .filter((row) => row.provider in SOCIAL_PROVIDER_LABELS || row.startedCount > 0)
             .map(({ label, dropoutCount, startedCount }) => ({ label, dropoutCount, startedCount }));
         const stageCounts = countBy(dropouts, signupStageOf);
-        const recentFrom = addDays(today, -(RECENT_SIGNUP_DROPOUT_DAYS - 1));
+        const recentFrom = addDays(realToday, -(RECENT_SIGNUP_DROPOUT_DAYS - 1));
         return {
             dropoutCount: dropouts.length,
             startedCount: sumCounts(joinedCountsBySocialProvider) + dropouts.length,
@@ -706,8 +707,8 @@ const StatsCalc = (() => {
     const repeatedlyReportedMembers = (mostReportedMembers) =>
         mostReportedMembers.filter((reportedMember) => reportedMember.count >= MIN_REPEATED_REPORT_COUNT);
 
-    const membersWithoutPushDevice = ({ activeMemberCount, activeMemberWithPushDeviceCount }) =>
-        activeMemberCount - activeMemberWithPushDeviceCount;
+    const membersWithoutPushDevice = ({ memberCount, memberWithPushDeviceCount }) =>
+        memberCount - memberWithPushDeviceCount;
 
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
@@ -760,7 +761,7 @@ const StatsCalc = (() => {
         formatCount,
         percent,
         percentText,
-        signupDropouts,
+        signupDropoutSummary,
         memberTotals,
         accountStatusCounts,
         locationCounts,

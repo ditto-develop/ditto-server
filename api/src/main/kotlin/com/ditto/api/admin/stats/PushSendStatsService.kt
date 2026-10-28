@@ -1,8 +1,9 @@
 package com.ditto.api.admin.stats
 
+import com.ditto.api.admin.dummy.DummyMarker
 import com.ditto.api.admin.stats.dto.StatsFilter
 import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.member.repository.querydsl.ActivePushDeviceCount
+import com.ditto.domain.member.repository.querydsl.PushDeviceCoverage
 import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.notification.repository.querydsl.PushSendHistoryCount
 import com.ditto.domain.system.OperationWeek
@@ -21,8 +22,8 @@ class PushSendStatsService(
     fun countHistories(filter: StatsFilter, week: OperationWeek, today: LocalDate): List<PushSendHistoryCount> =
         pushSendHistoryRepository.countHistoriesInWeek(week.startedOn, filter.toMemberFilter(today))
 
-    // 기기는 지금 등록된 것만 알 수 있어 회차와 관계없이 오늘 기준이다.
+    // 기기는 지금 등록된 것만 알 수 있어 회차와 관계없이 오늘 기준이다. 더미는 기기가 없어 뺀다.
     @Transactional(readOnly = true)
-    fun countActiveMembersWithPushDevice(filter: StatsFilter, today: LocalDate): ActivePushDeviceCount =
-        memberRepository.countActiveMembersWithPushDevice(filter.toMemberFilter(today))
+    fun findPushDeviceCoverage(filter: StatsFilter, today: LocalDate): PushDeviceCoverage =
+        memberRepository.countActiveMembersWithPushDevice(filter.toMemberFilter(today), DummyMarker.NICKNAME_PREFIX)
 }
