@@ -134,7 +134,7 @@
                 <div id="signupDropoutSectionBody">
                     <div class="grid stats-totals two">
                         <div class="card stat">
-                            <span class="label">가입 이탈</span>
+                            <span class="label">현재 가입 이탈</span>
                             <span class="value" id="signupDropoutCount">-</span>
                             <span class="basis" id="signupDropoutCountBasis"></span>
                         </div>
@@ -165,8 +165,8 @@
                         <h3 id="signupDropoutMembersTitle">가입 이탈 회원</h3>
                         <p class="muted" id="signupDropoutMembersEmpty" hidden>이탈한 회원이 없습니다.</p>
                         <div class="tbl-scroll stats-member-list" id="signupDropoutMembersTable">
-                            <table class="tbl">
-                                <thead><tr><th>회원 id</th><th>가입 시작</th><th>로그인 수단</th><th>멈춘 단계</th><th>푸시 기기</th></tr></thead>
+                            <table class="tbl signup-dropout-table">
+                                <thead><tr><th>회원 id</th><th>가입 시작</th><th>로그인 수단</th><th>푸시 기기</th><th>멈춘 단계</th></tr></thead>
                                 <tbody id="signupDropoutMembersRows"></tbody>
                             </table>
                         </div>
@@ -177,7 +177,7 @@
                         <p class="muted" id="quizBlockedMembersEmpty" hidden>퀴즈를 못 하는 회원이 없습니다.</p>
                         <div class="tbl-scroll stats-member-list" id="quizBlockedMembersTable">
                             <table class="tbl">
-                                <thead><tr><th>닉네임</th><th class="num">회원 id</th><th>가입 완료</th><th class="num">소개노트</th><th>퀴즈 시작</th></tr></thead>
+                                <thead><tr><th>닉네임</th><th>가입 완료</th><th>퀴즈 시작</th><th class="num">회원 id</th><th class="num">소개노트</th></tr></thead>
                                 <tbody id="quizBlockedMembersRows"></tbody>
                             </table>
                         </div>
@@ -711,6 +711,7 @@
                     <th:block th:replace="~{fragments :: info('info-stats-push', '알림', '알림마다 푸시를 보냈는지, 건너뛰었다면 왜인지 셉니다. 새 메시지 알림은 메시지마다 한 건입니다. 이력은 이 기능을 배포한 뒤부터 쌓이고 180일 뒤 지워집니다.')}"></th:block>
                     <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
                 </div>
+                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
                 <div class="grid stats-totals two">
                     <div class="card stat">
                         <span class="label with-info">푸시 기기 없는 회원
@@ -725,10 +726,8 @@
                             <th:block th:replace="~{fragments :: info('info-stats-push-failure', '실패율', '보낸 알림 중 기기 하나라도 구글 푸시 서버가 받지 않은 비율입니다. 폰에 실제로 떴는지는 알 수 없고, iOS 알림 권한을 끈 기기도 보낸 것으로 셉니다.')}"></th:block></span>
                         <span class="value" id="pushFailureRate">-</span>
                         <span class="basis" id="pushFailureRateBasis"></span>
-                        <span class="basis"><span th:replace="~{fragments :: scope('week')}"></span></span>
                     </div>
                 </div>
-                <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
                 <p class="alert info" id="pushSendEmptyNotice" hidden
                    th:text="${(filter.hasMemberConditions() ? '조건에 맞는 발송 이력이 없습니다.' : '이 주 발송 이력이 없습니다.') + (qaToolsEnabled ? ' 시간 조정 중이면 실제 날짜의 주를 골라야 이력이 보입니다.' : '')}">이 주 발송 이력이 없습니다.</p>
                 <div id="pushSendSectionBody">

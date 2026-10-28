@@ -97,7 +97,7 @@
     const renderSignupDropoutSection = ({ signupDropoutStats }) => {
         const dropouts = StatsCalc.signupDropoutSummary(signupDropoutStats);
         byId('signupDropoutBasis').textContent =
-            `관리자·더미 제외 · 가입 이탈은 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간이 지난 회원`;
+            `관리자·더미 제외 · 가입 이탈은 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간 안에 마치지 않은 회원`;
         showSectionIfAny('signupDropout', dropouts.startedCount > 0);
         if (dropouts.startedCount === 0) return;
 
@@ -130,8 +130,8 @@
             memberLinkCell({ memberId: row.memberId, nickname: `#${row.memberId}` }),
             cell(shortDateTime(row.signupStartedAt)),
             cell(row.socialProviderLabel),
-            cell(row.stageLabel),
             cell(row.hasPushDevice ? '있음' : '없음', row.hasPushDevice ? '' : 'empty'),
+            cell(row.stageLabel),
         ]);
     };
 
@@ -148,10 +148,10 @@
         byId('quizBlockedMembersTable').hidden = quizBlockedMembers.length === 0;
         fillRows('quizBlockedMembersRows', quizBlockedMembers, (blockedMember) => [
             memberLinkCell(blockedMember),
-            memberIdCell(blockedMember),
             cell(blockedMember.joinedAt ? shortDateTime(blockedMember.joinedAt) : '-'),
-            countCell(blockedMember.introNoteCount),
             cell(blockedMember.hasStartedQuiz ? '시작함' : '안 함', blockedMember.hasStartedQuiz ? '' : 'empty'),
+            memberIdCell(blockedMember),
+            countCell(blockedMember.introNoteCount),
         ]);
     };
 
@@ -745,14 +745,14 @@
         const { memberCount } = pushDeviceCoverage;
         byId('pushDeviceMissingCount').textContent = countText(missingCount, '명');
         byId('pushDeviceMissingCountBasis').textContent = memberCount === 0
-            ? '이용 중인 회원 없음'
+            ? '이용 중인 회원 0명'
             : `이용 중인 회원 ${countText(memberCount, '명')} 중 ${StatsCalc.percentText(missingCount, memberCount)}`;
     };
 
     // 퀴즈를 하는 회원 기준 등록률은 보조 줄로 남긴다. 이력 영역 밖이라 분모가 0이면 직접 적는다.
     const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
         if (activeMemberCount === 0) {
-            byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 없음';
+            byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 0명';
             return;
         }
         const rate = StatsCalc.percentText(activeMemberWithPushDeviceCount, activeMemberCount);
