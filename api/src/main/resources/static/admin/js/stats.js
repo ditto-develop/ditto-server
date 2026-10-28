@@ -733,25 +733,32 @@
     };
 
     // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
-    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
-        if (activeMemberCount === 0) {
-            byId('pushDeviceRate').textContent = '활성 회원 없음';
-            byId('pushDeviceRateBasis').textContent = '';
-            return;
-        }
-        fillRateCard('pushDeviceRate', {
-            part: activeMemberWithPushDeviceCount, whole: activeMemberCount, unit: '명', wholeLabel: '활성',
-        });
+    const renderPushDeviceMissing = (activePushDeviceCount) => {
+        const missingCount = StatsCalc.membersWithoutPushDevice(activePushDeviceCount);
+        const { activeMemberCount } = activePushDeviceCount;
+        byId('pushDeviceMissingCount').textContent = countText(missingCount, '명');
+        const rate = StatsCalc.percentText(missingCount, activeMemberCount);
+        byId('pushDeviceMissingCountBasis').textContent = `이용 중인 회원 ${countText(activeMemberCount, '명')} 중 ${rate}`;
     };
 
-    const renderPushSendSection = ({ quizStats, pushSendHistoryCounts, pushSkipReasonLabels }) => {
+    // 퀴즈를 하는 회원 기준 등록률은 보조로 남긴다.
+    const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
+        if (activeMemberCount === 0) {
+            byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 없음';
+            return;
+        }
+        const rate = StatsCalc.percentText(activeMemberWithPushDeviceCount, activeMemberCount);
+        byId('pushDeviceRateBasis').textContent =
+            `최근 4회차 활성 회원 ${countText(activeMemberCount, '명')} 중 등록 ${rate}`;
+    };
+
+    const renderPushSendSection = (pageData) => {
+        const { quizStats, activePushDeviceCount, pushSendHistoryCounts, pushSkipReasonLabels } = pageData;
+        renderPushDeviceMissing(activePushDeviceCount);
         renderPushDeviceRate(quizStats);
         const counts = StatsCalc.pushSendCounts(pushSendHistoryCounts, pushSkipReasonLabels);
         showSectionIfAny('pushSend', counts.notificationCount > 0);
 
-        byId('pushNotificationCount').textContent = countText(counts.notificationCount, '건');
-        byId('pushNotificationCountBasis').textContent =
-            `보냄 ${countText(counts.sentCount, '건')} · 건너뜀 ${countText(counts.skippedCount, '건')}`;
         fillRateCard('pushFailureRate', {
             part: counts.failedCount, whole: counts.sentCount, unit: '건', wholeLabel: '보냄',
         });

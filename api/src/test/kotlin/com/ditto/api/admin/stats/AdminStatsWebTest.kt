@@ -123,6 +123,13 @@ class AdminStatsWebTest(
                 )
                 .andExpect(
                     content().string(
+                        pageJsonContaining(
+                            """"activePushDeviceCount":{"activeMemberCount":1,"activeMemberWithPushDeviceCount":0}""",
+                        ),
+                    ),
+                )
+                .andExpect(
+                    content().string(
                         pageJsonContaining(""""genderBirthDateCounts":[{"gender":null,"birthDate":null,"count":1}]"""),
                     ),
                 )

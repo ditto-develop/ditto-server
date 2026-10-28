@@ -9,6 +9,7 @@ import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.MemberRole
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.entity.NicknameReservation
+import com.ditto.domain.member.repository.querydsl.ActivePushDeviceCount
 import com.ditto.domain.member.repository.querydsl.GenderBirthDateCount
 import com.ditto.domain.member.repository.querydsl.LeaveReasonCount
 import com.ditto.domain.member.repository.querydsl.LocationCount
@@ -246,6 +247,28 @@ class MemberStatsQueryTest(
                 QuizBlockedMember(noNote.id, "no-note", JOINED_AT, introNoteCount = 0L, hasStartedQuiz = false),
                 QuizBlockedMember(blankNotes.id, "blank-notes", JOINED_AT, introNoteCount = 2L, hasStartedQuiz = true),
             )
+        }
+    }
+
+    "countActiveMembersWithPushDevice" - {
+        "이용 중인 회원을 세고 기기가 여러 대여도 한 명으로 센다" {
+            val withTwoDevices = save("two-devices")
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = withTwoDevices.id, token = "token-1"))
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = withTwoDevices.id, token = "token-2"))
+            save("no-device")
+            val left = save("left", status = MemberStatus.LEFT)
+            memberDeviceRepository.save(MemberDeviceFixture.create(memberId = left.id, token = "token-3"))
+            save("admin", role = MemberRole.ADMIN)
+
+            memberRepository.countActiveMembersWithPushDevice(MemberFilter.NONE) shouldBe ActivePushDeviceCount(2L, 1L)
+        }
+
+        "회원 조건을 건다" {
+            save("female", gender = Gender.FEMALE)
+            save("male", gender = Gender.MALE)
+
+            memberRepository.countActiveMembersWithPushDevice(MemberFilter(gender = Gender.FEMALE)) shouldBe
+                ActivePushDeviceCount(1L, 0L)
         }
     }
 })

@@ -712,24 +712,20 @@
                     <span class="badge caution" th:if="${filter.hasMatchingTypeCondition()}">매칭 유형 미적용</span>
                 </div>
                 <p class="stats-basis"><span th:replace="~{fragments :: scope('week')}"></span> <span th:text="${weekLabel}">10/19 주</span> 발송 이력<th:block th:if="${qaToolsEnabled}"> · 시간 조정과 상관없이 실제 시각</th:block></p>
-                <div class="grid stats-totals">
+                <div class="grid stats-totals two">
                     <div class="card stat">
-                        <span class="label">알림 건수</span>
-                        <span class="value" id="pushNotificationCount">-</span>
-                        <span class="basis" id="pushNotificationCountBasis"></span>
+                        <span class="label with-info">푸시 기기 없는 회원
+                            <th:block th:replace="~{fragments :: info('info-stats-push-device', '푸시 기기 없는 회원', '이용 중인 회원(탈퇴·정지·영구 차단이 아닌 회원) 중 지금 푸시 기기가 하나도 등록되지 않은 회원입니다. 이 회원에게 가는 알림은 등록된 기기 없음으로 건너뜁니다. 기기가 있어도 iOS 알림 권한을 끈 회원은 받지 못하는데, 서버는 이를 알 수 없습니다. 아래 줄은 최근 4회차에 퀴즈를 끝까지 푼 활성 회원 중 기기가 있는 비율입니다.')}"></th:block></span>
+                        <span class="value" id="pushDeviceMissingCount">-</span>
+                        <span class="basis" id="pushDeviceMissingCountBasis"></span>
+                        <span class="basis" id="pushDeviceRateBasis"></span>
+                        <span class="basis"><span th:replace="~{fragments :: scope('now')}"></span></span>
                     </div>
                     <div class="card stat">
                         <span class="label with-info">실패율
                             <th:block th:replace="~{fragments :: info('info-stats-push-failure', '실패율', '보낸 알림 중 기기 하나라도 구글 푸시 서버가 받지 않은 비율입니다. 폰에 실제로 떴는지는 알 수 없고, iOS 알림 권한을 끈 기기도 보낸 것으로 셉니다.')}"></th:block></span>
                         <span class="value" id="pushFailureRate">-</span>
                         <span class="basis" id="pushFailureRateBasis"></span>
-                    </div>
-                    <div class="card stat">
-                        <span class="label with-info">푸시 기기 등록률
-                            <th:block th:replace="~{fragments :: info('info-stats-push-device', '푸시 기기 등록률', '최근 4회차 활성 회원 중 지금 푸시 기기가 등록된 회원 비율입니다. 등록 여부는 오늘 기준이라 지난 회차를 골라도 지금 값입니다.')}"></th:block></span>
-                        <span class="value" id="pushDeviceRate">-</span>
-                        <span class="basis" id="pushDeviceRateBasis"></span>
-                        <span class="basis"><span th:replace="~{fragments :: scope('now')}"></span></span>
                     </div>
                 </div>
                 <p class="alert info" id="pushSendEmptyNotice" hidden

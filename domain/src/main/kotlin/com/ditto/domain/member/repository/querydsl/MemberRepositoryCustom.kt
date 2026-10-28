@@ -30,6 +30,9 @@ interface MemberRepositoryCustom {
     /** 탈퇴한 회원도 센다. 관리자는 뺀다. */
     fun countJoinedMembersBySocialProvider(): List<SocialProviderCount>
 
+    /** 이용 중인(ACTIVE) 회원 수와 그중 지금 푸시 기기가 있는 회원 수. */
+    fun countActiveMembersWithPushDevice(filter: MemberFilter): ActivePushDeviceCount
+
     /** 빈 답은 소개노트로 세지 않는다. 관리자는 뺀다. */
     fun findActiveMembersWithIntroNotesUnder(minIntroNoteCount: Long): List<QuizBlockedMember>
 }

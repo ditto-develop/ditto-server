@@ -1024,6 +1024,15 @@ describe('memberSearchPath', () => {
     });
 });
 
+describe('membersWithoutPushDevice', () => {
+    test('이용 중인 회원에서 기기가 있는 회원을 뺀다', () => {
+        assert.equal(
+            StatsCalc.membersWithoutPushDevice({ activeMemberCount: 35, activeMemberWithPushDeviceCount: 20 }),
+            15,
+        );
+    });
+});
+
 describe('repeatedlyReportedMembers', () => {
     test('신고를 2건 이상 받은 회원만 남긴다', () => {
         const members = [

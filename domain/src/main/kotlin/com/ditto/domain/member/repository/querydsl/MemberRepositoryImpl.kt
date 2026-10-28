@@ -152,6 +152,21 @@ class MemberRepositoryImpl(
             }
     }
 
+    override fun countActiveMembersWithPushDevice(filter: MemberFilter): ActivePushDeviceCount {
+        val memberCount = member.id.countDistinct()
+        val withPushDeviceCount = memberDevice.memberId.countDistinct()
+        val row = queryFactory
+            .select(memberCount, withPushDeviceCount)
+            .from(member)
+            .leftJoin(memberDevice).on(memberDevice.memberId.eq(member.id))
+            .where(member.status.eq(MemberStatus.ACTIVE), member.matchesFilter(filter))
+            .fetchOne()
+        return ActivePushDeviceCount(
+            activeMemberCount = row?.get(memberCount) ?: 0L,
+            activeMemberWithPushDeviceCount = row?.get(withPushDeviceCount) ?: 0L,
+        )
+    }
+
     override fun findActiveMembersWithIntroNotesUnder(minIntroNoteCount: Long): List<QuizBlockedMember> {
         val introNoteCount = introNote.id.countDistinct()
         val quizProgressCount = quizProgress.id.countDistinct()

@@ -706,6 +706,9 @@ const StatsCalc = (() => {
     const repeatedlyReportedMembers = (mostReportedMembers) =>
         mostReportedMembers.filter((reportedMember) => reportedMember.count >= MIN_REPEATED_REPORT_COUNT);
 
+    const membersWithoutPushDevice = ({ activeMemberCount, activeMemberWithPushDeviceCount }) =>
+        activeMemberCount - activeMemberWithPushDeviceCount;
+
     const isSkipped = (countRow) => countRow.skipReason !== null;
 
     // 실패는 보낸 기기 중 하나라도 실패한 알림이다.
@@ -794,6 +797,7 @@ const StatsCalc = (() => {
         matchScores,
         activeGroupSizeRows,
         memberReportCounts,
+        membersWithoutPushDevice,
         pushSendCounts,
     };
 })();
