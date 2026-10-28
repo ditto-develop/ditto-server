@@ -12,8 +12,27 @@
 - **더미**: dev 의 더미 회원(닉네임 `dummy-`)도 일반 회원처럼 센다. 운영은 QA 도구가 꺼져 있어 더미가 없다. 더미는 만들 때 고른 나이가 그날(실제 날짜) 만 나이가 되는 생년월일을 무작위로 받는다. 시간 조정을 몇 주 앞으로 걸면 기준일이 달라 연령대가 고른 나이와 한 칸 어긋날 수 있다.
 - **탈퇴·삭제**: 그때의 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 탈퇴 30일 뒤 완전 삭제된 회원은 행이 없어 빠진다(지금은 삭제가 dry-run).
 - **기간 배지**: 기준 줄 앞에 그 숫자가 세는 기간을 붙인다. `이 회차`(고른 회차), `이 주 월~일`(고른 주의 실제 월~일, 회차가 아닌 주도 값이 있다), `최근 N회차`·`고른 주까지 N주`·`지난 회차 → 이 회차`(고른 회차가 끝점인 범위), `회차 무관 · 오늘 기준`(회차를 바꿔도 그대로). 필터가 걸리지 않는 장에는 "매칭 유형 미적용"·"회원 조건 미적용" 칩을 띄운다. 용어 설명은 장 제목과 카드 옆 (i)에 둔다.
-- **장 순서**: 회원 → 퀴즈 참여 → 매칭 → 채팅 → 평가 → 리텐션 → 문항 분포 → 신고·사용자 차단 → 알림. 문항 분포는 길어서 흐름 뒤에 둔다.
+- **장 순서**: 가입 이탈 → 회원 → 퀴즈 참여 → 매칭 → 채팅 → 평가 → 리텐션 → 문항 분포 → 신고·사용자 차단 → 알림. 문항 분포는 길어서 흐름 뒤에 둔다.
 - **빈 상태**: 장마다 분모가 0이면 숫자 대신 안내를 띄운다. 기준 줄은 빈 장에도 남겨 어느 기간을 조회했는지 보이게 한다. 매칭 유형이나 회원 조건을 걸었으면 "조건에 맞는 …"으로 알린다. 고른 주가 회차가 아니면 페이지 위에 한 번 알리고, 회차로 세는 장(퀴즈 참여·문항 분포·매칭·채팅·평가·리텐션)은 "회차가 아닌 주"로 비운다.
+
+## 가입 이탈
+
+운영자가 가장 먼저 챙겨 볼 장이라 맨 위에 둔다. 회차 무관·오늘 기준이다. 가입 중인 회원은 성별·생년월일이 없어 회원 조건과 매칭 유형을 걸지 않고, 관리자 계정 포함을 켜도 일반 회원만 센다.
+
+| 블록 | 세는 것 |
+|---|---|
+| 가입 이탈 | 가입을 시작하고 24시간이 지났는데 아직 PENDING 인 회원. 가입 시작은 회원 행이 생긴 시각(`member.created_at`, 실제 시각)이다 |
+| 가입 시작 | 가입을 마친 회원(`joined_at` 있음, 탈퇴 포함) + 가입 이탈. 24시간이 안 된 PENDING 은 양쪽 모두에서 빠진다 |
+| 최근 7일 | 가입 이탈 중 오늘을 넣어 7일 안에 가입을 시작한 회원 |
+| 이탈 단계 | 닉네임 예약(`nickname_reservation`) 행이 없으면 소셜 로그인 후 이탈, 있으면 프로필·소개노트 작성 중 이탈 |
+| 로그인 수단별 | `social_account.provider` 별 이탈 ÷ 가입 시작. 카카오·애플은 0명이어도 보이고, 소셜 계정이 없는 회원은 있을 때만 "알 수 없음"으로 보인다 |
+| 가입 이탈 회원 | id·가입 시작·수단·멈춘 단계·푸시 기기 유무([ADR 0048](../adr/0048-admin-stats-signup-dropout-lists.md)) |
+| 가입했지만 퀴즈를 못 하는 회원 | ACTIVE 이면서 빈 답을 뺀 소개노트(한 줄 소개 포함)가 3개 미만인 회원 ÷ ACTIVE 회원(이용 중인 회원). 목록은 닉네임·id·가입 완료·소개노트 수·퀴즈 시작 여부 |
+
+- 앱 가입 순서는 소셜 로그인 → 프로필 → 소개노트 → 가입 요청(`POST /api/v1/users`)이다. 닉네임을 확인하면 예약이 생기고, 프로필을 넘긴 것과 소개노트를 쓴 것은 가입 요청 전까지 서버에 남지 않는다. 그래서 단계는 둘로만 나뉜다. 더 나눈 비율은 FE 가 보내는 GA 이벤트(`signup_step_view`)로 본다.
+- 예약은 가입을 마칠 때만 지워지고 만료돼도 남는다. 확인한 닉네임이 이미 쓰는 것이었거나, 만료된 예약을 다른 회원이 같은 닉네임으로 가져가면 예약이 없어 소셜 로그인 후 이탈로 센다.
+- 소개노트 3개는 앱 홈이 퀴즈 시작을 막는 기준(FE `MIN_INTRO_NOTE_ANSWERS`)이다. 서버는 막지 않는다. 가입 때 "다음에 할래요"로 건너뛰었는지는 알 수 없고 지금 쓴 개수만 센다. 퀴즈 시작은 진행 행이 하나라도 있는지다.
+- 회원 현황의 "가입 미완료 N명 제외"는 24시간 기준 없이 PENDING 전부라 가입 이탈과 숫자가 다를 수 있다.
 
 ## 회원 현황
 
@@ -190,6 +209,26 @@ SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
 JOIN member m ON m.id = qp.member_id AND m.role = 'ADMIN'
 WHERE qp.status = 'COMPLETED';
+
+-- 가입 이탈 (24시간 기준은 실제 시각) — 단계·수단·푸시 기기
+SELECT m.id, m.created_at, sa.provider,
+       EXISTS(SELECT 1 FROM nickname_reservation r WHERE r.member_id = m.id) AS nickname_checked,
+       EXISTS(SELECT 1 FROM member_device d WHERE d.member_id = m.id) AS has_push_device
+FROM member m LEFT JOIN social_account sa ON sa.member_id = m.id
+WHERE m.role = 'USER' AND m.status = 'PENDING' AND m.created_at < NOW() - INTERVAL 24 HOUR;
+
+-- 가입 시작의 가입을 마친 쪽 (로그인 수단별, 탈퇴 포함)
+SELECT sa.provider, COUNT(*) FROM member m LEFT JOIN social_account sa ON sa.member_id = m.id
+WHERE m.role = 'USER' AND m.joined_at IS NOT NULL
+GROUP BY sa.provider;
+
+-- 가입했지만 퀴즈를 못 하는 회원 (분모는 role = 'USER' AND status = 'ACTIVE' 인 회원 수)
+SELECT m.id, m.nickname,
+       (SELECT COUNT(*) FROM intro_note n WHERE n.member_id = m.id AND TRIM(n.answer) <> '') AS intro_note_count,
+       EXISTS(SELECT 1 FROM quiz_progress qp WHERE qp.member_id = m.id) AS started_quiz
+FROM member m
+WHERE m.role = 'USER' AND m.status = 'ACTIVE'
+HAVING intro_note_count < 3;
 
 -- 누적 가입자·현재 회원·탈퇴·계정 상태 (PENDING 은 가입 미완료)
 SELECT status, COUNT(*) FROM member

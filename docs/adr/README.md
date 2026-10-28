@@ -43,6 +43,7 @@
 - [0045 — 출시 알림 신청은 API Key 전용 체인에 두고, IP당 한도를 인메모리로 건다](0045-launch-notification-public-endpoint.md)
 - [0046 — 어드민 운영 지표는 서버가 집계 결과만 넘기고 화면 JS 가 계산해 그린다](0046-admin-stats-render-in-browser.md)
 - [0047 — 운영 지표에서 운영자가 챙겨 볼 회원 목록은 id·닉네임·건수만 내린다](0047-admin-stats-member-lists.md)
+- [0048 — 가입 이탈 장의 회원 목록은 가입 진행 정보까지 내린다](0048-admin-stats-signup-dropout-lists.md)
 
 ## 언제 ADR을 쓰는가
 
