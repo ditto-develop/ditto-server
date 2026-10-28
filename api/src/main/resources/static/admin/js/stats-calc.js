@@ -109,25 +109,28 @@ const StatsCalc = (() => {
     const signupStageOf = (signupDropout) =>
         (signupDropout.hasNicknameReservation ? SIGNUP_STAGE_PROFILE_OR_INTRO : SIGNUP_STAGE_LOGIN_ONLY);
 
-    // 가입 시작 = 가입을 마친 회원(탈퇴 포함) + 이탈한 회원. 막 가입을 시작한 회원은 양쪽 모두에서 빠진다.
-    // 가입 시작 시각이 실제 시각이라 최근 7일도 서버가 준 실제 날짜로 센다.
-    const signupDropoutSummary = ({ signupDropouts: dropouts, joinedCountsBySocialProvider, realToday }) => {
-        const joinedCounts = sumCountsBy(joinedCountsBySocialProvider, (countRow) => countRow.socialProvider);
-        const dropoutCounts = countBy(dropouts, (dropout) => dropout.socialProvider);
-        // 카카오·애플은 0명이어도 보이고, 수단을 모르는 회원은 있을 때만 보인다.
+    // 카카오·애플은 0명이어도 보이고, 수단을 모르는 회원은 있을 때만 보인다.
+    const signupDropoutProviderRows = (joinedCounts, dropoutCounts) => {
         const providers = new Set([
             ...Object.keys(SOCIAL_PROVIDER_LABELS),
             ...joinedCounts.keys(),
             ...dropoutCounts.keys(),
         ]);
-        const providerRows = [...providers]
-            .map((provider) => {
-                const dropoutCount = dropoutCounts.get(provider) || 0;
-                const startedCount = (joinedCounts.get(provider) || 0) + dropoutCount;
-                return { provider, label: socialProviderLabel(provider), dropoutCount, startedCount };
-            })
-            .filter((row) => row.provider in SOCIAL_PROVIDER_LABELS || row.startedCount > 0)
-            .map(({ label, dropoutCount, startedCount }) => ({ label, dropoutCount, startedCount }));
+        return [...providers].map((provider) => {
+            const dropoutCount = dropoutCounts.get(provider) || 0;
+            return {
+                label: socialProviderLabel(provider),
+                dropoutCount,
+                startedCount: (joinedCounts.get(provider) || 0) + dropoutCount,
+            };
+        });
+    };
+
+    // 가입 시작 = 가입을 마친 회원(탈퇴 포함) + 이탈한 회원. 막 가입을 시작한 회원은 양쪽 모두에서 빠진다.
+    // 가입 시작 시각이 실제 시각이라 최근 7일도 서버가 준 실제 날짜로 센다.
+    const signupDropoutSummary = ({ signupDropouts: dropouts, joinedCountsBySocialProvider, realToday }) => {
+        const joinedCounts = sumCountsBy(joinedCountsBySocialProvider, (countRow) => countRow.socialProvider);
+        const dropoutCounts = countBy(dropouts, (dropout) => dropout.socialProvider);
         const stageCounts = countBy(dropouts, signupStageOf);
         const recentFrom = addDays(realToday, -(RECENT_SIGNUP_DROPOUT_DAYS - 1));
         return {
@@ -137,7 +140,7 @@ const StatsCalc = (() => {
             recentDays: RECENT_SIGNUP_DROPOUT_DAYS,
             stageCounts: [SIGNUP_STAGE_LOGIN_ONLY, SIGNUP_STAGE_PROFILE_OR_INTRO]
                 .map((label) => ({ label, count: stageCounts.get(label) || 0 })),
-            providerRows,
+            providerRows: signupDropoutProviderRows(joinedCounts, dropoutCounts),
             rows: dropouts.map((dropout) => ({
                 memberId: dropout.memberId,
                 signupStartedAt: dropout.signupStartedAt,

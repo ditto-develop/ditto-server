@@ -97,10 +97,16 @@
     const renderSignupDropoutSection = ({ signupDropoutStats }) => {
         const dropouts = StatsCalc.signupDropoutSummary(signupDropoutStats);
         byId('signupDropoutBasis').textContent =
-            `관리자 제외 · 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간이 지난 회원`;
+            `관리자·더미 제외 · 가입 이탈은 가입을 시작하고 ${signupDropoutStats.dropoutHours}시간이 지난 회원`;
         showSectionIfAny('signupDropout', dropouts.startedCount > 0);
         if (dropouts.startedCount === 0) return;
 
+        renderSignupDropoutTotals(dropouts);
+        renderSignupDropoutMembers(dropouts);
+        renderQuizBlockedMembers(signupDropoutStats);
+    };
+
+    const renderSignupDropoutTotals = (dropouts) => {
         byId('signupDropoutCount').textContent = countText(dropouts.dropoutCount, '명');
         byId('signupDropoutCountBasis').textContent =
             `가입 시작 ${countText(dropouts.startedCount, '명')} 중 `
@@ -113,18 +119,20 @@
             countCell(row.startedCount),
             rateCell(row.dropoutCount, row.startedCount),
         ]);
+    };
 
-        byId('signupDropoutMembersTitle').textContent = `가입 이탈 회원 · ${countText(dropouts.dropoutCount, '명')}`;
-        byId('signupDropoutMembersEmpty').hidden = dropouts.rows.length > 0;
-        byId('signupDropoutMembersTable').hidden = dropouts.rows.length === 0;
-        fillRows('signupDropoutMembersRows', dropouts.rows, (row) => [
+    const renderSignupDropoutMembers = ({ dropoutCount, rows }) => {
+        byId('signupDropoutMembersTitle').textContent = `가입 이탈 회원 · ${countText(dropoutCount, '명')}`;
+        byId('signupDropoutMembersEmpty').hidden = rows.length > 0;
+        byId('signupDropoutMembersTable').hidden = rows.length === 0;
+        fillRows('signupDropoutMembersRows', rows, (row) => [
+            // 가입 중인 회원의 닉네임은 임시값이라 내리지 않고 id 로 회원 검색에 건다.
             memberLinkCell({ memberId: row.memberId, nickname: `#${row.memberId}` }),
             cell(shortDateTime(row.signupStartedAt)),
             cell(row.socialProviderLabel),
             cell(row.stageLabel),
             cell(row.hasPushDevice ? '있음' : '없음', row.hasPushDevice ? '' : 'empty'),
         ]);
-        renderQuizBlockedMembers(signupDropoutStats);
     };
 
     const renderQuizBlockedMembers = ({ quizBlockedMembers, activeStatusMemberCount, minIntroNoteCountForQuiz }) => {
@@ -143,7 +151,7 @@
             memberIdCell(blockedMember),
             cell(blockedMember.joinedAt ? shortDateTime(blockedMember.joinedAt) : '-'),
             countCell(blockedMember.introNoteCount),
-            cell(blockedMember.hasStartedQuiz ? '함' : '안 함', blockedMember.hasStartedQuiz ? '' : 'empty'),
+            cell(blockedMember.hasStartedQuiz ? '시작함' : '안 함', blockedMember.hasStartedQuiz ? '' : 'empty'),
         ]);
     };
 
@@ -732,16 +740,16 @@
         byId('memberBlockCount').textContent = countText(memberBlockCount, '건');
     };
 
-    // 이력 영역 밖이라 빈 상태 안내를 받지 않아서 분모가 0이면 카드에 직접 적는다.
     const renderPushDeviceMissing = (pushDeviceCoverage) => {
         const missingCount = StatsCalc.membersWithoutPushDevice(pushDeviceCoverage);
         const { memberCount } = pushDeviceCoverage;
         byId('pushDeviceMissingCount').textContent = countText(missingCount, '명');
-        const rate = StatsCalc.percentText(missingCount, memberCount);
-        byId('pushDeviceMissingCountBasis').textContent = `이용 중인 회원 ${countText(memberCount, '명')} 중 ${rate}`;
+        byId('pushDeviceMissingCountBasis').textContent = memberCount === 0
+            ? '이용 중인 회원 없음'
+            : `이용 중인 회원 ${countText(memberCount, '명')} 중 ${StatsCalc.percentText(missingCount, memberCount)}`;
     };
 
-    // 퀴즈를 하는 회원 기준 등록률은 보조로 남긴다.
+    // 퀴즈를 하는 회원 기준 등록률은 보조 줄로 남긴다. 이력 영역 밖이라 분모가 0이면 직접 적는다.
     const renderPushDeviceRate = ({ activeMemberCount, activeMemberWithPushDeviceCount }) => {
         if (activeMemberCount === 0) {
             byId('pushDeviceRateBasis').textContent = '최근 4회차 활성 회원 없음';
@@ -749,7 +757,7 @@
         }
         const rate = StatsCalc.percentText(activeMemberWithPushDeviceCount, activeMemberCount);
         byId('pushDeviceRateBasis').textContent =
-            `최근 4회차 활성 회원 ${countText(activeMemberCount, '명')} 중 등록 ${rate}`;
+            `최근 4회차 활성 회원 ${countText(activeMemberCount, '명')} 중 기기 있음 ${rate}`;
     };
 
     const renderPushSendSection = (pageData) => {
