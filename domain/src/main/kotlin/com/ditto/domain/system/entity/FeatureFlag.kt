@@ -1,0 +1,73 @@
+package com.ditto.domain.system.entity
+
+import com.ditto.domain.BaseEntity
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
+import org.hibernate.annotations.Comment
+import java.time.LocalDateTime
+
+/**
+ * 서버 기능 플래그 한 개의 상태. 플래그마다 한 행이고, 행이 없으면 꺼져 있다.
+ *
+ * [enabledAt]은 **마지막으로 켠 시각**이다. 켜기 전부터 진행 중이던 대상에 기능을 소급 적용하지 않으려고 둔다
+ * (예: 첫 대화 힌트는 이 시각 이후 열린 방에만 만든다). 이미 켜져 있는데 다시 켜도 처음 켠 시각을 유지한다.
+ */
+@Entity
+@Table(
+    name = "feature_flag",
+    uniqueConstraints = [
+        UniqueConstraint(name = "feature_flag_uk_1", columnNames = ["flag_key"]),
+    ],
+)
+class FeatureFlag private constructor(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0L,
+
+    @Comment("플래그 키 (FeatureFlagKey)")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "flag_key", nullable = false, length = 50)
+    val key: FeatureFlagKey,
+) : BaseEntity() {
+
+    @Comment("켜짐 여부")
+    @Column(nullable = false)
+    var enabled: Boolean = false
+        protected set
+
+    @Comment("마지막으로 켠 시각 (꺼져 있으면 NULL)")
+    @Column(name = "enabled_at")
+    var enabledAt: LocalDateTime? = null
+        protected set
+
+    @Comment("마지막으로 바꾼 어드민 회원 ID")
+    @Column(name = "updated_by_member_id")
+    var updatedByMemberId: Long? = null
+        protected set
+
+    fun enable(at: LocalDateTime, adminMemberId: Long) {
+        updatedByMemberId = adminMemberId
+        if (enabled) {
+            return
+        }
+        enabled = true
+        enabledAt = at
+    }
+
+    fun disable(adminMemberId: Long) {
+        updatedByMemberId = adminMemberId
+        enabled = false
+        enabledAt = null
+    }
+
+    companion object {
+        fun of(key: FeatureFlagKey): FeatureFlag = FeatureFlag(key = key)
+    }
+}
