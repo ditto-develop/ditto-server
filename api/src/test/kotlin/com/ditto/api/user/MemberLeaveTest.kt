@@ -51,8 +51,10 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
+import org.springframework.aop.framework.ProxyFactory
 import org.springframework.transaction.PlatformTransactionManager
-import org.springframework.transaction.support.TransactionTemplate
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource
+import org.springframework.transaction.interceptor.TransactionInterceptor
 
 private val SUBMITTED_AT = LocalDateTime.of(2026, 3, 9, 10, 0)
 private val GROUP_WEEK_MONDAY = LocalDateTime.of(2026, 4, 6, 0, 0)
@@ -493,7 +495,7 @@ class MemberLeaveTest(
             memberRepository.findById(member.id).isPresent shouldBe true
         }
 
-        "dryRun을 끄면 보존 기간이 지난 회원을 실제로 삭제한다" {
+        "dryRun을 끄면 스케줄 진입점이 보존 기간이 지난 회원을 실제로 삭제한다" {
             val member = saveActive("실제삭제대상")
             socialAccountRepository.save(
                 SocialAccount.create(
@@ -523,8 +525,14 @@ class MemberLeaveTest(
                 retentionDays = 30,
             )
 
-            // 직접 만든 인스턴스라 @Transactional 프록시가 없다. 삭제 쿼리에 필요한 트랜잭션을 여기서 연다.
-            TransactionTemplate(transactionManager).execute { purgeService.purge() } shouldBe 1
+            // 운영과 같은 @Transactional 프록시로 감싸 스케줄 진입점(purgeExpired)을 부른다.
+            // 진입점이 트랜잭션 없이 내부 purge()를 부르면 기기 삭제(@Modifying)에서
+            // TransactionRequiredException 이 나 회원이 지워지지 않는다.
+            val proxied = ProxyFactory(purgeService).apply {
+                isProxyTargetClass = true
+                addAdvice(TransactionInterceptor(transactionManager, AnnotationTransactionAttributeSource()))
+            }.proxy as LeftMemberPurgeService
+            proxied.purgeExpired()
 
             memberRepository.findById(member.id).isPresent shouldBe false
             socialAccountRepository.findByMemberId(member.id) shouldBe null
