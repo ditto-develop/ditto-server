@@ -168,6 +168,8 @@ object NotificationMessages {
         title = "${senderNickname}님의 메시지",
         body = when (messageType) {
             ChatMessageType.IMAGE -> "사진을 보냈어요."
+            // 카드 본문은 JSON 이라 그대로 보이면 안 된다.
+            ChatMessageType.QUIZ_CARD -> "질문을 보냈어요."
             else -> content
         },
     )

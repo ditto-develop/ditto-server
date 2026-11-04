@@ -1,6 +1,8 @@
 package com.ditto.api.chat.scheduler
 
+import com.ditto.api.chat.quiz.QuizHintService
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
 import com.ditto.api.match.service.UnformedGroupNotifier
@@ -13,6 +15,7 @@ import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -46,6 +49,10 @@ import org.springframework.stereotype.Component
  * 개방을 보는 이 스케줄러가 마감도 함께 본다. 인원 미달 안내는 그룹 상태를 바꾸지 않고 알림만 남기며,
  * 재발송은 알림 유형의 중복 정책이 막는다.
  *
+ * 첫 대화 힌트(IMP-1)도 개방 직후 여기서 남기고 방 토픽으로 보낸다. 개방 생성과 누락 복구가 같은 경로라
+ * 주말 중 수락으로 처음부터 열린 방도 다음 주기에 잡힌다([QuizHintService]). 힌트는 알림을 보내지 않는다 —
+ * 같은 순간 '채팅방 오픈' 알림이 나간다.
+ *
  * 알림(채팅방 오픈·평가 요청·종료 임박·첫 메시지 리마인드)도 여기서 남긴다. 각 전이가 커밋된 뒤에 부르므로 롤백된 전이의 알림이
  * 남지 않고, 알림 적재 실패는 흡수되므로 생명주기 처리를 막지 않는다.
  */
@@ -62,6 +69,8 @@ class ChatRoomLifecycleScheduler(
     private val unformedGroupNotifier: UnformedGroupNotifier,
     private val unansweredGroupInvitationDecliner: UnansweredGroupInvitationDecliner,
     private val serverTimeProvider: ServerTimeProvider,
+    private val quizHintService: QuizHintService,
+    private val messagingTemplate: SimpMessagingTemplate,
 ) {
 
     @Scheduled(cron = "\${chat.lifecycle.scheduler.cron:0 * * * * *}")
@@ -77,6 +86,8 @@ class ChatRoomLifecycleScheduler(
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
         val opened = chatRoomEndService.openDue(serverNow)
         chatRoomOpenedNotifier.notifyOpened(opened)
+        quizHintService.createMissing(serverNow)
+            .forEach { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(it.roomId), it) }
 
         val ended = chatRoomEndService.endExpired(serverNow)
         val endedRoomIds = ended.map { it.id }
