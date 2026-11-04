@@ -3,6 +3,7 @@ package com.ditto.api.launchnotification.scheduler
 import com.ditto.domain.launchnotification.entity.LaunchNotificationRequest
 import com.ditto.domain.launchnotification.repository.LaunchNotificationRequestRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -20,6 +21,7 @@ class LaunchNotificationPurgeScheduler(
 
     /** 매일 04:20 — 알림 보관 기간 삭제(04:10) 뒤로 둔다. */
     @Scheduled(cron = "\${launch-notification.purge.scheduler.cron:0 20 4 * * *}")
+    @SchedulerLock(name = "launch-notification-purge", lockAtMostFor = "10m", lockAtLeastFor = "1m")
     fun purgeExpired() {
         val threshold = LaunchNotificationRequest.retentionThreshold(LocalDateTime.now())
         val deleted = launchNotificationRequestRepository.deleteNotifiedBefore(threshold)

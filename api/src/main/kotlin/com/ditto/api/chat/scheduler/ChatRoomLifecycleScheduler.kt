@@ -11,6 +11,7 @@ import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -63,6 +64,7 @@ class ChatRoomLifecycleScheduler(
 ) {
 
     @Scheduled(cron = "\${chat.lifecycle.scheduler.cron:0 * * * * *}")
+    @SchedulerLock(name = "chat-room-lifecycle", lockAtMostFor = "5m", lockAtLeastFor = "10s")
     fun sweep() {
         val serverNow = serverTimeProvider.now()
         // 예약 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
