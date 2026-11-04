@@ -1,6 +1,6 @@
 # ADR 0020 — 타인 프로필의 답변 비교는 원문이 아니라 일치 요약만 준다
 
-- 상태: Accepted (2026-08-28)
+- 상태: Accepted (2026-08-28) · 대화방 1:1 답변 비교 경로는 [0052](0052-pair-room-answer-compare.md)가 갱신
 - 근거: discussion (FE 위키 [BE-Request § 5](https://github.com/ditto-develop/ditto-fe/wiki/BE-Request)) + 피그마 `3.1 매칭 & 프로필`(node `1374:16677`, `1449:18800`, `1406:13369`)
 
 ## Context
