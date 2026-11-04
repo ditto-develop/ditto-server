@@ -40,13 +40,19 @@ class LeftMemberPurgeService(
     @Value("\${ditto.member.purge.retention-days:30}") private val retentionDays: Long,
 ) {
 
-    /** 매일 04:00에 실행한다 — 트래픽이 가장 낮은 시간대다. */
+    /**
+     * 매일 04:00에 실행한다 — 트래픽이 가장 낮은 시간대다.
+     *
+     * 트랜잭션은 여기서 연다. 같은 클래스의 [purge]를 부르는 자기 호출이라 그쪽 `@Transactional`은
+     * 프록시를 거치지 않는다 — 여기 없으면 기기 삭제(`@Modifying`)에서 예외가 나 회원이 지워지지 않는다.
+     */
     @Scheduled(cron = "0 0 4 * * *")
     @SchedulerLock(
         name = "left-member-purge",
         lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
+    @Transactional
     fun purgeExpired() {
         purge()
     }

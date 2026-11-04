@@ -22,7 +22,12 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 
 /** 닉네임 10분 예약(가입 중 선점)과 프로필 수정 제한(2회/14일, 진행 중 채팅방). */
 class NicknameRulesTest(
@@ -33,6 +38,7 @@ class NicknameRulesTest(
     private val nicknameReservationRepository: NicknameReservationRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
+    transactionManager: PlatformTransactionManager,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -49,6 +55,52 @@ class NicknameRulesTest(
         job = "it-tech",
         caricature = "m1",
     )
+
+    /**
+     * 확인과 저장 사이의 경쟁을 실제로 만든다. 다른 트랜잭션이 [nickname]을 저장(flush)만 해 둔 채 커밋을 미루는 동안
+     * [loser]를 부른다 — 커밋 전이라 [loser]의 중복 확인은 통과하고, 저장 시점에 유일 제약에 걸린다.
+     */
+    fun raceAgainstUncommitted(nickname: String, loser: () -> Unit): Throwable? {
+        val winner = saveActive("선점자")
+        val flushed = CountDownLatch(1)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val winning = executor.submit {
+                TransactionTemplate(transactionManager).executeWithoutResult {
+                    memberRepository.findById(winner.id).get().changeNickname(nickname, LocalDateTime.now())
+                    memberRepository.flush()
+                    flushed.countDown()
+                    Thread.sleep(300)
+                }
+            }
+            flushed.await(5, TimeUnit.SECONDS) shouldBe true
+            val thrown = runCatching(loser).exceptionOrNull()
+            winning.get(5, TimeUnit.SECONDS)
+            return thrown
+        } finally {
+            executor.shutdownNow()
+        }
+    }
+
+    "확인과 저장 사이에 남이 같은 닉네임을 먼저 저장하면 5xx 가 아니라 NICKNAME_ALREADY_EXISTS 다" - {
+        "가입" {
+            val pending = savePending("임시A")
+
+            val thrown = raceAgainstUncommitted("동시닉") { userService.register(pending.id, registerRequest("동시닉")) }
+
+            (thrown as? WarnException)?.errorCode shouldBe ErrorCode.NICKNAME_ALREADY_EXISTS
+        }
+
+        "프로필 수정" {
+            val member = saveActive("처음")
+
+            val thrown = raceAgainstUncommitted("동시닉") {
+                myProfileService.updateMyProfile(member.id, UpdateMyProfileRequest(nickname = "동시닉"))
+            }
+
+            (thrown as? WarnException)?.errorCode shouldBe ErrorCode.NICKNAME_ALREADY_EXISTS
+        }
+    }
 
     "닉네임 예약 (v2 확인)" - {
         "사용 가능하면 10분 동안 내게 예약한다" {

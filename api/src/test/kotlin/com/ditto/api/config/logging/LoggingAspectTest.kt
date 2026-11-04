@@ -153,6 +153,34 @@ class LoggingAspectTest : RestDocsTest() {
             }
             logs().forNone { it shouldContain "secret-token" }
         }
+
+        @Test
+        @DisplayName("하위 계층 메서드의 @Mask 파라미터는 ** 로 마스킹된다")
+        fun maskInternalParameter() {
+            mockMvc.perform(get("/api/test/logging/masked-param").withApiKey().withBearerToken())
+                .andExpect(status().isOk)
+
+            logs().forAtLeastOne {
+                it shouldContain "--> TestLoggingService.useSecret"
+                it shouldContain "owner=tester"
+                it shouldContain "secret=**"
+            }
+            logs().forNone { it shouldContain "secret-param" }
+        }
+
+        @Test
+        @DisplayName("푸시 토큰 등록은 어느 계층 로그에도 토큰 값을 남기지 않는다")
+        fun deviceTokenNeverLogged() {
+            val token = "device-token-should-not-be-logged"
+            mockMvc.perform(
+                post("/api/v1/notifications/devices").withApiKey().withBearerToken()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"token":"$token","platform":"IOS"}"""),
+            ).andExpect(status().isOk)
+
+            logs().forAtLeastOne { it shouldContain "--> MemberDeviceService.register" }
+            logs().forNone { it shouldContain token }
+        }
     }
 
     @Nested

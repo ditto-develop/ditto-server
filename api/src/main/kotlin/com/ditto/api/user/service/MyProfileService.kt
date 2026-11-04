@@ -70,6 +70,7 @@ class MyProfileService(
             }
             nicknameService.assertAssignable(memberId, nickname)
             member.changeNickname(nickname, serverTimeProvider.now())
+            nicknameService.flushAssigned()
             nicknameService.release(memberId)
         }
 

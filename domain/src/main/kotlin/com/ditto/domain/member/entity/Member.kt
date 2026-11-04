@@ -27,7 +27,7 @@ import java.time.LocalDateTime
         Index(name = "member_index_1", columnList = "created_at, status"),
         Index(name = "member_index_2", columnList = "status, suspended_until"),
     ],
-    uniqueConstraints = [UniqueConstraint(name = "member_unique_1", columnNames = ["nickname"])],
+    uniqueConstraints = [UniqueConstraint(name = Member.NICKNAME_UNIQUE_CONSTRAINT, columnNames = ["nickname"])],
 )
 class Member(
 
@@ -418,5 +418,8 @@ class Member(
 
         const val NICKNAME_CHANGE_LIMIT = 2
         const val NICKNAME_CHANGE_LOCK_DAYS = 14L
+
+        /** 닉네임 유일 제약 이름. 동시 저장에서 진 쪽을 이 이름으로 가려낸다. */
+        const val NICKNAME_UNIQUE_CONSTRAINT = "member_unique_1"
     }
 }

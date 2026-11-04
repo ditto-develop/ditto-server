@@ -55,8 +55,7 @@ class UserService(
             throw ErrorException(ErrorCode.MEMBER_ALREADY_EXISTS)
         }
 
-        // 남이 10분 예약한 닉네임도 막는다. 확인과 저장 사이의 경쟁은 member 유니크 제약이 최종으로 막는다
-        // (GlobalExceptionHandler 가 NICKNAME_ALREADY_EXISTS 로 바꾼다).
+        // 남이 10분 예약한 닉네임도 막는다. 확인과 저장 사이의 경쟁은 아래 flushAssigned 가 막는다.
         request.nickname?.let { nicknameService.assertAssignable(memberId, it) }
 
         member.register(
@@ -79,6 +78,7 @@ class UserService(
             introNoteService.saveAnswer(memberId, IntroQuestion.ONE_WORD.code, introduction.trim())
         }
 
+        nicknameService.flushAssigned()
         nicknameService.release(memberId)
 
         return member.toRegisterResponse()
