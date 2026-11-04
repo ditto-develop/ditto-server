@@ -54,10 +54,29 @@ jobs:
             -t $ECR_REGISTRY/$ECR_ALLOY_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_ALLOY_REPOSITORY:latest .aws/alloy
 
+      # 태스크 정의에 `latest` 가 아니라 이번 커밋 이미지를 박는다. `latest` 로 두면 배포가 실패해
+      # 이전 정의로 되돌아가도 그 정의 역시 `latest`(=실패한 이미지)를 가리켜, 태스크가 다시 뜨는
+      # 순간 고장 난 이미지를 받는다(#336, ADR 0050).
+      - name: Pin API image in task definition
+        id: render-api
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: .aws/task-definition.json
+          container-name: ditto-api
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Pin Alloy image in task definition
+        id: render-alloy
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-api.outputs.task-definition }}
+          container-name: alloy
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_ALLOY_REPOSITORY }}:${{ github.sha }}
+
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: .aws/task-definition.json
+          task-definition: ${{ steps.render-alloy.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
