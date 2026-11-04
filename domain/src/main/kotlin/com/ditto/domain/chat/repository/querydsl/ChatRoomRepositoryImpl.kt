@@ -4,6 +4,7 @@ import com.ditto.domain.chat.entity.ChatMessageType
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.entity.QChatMessage.chatMessage
+import com.ditto.domain.chat.entity.QChatQuizHint.chatQuizHint
 import com.ditto.domain.chat.entity.QChatRoom.chatRoom
 import com.ditto.domain.chat.entity.QChatRoomMember.chatRoomMember
 import com.ditto.domain.match.entity.QGroupMatch.groupMatch
@@ -69,10 +70,23 @@ class ChatRoomRepositoryImpl(
                     .from(chatMessage)
                     .where(
                         chatMessage.roomId.eq(chatRoom.id),
-                        chatMessage.messageType.ne(ChatMessageType.SYSTEM),
+                        chatMessage.messageType.notIn(ChatMessageType.SERVER_GENERATED),
                     )
                     .notExists(),
                 notAlreadyNotified(NotificationType.CHAT_NO_MESSAGE),
+            )
+            .fetch()
+
+    override fun findAllIdsActiveWithoutHintOpenedSince(since: LocalDateTime): List<Long> =
+        queryFactory
+            .select(chatRoom.id)
+            .from(chatRoom)
+            .leftJoin(chatQuizHint).on(chatQuizHint.roomId.eq(chatRoom.id))
+            .where(
+                chatRoom.status.eq(ChatRoomStatus.ACTIVE),
+                chatQuizHint.id.isNull,
+                // 열린 순간 = max(개방 예정 시각, 생성 시각). 둘 중 하나라도 since 이후면 그 순간이 since 이후다.
+                chatRoom.opensAt.goe(since).or(chatRoom.createdAt.goe(since)),
             )
             .fetch()
 
@@ -125,7 +139,7 @@ class ChatRoomRepositoryImpl(
             .from(chatRoom)
             .join(chatMessage).on(
                 chatMessage.roomId.eq(chatRoom.id),
-                chatMessage.messageType.ne(ChatMessageType.SYSTEM),
+                chatMessage.messageType.notIn(ChatMessageType.SERVER_GENERATED),
             )
             .where(openedRoomInWeek(weekStartedOn))
             .groupBy(chatRoom.id)
@@ -147,7 +161,7 @@ class ChatRoomRepositoryImpl(
             .from(chatRoom)
             .join(chatMessage).on(
                 chatMessage.roomId.eq(chatRoom.id),
-                chatMessage.messageType.ne(ChatMessageType.SYSTEM),
+                chatMessage.messageType.notIn(ChatMessageType.SERVER_GENERATED),
             )
             .leftJoin(member).on(member.id.eq(chatMessage.senderId))
             .where(openedRoomInWeek(weekStartedOn))

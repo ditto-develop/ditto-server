@@ -89,7 +89,8 @@ class QaRoomMessage(
     val sentAt: LocalDateTime,
     val unreadCount: Int,
 ) {
-    val isSystem: Boolean = messageType == ChatMessageType.SYSTEM
+    // 첫 대화 힌트도 서버가 만든 안내라 SYSTEM 처럼 가운데 줄로 그린다.
+    val isSystem: Boolean = messageType.isServerGenerated
 
     val isImage: Boolean = messageType == ChatMessageType.IMAGE
 }

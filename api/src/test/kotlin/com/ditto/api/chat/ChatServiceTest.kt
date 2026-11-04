@@ -573,6 +573,25 @@ class ChatServiceTest(
         }.errorCode shouldBe ErrorCode.NOT_CHAT_ROOM_MEMBER
     }
 
+    "클라이언트는 SYSTEM·첫 대화 힌트·질문 카드를 이 경로로 보낼 수 없다 — 사건·힌트를 위조할 수 있다" {
+        val room = saveOpenedRoom(100L, 1L, 2L)
+
+        listOf(ChatMessageType.SYSTEM, ChatMessageType.QUIZ_HINT, ChatMessageType.QUIZ_CARD).forEach { type ->
+            shouldThrow<WarnException> {
+                chatService.sendMessage(senderId = 1L, roomId = room.id, content = "USER_LEFT", messageType = type)
+            }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+        chatMessageRepository.countByRoomId(room.id) shouldBe 0L
+    }
+
+    "방 목록 안 읽음 수에 첫 대화 힌트는 세지 않는다" {
+        val room = saveOpenedRoom(100L, 1L, 2L)
+        chatMessageRepository.save(ChatMessage.quizHint(room.id, "{}"))
+        chatService.sendMessage(senderId = 2L, roomId = room.id, content = "안녕")
+
+        chatService.getMyRooms(1L).single().unreadCount shouldBe 1L
+    }
+
     "빈 내용을 보내면 BAD_REQUEST 예외가 발생한다" {
         // given
         val room = saveOpenedRoom(100L, 1L, 2L)

@@ -31,11 +31,12 @@ class ChatMessage private constructor(
     @Column(name = "room_id", nullable = false)
     val roomId: Long,
 
-    @Comment("보낸 회원 ID")
-    @Column(name = "sender_id", nullable = false)
-    val senderId: Long,
+    /** 보낸 회원. 서버가 만든 첫 대화 힌트([ChatMessageType.QUIZ_HINT])만 null 이다. */
+    @Comment("보낸 회원 ID (서버가 만든 첫 대화 힌트는 NULL)")
+    @Column(name = "sender_id", nullable = true)
+    val senderId: Long?,
 
-    @Comment("메시지 유형 (TEXT, IMAGE, SYSTEM)")
+    @Comment("메시지 유형 (TEXT, IMAGE, SYSTEM, QUIZ_HINT, QUIZ_CARD)")
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type", nullable = false, length = 20)
     val messageType: ChatMessageType,
@@ -49,10 +50,10 @@ class ChatMessage private constructor(
     /**
      * 이 메시지를 아직 안 읽은 참여자 수. 발신자와 이탈자는 세지 않는다.
      * 발신자 커서는 본인 메시지를 안 가리킬 수 있어 넣으면 1이 남고, 이탈자는 영영 안 읽어 숫자가 줄지 않는다.
-     * SYSTEM 메시지는 0. 조회자와 무관한 값이라 REST 와 STOMP 가 같은 수를 낸다.
+     * 서버가 만든 메시지(SYSTEM·QUIZ_HINT)는 0. 조회자와 무관한 값이라 REST 와 STOMP 가 같은 수를 낸다.
      */
     fun unreadCountAmong(roomMembers: Collection<ChatRoomMember>): Int {
-        if (messageType == ChatMessageType.SYSTEM) {
+        if (messageType.isServerGenerated) {
             return 0
         }
         return roomMembers.count { it.memberId != senderId && !it.hasLeft && !it.hasRead(id) }
@@ -62,8 +63,11 @@ class ChatMessage private constructor(
         /** 텍스트 메시지 상한. */
         const val MAX_CONTENT_LENGTH = 1000
 
-        /** 암호화하면 길어져서 상한까지 한글로 채운 본문이 4,047자가 된다. */
-        const val STORED_CONTENT_LENGTH = 4100
+        /**
+         * 암호화하면 길어진다. 텍스트는 상한까지 한글로 채워도 4,047자지만, 질문 카드·힌트는 문항·선택지·힌트 질문을
+         * JSON 으로 함께 실어(한글 최대 약 1,300자) 암호문이 6,000자를 넘을 수 있어 여유를 둔다.
+         */
+        const val STORED_CONTENT_LENGTH = 8200
 
         fun of(
             roomId: Long,
@@ -92,6 +96,18 @@ class ChatMessage private constructor(
                 senderId = senderId,
                 content = content,
                 messageType = ChatMessageType.SYSTEM,
+            )
+
+        /**
+         * 방이 열리는 순간 서버가 남기는 첫 대화 힌트. 보낸 사람이 없다.
+         * [content]는 문장이 아니라 구조화 JSON 이다 — 문구는 보는 사람과 방 유형을 아는 FE 가 만든다.
+         */
+        fun quizHint(roomId: Long, content: String): ChatMessage =
+            ChatMessage(
+                roomId = roomId,
+                senderId = null,
+                messageType = ChatMessageType.QUIZ_HINT,
+                content = content,
             )
     }
 }

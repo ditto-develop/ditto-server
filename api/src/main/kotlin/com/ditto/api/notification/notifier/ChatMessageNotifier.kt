@@ -41,17 +41,19 @@ class ChatMessageNotifier(
             .getOrDefault(0)
 
     private fun appendToReceivers(message: ChatMessageResponse): Int {
+        // 보낸 사람이 없는 메시지(서버가 만든 첫 대화 힌트)는 알리지 않는다. 같은 순간 '채팅방 오픈' 알림이 나간다.
+        val senderId = message.senderId ?: return 0
         // 방을 나간 멤버에게는 알리지 않는다 — 이탈자는 더 이상 이 방의 수신자가 아니다.
         val receiverIds = chatRoomMemberRepository.findByRoomIdIn(listOf(message.roomId))
             .filter { !it.hasLeft }
             .map { it.memberId }
-            .filter { it != message.senderId }
+            .filter { it != senderId }
         if (receiverIds.isEmpty()) {
             return 0
         }
 
         // 보낸 사람 닉네임이 없으면(탈퇴 등) 알리지 않는다 — "님의 새 메시지"에서 이름이 비면 문구가 깨진다.
-        val senderNickname = memberRepository.findById(message.senderId).orElse(null)?.nickname ?: return 0
+        val senderNickname = memberRepository.findById(senderId).orElse(null)?.nickname ?: return 0
 
         val content = NotificationMessages.chatMessage(
             senderNickname = senderNickname,
