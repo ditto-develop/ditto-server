@@ -15,6 +15,10 @@ import java.time.Duration
 import java.time.Instant
 import javax.sql.DataSource
 
+/**
+ * 락 저장소(테이블·DB 시각)와 크론마다 락이 달려 있는지를 본다. 테스트에서는 `@EnableSchedulerLock`이 꺼져 있어
+ * 프록시가 실제로 실행을 막는지는 여기서 검증하지 않는다(로컬 기동으로 확인, ADR 0049).
+ */
 class SchedulerLockTest(
     private val lockProvider: LockProvider,
     private val applicationContext: ApplicationContext,
@@ -26,22 +30,22 @@ class SchedulerLockTest(
 
     "락 저장소" - {
         "한 인스턴스가 잡고 있는 동안에는 다른 쪽이 같은 이름의 락을 잡지 못한다" {
-            val held = lockProvider.lock(lockConfig("matching")).orElse(null)
+            val held = lockProvider.lock(lockConfig("test-lock-held")).orElse(null)
             held.shouldNotBeNull()
 
-            lockProvider.lock(lockConfig("matching")).orElse(null).shouldBeNull()
+            lockProvider.lock(lockConfig("test-lock-held")).orElse(null).shouldBeNull()
         }
 
         "작업이 빨리 끝나도 최소 보유 시간 동안은 같은 회차를 다시 잡지 못한다" {
-            lockProvider.lock(lockConfig("quiz-opened-notification", atLeast = Duration.ofMinutes(1))).get().unlock()
+            lockProvider.lock(lockConfig("test-lock-at-least", atLeast = Duration.ofMinutes(1))).get().unlock()
 
-            lockProvider.lock(lockConfig("quiz-opened-notification")).orElse(null).shouldBeNull()
+            lockProvider.lock(lockConfig("test-lock-at-least")).orElse(null).shouldBeNull()
         }
 
         "최소 보유 시간 없이 풀린 락은 바로 다시 잡을 수 있다" {
-            lockProvider.lock(lockConfig("chat-room-lifecycle")).get().unlock()
+            lockProvider.lock(lockConfig("test-lock-released")).get().unlock()
 
-            lockProvider.lock(lockConfig("chat-room-lifecycle")).orElse(null).shouldNotBeNull()
+            lockProvider.lock(lockConfig("test-lock-released")).orElse(null).shouldNotBeNull()
         }
     }
 

@@ -26,7 +26,7 @@ class HealthCheckControllerTest : ControllerUnitTest() {
     }
 
     @Test
-    @DisplayName("종료를 시작해 트래픽을 받지 않으면 503 을 준다")
+    @DisplayName("트래픽을 받을 준비가 안 됐으면(기동 중·종료 중) 503 을 준다")
     fun unavailableWhenRefusingTraffic() {
         every { applicationAvailability.readinessState } returns ReadinessState.REFUSING_TRAFFIC
 

@@ -1,5 +1,6 @@
 package com.ditto.api.user.service
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -41,7 +42,11 @@ class LeftMemberPurgeService(
 
     /** 매일 04:00에 실행한다 — 트래픽이 가장 낮은 시간대다. */
     @Scheduled(cron = "0 0 4 * * *")
-    @SchedulerLock(name = "left-member-purge", lockAtMostFor = "10m", lockAtLeastFor = "1m")
+    @SchedulerLock(
+        name = "left-member-purge",
+        lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun purgeExpired() {
         purge()
     }

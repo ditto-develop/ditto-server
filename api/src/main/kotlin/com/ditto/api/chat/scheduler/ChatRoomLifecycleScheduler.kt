@@ -1,6 +1,7 @@
 package com.ditto.api.chat.scheduler
 
 import com.ditto.api.chat.service.ChatRoomEndService
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
@@ -64,7 +65,11 @@ class ChatRoomLifecycleScheduler(
 ) {
 
     @Scheduled(cron = "\${chat.lifecycle.scheduler.cron:0 * * * * *}")
-    @SchedulerLock(name = "chat-room-lifecycle", lockAtMostFor = "5m", lockAtLeastFor = "10s")
+    @SchedulerLock(
+        name = "chat-room-lifecycle",
+        lockAtMostFor = SchedulerLockDurations.EVERY_MINUTE_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.EVERY_MINUTE_AT_LEAST,
+    )
     fun sweep() {
         val serverNow = serverTimeProvider.now()
         // 예약 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는

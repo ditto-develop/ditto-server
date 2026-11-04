@@ -4,17 +4,19 @@ spring:
   task:
     scheduling:
       # 기본 1 이면 월 00:00 퀴즈 오픈(회원 전원 적재·푸시)이 도는 동안 매분 sweep 과 다른 cron 이 밀린다.
-      # 스케줄러는 모두 멱등이라 겹쳐 돌아도 안전하다.
+      # 서로 다른 크론이 한 인스턴스에서 동시에 돌아도 서로 간섭하지 않는다. 같은 크론이 인스턴스 사이에서
+      # 겹치는 일은 @SchedulerLock 이 막는다(ADR 0049).
       pool:
         size: 3
-      # 종료 신호를 받으면 실행 중인 크론(매칭·주간 푸시 등)이 끝나길 기다린다. 기본은 곧바로 끊는다 —
-      # 주 1회 작업이 중간에 끊기면 다음 실행이 다음 주다(#361). ECS stopTimeout(60초) 안에 끝나도록 잡는다.
+      # 종료 신호를 받으면 실행 중인 크론(매칭·주간 푸시 등)이 끝나길 최대 20초 기다린다. 기본은 곧바로 끊는다 —
+      # 주 1회 작업이 중간에 끊기면 다음 실행이 다음 주다(#361). 20초를 넘기는 작업은 여전히 끊긴다.
       shutdown:
         await-termination: true
         await-termination-period: 20s
   lifecycle:
-    # 종료 단계마다 기다리는 상한(웹 서버의 처리 중 요청 등). 기본 30초는 ECS stopTimeout 기본값과 같아
-    # 다 쓰면 뒤 단계(스케줄러 대기·DB 풀 정리) 전에 강제 종료된다. 위 대기와 합쳐 60초 안에 들게 한다.
+    # 종료 단계(SmartLifecycle phase)마다 기다리는 상한. 오래 걸리는 단계는 웹 서버의 처리 중 요청 대기다.
+    # 웹 서버 대기 20초 + 스케줄러 대기 20초(위) = 40초로 ECS stopTimeout(60초, .aws/task-definition.json) 안에 든다.
+    # stopTimeout 을 바꾸면 두 값을 함께 맞춘다 — 넘기면 DB 풀 정리 전에 강제 종료된다.
     timeout-per-shutdown-phase: 20s
   profiles:
     active: local
@@ -30,6 +32,12 @@ server:
   tomcat:
     # TLS 는 로드밸런서에서 끝나서 절대 주소로 만들면 http:// 가 된다. 어드민 비동기 폼의 fetch 가 그 리다이렉트를 따라가다 막힌다.
     use-relative-redirects: true
+
+logging:
+  level:
+    # 락에 막혀 크론을 건너뛰면 "Not executing '<이름>'. It's locked." 를 남긴다(이 로거는 DEBUG 로만 찍는다).
+    # 그게 없으면 크론이 안 돈 이유가 락인지 cron 설정인지 로그로 가를 수 없다. 획득·해제도 함께 찍혀 매분 두어 줄 늘어난다.
+    net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor: DEBUG
 
 springdoc:
   swagger-ui:

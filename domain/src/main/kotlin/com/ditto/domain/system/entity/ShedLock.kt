@@ -21,7 +21,7 @@ import java.time.LocalDateTime
 class ShedLock private constructor(
     @Id
     @Comment("락 이름 (스케줄 작업 이름)")
-    @Column(length = 64)
+    @Column(name = "name", nullable = false, length = 64)
     val name: String,
 
     @Comment("락 만료 시각 (DB 시각, UTC)")

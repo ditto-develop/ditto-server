@@ -1,5 +1,6 @@
 package com.ditto.api.notification.scheduler
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.domain.notification.entity.PushSendHistory
 import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -19,7 +20,11 @@ class PushSendHistoryPurgeScheduler(
 
     /** 매일 04:30. 출시 알림 신청 파기(04:20) 뒤에 돈다. */
     @Scheduled(cron = "\${push-send-history.purge.scheduler.cron:0 30 4 * * *}")
-    @SchedulerLock(name = "push-send-history-purge", lockAtMostFor = "10m", lockAtLeastFor = "1m")
+    @SchedulerLock(
+        name = "push-send-history-purge",
+        lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun purgeExpired() {
         val threshold = PushSendHistory.retentionFrom()
         val deleted = pushSendHistoryRepository.deleteCreatedBefore(threshold)
