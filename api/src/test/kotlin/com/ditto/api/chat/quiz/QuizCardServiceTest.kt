@@ -32,6 +32,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 class QuizCardServiceTest(
@@ -129,15 +132,14 @@ class QuizCardServiceTest(
         card.has("senderChoiceId") shouldBe false
     }
 
-    "기능이 꺼져 있으면 0006, 방의 문항이 아니면 0001, 문항이 없으면 0001 로 막는다" {
+    "기능이 꺼져 있으면 0006, 방의 문항이 아니면 7011, 한마디가 너무 길면 0001 로 막는다" {
         val (room, set) = personalRoom()
 
         shouldThrow<WarnException> { quizCardService.send(1L, room.id, set.quizIds[0], "") }
             .errorCode shouldBe ErrorCode.FEATURE_DISABLED
 
         enable()
-        shouldThrow<WarnException> { quizCardService.send(1L, room.id, 99_999L, "") }.errorCode shouldBe ErrorCode.BAD_REQUEST
-        shouldThrow<WarnException> { quizCardService.send(1L, room.id, null, "") }.errorCode shouldBe ErrorCode.BAD_REQUEST
+        shouldThrow<WarnException> { quizCardService.send(1L, room.id, 99_999L, "") }.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ROOM
         shouldThrow<WarnException> { quizCardService.send(1L, room.id, set.quizIds[0], "가".repeat(1001)) }
             .errorCode shouldBe ErrorCode.BAD_REQUEST
         chatMessageRepository.findAll().shouldBeEmpty()
@@ -151,5 +153,29 @@ class QuizCardServiceTest(
 
         shouldThrow<WarnException> { quizCardService.send(1L, room.id, set.quizIds[0], "") }
             .errorCode shouldBe ErrorCode.CHAT_ROOM_ENDED
+    }
+
+    "두 사람이 같은 문항을 동시에 올려도 카드는 하나, 한마디는 둘 다 남고 늦은 쪽은 7007 을 받는다" {
+        enable()
+        val (room, set) = personalRoom()
+        val ready = CountDownLatch(2)
+        val go = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+
+        val futures = listOf(1L, 2L).map { senderId ->
+            pool.submit<QuizCardSendResult> {
+                ready.countDown()
+                go.await()
+                quizCardService.send(senderId, room.id, set.quizIds[0], comment = "궁금해요 $senderId")
+            }
+        }
+        ready.await()
+        go.countDown()
+        val results = futures.map { it.get(10, TimeUnit.SECONDS) }
+        pool.shutdown()
+
+        results.count { it.rejectedAsDuplicate } shouldBe 1
+        chatQuizCardRepository.findByRoomId(room.id).size shouldBe 1
+        chatMessageRepository.findAll().count { it.messageType == ChatMessageType.TEXT } shouldBe 2
     }
 })

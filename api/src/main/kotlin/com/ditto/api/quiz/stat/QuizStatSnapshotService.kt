@@ -2,6 +2,7 @@ package com.ditto.api.quiz.stat
 
 import com.ditto.api.support.runCatchingExceptions
 import com.ditto.domain.quiz.entity.QuizChoiceStat
+import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizChoiceStatRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.quiz.repository.QuizSetStatRepository
@@ -39,11 +40,27 @@ class QuizStatSnapshotService(
             }
             .also { if (it > 0) logger.info { "퀴즈 통계 스냅샷 생성: ${it}건" } }
 
-    /** 마감된 셋의 스냅샷. 없으면 만든다. 마감 전 셋에 부르면 그 순간까지의 답으로 굳어 버리므로 호출자가 마감을 확인한다. */
-    fun getOrCreate(quizSetId: Long): QuizStatSnapshot {
+    /**
+     * 결과가 공개된(마감된) 셋이면 스냅샷을(없으면 만들어서), 아니면 null. 마감 전 셋으로 만들면 그 순간까지의 답으로
+     * 굳어 버리므로 마감 판단을 이 한곳에 둔다.
+     */
+    fun findIfClosed(quizSet: QuizSet, now: LocalDateTime): QuizStatSnapshot? =
+        if (QuizResultSchedule.isOpen(quizSet, now)) getOrCreate(quizSet.id) else null
+
+    /** [findIfClosed]를 퀴즈셋 ID 로. 셋이 없으면 null. */
+    fun findIfClosed(quizSetId: Long, now: LocalDateTime): QuizStatSnapshot? =
+        quizSetRepository.findById(quizSetId).orElse(null)?.let { findIfClosed(it, now) }
+
+    /** 스냅샷이 있게만 한다(선택지 집계를 읽지 않는다). 회원 행만 읽는 쪽이 쓴다. 호출자가 마감을 확인한다. */
+    fun ensureCreated(quizSetId: Long) {
         if (quizSetStatRepository.findByQuizSetId(quizSetId) == null) {
             createIfAbsent(quizSetId)
         }
+    }
+
+    /** 마감된 셋의 스냅샷. 없으면 만든다. 호출자가 마감을 확인한다 — 보통 [findIfClosed]를 쓴다. */
+    fun getOrCreate(quizSetId: Long): QuizStatSnapshot {
+        ensureCreated(quizSetId)
         val setStat = quizSetStatRepository.findByQuizSetId(quizSetId)
             ?: throw IllegalStateException("퀴즈 통계 스냅샷을 만들지 못했다: quizSetId=$quizSetId")
         return QuizStatSnapshot(

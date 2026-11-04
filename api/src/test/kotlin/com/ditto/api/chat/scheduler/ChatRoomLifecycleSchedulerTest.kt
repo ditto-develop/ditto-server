@@ -155,4 +155,27 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         }
         verify { messagingTemplate.convertAndSend("/sub/chat/rooms/11", hint) }
     }
+
+    "힌트 단계가 실패해도 같은 주기의 마감·평가 개방·알림은 그대로 돈다" {
+        every { quizHintService.createMissing(any()) } throws IllegalStateException("db down")
+
+        scheduler.sweep()
+
+        verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
+        verify { endedChatReviewOpener.openMissing() }
+        verify { chatEndingSoonNotifier.notifyEndingSoon(OVERRIDDEN_NOW) }
+        verify { unansweredGroupInvitationDecliner.declineUnanswered(OVERRIDDEN_NOW) }
+    }
+
+    "힌트 하나의 브로드캐스트가 실패해도 다음 힌트는 보낸다" {
+        val first = ChatMessageResponse(1L, 11L, null, ChatMessageType.QUIZ_HINT, "{}", null, OVERRIDDEN_NOW, 0)
+        val second = first.copy(id = 2L, roomId = 12L)
+        every { quizHintService.createMissing(any()) } returns listOf(first, second)
+        every { messagingTemplate.convertAndSend("/sub/chat/rooms/11", first) } throws IllegalStateException("broker down")
+
+        scheduler.sweep()
+
+        verify { messagingTemplate.convertAndSend("/sub/chat/rooms/12", second) }
+        verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
+    }
 })

@@ -579,7 +579,7 @@ class ChatServiceTest(
         listOf(ChatMessageType.SYSTEM, ChatMessageType.QUIZ_HINT, ChatMessageType.QUIZ_CARD).forEach { type ->
             shouldThrow<WarnException> {
                 chatService.sendMessage(senderId = 1L, roomId = room.id, content = "USER_LEFT", messageType = type)
-            }.errorCode shouldBe ErrorCode.BAD_REQUEST
+            }.errorCode shouldBe ErrorCode.CHAT_MESSAGE_TYPE_NOT_SENDABLE
         }
         chatMessageRepository.countByRoomId(room.id) shouldBe 0L
     }

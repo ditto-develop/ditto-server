@@ -1,5 +1,7 @@
 package com.ditto.api.chat.quiz
 
+import com.ditto.common.exception.ErrorCode
+import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.match.repository.GroupMatchRepository
@@ -25,4 +27,8 @@ class ChatRoomQuizSetResolver(
             ChatRoomType.GROUP -> groupMatchRepository.findById(room.sourceId).orElse(null)?.quizSetId
             ChatRoomType.REMATCH -> rematchRepository.findById(room.sourceId).orElse(null)?.quizSetId
         }
+
+    /** [quizSetIdOf]와 같되 없으면 `CHAT_ROOM_QUIZ_SET_NOT_FOUND`. 답변 보기·질문 카드가 같은 코드로 답한다. */
+    fun requireQuizSetIdOf(room: ChatRoom): Long =
+        quizSetIdOf(room) ?: throw WarnException(ErrorCode.CHAT_ROOM_QUIZ_SET_NOT_FOUND)
 }

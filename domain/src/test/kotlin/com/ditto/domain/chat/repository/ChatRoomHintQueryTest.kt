@@ -12,7 +12,7 @@ import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
-// 기본 픽스처 방: 2026-03-13(금) 00:00 개방, 금요일 정오에 만들어 ACTIVE. created_at 은 테스트를 돌리는 실제 시각이다.
+// 기본 픽스처 방: 2026-03-13(금) 00:00 개방, 금요일 정오에 만들어 ACTIVE.
 private val OPENS_AT = LocalDateTime.of(2026, 3, 13, 0, 0)
 
 class ChatRoomHintQueryTest(
@@ -22,30 +22,18 @@ class ChatRoomHintQueryTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    "findAllIdsActiveWithoutHintOpenedSince — 첫 대화 힌트 후보" - {
-        "기능을 켠 뒤 열린(개방 시각이 그 뒤인) 열린 방은 나온다" {
+    "findAllIdsActiveWithoutHint — 첫 대화 힌트 후보" - {
+        "열려 있고 힌트 표시가 없는 방은 나온다" {
             val room = chatRoomRepository.save(ChatRoomFixture.personal())
 
-            chatRoomRepository.findAllIdsActiveWithoutHintOpenedSince(OPENS_AT.minusDays(1)) shouldBe listOf(room.id)
+            chatRoomRepository.findAllIdsActiveWithoutHint() shouldBe listOf(room.id)
         }
 
-        "개방 시각과 생성 시각이 모두 켠 시각 앞이면 — 켜기 전부터 대화 중이던 방 — 나오지 않는다" {
-            chatRoomRepository.save(ChatRoomFixture.personal())
-
-            chatRoomRepository.findAllIdsActiveWithoutHintOpenedSince(LocalDateTime.now().plusDays(1)).shouldBeEmpty()
-        }
-
-        "개방 시각이 켠 시각 앞이어도 그 뒤에 만들어져 처음부터 열린 방은 나온다(주말 중 수락)" {
-            val room = chatRoomRepository.save(ChatRoomFixture.personal())
-
-            chatRoomRepository.findAllIdsActiveWithoutHintOpenedSince(OPENS_AT.plusDays(1)) shouldBe listOf(room.id)
-        }
-
-        "이미 힌트 표시가 있는 방은 나오지 않는다" {
+        "힌트 표시가 있는 방은 — 빈 표시라도 — 나오지 않는다" {
             val room = chatRoomRepository.save(ChatRoomFixture.personal())
             chatQuizHintRepository.save(ChatQuizHint.of(room.id, messageId = null))
 
-            chatRoomRepository.findAllIdsActiveWithoutHintOpenedSince(OPENS_AT.minusDays(1)).shouldBeEmpty()
+            chatRoomRepository.findAllIdsActiveWithoutHint().shouldBeEmpty()
         }
 
         "아직 열리지 않은 방은 나오지 않는다" {
@@ -53,7 +41,7 @@ class ChatRoomHintQueryTest(
             val room = chatRoomRepository.save(ChatRoomFixture.personal(now = thursday, period = ChatPeriod.weekendOf(thursday)))
             room.status shouldBe ChatRoomStatus.SCHEDULED
 
-            chatRoomRepository.findAllIdsActiveWithoutHintOpenedSince(OPENS_AT.minusDays(1)).shouldBeEmpty()
+            chatRoomRepository.findAllIdsActiveWithoutHint().shouldBeEmpty()
         }
     }
 

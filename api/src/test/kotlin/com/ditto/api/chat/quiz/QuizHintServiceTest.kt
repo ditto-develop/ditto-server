@@ -2,6 +2,7 @@ package com.ditto.api.chat.quiz
 
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.support.QuizSeeder
+import com.ditto.api.system.featureflag.FeatureFlagAdminService
 import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatMessageType
@@ -21,9 +22,7 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.system.entity.FeatureFlag
 import com.ditto.domain.system.entity.FeatureFlagKey
-import com.ditto.domain.system.repository.FeatureFlagRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -37,7 +36,7 @@ private val NOW = LocalDateTime.of(2026, 3, 13, 12, 0)
 class QuizHintServiceTest(
     private val quizHintService: QuizHintService,
     private val featureFlags: FeatureFlags,
-    private val featureFlagRepository: FeatureFlagRepository,
+    private val featureFlagAdminService: FeatureFlagAdminService,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
@@ -58,10 +57,8 @@ class QuizHintServiceTest(
     beforeTest { featureFlags.evict() }
     afterTest { featureFlags.evict() }
 
-    fun enableSince(at: LocalDateTime) {
-        featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT).apply { enable(at, 1L) })
-        featureFlags.evict()
-    }
+    /** 어드민 화면과 같은 경로로 켠다 — 켜는 순간 이미 열린 방에 빈 표시가 남는다. */
+    fun enable() = featureFlagAdminService.set(FeatureFlagKey.QUIZ_CHAT, enabled = true, adminMemberId = 1L)
 
     fun roomWith(room: ChatRoom, vararg memberIds: Long): ChatRoom =
         chatRoomRepository.save(room).also { saved ->
@@ -84,7 +81,7 @@ class QuizHintServiceTest(
     }
 
     "켠 뒤 열린 1:1 방에 보낸 사람 없는 힌트를 하나 남기고, 다시 돌려도 더 만들지 않는다" {
-        enableSince(LocalDateTime.of(2026, 3, 12, 0, 0))
+        enable()
         val (room, set) = personalRoom(listOf(1, 2), listOf(2, 2))
 
         val created = quizHintService.createMissing(NOW)
@@ -105,15 +102,28 @@ class QuizHintServiceTest(
         chatQuizHintRepository.existsByRoomId(room.id) shouldBe true
     }
 
-    "켜기 전부터 열려 있던 방에는 소급해 만들지 않는다" {
-        val (_, _) = personalRoom(listOf(1), listOf(1))
-        enableSince(LocalDateTime.now().plusDays(1))
+    "켜기 전부터 열려 있던 방에는 소급해 만들지 않는다 — 켜는 순간 빈 표시가 남는다" {
+        val (room, _) = personalRoom(listOf(1), listOf(1))
+        enable()
 
         quizHintService.createMissing(NOW).shouldBeEmpty()
+        chatQuizHintRepository.findByRoomIdIn(listOf(room.id)).single().messageId.shouldBeNull()
+    }
+
+    "QA 다시 만들기는 표시와 힌트 메시지를 지우고, 다음 주기에 다시 만든다" {
+        enable()
+        val (room, _) = personalRoom(listOf(1, 2), listOf(1, 1))
+        quizHintService.createMissing(NOW) shouldHaveSize 1
+
+        quizHintService.resetHint(room.id) shouldBe true
+
+        chatMessageRepository.findAll().shouldBeEmpty()
+        quizHintService.createMissing(NOW) shouldHaveSize 1
+        quizHintService.resetHint(9_999L) shouldBe false
     }
 
     "그룹 방은 만장일치 문항을 UNANIMOUS 로 남긴다" {
-        enableSince(LocalDateTime.of(2026, 3, 12, 0, 0))
+        enable()
         val set = seeder.quizSet(questions = 2, matchingType = MatchingType.GROUP)
         listOf(1L, 2L, 3L).forEach { seeder.answer(it, set, listOf(1, if (it == 1L) 1 else 2)) }
         val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = set.quizSetId))
@@ -126,7 +136,7 @@ class QuizHintServiceTest(
     }
 
     "원본 매칭이 없어 고를 문항이 없으면 메시지 없이 표시만 남겨 다시 집지 않는다" {
-        enableSince(LocalDateTime.of(2026, 3, 12, 0, 0))
+        enable()
         val room = roomWith(ChatRoomFixture.personal(sourceId = 999L), 1L, 2L)
 
         quizHintService.createMissing(NOW).shouldBeEmpty()

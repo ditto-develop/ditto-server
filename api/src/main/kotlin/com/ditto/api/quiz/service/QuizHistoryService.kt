@@ -45,7 +45,7 @@ class QuizHistoryService(
         val progresses = quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, quizSets.map { it.id })
         val closedIds = quizSets.filter { QuizResultSchedule.isOpen(it, now) }.map { it.id }
         // 배치가 놓친 셋이 있으면 여기서 메운다 — 회원 행을 읽기 전에 만들어야 숫자가 빠지지 않는다.
-        closedIds.forEach { quizStatSnapshotService.getOrCreate(it) }
+        closedIds.forEach { quizStatSnapshotService.ensureCreated(it) }
         val minorityBySetId = quizMemberStatRepository.findByMemberIdAndQuizSetIdIn(memberId, closedIds)
             .associate { it.quizSetId to it.minorityCount }
 
@@ -87,8 +87,9 @@ class QuizHistoryService(
         val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.QUIZ_HISTORY_NOT_FOUND) }
         val sheet = quizAnswerSheetLoader.load(quizSetId, listOf(memberId))
 
-        return if (QuizResultSchedule.isOpen(quizSet, now)) {
-            closedDetail(memberId, quizSet, sheet, quizStatSnapshotService.getOrCreate(quizSetId))
+        val snapshot = quizStatSnapshotService.findIfClosed(quizSet, now)
+        return if (snapshot != null) {
+            closedDetail(memberId, quizSet, sheet, snapshot)
         } else {
             inProgressDetail(memberId, quizSet, sheet, liveParticipantCount(quizSet, now))
         }

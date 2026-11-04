@@ -16,8 +16,8 @@ import java.time.LocalDateTime
 /**
  * 서버 기능 플래그 한 개의 상태. 플래그마다 한 행이고, 행이 없으면 꺼져 있다.
  *
- * [enabledAt]은 **마지막으로 켠 시각**이다. 켜기 전부터 진행 중이던 대상에 기능을 소급 적용하지 않으려고 둔다
- * (예: 첫 대화 힌트는 이 시각 이후 열린 방에만 만든다). 이미 켜져 있는데 다시 켜도 처음 켠 시각을 유지한다.
+ * [enabledAt]은 **마지막으로 켠 시각**(어드민 화면 표시용)이다. 이미 켜져 있는데 다시 켜도 처음 켠 시각을 유지한다.
+ * 켜기 전부터 진행 중이던 대상을 거르는 일은 시각 비교가 아니라 켜는 순간의 처리로 한다(ADR 0051).
  */
 @Entity
 @Table(
@@ -52,13 +52,15 @@ class FeatureFlag private constructor(
     var updatedByMemberId: Long? = null
         protected set
 
-    fun enable(at: LocalDateTime, adminMemberId: Long) {
+    /** @return 꺼져 있다가 이번에 켜졌으면 true. 이미 켜져 있었으면 false(처음 켠 시각 유지). */
+    fun enable(at: LocalDateTime, adminMemberId: Long): Boolean {
         updatedByMemberId = adminMemberId
         if (enabled) {
-            return
+            return false
         }
         enabled = true
         enabledAt = at
+        return true
     }
 
     fun disable(adminMemberId: Long) {

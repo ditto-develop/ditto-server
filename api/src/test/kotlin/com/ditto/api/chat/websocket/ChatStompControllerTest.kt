@@ -155,5 +155,28 @@ class ChatStompControllerTest {
 
         verify(exactly = 0) { chatMessageNotifier.notifyNewMessage(any()) }
     }
-}
 
+    @Test
+    @DisplayName("클라이언트가 보낼 수 없는 유형은 7010 으로 거부하고 서비스까지 가지 않는다")
+    fun rejectNotSendableType() {
+        val principal = UsernamePasswordAuthenticationToken(MemberPrincipal(2L), null, emptyList())
+
+        listOf(ChatMessageType.SYSTEM, ChatMessageType.QUIZ_HINT).forEach { type ->
+            shouldThrow<WarnException> {
+                controller.sendMessage(1L, ChatSendRequest("USER_LEFT", type), principal)
+            }.errorCode shouldBe ErrorCode.CHAT_MESSAGE_TYPE_NOT_SENDABLE
+        }
+        verify(exactly = 0) { chatService.sendMessage(any(), any(), any(), any()) }
+        sentCount(ChatStompController.OUTCOME_REJECTED) shouldBe 2.0
+    }
+
+    @Test
+    @DisplayName("quizId 없는 질문 카드는 0001 로 거부한다")
+    fun rejectQuizCardWithoutQuizId() {
+        val principal = UsernamePasswordAuthenticationToken(MemberPrincipal(2L), null, emptyList())
+
+        shouldThrow<WarnException> {
+            controller.sendMessage(1L, ChatSendRequest("", ChatMessageType.QUIZ_CARD, quizId = null), principal)
+        }.errorCode shouldBe ErrorCode.BAD_REQUEST
+    }
+}

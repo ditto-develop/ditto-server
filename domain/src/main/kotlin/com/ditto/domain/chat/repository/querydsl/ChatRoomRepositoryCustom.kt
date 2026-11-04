@@ -1,5 +1,7 @@
 package com.ditto.domain.chat.repository.querydsl
 
+import com.ditto.domain.chat.entity.ChatQuizHint
+
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -35,12 +37,10 @@ interface ChatRoomRepositoryCustom {
     fun findAllIdsSilentOpenedBetween(from: LocalDateTime, to: LocalDateTime): List<Long>
 
     /**
-     * 열려 있고(`ACTIVE`) 첫 대화 힌트 표시(`chat_quiz_hint`)가 없으며, **[since] 이후에 열린** 방 — 힌트 생성·누락 복구 후보.
-     *
-     * 열린 순간은 `opens_at`(예약 개방)과 `created_at`(주말 중 수락으로 처음부터 열린 방) 중 늦은 쪽이다.
-     * 기능을 켜기 전에 이미 열려 대화 중이던 방에 힌트가 뒤늦게 끼어들지 않게 [since]로 자른다.
+     * 열려 있고(`ACTIVE`) 첫 대화 힌트 표시(`chat_quiz_hint`)가 없는 방 — 힌트 생성·누락 복구 후보.
+     * 기능을 켜는 순간 이미 열려 있던 방에는 빈 표시를 남겨 두므로([ChatQuizHint]) 여기 나오지 않는다.
      */
-    fun findAllIdsActiveWithoutHintOpenedSince(since: LocalDateTime): List<Long>
+    fun findAllIdsActiveWithoutHint(): List<Long>
 
     /**
      * 회원이 참여한 방 중 아직 끝나지 않은(SCHEDULED·ACTIVE) 방이 있는지 — 탈퇴 가드용.

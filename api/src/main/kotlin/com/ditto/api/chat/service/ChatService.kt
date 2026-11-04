@@ -241,8 +241,9 @@ class ChatService(
     /**
      * 메시지 전송 — 멤버십·내용 검증 후 저장하고 저장된 메시지를 반환한다. (브로드캐스트는 STOMP 컨트롤러 책임)
      *
-     * TEXT·IMAGE 만 받는다. SYSTEM·QUIZ_HINT 를 받아 주면 회원이 사건·힌트를 위조할 수 있고,
-     * QUIZ_CARD 는 서버가 내용을 만들어야 해 `QuizCardService`로 간다.
+     * 클라이언트가 보낸 내용을 그대로 저장하는 유형(TEXT·IMAGE)만 받는다. 클라이언트가 보낼 수 있는 유형의 정본은
+     * [ChatMessageType.CLIENT_SENDABLE]이고, 그중 QUIZ_CARD 는 서버가 내용을 만들어야 해 `QuizCardService`로 간다.
+     * SYSTEM·QUIZ_HINT 를 받아 주면 회원이 사건·힌트를 위조할 수 있다.
      */
     @Transactional
     fun sendMessage(
@@ -251,9 +252,6 @@ class ChatService(
         content: String,
         messageType: ChatMessageType = ChatMessageType.TEXT,
     ): ChatMessageResponse {
-        if (messageType != ChatMessageType.TEXT && messageType != ChatMessageType.IMAGE) {
-            throw WarnException(ErrorCode.BAD_REQUEST, "보낼 수 없는 메시지 유형입니다: $messageType")
-        }
         chatRoomAccessChecker.validateActiveMember(roomId, senderId)
         val body = validateAndNormalizeContent(senderId, content, messageType)
 
@@ -287,13 +285,15 @@ class ChatService(
                 }
                 content
             }
-            else -> {
+            ChatMessageType.TEXT -> {
                 val trimmed = content.trim()
                 if (trimmed.isEmpty() || trimmed.length > ChatMessage.MAX_CONTENT_LENGTH) {
                     throw WarnException(ErrorCode.BAD_REQUEST)
                 }
                 trimmed
             }
+            ChatMessageType.SYSTEM, ChatMessageType.QUIZ_HINT, ChatMessageType.QUIZ_CARD ->
+                throw WarnException(ErrorCode.CHAT_MESSAGE_TYPE_NOT_SENDABLE)
         }
 
     /**

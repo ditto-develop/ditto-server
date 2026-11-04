@@ -62,6 +62,9 @@ enum class ErrorCode(
     QUIZ_CARD_ALREADY_SENT(409, "7007", "이미 올라온 질문이에요."),
     QUIZ_COMPARE_UNAVAILABLE(409, "7008", "상대가 탈퇴했거나 차단 관계라 답변을 비교할 수 없습니다."),
     QUIZ_ANSWER_VIEW_NOT_SUPPORTED(400, "7009", "이 채팅방 유형에서는 쓸 수 없는 답변 보기입니다."),
+    CHAT_MESSAGE_TYPE_NOT_SENDABLE(400, "7010", "보낼 수 없는 메시지 유형입니다."),
+    QUIZ_NOT_IN_ROOM(400, "7011", "이 채팅방의 퀴즈 문항이 아닙니다."),
+    CHAT_ROOM_QUIZ_SET_NOT_FOUND(404, "7012", "이 채팅방의 퀴즈를 찾을 수 없습니다."),
     // 80xx는 리뷰(평가), 81xx는 재매칭 대역이다.
     INVALID_REVIEW_TARGET(400, "8001", "평가할 수 없는 대상입니다."),
     INVALID_REVIEW_ANSWER(400, "8002", "평가 응답값이 올바르지 않습니다."),

@@ -77,7 +77,7 @@ class ChatRoomRepositoryImpl(
             )
             .fetch()
 
-    override fun findAllIdsActiveWithoutHintOpenedSince(since: LocalDateTime): List<Long> =
+    override fun findAllIdsActiveWithoutHint(): List<Long> =
         queryFactory
             .select(chatRoom.id)
             .from(chatRoom)
@@ -85,8 +85,6 @@ class ChatRoomRepositoryImpl(
             .where(
                 chatRoom.status.eq(ChatRoomStatus.ACTIVE),
                 chatQuizHint.id.isNull,
-                // 열린 순간 = max(개방 예정 시각, 생성 시각). 둘 중 하나라도 since 이후면 그 순간이 since 이후다.
-                chatRoom.opensAt.goe(since).or(chatRoom.createdAt.goe(since)),
             )
             .fetch()
 

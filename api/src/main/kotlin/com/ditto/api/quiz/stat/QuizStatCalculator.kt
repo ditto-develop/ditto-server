@@ -65,7 +65,10 @@ object QuizStatCalculator {
     fun isMinority(selectCount: Int, participantCount: Int): Boolean =
         participantCount >= MINORITY_MIN_PARTICIPANTS && selectCount * MINORITY_RATIO_DIVISOR <= participantCount
 
-    /** 12문항 8개, 10문항 7개, 15문항 10개. */
+    /**
+     * `ceil(문항 수 × 2/3)`. 정수로 `(2n + 2) / 3` 이 같은 값이다(2n 을 3으로 나눈 나머지가 0·1·2 일 때 모두 올림이 된다).
+     * 12문항 8개, 10문항 7개, 15문항 10개.
+     */
     fun overlapThreshold(quizCount: Int): Int = (quizCount * 2 + 2) / 3
 
     /**

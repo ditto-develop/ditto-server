@@ -44,24 +44,30 @@ class QuizCardService(
     private val objectMapper: ObjectMapper,
 ) {
 
+    /**
+     * **방 행을 잠그고 시작한다.** 두 사람이 같은 문항을 동시에 올리면 둘 다 "아직 없다"로 보고 카드를 넣다가 한쪽이
+     * 유니크에 걸려 한마디까지 롤백되고 7007 도 못 받는다. 잠금이 둘을 줄 세워 뒤 요청이 앞 카드를 보게 한다.
+     * 잠금 읽기를 이 트랜잭션의 첫 조회로 둬야 그 뒤 읽기(MySQL REPEATABLE READ 스냅샷)가 앞 요청의 커밋을 본다.
+     * 잠금 순서는 다른 방 전이와 같은 방 → 멤버다.
+     */
     @Transactional
-    fun send(senderId: Long, roomId: Long, quizId: Long?, comment: String): QuizCardSendResult {
+    fun send(senderId: Long, roomId: Long, quizId: Long, comment: String): QuizCardSendResult {
+        val room = chatRoomRepository.findWithLockById(roomId) ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
         chatRoomAccessChecker.validateActiveMember(roomId, senderId)
         if (!featureFlags.isEnabled(FeatureFlagKey.QUIZ_CHAT)) {
             throw WarnException(ErrorCode.FEATURE_DISABLED)
         }
         val trimmedComment = comment.trim()
-        if (quizId == null || trimmedComment.length > ChatMessage.MAX_CONTENT_LENGTH) {
+        if (trimmedComment.length > ChatMessage.MAX_CONTENT_LENGTH) {
             throw WarnException(ErrorCode.BAD_REQUEST)
         }
 
-        val room = chatRoomRepository.findById(roomId).orElseThrow { chatRoomAccessChecker.notFoundOrForbidden(roomId) }
         val roomMembers = chatRoomMemberRepository.findByRoomId(roomId)
         val activeMemberIds = roomMembers.filterNot(ChatRoomMember::hasLeft).map { it.memberId }
-        val quizSetId = chatRoomQuizSetResolver.quizSetIdOf(room) ?: throw WarnException(ErrorCode.BAD_REQUEST)
+        val quizSetId = chatRoomQuizSetResolver.requireQuizSetIdOf(room)
         val sheet = quizAnswerSheetLoader.load(quizSetId, activeMemberIds)
         // 그 방의 퀴즈셋 문항이어야 한다. 다른 주·다른 셋 문항을 올리면 답 비교가 성립하지 않는다.
-        val quiz = sheet.quiz(quizId) ?: throw WarnException(ErrorCode.BAD_REQUEST, "이 방의 퀴즈 문항이 아닙니다: quizId=$quizId")
+        val quiz = sheet.quiz(quizId) ?: throw WarnException(ErrorCode.QUIZ_NOT_IN_ROOM)
 
         val duplicate = chatQuizCardRepository.existsByRoomIdAndQuizId(roomId, quizId)
         val saved = buildList {

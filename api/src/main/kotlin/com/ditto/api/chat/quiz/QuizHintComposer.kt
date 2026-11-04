@@ -5,42 +5,36 @@ import com.ditto.api.quiz.stat.QuizStatSnapshot
 import com.ditto.domain.quiz.entity.Quiz
 
 /**
- * 첫 대화 힌트로 쓸 문항을 고른다(IMP-1 BE-4). DB·시각을 모르는 순수 규칙이다.
+ * 첫 대화 힌트로 쓸 문항을 고른다(IMP-1 BE-4). DB·시각을 모르는 순수 규칙이다. 순서 규칙은 [QuizPickRules]에 있다.
  *
  * - 두 사람 방: ① 같은 답 중 그 답의 전체 비율이 가장 낮은 문항(SAME) ② 없으면 첫 문항(DIFFERENT, '갈렸어요')
  * - 그룹 방: ① 만장일치 중 그 답의 전체 비율이 가장 낮은 문항(UNANIMOUS) ② 없으면 인원 차가 가장 작은 문항(SPLIT)
- * - 동률은 문항 순서.
- *
- * 스냅샷이 없으면(마감 전) 비율을 모두 0으로 보고 문항 순서로 고른다.
  */
 object QuizHintComposer {
 
     fun forPair(sheet: QuizAnswerSheet, memberIds: List<Long>, snapshot: QuizStatSnapshot?): QuizHintContent? {
-        if (sheet.quizzes.isEmpty()) return null
-        val sharedChoiceByQuiz = sheet.quizzes.associateWith { quiz ->
+        val first = sheet.quizzes.firstOrNull() ?: return null
+        val shared = sheet.quizzes.mapNotNull { quiz ->
             memberIds.map { sheet.choiceOf(it, quiz.id) }.distinct().singleOrNull()
+                ?.let { QuizPickRules.Candidate(quiz.displayOrder, it, quiz to it) }
         }
-        val rarestShared = sharedChoiceByQuiz.entries
-            .filter { it.value != null }
-            .minWithOrNull(compareBy({ snapshot?.percentOf(it.value!!) ?: 0 }, { it.key.displayOrder }))
-        if (rarestShared != null) {
-            return content(rarestShared.key, QuizHintKind.SAME, sheet.choiceContent(rarestShared.key, rarestShared.value!!))
-        }
-        return content(sheet.quizzes.first(), QuizHintKind.DIFFERENT, answer = null)
+        val rarest = QuizPickRules.rarest(shared, snapshot)
+            ?: return content(first, QuizHintKind.DIFFERENT, answer = null)
+        val (quiz, choiceId) = rarest
+        return content(quiz, QuizHintKind.SAME, sheet.choiceContent(quiz, choiceId))
     }
 
     fun forGroup(sheet: QuizAnswerSheet, memberIds: List<Long>, snapshot: QuizStatSnapshot?): QuizHintContent? {
         if (sheet.quizzes.isEmpty()) return null
-        val spreads = sheet.quizzes.associateWith { sheet.spreadAmong(it.id, memberIds) }
+        val spreads = sheet.quizzes.map { it to GroupAnswerSpread.of(sheet, it.id, memberIds) }
 
-        val rarestUnanimous = spreads.filter { it.value.unanimous }.keys
-            .map { quiz -> quiz to sheet.choicesOf(quiz.id)[spreads.getValue(quiz).counts.indexOfFirst { it > 0 }].id }
-            .minWithOrNull(compareBy({ snapshot?.percentOf(it.second) ?: 0 }, { it.first.displayOrder }))
-        if (rarestUnanimous != null) {
-            val (quiz, choiceId) = rarestUnanimous
+        val unanimous = spreads.mapNotNull { (quiz, spread) ->
+            spread.unanimousChoiceId?.let { QuizPickRules.Candidate(quiz.displayOrder, it, quiz to it) }
+        }
+        QuizPickRules.rarest(unanimous, snapshot)?.let { (quiz, choiceId) ->
             return content(quiz, QuizHintKind.UNANIMOUS, sheet.choiceContent(quiz, choiceId))
         }
-        val closest = spreads.entries.minWith(compareBy({ it.value.gap }, { it.key.displayOrder })).key
+        val closest = QuizPickRules.closestSplits(spreads, { it.second.gap }, { it.first.displayOrder }).first().first
         return content(closest, QuizHintKind.SPLIT, answer = null)
     }
 

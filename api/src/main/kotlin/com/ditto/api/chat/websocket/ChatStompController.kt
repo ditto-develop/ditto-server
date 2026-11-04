@@ -54,6 +54,9 @@ class ChatStompController(
     ) {
         val messages = try {
             val memberId = memberIdOf(principal)
+            if (request.messageType !in ChatMessageType.CLIENT_SENDABLE) {
+                throw WarnException(ErrorCode.CHAT_MESSAGE_TYPE_NOT_SENDABLE)
+            }
             if (request.messageType == ChatMessageType.QUIZ_CARD) {
                 sendQuizCard(memberId, roomId, request)
             } else {
@@ -73,12 +76,12 @@ class ChatStompController(
     }
 
     private fun sendQuizCard(memberId: Long, roomId: Long, request: ChatSendRequest): List<ChatMessageResponse> {
-        val result = quizCardService.send(memberId, roomId, request.quizId, request.content)
+        val quizId = request.quizId ?: throw WarnException(ErrorCode.BAD_REQUEST, "질문 카드에는 quizId 가 필요합니다.")
+        val result = quizCardService.send(memberId, roomId, quizId, request.content)
         val topic = ChatStompDestinations.roomTopic(roomId)
         result.messages.forEach { messagingTemplate.convertAndSend(topic, it) }
         if (result.rejectedAsDuplicate) {
-            // quizId 는 send 가 검증을 마쳐 null 이 아니다.
-            messagingTemplate.convertAndSend(topic, QuizCardRejectedEvent(roomId, memberId, request.quizId!!))
+            messagingTemplate.convertAndSend(topic, QuizCardRejectedEvent(roomId, memberId, quizId))
         }
         return result.messages
     }

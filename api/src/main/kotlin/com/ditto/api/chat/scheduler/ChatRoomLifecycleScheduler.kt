@@ -14,6 +14,8 @@ import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
+import com.ditto.api.support.runCatchingExceptions
+import io.github.oshai.kotlinlogging.KotlinLogging
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import java.time.LocalDateTime
@@ -86,8 +88,7 @@ class ChatRoomLifecycleScheduler(
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
         val opened = chatRoomEndService.openDue(serverNow)
         chatRoomOpenedNotifier.notifyOpened(opened)
-        quizHintService.createMissing(serverNow)
-            .forEach { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(it.roomId), it) }
+        createHints(serverNow)
 
         val ended = chatRoomEndService.endExpired(serverNow)
         val endedRoomIds = ended.map { it.id }
@@ -106,5 +107,22 @@ class ChatRoomLifecycleScheduler(
 
         // 미응답 초대만 바꾸고 위 안내는 수락자만 보므로 둘의 순서는 상관없다.
         unansweredGroupInvitationDecliner.declineUnanswered(serverNow)
+    }
+
+    /**
+     * 힌트는 부가 기능이라 여기서 실패해도 같은 주기의 마감·평가 개방·알림을 막지 않는다. 남은 방은 다음 주기가 다시 집는다.
+     * 브로드캐스트가 실패한 힌트는 저장돼 있어 재접속 조회로 보인다.
+     */
+    private fun createHints(serverNow: LocalDateTime) {
+        runCatchingExceptions {
+            quizHintService.createMissing(serverNow).forEach { hint ->
+                runCatchingExceptions { messagingTemplate.convertAndSend(ChatStompDestinations.roomTopic(hint.roomId), hint) }
+                    .onFailure { logger.warn(it) { "첫 대화 힌트 브로드캐스트 실패 — 저장은 됐다: roomId=${hint.roomId}" } }
+            }
+        }.onFailure { logger.warn(it) { "첫 대화 힌트 단계 실패 — 다음 주기에 다시 시도한다" } }
+    }
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
     }
 }
