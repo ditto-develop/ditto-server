@@ -1,6 +1,6 @@
 # ADR 0014 — ECS 태스크 메모리 예산 재배분: Metaspace 128m→256m, 힙 비율 45%→35%
 
-- 상태: Accepted (2026-08-02)
+- 상태: Accepted (2026-08-02) — 힙 비율(`MaxRAMPercentage`)은 #117 로 제거됨, 현재 JVM 옵션은 [ADR 0050](0050-ecs-image-pinning-and-oom-exit.md)
 - 근거: CloudWatch Logs 분석(`/ecs/ditto-api`, 로그 스트림 `84f9181f36a24c5490c60450a4b1c9b6`), code-evidence(PR #105)
 
 ## Context
