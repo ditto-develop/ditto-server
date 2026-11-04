@@ -106,7 +106,8 @@ class LoggingAspect {
         val properties = kClass.memberProperties
         // [Mask]가 파라미터에도 붙을 수 있게 된 뒤로, 생성자 프로퍼티에 대상 없이 쓴 `@Mask val x`는
         // Kotlin 규칙상 생성자 파라미터에만 붙는다. 그 경우도 프로퍼티 마스킹으로 본다.
-        val maskedConstructorParams = kClass.primaryConstructor?.parameters
+        // 로그 때문에 요청이 실패하면 안 되므로, 리플렉션이 못 읽는 타입은 생성자 확인을 건너뛴다.
+        val maskedConstructorParams = runCatching { kClass.primaryConstructor?.parameters }.getOrNull()
             ?.filter { param -> param.annotations.any { it is Mask } }
             ?.mapNotNull { it.name }
             ?.toSet()
