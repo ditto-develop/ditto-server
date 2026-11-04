@@ -1,5 +1,7 @@
 package com.ditto.api.admin.quiz.dto
 
+import com.ditto.domain.quiz.entity.Quiz
+
 /**
  * 문항 편집 폼 한 행. displayOrder 는 받지 않고 제출 순서로 서버가 매긴다.
  * id 가 있으면 기존 행 수정, 없으면 신규.
@@ -7,6 +9,8 @@ package com.ditto.api.admin.quiz.dto
 class QuizForm(
     var id: Long? = null,
     var question: String = "",
+    /** 대화 힌트 질문(선택). 비우면 null 로 저장해 FE 가 공통 문구를 쓴다. */
+    var hintQuestion: String? = null,
     var choices: MutableList<QuizChoiceForm> = mutableListOf(),
 ) {
     /** 저장할 수 없는 첫 이유. 앞에 "N번 문항의 "를 붙여 읽는 문장이다. 문제가 없으면 null. */
@@ -16,8 +20,13 @@ class QuizForm(
         choices.any { it.content.isBlank() } -> "선택지 항목이 비어 있습니다."
         question.length > QUESTION_MAX_LENGTH -> "질문이 ${QUESTION_MAX_LENGTH}자를 넘습니다."
         choices.any { it.content.length > CHOICE_MAX_LENGTH } -> "선택지가 ${CHOICE_MAX_LENGTH}자를 넘습니다."
+        (hintQuestion?.trim()?.length ?: 0) > Quiz.HINT_QUESTION_MAX_LENGTH ->
+            "대화 힌트 질문이 ${Quiz.HINT_QUESTION_MAX_LENGTH}자를 넘습니다."
         else -> null
     }
+
+    /** 저장할 힌트 질문. 공백만 있으면 없는 것으로 본다. */
+    fun normalizedHintQuestion(): String? = hintQuestion?.trim()?.takeIf { it.isNotEmpty() }
 
     companion object {
         const val NEW_QUIZ_CHOICE_COUNT = 2

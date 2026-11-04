@@ -23,6 +23,7 @@
             card.querySelector('.n').textContent = index + 1;
             card.querySelector('.quiz-id').name = 'quizzes[' + index + '].id';
             card.querySelector('.qtext').name = 'quizzes[' + index + '].question';
+            card.querySelector('.qhint').name = 'quizzes[' + index + '].hintQuestion';
 
             Array.prototype.forEach.call(card.querySelectorAll('.cbox'), function (box, choiceIndex) {
                 box.querySelector('.cmark').textContent = choiceIndex + 1;
