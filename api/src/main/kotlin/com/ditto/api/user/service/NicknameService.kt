@@ -2,9 +2,11 @@ package com.ditto.api.user.service
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.NicknameReservation
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.member.repository.NicknameReservationRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -72,6 +74,23 @@ class NicknameService(
         val reservation = nicknameReservationRepository.findByNickname(nickname)
         if (reservation != null && reservation.isHeldByOtherThan(memberId, now())) {
             throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
+        }
+    }
+
+    /**
+     * 바꾼 닉네임을 지금 DB 에 써 본다. [assertAssignable]과 저장 사이에 남이 같은 닉네임을 먼저 저장했으면
+     * 유일 제약이 여기서 막는다 — 커밋 때 터지면 서비스 밖이라 진입점 로그에 ERROR 로 남고 5xx 가 된다.
+     * 닉네임을 바꾼 직후, 같은 트랜잭션 안에서 부른다.
+     */
+    @Transactional
+    fun flushAssigned() {
+        try {
+            memberRepository.flush()
+        } catch (e: DataIntegrityViolationException) {
+            if (e.mostSpecificCause.message.orEmpty().contains(Member.NICKNAME_UNIQUE_CONSTRAINT, ignoreCase = true)) {
+                throw WarnException(ErrorCode.NICKNAME_ALREADY_EXISTS)
+            }
+            throw e
         }
     }
 
