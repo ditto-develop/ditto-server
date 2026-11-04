@@ -63,6 +63,8 @@ class AdminQuizAnswerResetService(
         val matchingEraseSummary = adminQuizQaService.resetMatching(quizSetId)
         val answerCount = deleteAnswersIn(findQuizIdsIn(quizSetId))
         val participantCount = quizProgressRepository.deleteByQuizSetId(quizSetId)
+        // 시각을 마감 뒤로 옮겨 스냅샷이 생겼다면 지운 답 기준으로 다시 만들게 한다.
+        quizSetDeleter.deleteStatSnapshot(quizSetId)
         return AnswerResetSummary(
             matchingErase = matchingEraseSummary,
             participantCount = participantCount,
@@ -79,6 +81,7 @@ class AdminQuizAnswerResetService(
         quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, findQuizIdsIn(quizSetId))
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, listOf(quizSetId))
         quizSetDeleter.deleteMemberMatchResultNotifications(quizSetId, memberId)
+        quizSetDeleter.deleteStatSnapshot(quizSetId)
         return MemberAnswerResetSummary(memberId, memberRepository.findByIdOrNull(memberId)?.nickname)
     }
 

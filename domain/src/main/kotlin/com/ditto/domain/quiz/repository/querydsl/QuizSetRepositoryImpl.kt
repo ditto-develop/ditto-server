@@ -5,6 +5,7 @@ import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
+import com.ditto.domain.quiz.entity.QQuizSetStat.quizSetStat
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
 import com.querydsl.jpa.impl.JPAQueryFactory
@@ -61,4 +62,28 @@ class QuizSetRepositoryImpl(
             // endDate 만으로는 못 정한다 — 같은 주 셋은 기간이 월~수로 고정돼 값이 늘 같다.
             .orderBy(quizSet.endDate.desc(), quizSet.id.desc())
             .fetchFirst()
+
+    override fun findEndedQuizSetIdsWithoutStat(endedAfter: LocalDateTime, now: LocalDateTime): List<Long> =
+        queryFactory
+            .select(quizSet.id)
+            .from(quizSet)
+            .leftJoin(quizSetStat).on(quizSetStat.quizSetId.eq(quizSet.id))
+            .where(
+                quizSet.endDate.gt(endedAfter),
+                quizSet.endDate.lt(now),
+                quizSetStat.id.isNull,
+            )
+            .fetch()
+
+    override fun findCompletedQuizSetsOf(memberId: Long): List<QuizSet> =
+        queryFactory
+            .select(quizSet)
+            .from(quizProgress)
+            .join(quizSet).on(quizProgress.quizSetId.eq(quizSet.id))
+            .where(
+                quizProgress.memberId.eq(memberId),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+            )
+            .orderBy(quizSet.weekStartedOn.desc(), quizSet.id.desc())
+            .fetch()
 }
