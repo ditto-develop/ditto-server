@@ -44,6 +44,7 @@
 - [0046 — 어드민 운영 지표는 서버가 집계 결과만 넘기고 화면 JS 가 계산해 그린다](0046-admin-stats-render-in-browser.md)
 - [0047 — 운영 지표에서 운영자가 챙겨 볼 회원 목록은 id·닉네임·건수만 내린다](0047-admin-stats-member-lists.md)
 - [0048 — 가입 이탈 장의 회원 목록은 가입 진행 정보까지 내린다](0048-admin-stats-signup-dropout-lists.md)
+- [0049 — 크론은 ShedLock(만료 시각 기록형 DB 락)으로 한 인스턴스에서만 돌린다](0049-scheduler-lock-shedlock.md)
 
 ## 언제 ADR을 쓰는가
 

@@ -17,8 +17,10 @@ sonarqube {
         property("sonar.exclusions",
             "**/generated/**,**/config/**,**/*Application*,**/*Config*"
         )
+        // ShedLock: 스키마 선언용 엔티티(행은 ShedLock 이 JDBC 로 다룸)라 생성자가 호출될 일이 없다 (ADR 0049)
         property("sonar.coverage.exclusions",
-            "**/config/**,**/*Application*,**/*Config*,**/*Request*,**/*Response*,**/*Dto*"
+            "**/config/**,**/*Application*,**/*Config*,**/*Request*,**/*Response*,**/*Dto*," +
+                "**/system/entity/ShedLock.kt"
         )
     }
 }

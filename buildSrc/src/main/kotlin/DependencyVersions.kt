@@ -19,6 +19,7 @@ object DependencyVersions {
     const val RESTDOCS_API_SPEC = "0.19.4"
     const val AWS_SDK = "2.46.7"
     const val FIREBASE_ADMIN = "9.8.0"
+    const val SHEDLOCK = "6.10.0"
 }
 
 object Dependencies {
@@ -60,4 +61,6 @@ object Dependencies {
     const val RESTDOCS_API_SPEC_MOCKMVC = "com.epages:restdocs-api-spec-mockmvc:${DependencyVersions.RESTDOCS_API_SPEC}"
     const val AWS_S3 = "software.amazon.awssdk:s3:${DependencyVersions.AWS_SDK}"
     const val FIREBASE_ADMIN = "com.google.firebase:firebase-admin:${DependencyVersions.FIREBASE_ADMIN}"
+    const val SHEDLOCK_SPRING = "net.javacrumbs.shedlock:shedlock-spring:${DependencyVersions.SHEDLOCK}"
+    const val SHEDLOCK_JDBC = "net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${DependencyVersions.SHEDLOCK}"
 }

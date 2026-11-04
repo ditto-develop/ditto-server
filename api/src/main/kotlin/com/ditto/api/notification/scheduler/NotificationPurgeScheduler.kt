@@ -1,8 +1,10 @@
 package com.ditto.api.notification.scheduler
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.domain.notification.entity.Notification
 import com.ditto.domain.notification.repository.NotificationRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -23,6 +25,11 @@ class NotificationPurgeScheduler(
 
     /** 매일 04:10 — 탈퇴 완전 삭제(04:00) 뒤로 둔다. 트래픽이 가장 낮은 시간대다. */
     @Scheduled(cron = "\${notification.purge.scheduler.cron:0 10 4 * * *}")
+    @SchedulerLock(
+        name = "notification-purge",
+        lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun purgeExpired() {
         val threshold = Notification.retentionFrom()
         val deleted = notificationRepository.deleteCreatedBefore(threshold)

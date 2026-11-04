@@ -1,7 +1,9 @@
 package com.ditto.api.user.scheduler
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.user.service.DeferredLeaveService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
@@ -16,6 +18,11 @@ class DeferredLeaveScheduler(
 ) {
 
     @Scheduled(cron = "\${member.deferred-leave.scheduler.cron:0 30 * * * *}")
+    @SchedulerLock(
+        name = "deferred-leave",
+        lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun leaveDeferredMembers() {
         val memberIds = deferredLeaveService.findDeferredMemberIds()
         if (memberIds.isEmpty()) return

@@ -1,5 +1,6 @@
 package com.ditto.api.user.service
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
@@ -9,6 +10,7 @@ import com.ditto.domain.notification.repository.PushSendHistoryRepository
 import com.ditto.domain.refreshtoken.repository.RefreshTokenRepository
 import com.ditto.domain.socialaccount.repository.SocialAccountRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -40,6 +42,11 @@ class LeftMemberPurgeService(
 
     /** 매일 04:00에 실행한다 — 트래픽이 가장 낮은 시간대다. */
     @Scheduled(cron = "0 0 4 * * *")
+    @SchedulerLock(
+        name = "left-member-purge",
+        lockAtMostFor = SchedulerLockDurations.DEFAULT_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun purgeExpired() {
         purge()
     }

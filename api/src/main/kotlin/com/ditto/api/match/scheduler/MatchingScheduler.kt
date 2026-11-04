@@ -1,7 +1,9 @@
 package com.ditto.api.match.scheduler
 
+import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.notification.notifier.MatchResultNotifier
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -23,6 +25,11 @@ class MatchingScheduler(
 ) {
 
     @Scheduled(cron = "\${matching.scheduler.cron:0 1 0 * * THU}")
+    @SchedulerLock(
+        name = "matching",
+        lockAtMostFor = SchedulerLockDurations.WEEKLY_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
     fun generateForEndedQuizSets() {
         val quizSetIds = matchingBatchFacade.runScheduledMatching(LocalDateTime.now())
         matchResultNotifier.notifyFor(quizSetIds)

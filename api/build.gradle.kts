@@ -18,6 +18,8 @@ dependencies {
     implementation(Dependencies.LOGSTASH_LOGBACK)
     implementation(Dependencies.SPRINGDOC_OPENAPI)
     implementation(Dependencies.JJWT_API)
+    implementation(Dependencies.SHEDLOCK_SPRING)
+    implementation(Dependencies.SHEDLOCK_JDBC)
 
     runtimeOnly(Dependencies.MICROMETER_PROMETHEUS)
     runtimeOnly(Dependencies.MYSQL_CONNECTOR)

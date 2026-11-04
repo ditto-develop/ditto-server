@@ -3,7 +3,7 @@
 서버 시각 오버라이드(어드민이 "현재 시각"을 임의 지정). **골격 문서** — 불변식·상태전이는 시스템 설정 작업 시 코드 확인 후 채운다.
 
 ## 용어
-`ServerTimeOverride`(오버라이드 활성 여부·지정 시각·최종 설정자 이름/이메일), `OperationWeek`(운영 주 값 객체 — 그 주 월요일 날짜가 주간 식별자, [ADR 0010](../adr/0010-week-identifier-week-started-on.md)).
+`ServerTimeOverride`(오버라이드 활성 여부·지정 시각·최종 설정자 이름/이메일), `OperationWeek`(운영 주 값 객체 — 그 주 월요일 날짜가 주간 식별자, [ADR 0010](../adr/0010-week-identifier-week-started-on.md)), `ShedLock`(크론 중복 실행 방지 락 테이블 — 행은 ShedLock 라이브러리가 JDBC 로 직접 다루고 엔티티는 스키마 검증용, [ADR 0049](../adr/0049-scheduler-lock-shedlock.md)).
 
 ## 불변식
 - 단일 행 운영 — `findFirstByOrderByIdAsc`로 가장 먼저 생성된 행 1개만 사용.
@@ -17,6 +17,6 @@
 - `disable()` → `enabled = false` (이후 실제 시각 사용).
 
 ## 핵심 파일
-- 엔티티: `domain/src/main/kotlin/com/ditto/domain/system/entity/ServerTimeOverride.kt`
+- 엔티티: `domain/src/main/kotlin/com/ditto/domain/system/entity/ServerTimeOverride.kt`, `ShedLock.kt`
 - 리포지토리: `domain/src/main/kotlin/com/ditto/domain/system/repository/ServerTimeOverrideRepository.kt`
 - API: `api/src/main/kotlin/com/ditto/api/system/`, `api/src/main/kotlin/com/ditto/api/admin/system/`
