@@ -1,6 +1,7 @@
 package com.ditto.api.notification.facade
 
 import com.ditto.api.notification.service.MemberDeviceService
+import com.ditto.common.logging.Mask
 import com.ditto.domain.notification.entity.DevicePlatform
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Component
@@ -24,7 +25,7 @@ class MemberDeviceFacade(
      * "이번 호출로 새로 된 것 없음" = `false`가 사실 그대로의 답이다. 오류로 흘리면
      * 정상 따닥이 9999 응답과 ERROR 로그가 된다.
      */
-    fun register(memberId: Long, token: String, platform: DevicePlatform): Boolean =
+    fun register(memberId: Long, @Mask token: String, platform: DevicePlatform): Boolean =
         runCatching { memberDeviceService.register(memberId, token, platform) }
             .getOrElse { failure ->
                 if (failure !is DataIntegrityViolationException) throw failure
@@ -32,5 +33,5 @@ class MemberDeviceFacade(
             }
 
     /** 로그아웃·탈퇴 직전에 앱이 부른다. 규칙은 [MemberDeviceService.unregister]에 있다. */
-    fun unregister(memberId: Long, token: String) = memberDeviceService.unregister(memberId, token)
+    fun unregister(memberId: Long, @Mask token: String) = memberDeviceService.unregister(memberId, token)
 }

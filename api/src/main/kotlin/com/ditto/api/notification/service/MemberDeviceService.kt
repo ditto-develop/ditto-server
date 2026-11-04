@@ -2,6 +2,7 @@ package com.ditto.api.notification.service
 
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.common.logging.Mask
 import com.ditto.domain.notification.entity.DevicePlatform
 import com.ditto.domain.notification.entity.MemberDevice
 import com.ditto.domain.notification.repository.MemberDeviceRepository
@@ -24,7 +25,7 @@ class MemberDeviceService(
      * @return 이번 호출로 내 소유가 됐는지. 멱등 재호출이면 `false` (실패 아님)
      */
     @Transactional
-    fun register(memberId: Long, token: String, platform: DevicePlatform): Boolean {
+    fun register(memberId: Long, @Mask token: String, platform: DevicePlatform): Boolean {
         val device = memberDeviceRepository.findByToken(token)
         if (device == null) {
             memberDeviceRepository.save(MemberDevice.create(memberId = memberId, token = token, platform = platform))
@@ -42,7 +43,7 @@ class MemberDeviceService(
      * 삭제가 소유자 조건부 단문인 이유는 [MemberDeviceRepository.deleteByTokenAndMemberId] 참고.
      */
     @Transactional
-    fun unregister(memberId: Long, token: String) {
+    fun unregister(memberId: Long, @Mask token: String) {
         val deletedCount = memberDeviceRepository.deleteByTokenAndMemberId(token, memberId)
         if (deletedCount > 0) {
             return

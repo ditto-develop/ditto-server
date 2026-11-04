@@ -9,7 +9,9 @@ import org.aspectj.lang.annotation.Aspect
 import org.aspectj.lang.reflect.MethodSignature
 import org.springframework.stereotype.Component
 import org.springframework.util.StopWatch
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.javaField
 
 @Aspect
@@ -52,7 +54,7 @@ class LoggingAspect {
         val signature = joinPoint.signature as MethodSignature
         val className = signature.declaringType.simpleName
         val methodName = signature.name
-        val params = formatParams(signature.parameterNames, joinPoint.args)
+        val params = formatParams(signature, joinPoint.args)
         logger.info { "--> $className.$methodName($params)" }
         val stopWatch = StopWatch()
         stopWatch.start()
@@ -77,9 +79,14 @@ class LoggingAspect {
         }
     }
 
-    private fun formatParams(paramNames: Array<String>, args: Array<Any?>): String {
+    private fun formatParams(signature: MethodSignature, args: Array<Any?>): String {
+        val paramNames = signature.parameterNames
         if (paramNames.isEmpty()) return ""
-        return paramNames.zip(args).joinToString(", ") { (name, value) -> "$name=${serialize(value)}" }
+        val maskedParams = signature.method.parameterAnnotations.map { annotations -> annotations.any { it is Mask } }
+        return paramNames.indices.joinToString(", ") { i ->
+            val value = if (maskedParams.getOrElse(i) { false }) "**" else serialize(args[i])
+            "${paramNames[i]}=$value"
+        }
     }
 
     private fun formatReturnValue(result: Any?): String = when (result) {
@@ -97,15 +104,21 @@ class LoggingAspect {
         if (value == null) return "null"
         val kClass = value::class
         val properties = kClass.memberProperties
-        val hasMasked = properties.any { prop ->
-            prop.annotations.any { it is Mask } ||
+        // [Mask]가 파라미터에도 붙을 수 있게 된 뒤로, 생성자 프로퍼티에 대상 없이 쓴 `@Mask val x`는
+        // Kotlin 규칙상 생성자 파라미터에만 붙는다. 그 경우도 프로퍼티 마스킹으로 본다.
+        val maskedConstructorParams = kClass.primaryConstructor?.parameters
+            ?.filter { param -> param.annotations.any { it is Mask } }
+            ?.mapNotNull { it.name }
+            ?.toSet()
+            .orEmpty()
+        val isMasked = { prop: KProperty1<out Any, *> ->
+            prop.name in maskedConstructorParams ||
+                prop.annotations.any { it is Mask } ||
                 prop.javaField?.isAnnotationPresent(Mask::class.java) == true
         }
-        if (!hasMasked) return value.toString()
+        if (properties.none(isMasked)) return value.toString()
         val fields = properties.joinToString(", ") { prop ->
-            val isMasked = prop.annotations.any { it is Mask } ||
-                prop.javaField?.isAnnotationPresent(Mask::class.java) == true
-            val fieldValue = if (isMasked) "**"
+            val fieldValue = if (isMasked(prop)) "**"
             else prop.getter.call(value)?.toString() ?: "null"
             "${prop.name}=$fieldValue"
         }

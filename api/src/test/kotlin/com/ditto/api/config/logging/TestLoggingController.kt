@@ -30,6 +30,10 @@ class TestLoggingController(private val testLoggingService: TestLoggingService) 
     @GetMapping("/api/test/logging/call-service")
     fun callService(): String = testLoggingService.process("input")
 
+    @Loggable
+    @GetMapping("/api/test/logging/masked-param")
+    fun callMaskedParam(): String = testLoggingService.useSecret("tester", "secret-param")
+
     @GetMapping("/api/test/logging/direct-service")
     fun directService(): String = testLoggingService.process("direct")
 
@@ -58,4 +62,6 @@ data class MaskedResponse(val email: String, @Mask val token: String)
 @Service
 class TestLoggingService {
     fun process(value: String): String = "processed-$value"
+
+    fun useSecret(owner: String, @Mask secret: String): String = "used-${secret.length}"
 }
