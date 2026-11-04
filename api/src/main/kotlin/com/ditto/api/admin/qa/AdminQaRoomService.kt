@@ -40,6 +40,7 @@ class AdminQaRoomService(
     private val serverTimeProvider: ServerTimeProvider,
     private val qaRoomSourceLabels: QaRoomSourceLabels,
     private val rematchRepository: RematchRepository,
+    private val qaHintStates: QaHintStates,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -105,6 +106,7 @@ class AdminQaRoomService(
             canEndByUser = room.canEndByUser(),
             leaveDissolvesRoom = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft }),
             sourceGroupRoomId = findSourceGroupRoomId(room),
+            hintState = qaHintStates.of(room),
         )
         return QaRoomLookup.Found(view)
     }
@@ -175,8 +177,11 @@ class AdminQaRoomService(
             isFromDummy = message.senderId in dummyIds,
             messageType = message.messageType,
             content = message.content,
-            systemMeaning = message.content.takeIf { message.messageType == ChatMessageType.SYSTEM }
-                ?.let(QaSystemMessageMeaning::of),
+            systemMeaning = when (message.messageType) {
+                ChatMessageType.SYSTEM -> QaSystemMessageMeaning.of(message.content)
+                ChatMessageType.QUIZ_HINT -> QaSystemMessageMeaning.ofHint(message.content)
+                else -> null
+            },
             sentAt = message.createdAt,
             unreadCount = message.unreadCountAmong(roomMembers),
         )

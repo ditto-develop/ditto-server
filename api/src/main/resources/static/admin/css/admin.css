@@ -575,7 +575,7 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
     background: #fff;
     box-sizing: border-box;
 }
-.qbody input.qhint:focus { outline: none; border-color: var(--primary); border-style: solid; }
+.qbody input.qhint:focus { outline: none; border-color: var(--primary); border-style: solid; box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12); }
 .cbox { display: flex; gap: 7px; align-items: center; min-width: 0; }
 .cbox .cmark {
     flex: none;

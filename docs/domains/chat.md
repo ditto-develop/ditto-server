@@ -59,7 +59,7 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 
 ## 퀴즈 메시지 (IMP-1, FE 계약)
 
-서버 기능 플래그 `QUIZ_CHAT`이 켜져 있을 때만 생긴다([ADR 0051](../adr/0051-server-feature-flags.md)). 꺼져 있으면 아래 두 종류도, `senderId: null`도 나오지 않는다.
+서버 기능 플래그 `QUIZ_CHAT`이 켜져 있을 때만 생긴다([ADR 0051](../adr/0051-server-feature-flags.md)). 꺼져 있으면 `QUIZ_HINT`·`QUIZ_CARD` 메시지도, `senderId: null`도 나오지 않는다.
 
 | 유형 | 누가 | `content` (JSON 문자열, 암호화 저장) | 안 읽음·푸시 |
 |---|---|---|---|
@@ -67,22 +67,25 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 | `QUIZ_CARD` 질문 카드 | 회원 | 1:1 `{"quizId","question","choices":[{"choiceId","content"}],"senderChoiceId","peerChoiceId","hintQuestion"}` / 그룹 `{"quizId","question","choices":[{"choiceId","content","count"}],"hintQuestion"}` | 일반 메시지와 같다. 푸시 본문 "질문을 보냈어요." |
 
 - **첫 대화 힌트는 방이 `ACTIVE`가 되는 순간 1회** 남는다. 생명주기 스케줄러가 개방 직후 "열려 있는데 힌트가 없는 방"을 찾아 만든다 — 예약 개방된 방은 같은 주기, 주말 중 수락으로 처음부터 열린 방은 다음 주기(1분 안)다. 방당 1개는 `chat_quiz_hint` 유니크가 보장하고, 고를 문항이 없던 방(원본 매칭이 지워진 QA 방 등)도 메시지 없이 표시를 남겨 다시 집지 않는다.
-- **플래그를 켠 시각 이후 열린 방만** 대상이다. 열린 순간은 `opens_at`과 `created_at` 중 늦은 쪽이다. 주말 도중에 켜도 이미 대화 중인 방에 힌트가 끼어들지 않는다.
+- **플래그를 켠 뒤 열린 방만** 대상이다. 켜는 순간 이미 열려 있던 방에는 빈 표시를 남긴다(`QuizChatEnableListener`) — 주말 도중에 켜도 대화 중인 방에 힌트가 끼어들지 않는다. 시각 비교를 쓰지 않는 이유는 [ADR 0051](../adr/0051-server-feature-flags.md).
+- 힌트 단계가 실패해도 같은 주기의 마감·평가 개방·알림은 그대로 돈다(스케줄러가 격리한다).
+- QA: 콘솔 방 화면이 힌트 상태와 이유(꺼짐·대기·만듦·빈 표시)를 보여 주고, [힌트 다시 만들기]가 표시·메시지를 지워 다음 주기에 다시 만들게 한다.
 - 힌트 선정: 1:1 은 같은 답 중 그 답의 전체 비율(마감 스냅샷)이 가장 낮은 문항(SAME), 없으면 첫 문항(DIFFERENT). 그룹은 만장일치 중 비율이 가장 낮은 문항(UNANIMOUS), 없으면 인원 차가 가장 작은 문항(SPLIT). 동률은 문항 순서. 기준 멤버는 열리는 순간 남아 있는 사람이고, 늦게 합류한 사람은 이미 남은 힌트를 본다.
 - **질문 카드는 기존 전송 목적지로 한 프레임에** 보낸다: `{ "messageType": "QUIZ_CARD", "quizId", "content": "덧붙인 한마디(빈 문자열 허용)" }`. 서버가 한 트랜잭션에서 카드 → 한마디 순으로 저장하고 둘 다 브로드캐스트한다 — 순서를 서버가 정한다. 카드 내용은 서버가 만든다(클라이언트 값을 안 믿는다). 그 방의 퀴즈셋 문항이어야 하고 방이 `ACTIVE`여야 한다.
-- 같은 방에 같은 문항은 한 번만 올라간다(`chat_quiz_card` 유니크). 이미 올라온 문항이면 카드는 버리고 한마디만 저장한 뒤, 보낸 사람에게 `QUIZ_CARD_REJECTED`(7007) 이벤트를 보낸다. 한마디는 이미 저장됐으므로 FE 는 다시 보내지 않는다.
+- 같은 방에 같은 문항은 한 번만 올라간다(`chat_quiz_card` 유니크). 전송은 방 행을 먼저 잠가 같은 문항 동시 전송도 줄을 세운다. 이미 올라온 문항이면 카드는 버리고 한마디만 저장한 뒤, 보낸 사람에게 `QUIZ_CARD_REJECTED`(7007) 이벤트를 보낸다. 한마디는 이미 저장됐으므로 FE 는 다시 보내지 않는다.
 - 힌트·카드는 **보낸 시점 값으로 굳는다.** 나중에 문항 문구가 바뀌어도 이미 남은 메시지는 그대로다.
-- **클라이언트가 보낼 수 있는 유형은 `TEXT`·`IMAGE`·`QUIZ_CARD`뿐이다.** 예전에는 `SYSTEM`도 보낼 수 있어 사건(`USER_LEFT` 등)을 위조할 수 있었다.
+- **클라이언트가 보낼 수 있는 유형은 `TEXT`·`IMAGE`·`QUIZ_CARD`뿐이다**(`ChatMessageType.CLIENT_SENDABLE`). 그 밖은 `CHAT_MESSAGE_TYPE_NOT_SENDABLE`(7010). 예전에는 `SYSTEM`도 보낼 수 있어 사건(`USER_LEFT` 등)을 위조할 수 있었다.
+- 카드 오류: 기능 꺼짐 `FEATURE_DISABLED`(0006), 방의 퀴즈셋 문항이 아님 `QUIZ_NOT_IN_ROOM`(7011), `quizId` 없음 `BAD_REQUEST`(0001), 방의 퀴즈셋을 못 찾음 `CHAT_ROOM_QUIZ_SET_NOT_FOUND`(7012).
 
 ## 대화방 답변 보기 (IMP-1)
 
 - 1:1·재매칭: `GET /api/v1/chat/rooms/{roomId}/quiz-compare` — 두 사람의 문항별 답(상대 선택 포함, [ADR 0052](../adr/0052-pair-room-answer-compare.md)). 재매칭은 원래 그룹 퀴즈 기준. 그룹: `GET /quiz-distribution` — 남아 있는 멤버의 선택지별 인원만.
-- **방이 생긴 뒤부터 끝나기 전까지만** 보인다. 끝난 방 7004, 상대 탈퇴·차단 7008, 방 유형이 맞지 않으면 7009. 개방 전(`SCHEDULED`)에도 보이고 `canSendCard=false` + `chatOpensAt`으로 딤드 버튼을 그린다.
+- **방이 생긴 뒤부터 끝나기 전까지만** 보인다. 끝난 방 7004, 상대 탈퇴·차단 7008, 방 유형이 맞지 않으면 7009, 방의 퀴즈셋을 못 찾으면 7012. 개방 전(`SCHEDULED`)에도 보이고 `canSendCard=false` + `chatOpensAt`으로 딤드 버튼을 그린다.
 - 비율은 그 주 전체 완주자 기준 마감 스냅샷이다([quiz 도메인](quiz.md) "퀴즈 기록·통계"). 그룹 분포는 방 멤버 기준 실시간 인원이다.
 
 ## STOMP 프레임 (FE 계약)
 
-구독 토픽 `/sub/chat/rooms/{roomId}`에는 두 종류의 프레임이 흐른다. 클라이언트는 `type` 유무로 가른다 — 메시지 프레임에는 `type`이 없고 `messageType`이 있다.
+구독 토픽 `/sub/chat/rooms/{roomId}`에는 메시지·READ·카드 거부 세 종류의 프레임이 흐른다. 클라이언트는 `type` 유무로 가른다 — 메시지 프레임에는 `type`이 없고 `messageType`이 있다.
 
 | 프레임 | 페이로드 | 언제 |
 |---|---|---|

@@ -26,6 +26,7 @@ class AdminQuizController(
     private val adminQaToolsProperties: AdminQaToolsProperties,
     private val adminQuizQaService: AdminQuizQaService,
     private val adminQuizAnswerResetService: AdminQuizAnswerResetService,
+    private val quizSetDeleter: QuizSetDeleter,
 ) {
     @GetMapping("/admin/quiz-sets")
     fun list(model: Model): String {
@@ -145,6 +146,17 @@ class AdminQuizController(
     fun deactivate(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
         adminQuizService.deactivate(id)
         redirectAttributes.addFlashAttribute("message", "퀴즈셋을 비활성화했습니다.")
+        return "redirect:/admin/quiz-sets/$id"
+    }
+
+    /**
+     * 마감 통계 스냅샷을 지운다. 다음 조회(기록·답변 비교)가 지금 답으로 다시 만든다. 마감 뒤에는 답이 바뀌지 않아
+     * 운영에서는 같은 숫자가 나온다 — QA 가 시각을 옮겨 일찍 굳은 스냅샷을 되돌릴 때 쓴다.
+     */
+    @PostMapping("/admin/quiz-sets/{id}/stat-snapshot/reset")
+    fun resetStatSnapshot(@PathVariable id: Long, redirectAttributes: RedirectAttributes): String {
+        quizSetDeleter.deleteStatSnapshot(id)
+        redirectAttributes.addFlashAttribute("message", "통계 스냅샷을 지웠습니다. 다음 조회 때 지금 답으로 다시 만듭니다.")
         return "redirect:/admin/quiz-sets/$id"
     }
 

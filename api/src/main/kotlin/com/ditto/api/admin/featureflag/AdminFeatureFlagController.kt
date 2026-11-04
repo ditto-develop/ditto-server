@@ -1,6 +1,7 @@
 package com.ditto.api.admin.featureflag
 
 import com.ditto.api.admin.auth.AdminPrincipal
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.system.featureflag.FeatureFlagAdminService
 import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.system.entity.FeatureFlagKey
@@ -21,12 +22,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 @Controller
 class AdminFeatureFlagController(
     private val featureFlagAdminService: FeatureFlagAdminService,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     @GetMapping("/admin/feature-flags")
     fun page(model: Model): String {
         model.addAttribute("flags", featureFlagAdminService.list())
-        model.addAttribute("cacheMinutes", FeatureFlags.TTL.toMinutes())
+        model.addAttribute("cacheMinutes", CACHE_MINUTES)
+        // 켠 시각이 지금보다 뒤면 QA 가 시각을 과거로 돌려 둔 것이다. 화면이 경고한다.
+        model.addAttribute("serverNow", serverTimeProvider.now())
         model.addAttribute("active", "feature-flag")
         return "feature-flags"
     }
@@ -42,12 +46,15 @@ class AdminFeatureFlagController(
         log.info { "어드민[${admin.displayName}] 이 기능 플래그 $key 를 ${if (enabled) "켰다" else "껐다"}" }
         redirectAttributes.addFlashAttribute(
             "message",
-            "$key 를 ${if (enabled) "켰습니다" else "껐습니다"}. 다른 서버에는 최대 ${FeatureFlags.TTL.toMinutes()}분 뒤 반영됩니다.",
+            "${key.description}($key)을(를) ${if (enabled) "켰습니다" else "껐습니다"}. 최대 ${CACHE_MINUTES}분 뒤 모든 서버에 적용됩니다.",
         )
         return "redirect:/admin/feature-flags"
     }
 
     companion object {
         private val log = KotlinLogging.logger {}
+
+        /** 다른 서버에 퍼지기까지 걸리는 최대 시간(분). 캐시 TTL 이 1분 미만이어도 화면에는 1분으로 보인다. */
+        private val CACHE_MINUTES: Long = FeatureFlags.TTL.toMinutes().coerceAtLeast(1)
     }
 }

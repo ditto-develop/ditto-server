@@ -36,6 +36,7 @@ class AdminFeatureFlagWebTest(
     )
 
     beforeTest { featureFlags.evict() }
+    afterTest { featureFlags.evict() }
 
     "기능 플래그 화면에 정의된 플래그와 꺼짐 상태가 보인다" {
         mockMvc.perform(get("/admin/feature-flags").with(authentication(admin)))
@@ -49,12 +50,21 @@ class AdminFeatureFlagWebTest(
             post("/admin/feature-flags/QUIZ_CHAT").param("enabled", "true").with(authentication(admin)).with(csrf()),
         )
             .andExpect(redirectedUrl("/admin/feature-flags"))
-            .andExpect(flash().attribute("message", containsString("최대 1분")))
+            .andExpect(flash().attribute("message", containsString("최대 1분 뒤 모든 서버에 적용")))
 
         val row = featureFlagRepository.findByKey(FeatureFlagKey.QUIZ_CHAT)!!
         row.enabled shouldBe true
         row.updatedByMemberId shouldBe 5L
         featureFlags.isEnabled(FeatureFlagKey.QUIZ_CHAT) shouldBe true
+    }
+
+    "켠 뒤에는 켜짐 배지와 바꾼 어드민(이름이 없으면 회원 번호)이 보인다" {
+        mockMvc.perform(post("/admin/feature-flags/QUIZ_CHAT").param("enabled", "true").with(authentication(admin)).with(csrf()))
+
+        mockMvc.perform(get("/admin/feature-flags").with(authentication(admin)))
+            .andExpect(content().string(containsString("badge ok")))
+            .andExpect(content().string(containsString("회원 #5")))
+            .andExpect(content().string(containsString("을(를) 끕니다")))
     }
 
     "로그인하지 않으면 화면을 열 수 없다" {

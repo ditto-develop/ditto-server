@@ -35,6 +35,10 @@
                           onsubmit="return confirm('퀴즈셋과 문항·선택지, 회원 답·진행, 매칭 결과 알림을 모두 삭제합니다. 계속할까요?');">
                         <button class="btn danger" type="submit">삭제</button>
                     </form>
+                    <form class="inline-form" th:action="@{/admin/quiz-sets/{id}/stat-snapshot/reset(id=${quizSet.id})}" method="post"
+                          onsubmit="return confirm('마감 통계 스냅샷(비율·소수 의견·겹친 사람)을 지우고 다음 조회 때 지금 답으로 다시 만듭니다. 계속할까요?');">
+                        <button class="btn secondary" type="submit" aria-label="통계 스냅샷 다시 만들기">통계 스냅샷 다시 만들기</button>
+                    </form>
                 </div>
                 <p class="muted" th:if="${hasMatchRecords}" style="margin:8px 0 0">
                     매칭이 진행된 퀴즈셋이라 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.
