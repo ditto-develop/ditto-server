@@ -4,8 +4,10 @@ import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.common.response.ApiResponse
+import com.ditto.domain.member.entity.Member
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.HttpRequestMethodNotSupportedException
@@ -77,6 +79,22 @@ class GlobalExceptionHandler {
     fun handleNoResource(e: Exception, request: HttpServletRequest): ApiResponse<Unit> {
         logger.warn { "[NO_RESOURCE] ${e.message} ${request.describe()}" }
         return ApiResponse.error(ErrorCode.NOT_FOUND)
+    }
+
+    /**
+     * 확인과 저장 사이에 남이 같은 닉네임을 먼저 저장했다. 가입·프로필 수정은 서비스 안에서 먼저 바꾸고
+     * (`NicknameService.flushAssigned` — 여기까지 오면 진입점 로그가 이미 ERROR 로 남는다), 이 분기는 그 밖의
+     * 경로(소셜 가입 자동 닉네임 등)의 마지막 안전망이다.
+     * 그 밖의 무결성 위반은 서버가 놓친 경우라 그대로 [handleException]과 같이 다룬다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrityViolation(e: DataIntegrityViolationException, request: HttpServletRequest): ApiResponse<Unit> {
+        val message = e.mostSpecificCause.message.orEmpty()
+        if (message.contains(Member.NICKNAME_UNIQUE_CONSTRAINT, ignoreCase = true)) {
+            logger.warn { "[${ErrorCode.NICKNAME_ALREADY_EXISTS.code}] 닉네임 동시 저장 ${request.describe()}" }
+            return ApiResponse.error(ErrorCode.NICKNAME_ALREADY_EXISTS)
+        }
+        return handleException(e, request)
     }
 
     @ExceptionHandler(Exception::class)
