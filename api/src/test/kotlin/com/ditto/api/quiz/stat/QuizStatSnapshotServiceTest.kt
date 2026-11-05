@@ -88,9 +88,9 @@ class QuizStatSnapshotServiceTest(
         quizStatSnapshotService.snapshotEnded(LocalDateTime.of(2026, 10, 29, 0, 0)) shouldBe 0
     }
 
-    "소수 의견은 참여자 20명 이상에서 선택 수 × 5 ≤ 참여자 수일 때다" {
+    "소수 의견은 참여자 수와 상관없이 선택 수 × 5 ≤ 참여자 수일 때다" {
         val set = seeder.quizSet(questions = 1)
-        repeat(19) { seeder.answer(member(), set, listOf(1)) }
+        repeat(4) { seeder.answer(member(), set, listOf(1)) }
         seeder.answer(member(), set, listOf(2))
 
         val snapshot = quizStatSnapshotService.getOrCreate(set.quizSetId)

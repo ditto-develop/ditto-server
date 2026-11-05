@@ -156,7 +156,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.answers[].choices[].choiceId").description("선택지 ID"),
                                 fieldWithPath("data.answers[].choices[].content").description("선택지 문구"),
                                 fieldWithPath("data.answers[].choices[].percent").description("CLOSED 만: 정수 %, 문항 안 합 100").optional(),
-                                fieldWithPath("data.answers[].choices[].minority").description("CLOSED 만: 소수 의견 여부 (참여자 20명 이상에서 20% 이하)").optional(),
+                                fieldWithPath("data.answers[].choices[].minority").description("CLOSED 만: 소수 의견 여부 (고른 사람이 참여자의 20% 이하)").optional(),
                                 fieldWithPath("data.answers[].myChoiceId").description("내가 고른 선택지 ID"),
                                 fieldWithPath("data.result").description("CLOSED 만").optional(),
                                 fieldWithPath("data.result.overlapThreshold").description("'나와 {overlapThreshold}개 이상 답이 겹친 사람'의 기준 = ceil(문항 수 × 2/3)"),
