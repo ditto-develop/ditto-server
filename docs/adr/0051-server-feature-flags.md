@@ -19,6 +19,12 @@ API 를 v1/v2 로 나누는 방법은 맞지 않았다. 실시간 메시지는 �
 - 행은 **마지막으로 켠 시각**(`enabled_at`)을 갖는다. 이미 켜진 플래그를 다시 켜도 유지하고, 끄면 지운다. 화면 표시용이라 어드민이 보는 서버 시각(`ServerTimeProvider`)으로 남기고, 지금 서버 시각보다 뒤면 화면이 경고한다(QA 가 시각을 과거로 돌린 상태).
 - **켜기 전부터 진행 중이던 대상은 시각 비교로 거르지 않는다.** 대신 꺼져 있다가 켜지는 순간 `FeatureFlagEnableListener`를 켜는 트랜잭션 안에서 불러 그 대상을 빼 둔다. `QUIZ_CHAT`은 그 순간 이미 열린 방에 빈 힌트 표시를 남긴다(`QuizChatEnableListener`). 시각으로 비교하면 켠 시각(서버 시각, 어드민 오버라이드)과 방의 열린 순간(`opens_at` 은 서버 시각이지만 재매칭은 실제 시각, `created_at` 은 실제 시각)이 서로 다른 시계라 QA 중에 대상이 어긋난다.
 - 전환은 플래그 행을 잠그고 한다 — 겹친 켜기 두 번이 리스너를 두 번 부르지 않는다. 처음 켤 때 행이 없으면 자기 트랜잭션에서 먼저 만들어, 두 번 눌러 유니크에 진 쪽도 500 없이 이긴 쪽 행을 쓴다.
+- **FE 도 같은 플래그를 읽는다 (#369).** FE 의 자체 플래그(코드에 적은 값 + 테스터 모드)를 없애고, `GET /api/v1/feature-flags?keys=A,B` 로 필요한 키만 묻는다.
+  - API Key 만 받고 JWT 는 받지 않는다(로그인 전에도 화면을 가려야 한다). 켜짐 여부만 내려 주므로 공개돼도 잃는 것이 없다.
+  - 서버는 같은 1분 캐시(`FeatureFlags.statesOf`)를 거치고, FE 도 1분 캐시한다. 그래서 어드민에서 바꾼 값이 사용자 화면에 닿기까지 **최대 약 2분**이다.
+  - 응답은 요청한 키만 담는다. **enum 에 없는 키는 false** 다(오류 아님) — FE 가 BE 보다 먼저 새 키를 확인하는 코드를 배포해도 꺼진 채로 안전하다.
+  - `keys` 는 반복·쉼표 둘 다 받고, 공백·중복을 지운다. 없거나 비었거나 20개 초과·50자 초과·`[A-Z0-9_]` 밖이면 `BAD_REQUEST`(0001).
+  - FE 화면 전용 플래그는 서버 동작이 없다. 첫 값은 `RECORDS`(기록 탭·대화방 '우리의 답변'). 배포 순서는 BE → 어드민에서 켜기 → FE 다(반대면 FE 가 꺼진 값을 읽어 화면이 사라진다).
 - 첫 플래그 `QUIZ_CHAT` = 첫 대화 힌트 생성 + 질문 카드 전송. 꺼져 있으면 힌트를 만들지 않고 카드 전송을 `FEATURE_DISABLED`(0006)로 거부하며, 답변 비교 응답의 `canSendCard`도 false 다. 기록·답변 비교·분포 API 는 새 엔드포인트라 플래그 밖이다.
 
 ## Consequences
@@ -30,5 +36,5 @@ API 를 v1/v2 로 나누는 방법은 맞지 않았다. 실시간 메시지는 �
 
 ## Links
 
-- 이슈 #365. 핵심 파일: `domain/.../system/entity/FeatureFlag.kt`·`FeatureFlagKey.kt`, `api/.../system/featureflag/`, `api/.../admin/featureflag/AdminFeatureFlagController.kt`, 스키마 `domain/db/V20261104220607_기능 플래그 테이블 추가.sql`.
+- 이슈 #365, #369(FE 조회 API `api/.../system/controller/FeatureFlagController.kt`). 핵심 파일: `domain/.../system/entity/FeatureFlag.kt`·`FeatureFlagKey.kt`, `api/.../system/featureflag/`, `api/.../admin/featureflag/AdminFeatureFlagController.kt`, 스키마 `domain/db/V20261104220607_기능 플래그 테이블 추가.sql`.
 - 관련 ADR: [0039](0039-admin-qa-tools-env-switch.md)(환경변수 스위치).
