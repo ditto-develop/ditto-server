@@ -33,7 +33,7 @@ class QuizSetStat private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
-    @Comment("마감 시점 완주자 수 (어드민 제외)")
+    @Comment("마감 시점 완주자 수")
     @Column(name = "participant_count", nullable = false)
     val participantCount: Int,
 
