@@ -50,7 +50,8 @@
                     </div>
                 </div>
 
-                <h2 class="page-title" style="font-size:17px; margin:24px 0 6px;">문항</h2>
+                <h2 class="page-title with-info" style="font-size:17px; margin:24px 0 6px;">문항
+                    <th:block th:replace="~{fragments :: info('info-quiz-form-hint', '대화 힌트 질문', '채팅방에서 이 문항 이야기를 꺼낼 때 보여 줄 질문입니다. 비우면 힌트 없이 보입니다.')}"></th:block></h2>
                 <p class="page-desc" style="margin-bottom:16px">
                     번호는 위에서 아래 순서대로 자동으로 매겨집니다. 순서를 바꾸려면 번호 칸을 끌어 옮기거나 ▲▼를 누르세요.
                     선택지는 문항마다 2개이고 ⇄로 좌우를 맞바꿉니다. 새로 추가한 문항 중 질문과 선택지를 모두 비워 둔 문항은 저장하지 않습니다.
@@ -88,6 +89,10 @@
                                     <button type="button" class="swap" th:if="${cstat.index == 1}" title="좌우 맞바꾸기" aria-label="좌우 맞바꾸기">&#8644;</button>
                                 </div>
                             </div>
+                            <input type="text" class="qhint"
+                                   th:field="*{quizzes[__${stat.index}__].hintQuestion}"
+                                   maxlength="200" aria-label="대화 힌트 질문 (선택)"
+                                   placeholder="대화 힌트 질문 (선택, 최대 200자) — 예: 그 시간엔 주로 뭘 하세요?"/>
                             <div class="qfoot">
                                 <span class="lockmsg" th:if="${answerCounts.containsKey(quiz.id)}">답변이 있어 지울 수 없습니다. 문구는 고칠 수 있습니다.</span>
                                 <button type="button" class="btn danger sm remove-quiz"
@@ -138,6 +143,8 @@
                                 <button type="button" class="swap" title="좌우 맞바꾸기" aria-label="좌우 맞바꾸기">&#8644;</button>
                             </div>
                         </div>
+                        <input type="text" class="qhint" value="" maxlength="200" aria-label="대화 힌트 질문 (선택)"
+                               placeholder="대화 힌트 질문 (선택, 최대 200자) — 예: 그 시간엔 주로 뭘 하세요?"/>
                         <div class="qfoot">
                             <button type="button" class="btn danger sm remove-quiz">문항 삭제</button>
                         </div>

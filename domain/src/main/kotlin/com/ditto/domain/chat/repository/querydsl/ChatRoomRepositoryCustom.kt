@@ -1,5 +1,7 @@
 package com.ditto.domain.chat.repository.querydsl
 
+import com.ditto.domain.chat.entity.ChatQuizHint
+
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -33,6 +35,12 @@ interface ChatRoomRepositoryCustom {
      * (`CHAT_NO_MESSAGE`)를 아직 남기지 않은 방. 매분 도는 조회라 이미 알린 방은 쿼리에서 뺀다.
      */
     fun findAllIdsSilentOpenedBetween(from: LocalDateTime, to: LocalDateTime): List<Long>
+
+    /**
+     * 열려 있고(`ACTIVE`) 첫 대화 힌트 표시(`chat_quiz_hint`)가 없는 방 — 힌트 생성·누락 복구 후보.
+     * 기능을 켜는 순간 이미 열려 있던 방에는 빈 표시를 남겨 두므로([ChatQuizHint]) 여기 나오지 않는다.
+     */
+    fun findAllIdsActiveWithoutHint(): List<Long>
 
     /**
      * 회원이 참여한 방 중 아직 끝나지 않은(SCHEDULED·ACTIVE) 방이 있는지 — 탈퇴 가드용.

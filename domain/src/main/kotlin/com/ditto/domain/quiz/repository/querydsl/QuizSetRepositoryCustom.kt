@@ -23,4 +23,14 @@ interface QuizSetRepositoryCustom {
      * 한 주에 같은 타입 퀴즈셋은 하나뿐이라 단건으로 돌려준다.
      */
     fun findCompletedQuizSetInWeek(memberId: Long, matchingType: MatchingType, weekStartedOn: LocalDate): QuizSet?
+
+    /**
+     * [endedAfter] 이후 마감(endedAfter < endDate < now)됐고 아직 통계 스냅샷(`quiz_set_stat`)이 없는 퀴즈셋 ID.
+     * 목 00:00 스냅샷 배치 대상이다. 하한을 두는 이유는 매칭 배치와 같다 — 오래된 셋까지 매번 훑지 않는다
+     * (그런 셋은 조회 시 지연 생성된다).
+     */
+    fun findEndedQuizSetIdsWithoutStat(endedAfter: LocalDateTime, now: LocalDateTime): List<Long>
+
+    /** 회원이 완주(COMPLETED)한 퀴즈셋 전부, 최신 운영 주부터. 퀴즈 기록 탭의 목록이다. 활성 여부는 보지 않는다. */
+    fun findCompletedQuizSetsOf(memberId: Long): List<QuizSet>
 }

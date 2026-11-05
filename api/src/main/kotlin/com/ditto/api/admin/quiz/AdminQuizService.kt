@@ -173,7 +173,12 @@ class AdminQuizService(
     private fun updateOrCreateQuiz(quizSetId: Long, quizForm: QuizForm, displayOrder: Int): Quiz {
         val quizId = quizForm.id
             ?: return quizRepository.save(
-                Quiz.create(quizSetId = quizSetId, question = quizForm.question, displayOrder = displayOrder),
+                Quiz.create(
+                    quizSetId = quizSetId,
+                    question = quizForm.question,
+                    displayOrder = displayOrder,
+                    hintQuestion = quizForm.normalizedHintQuestion(),
+                ),
             )
 
         val quiz = quizRepository.findById(quizId)
@@ -181,7 +186,7 @@ class AdminQuizService(
         if (quiz.quizSetId != quizSetId) {
             throw WarnException(ErrorCode.BAD_REQUEST, "다른 퀴즈셋의 문항은 수정할 수 없습니다.")
         }
-        quiz.update(quizForm.question, displayOrder)
+        quiz.update(quizForm.question, displayOrder, quizForm.normalizedHintQuestion())
         return quiz
     }
 

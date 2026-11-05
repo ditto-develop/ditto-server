@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('기능 플래그')}"></head>
+<body>
+<div class="layout">
+    <aside th:replace="~{fragments :: sidebar('feature-flag')}"></aside>
+    <div class="main-wrap">
+        <header th:replace="~{fragments :: topbar}"></header>
+        <main class="content">
+            <h1 class="page-title">기능 플래그</h1>
+            <p class="page-desc">서버 기능을 기능별로 켜고 끕니다. 실회원 전원에게 바로 적용됩니다.
+                서버마다 <span th:text="${cacheMinutes}">1</span>분씩 기억해 두므로, 바꾼 값이 모든 서버에 퍼지기까지 최대 <span th:text="${cacheMinutes}">1</span>분 걸립니다.</p>
+            <div th:replace="~{fragments :: alerts}"></div>
+
+            <div class="card">
+                <p class="muted" th:if="${flags.isEmpty()}">정의된 기능 플래그가 없습니다.</p>
+                <div class="tbl-scroll" th:unless="${flags.isEmpty()}">
+                    <table class="tbl">
+                        <thead>
+                        <tr><th>기능</th><th>상태</th><th>켠 시각</th><th>마지막 변경</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="f : ${flags}">
+                            <td>
+                                <div th:text="${f.key.description}">설명</div>
+                                <code class="muted" th:text="${f.key}">QUIZ_CHAT</code>
+                            </td>
+                            <td>
+                                <span class="badge ok" th:if="${f.enabled}">켜짐</span>
+                                <span class="badge neutral" th:unless="${f.enabled}">꺼짐</span>
+                            </td>
+                            <td class="num">
+                                <span th:text="${f.enabledAt != null} ? ${#temporals.format(f.enabledAt, 'yy-MM-dd HH:mm')} : '-'">-</span>
+                                <div class="badge caution" th:if="${f.enabledAt != null and f.enabledAt.isAfter(serverNow)}"
+                                     title="켠 시각이 지금 서버 시각보다 뒤입니다. 시간 조정으로 서버 시각을 과거로 돌려 둔 상태입니다.">
+                                    지금 서버 시각보다 뒤</div>
+                            </td>
+                            <td>
+                                <span th:if="${f.updatedAt == null}">-</span>
+                                <th:block th:if="${f.updatedAt != null}">
+                                    <span class="num" th:text="${#temporals.format(f.updatedAt, 'yy-MM-dd HH:mm')}">-</span>
+                                    · <span th:text="${f.updatedByName != null} ? (${f.updatedByName} + (${f.updatedByEmail != null} ? ' (' + ${f.updatedByEmail} + ')' : '')) : ('회원 #' + ${f.updatedByMemberId})">-</span>
+                                </th:block>
+                            </td>
+                            <td>
+                                <form th:action="@{/admin/feature-flags/{key}(key=${f.key})}" method="post" class="inline-form"
+                                      th:attr="data-confirm=|${f.key.description}(${f.key})을(를) ${f.enabled ? '끕니다' : '켭니다'}. 실회원 전원에게 바로 적용되고, 모든 서버에 퍼지기까지 최대 ${cacheMinutes}분 걸립니다. 계속할까요?|"
+                                      onsubmit="return confirm(this.dataset.confirm);">
+                                    <input type="hidden" name="enabled" th:value="${!f.enabled}"/>
+                                    <button class="btn sm" type="submit" th:classappend="${f.enabled} ? 'secondary'"
+                                            th:attr="aria-label=|${f.key.description} ${f.enabled ? '끄기' : '켜기'}|"
+                                            th:text="${f.enabled} ? '끄기' : '켜기'">켜기</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>

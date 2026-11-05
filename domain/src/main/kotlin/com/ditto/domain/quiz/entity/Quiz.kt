@@ -26,6 +26,7 @@ class Quiz private constructor(
     val quizSetId: Long,
     question: String,
     displayOrder: Int,
+    hintQuestion: String? = null,
 ) : BaseEntity() {
 
     @Comment("퀴즈 질문")
@@ -38,20 +39,34 @@ class Quiz private constructor(
     var displayOrder: Int = displayOrder
         protected set
 
-    fun update(question: String, displayOrder: Int) {
+    /**
+     * 대화방에서 이 문항으로 대화를 잇게 하는 질문(어드민 입력, 선택). 첫 대화 힌트·질문 카드에 실린다.
+     * 비어 있으면 FE 가 공통 문구를 쓴다.
+     */
+    @Comment("대화 힌트 질문 (어드민 입력, 선택)")
+    @Column(name = "hint_question", nullable = true, length = HINT_QUESTION_MAX_LENGTH)
+    var hintQuestion: String? = hintQuestion
+        protected set
+
+    fun update(question: String, displayOrder: Int, hintQuestion: String? = this.hintQuestion) {
         this.question = question
         this.displayOrder = displayOrder
+        this.hintQuestion = hintQuestion
     }
 
     companion object {
+        const val HINT_QUESTION_MAX_LENGTH = 200
+
         fun create(
             quizSetId: Long,
             question: String,
             displayOrder: Int,
+            hintQuestion: String? = null,
         ): Quiz = Quiz(
             quizSetId = quizSetId,
             question = question,
             displayOrder = displayOrder,
+            hintQuestion = hintQuestion,
         )
     }
 }

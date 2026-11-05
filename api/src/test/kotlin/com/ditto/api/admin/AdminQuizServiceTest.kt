@@ -168,6 +168,28 @@ class AdminQuizServiceTest(
             longChoice.message shouldBe "1번 문항의 선택지가 200자를 넘습니다."
         }
 
+        "대화 힌트 질문은 다듬어 저장하고, 비우면 없는 것으로 저장한다" {
+            val quizSet = adminQuizService.createQuizSet(
+                formWithQuizzes(
+                    quizForm("치약 짤 때?", "아래부터", "중간부터").apply { hintQuestion = "  왜 그렇게 짜요?  " },
+                    quizForm("여행 계획은?", "분 단위로", "즉흥적으로").apply { hintQuestion = "   " },
+                ),
+            )
+
+            quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSet.id).map { it.hintQuestion } shouldBe
+                listOf("왜 그렇게 짜요?", null)
+        }
+
+        "대화 힌트 질문이 200자를 넘으면 거부한다" {
+            val exception = shouldThrow<WarnException> {
+                adminQuizService.createQuizSet(
+                    formWithQuizzes(quizForm("질문", "A", "B").apply { hintQuestion = "가".repeat(201) }),
+                )
+            }
+
+            exception.message shouldBe "1번 문항의 대화 힌트 질문이 200자를 넘습니다."
+        }
+
         "같은 문항 id 를 두 번 보내면 거부한다" {
             val quizSet = adminQuizService.createQuizSet(
                 formWithQuizzes(quizForm("원래 문항", "A", "B")),

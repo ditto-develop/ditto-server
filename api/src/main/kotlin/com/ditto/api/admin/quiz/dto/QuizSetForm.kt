@@ -63,6 +63,7 @@ class QuizSetForm(
                 QuizForm(
                     id = quiz.id,
                     question = quiz.question,
+                    hintQuestion = quiz.hintQuestion,
                     // 개별 추가 UI 시절 선택지가 2개 미만인 문항이 남아 있다. 빈 칸을 채워 화면에서 고칠 수 있게 한다.
                     choices = choicesByQuiz[quiz.id].orEmpty()
                         .map { QuizChoiceForm(id = it.id, content = it.content) }

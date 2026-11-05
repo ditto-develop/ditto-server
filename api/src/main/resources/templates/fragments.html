@@ -33,6 +33,10 @@
             <a th:href="@{/admin/notices}" th:classappend="${active == 'notice'} ? 'active'"><span class="ico">📢</span> 시스템 공지</a>
             <a th:href="@{/admin/launch-notifications}" th:classappend="${active == 'launch-notification'} ? 'active'"><span class="ico">📮</span> 출시 알림 신청자(웹)</a>
         </div>
+        <div class="nav-group">
+            <span class="nav-title">시스템</span>
+            <a th:href="@{/admin/feature-flags}" th:classappend="${active == 'feature-flag'} ? 'active'"><span class="ico">🚩</span> 기능 플래그</a>
+        </div>
         <div class="nav-group qa" th:if="${qaToolsEnabled}">
             <span class="nav-title">QA 전용 · 실서비스에서는 꺼짐</span>
             <a th:href="@{/admin/time-override}" th:classappend="${active == 'time'} ? 'active'"><span class="ico">⏱️</span> 시간 조정</a>

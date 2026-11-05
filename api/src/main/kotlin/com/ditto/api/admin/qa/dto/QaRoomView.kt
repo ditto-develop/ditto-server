@@ -43,6 +43,8 @@ class QaRoomView(
     val leaveDissolvesRoom: Boolean,
     /** 재매칭 방이면 그 쌍이 나온 그룹 방. */
     val sourceGroupRoomId: Long?,
+    /** 첫 대화 힌트 상태와 이유. */
+    val hintState: String,
 ) {
     /** 앱을 쓸 수 없는 더미는 뒤로 보내 보내기·투표 칸의 기본 선택이 되지 않게 한다. */
     val activeDummies: List<QaMember> = members
@@ -89,7 +91,8 @@ class QaRoomMessage(
     val sentAt: LocalDateTime,
     val unreadCount: Int,
 ) {
-    val isSystem: Boolean = messageType == ChatMessageType.SYSTEM
+    // 첫 대화 힌트도 서버가 만든 안내라 SYSTEM 처럼 가운데 줄로 그린다.
+    val isSystem: Boolean = messageType.isServerGenerated
 
     val isImage: Boolean = messageType == ChatMessageType.IMAGE
 }

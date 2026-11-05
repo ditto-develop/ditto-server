@@ -22,6 +22,9 @@ interface ChatRoomMemberRepository : JpaRepository<ChatRoomMember, Long> {
 
     fun findByRoomIdIn(roomIds: Collection<Long>): List<ChatRoomMember>
 
+    /** 방에 남아 있는 참여자(이탈자 제외). */
+    fun findByRoomIdAndLeftAtIsNull(roomId: Long): List<ChatRoomMember>
+
     fun findByRoomIdAndMemberId(roomId: Long, memberId: Long): ChatRoomMember?
 
     /**

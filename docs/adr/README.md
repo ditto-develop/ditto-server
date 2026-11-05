@@ -46,6 +46,8 @@
 - [0048 — 가입 이탈 장의 회원 목록은 가입 진행 정보까지 내린다](0048-admin-stats-signup-dropout-lists.md)
 - [0049 — 크론은 ShedLock(만료 시각 기록형 DB 락)으로 한 인스턴스에서만 돌린다](0049-scheduler-lock-shedlock.md)
 - [0050 — 태스크 정의는 커밋 이미지를 가리키고, OOM 이 나면 JVM 을 바로 끝낸다](0050-ecs-image-pinning-and-oom-exit.md)
+- [0051 — 서버 기능 플래그는 DB 한 행 + 인스턴스별 1분 캐시로 두고 어드민 화면에서 바꾼다](0051-server-feature-flags.md)
+- [0052 — 1:1·재매칭 방에서는 상대의 문항별 답을 보여 준다 (ADR 0020 갱신)](0052-pair-room-answer-compare.md)
 
 ## 언제 ADR을 쓰는가
 

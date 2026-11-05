@@ -8,7 +8,8 @@ import java.time.LocalDateTime
 data class ChatMessageResponse(
     val id: Long,
     val roomId: Long,
-    val senderId: Long,
+    // 서버가 만든 첫 대화 힌트(QUIZ_HINT)만 null.
+    val senderId: Long?,
     val messageType: ChatMessageType,
     val content: String,
     // IMAGE 메시지의 열람용 presigned GET URL. TEXT 등에서는 null.
@@ -33,6 +34,12 @@ data class ChatMessageResponse(
         /** SYSTEM 메시지는 unreadCount 가 항상 0 이라 참여자 목록이 필요 없다. */
         fun system(message: ChatMessage): ChatMessageResponse {
             require(message.messageType == ChatMessageType.SYSTEM) { "SYSTEM 메시지가 아닙니다: id=${message.id}" }
+            return serverGenerated(message)
+        }
+
+        /** 서버가 만든 메시지(SYSTEM·QUIZ_HINT)는 unreadCount 가 항상 0 이라 참여자 목록이 필요 없다. */
+        fun serverGenerated(message: ChatMessage): ChatMessageResponse {
+            require(message.messageType.isServerGenerated) { "서버가 만든 메시지가 아닙니다: id=${message.id}" }
             return ChatMessageResponse(
                 id = message.id,
                 roomId = message.roomId,

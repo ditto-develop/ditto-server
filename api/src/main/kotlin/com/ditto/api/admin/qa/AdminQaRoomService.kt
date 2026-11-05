@@ -40,6 +40,7 @@ class AdminQaRoomService(
     private val serverTimeProvider: ServerTimeProvider,
     private val qaRoomSourceLabels: QaRoomSourceLabels,
     private val rematchRepository: RematchRepository,
+    private val qaHintStates: QaHintStates,
 ) {
     /** 더미가 들어 있던 방. 진행 중인 방을 먼저, 그 안에서는 최근 방을 먼저 둔다. */
     fun getRoomSummaries(): List<QaRoomSummary> {
@@ -86,7 +87,7 @@ class AdminQaRoomService(
         }
         val messages = chatMessageRepository.findByRoomIdWithCursor(roomId, cursor = null, size = TIMELINE_SIZE)
             .reversed()
-        val memberIds = roomMembers.map { it.memberId } + messages.map { it.senderId }
+        val memberIds = roomMembers.map { it.memberId } + messages.mapNotNull { it.senderId }
         val members = qaMemberLabels.load(memberIds)
         val rows = RoomRows(members, dummyIds)
         val votes = findVotes(room, roomMembers)
@@ -105,6 +106,7 @@ class AdminQaRoomService(
             canEndByUser = room.canEndByUser(),
             leaveDissolvesRoom = room.dissolvesWhenOneLeaves(activeMemberCount = roomMembers.count { !it.hasLeft }),
             sourceGroupRoomId = findSourceGroupRoomId(room),
+            hintState = qaHintStates.of(room),
         )
         return QaRoomLookup.Found(view)
     }
@@ -170,12 +172,16 @@ class AdminQaRoomService(
 
         fun message(message: ChatMessage, roomMembers: List<ChatRoomMember>) = QaRoomMessage(
             messageId = message.id,
-            sender = members.of(message.senderId),
+            // 보낸 사람이 없는 메시지는 서버가 만든 첫 대화 힌트다.
+            sender = message.senderId?.let(members::of) ?: SERVER_SENDER,
             isFromDummy = message.senderId in dummyIds,
             messageType = message.messageType,
             content = message.content,
-            systemMeaning = message.content.takeIf { message.messageType == ChatMessageType.SYSTEM }
-                ?.let(QaSystemMessageMeaning::of),
+            systemMeaning = when (message.messageType) {
+                ChatMessageType.SYSTEM -> QaSystemMessageMeaning.of(message.content)
+                ChatMessageType.QUIZ_HINT -> QaSystemMessageMeaning.ofHint(message.content)
+                else -> null
+            },
             sentAt = message.createdAt,
             unreadCount = message.unreadCountAmong(roomMembers),
         )
@@ -183,5 +189,6 @@ class AdminQaRoomService(
 
     companion object {
         const val TIMELINE_SIZE = 50
+        private val SERVER_SENDER = QaMember(0L, "서버")
     }
 }

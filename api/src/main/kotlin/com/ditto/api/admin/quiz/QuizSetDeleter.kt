@@ -11,9 +11,12 @@ import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
+import com.ditto.domain.quiz.repository.QuizChoiceStatRepository
+import com.ditto.domain.quiz.repository.QuizMemberStatRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.quiz.repository.QuizSetStatRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -29,6 +32,9 @@ class QuizSetDeleter(
     private val personalMatchRepository: PersonalMatchRepository,
     private val groupMatchRepository: GroupMatchRepository,
     private val notificationRepository: NotificationRepository,
+    private val quizSetStatRepository: QuizSetStatRepository,
+    private val quizChoiceStatRepository: QuizChoiceStatRepository,
+    private val quizMemberStatRepository: QuizMemberStatRepository,
 ) {
 
     @Transactional
@@ -43,6 +49,7 @@ class QuizSetDeleter(
             )
         }
         deleteMatchResultNotifications(quizSetId)
+        deleteStatSnapshot(quizSetId)
         deleteQuizzesWithAnswers(quizSetId)
         quizProgressRepository.deleteByQuizSetId(quizSetId)
         quizSetRepository.deleteById(quizSetId)
@@ -70,6 +77,16 @@ class QuizSetDeleter(
         if (notifications.isEmpty()) return 0
         notificationRepository.deleteAllByIdInBatch(notifications.map { it.id })
         return notifications.size
+    }
+
+    /**
+     * 마감 통계 스냅샷. 매칭 전에 마감된 셋(후보 0건 등)이면 이미 만들어져 있을 수 있다.
+     * 답을 지운 뒤(QA 초기화)에도 부른다 — 남기면 지운 답이 숫자에 남는다. 다음 조회가 다시 만든다.
+     */
+    fun deleteStatSnapshot(quizSetId: Long) {
+        quizMemberStatRepository.deleteAllByIdInBatch(quizMemberStatRepository.findByQuizSetId(quizSetId).map { it.id })
+        quizChoiceStatRepository.deleteAllByIdInBatch(quizChoiceStatRepository.findByQuizSetId(quizSetId).map { it.id })
+        quizSetStatRepository.findByQuizSetId(quizSetId)?.let { quizSetStatRepository.delete(it) }
     }
 
     private fun deleteQuizzesWithAnswers(quizSetId: Long) {

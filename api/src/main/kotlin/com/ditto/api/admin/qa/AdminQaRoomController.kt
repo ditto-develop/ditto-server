@@ -3,10 +3,12 @@ package com.ditto.api.admin.qa
 import com.ditto.api.chat.controller.ChatController
 import com.ditto.api.chat.dto.ChatReadRequest
 import com.ditto.api.chat.dto.ChatSendRequest
+import com.ditto.api.chat.quiz.QuizHintService
 import com.ditto.api.chat.websocket.ChatStompController
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.review.entity.MeetingStatus
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
@@ -26,6 +28,7 @@ class AdminQaRoomController(
     private val qaRoomReviews: QaRoomReviews,
     private val chatController: ChatController,
     private val chatStompController: ChatStompController,
+    private val quizHintService: QuizHintService,
 ) {
     @GetMapping("/admin/qa/rooms/{roomId}")
     fun page(@PathVariable roomId: Long, model: Model, redirectAttributes: RedirectAttributes): String {
@@ -114,6 +117,19 @@ class AdminQaRoomController(
         return QaRoutes.room(roomId)
     }
 
+    /** 힌트 표시와 메시지를 지운다. 방이 열려 있고 QUIZ_CHAT 이 켜져 있으면 다음 주기(1분 안)에 다시 만들어진다. */
+    @PostMapping("/admin/qa/rooms/{roomId}/hint/reset")
+    fun resetHint(@PathVariable roomId: Long, redirectAttributes: RedirectAttributes): String {
+        val removed = quizHintService.resetHint(roomId)
+        log.info { "QA 콘솔: 방 #$roomId 첫 대화 힌트 다시 만들기 — 지운 표시 ${if (removed) "있음" else "없음"}" }
+        redirectAttributes.addFlashAttribute(
+            "message",
+            if (removed) "방 #$roomId 의 첫 대화 힌트를 지웠습니다. 방이 열려 있고 QUIZ_CHAT 이 켜져 있으면 1분 안에 다시 만들어집니다."
+            else "방 #$roomId 에는 지울 힌트가 없습니다.",
+        )
+        return QaRoutes.room(roomId)
+    }
+
     private fun readLatest(dummyId: Long, roomId: Long) {
         val latestMessageId = adminQaRoomService.findLatestMessageId(roomId)
             ?: throw WarnException(ErrorCode.BAD_REQUEST, "읽을 메시지가 없습니다.")
@@ -123,4 +139,8 @@ class AdminQaRoomController(
     /** STOMP 핸들러는 세션 principal 을 받으므로 앱 연결과 같은 모양으로 만든다. */
     private fun authenticationOf(dummyId: Long): Authentication =
         UsernamePasswordAuthenticationToken(qaDummies.requireActiveDummyPrincipal(dummyId), null, emptyList())
+
+    companion object {
+        private val log = KotlinLogging.logger {}
+    }
 }

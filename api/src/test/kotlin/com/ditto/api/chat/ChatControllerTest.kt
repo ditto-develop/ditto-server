@@ -200,6 +200,17 @@ class ChatControllerTest : ControllerUnitTest() {
             messages = listOf(
                 sampleMessage(id = 3L, imageUrl = "https://cdn.example.com/chat/2/photo.png"),
                 sampleMessage(id = 2L),
+                // 서버가 만든 첫 대화 힌트 — 보낸 사람이 없다.
+                ChatMessageResponse(
+                    id = 1L,
+                    roomId = 1L,
+                    senderId = null,
+                    messageType = ChatMessageType.QUIZ_HINT,
+                    content = """{"quizId":301,"kind":"SAME","question":"시간이 멈춘다면?","answer":"새벽 2시","hintQuestion":null}""",
+                    imageUrl = null,
+                    createdAt = LocalDateTime.of(2026, 7, 24, 0, 0),
+                    unreadCount = 0,
+                ),
             ),
             nextCursor = 2L,
         )
@@ -240,13 +251,16 @@ class ChatControllerTest : ControllerUnitTest() {
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.messages[].id").description("메시지 ID"),
                                 fieldWithPath("data.messages[].roomId").description("채팅방 ID"),
-                                fieldWithPath("data.messages[].senderId").description("보낸 회원 ID"),
-                                fieldWithPath("data.messages[].messageType").description("메시지 유형 (TEXT, IMAGE, SYSTEM)"),
-                                fieldWithPath("data.messages[].content").description("메시지 내용 (IMAGE 는 S3 key)"),
+                                fieldWithPath("data.messages[].senderId")
+                                    .description("보낸 회원 ID. 서버가 만든 첫 대화 힌트(QUIZ_HINT)는 null").optional(),
+                                fieldWithPath("data.messages[].messageType")
+                                    .description("메시지 유형 (TEXT, IMAGE, SYSTEM, QUIZ_HINT 첫 대화 힌트, QUIZ_CARD 질문 카드)"),
+                                fieldWithPath("data.messages[].content")
+                                    .description("메시지 내용 (IMAGE 는 S3 key, SYSTEM 은 사건 코드, QUIZ_HINT·QUIZ_CARD 는 JSON — docs/domains/chat.md)"),
                                 fieldWithPath("data.messages[].imageUrl").description("IMAGE 열람용 presigned URL (아니면 null)").optional(),
                                 fieldWithPath("data.messages[].createdAt").description("메시지 생성일시"),
                                 fieldWithPath("data.messages[].unreadCount")
-                                    .description("이 메시지를 아직 읽지 않은, 발신자를 뺀 현재 참여자 수. 0 이면 모두 읽음 (SYSTEM 은 항상 0)"),
+                                    .description("이 메시지를 아직 읽지 않은, 발신자를 뺀 현재 참여자 수. 0 이면 모두 읽음 (SYSTEM·QUIZ_HINT 는 항상 0)"),
                                 fieldWithPath("data.nextCursor").description("다음 페이지 커서 (더 없으면 null)").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )

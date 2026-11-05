@@ -2,6 +2,8 @@ package com.ditto.api.admin.cleanup
 
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatMessageRepository
+import com.ditto.domain.chat.repository.ChatQuizCardRepository
+import com.ditto.domain.chat.repository.ChatQuizHintRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.chat.repository.ChatVoteChoiceRepository
@@ -9,7 +11,7 @@ import com.ditto.domain.chat.repository.ChatVoteOptionRepository
 import com.ditto.domain.chat.repository.ChatVoteRepository
 import org.springframework.stereotype.Component
 
-/** 지울 채팅방을 찾고, 방에 딸린 멤버·메시지·투표까지 통째로 지운다. */
+/** 지울 채팅방을 찾고, 방에 딸린 멤버·메시지·투표·질문 카드·첫 대화 힌트까지 통째로 지운다. */
 @Component
 class ChatRoomEraser(
     private val chatRoomRepository: ChatRoomRepository,
@@ -18,6 +20,8 @@ class ChatRoomEraser(
     private val chatVoteRepository: ChatVoteRepository,
     private val chatVoteOptionRepository: ChatVoteOptionRepository,
     private val chatVoteChoiceRepository: ChatVoteChoiceRepository,
+    private val chatQuizCardRepository: ChatQuizCardRepository,
+    private val chatQuizHintRepository: ChatQuizHintRepository,
 ) {
     /** 한 번이라도 멤버였던 방. 나간 멤버도 행이 남으므로 함께 걸린다. */
     fun findRoomIdsWithMembers(memberIds: Collection<Long>): Set<Long> =
@@ -33,6 +37,8 @@ class ChatRoomEraser(
         if (roomIds.isEmpty()) return
 
         deleteVotesIn(roomIds)
+        chatQuizCardRepository.deleteAllByIdInBatch(chatQuizCardRepository.findByRoomIdIn(roomIds).map { it.id })
+        chatQuizHintRepository.deleteAllByIdInBatch(chatQuizHintRepository.findByRoomIdIn(roomIds).map { it.id })
         chatMessageRepository.deleteAllByIdInBatch(chatMessageRepository.findByRoomIdIn(roomIds).map { it.id })
         chatRoomMemberRepository.deleteAllByIdInBatch(chatRoomMemberRepository.findByRoomIdIn(roomIds).map { it.id })
         chatRoomRepository.deleteAllByIdInBatch(roomIds)

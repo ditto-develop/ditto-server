@@ -1,5 +1,7 @@
 package com.ditto.api.chat.scheduler
 
+import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.chat.quiz.QuizHintService
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
@@ -12,6 +14,7 @@ import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.ChatRoomFixture
+import com.ditto.domain.chat.entity.ChatMessageType
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
@@ -19,7 +22,9 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import java.time.LocalDateTime
+import org.springframework.messaging.simp.SimpMessagingTemplate
 
 /** 실제 시각과 확연히 달라, 넘어온 값만 보고 어느 시계인지 가릴 수 있는 오버라이드 시각. */
 private val OVERRIDDEN_NOW = LocalDateTime.of(2020, 1, 1, 0, 0)
@@ -40,6 +45,8 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val unformedGroupNotifier = mockk<UnformedGroupNotifier>(relaxed = true)
     val unansweredGroupInvitationDecliner = mockk<UnansweredGroupInvitationDecliner>(relaxed = true)
     val serverTimeProvider = mockk<ServerTimeProvider>()
+    val quizHintService = mockk<QuizHintService>(relaxed = true)
+    val messagingTemplate = mockk<SimpMessagingTemplate>(relaxed = true)
 
     val scheduler = ChatRoomLifecycleScheduler(
         chatRoomEndService,
@@ -53,6 +60,8 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         unformedGroupNotifier,
         unansweredGroupInvitationDecliner,
         serverTimeProvider,
+        quizHintService,
+        messagingTemplate,
     )
 
     // 호출 기록만 지운다(answers = false) — 기록이 쌓이면 다음 테스트의 verify 가 이전 호출까지 본다.
@@ -69,6 +78,8 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             unformedGroupNotifier,
             unansweredGroupInvitationDecliner,
             serverTimeProvider,
+            quizHintService,
+            messagingTemplate,
             answers = false,
         )
         every { serverTimeProvider.now() } returns OVERRIDDEN_NOW
@@ -121,5 +132,50 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         scheduler.sweep()
 
         verify { chatRoomOpenedNotifier.notifyOpened(opened) }
+    }
+
+    "개방 뒤 서버 시각으로 첫 대화 힌트를 만들고, 만든 힌트를 그 방 토픽으로 보낸다" {
+        val hint = ChatMessageResponse(
+            id = 31L,
+            roomId = 11L,
+            senderId = null,
+            messageType = ChatMessageType.QUIZ_HINT,
+            content = "{}",
+            imageUrl = null,
+            createdAt = OVERRIDDEN_NOW,
+            unreadCount = 0,
+        )
+        every { quizHintService.createMissing(OVERRIDDEN_NOW) } returns listOf(hint)
+
+        scheduler.sweep()
+
+        verifyOrder {
+            chatRoomEndService.openDue(OVERRIDDEN_NOW)
+            quizHintService.createMissing(OVERRIDDEN_NOW)
+        }
+        verify { messagingTemplate.convertAndSend("/sub/chat/rooms/11", hint) }
+    }
+
+    "힌트 단계가 실패해도 같은 주기의 마감·평가 개방·알림은 그대로 돈다" {
+        every { quizHintService.createMissing(any()) } throws IllegalStateException("db down")
+
+        scheduler.sweep()
+
+        verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
+        verify { endedChatReviewOpener.openMissing() }
+        verify { chatEndingSoonNotifier.notifyEndingSoon(OVERRIDDEN_NOW) }
+        verify { unansweredGroupInvitationDecliner.declineUnanswered(OVERRIDDEN_NOW) }
+    }
+
+    "힌트 하나의 브로드캐스트가 실패해도 다음 힌트는 보낸다" {
+        val first = ChatMessageResponse(1L, 11L, null, ChatMessageType.QUIZ_HINT, "{}", null, OVERRIDDEN_NOW, 0)
+        val second = first.copy(id = 2L, roomId = 12L)
+        every { quizHintService.createMissing(any()) } returns listOf(first, second)
+        every { messagingTemplate.convertAndSend("/sub/chat/rooms/11", first) } throws IllegalStateException("broker down")
+
+        scheduler.sweep()
+
+        verify { messagingTemplate.convertAndSend("/sub/chat/rooms/12", second) }
+        verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
     }
 })

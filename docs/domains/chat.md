@@ -5,10 +5,11 @@
 ## 용어
 - `ChatRoom` — 채팅방. `source_type`(PERSONAL/GROUP) + `source_id`(원본 매칭 ID). 매칭당 1개(unique).
 - `ChatRoomMember` — 방 참여자 + `last_read_message_id`(회원별 읽음 커서) + `left_at`(이탈 시각, 참여 중이면 NULL) + `hidden_at`(내 목록에서 숨긴 시각, 보이면 NULL). `hasRead(messageId)`가 읽음 판단의 기준이다.
-- `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키.
+- `ChatMessage` — 방 메시지. `id`(단조 증가)가 정렬·커서 페이징 키. `sender_id`는 서버가 만든 첫 대화 힌트(`QUIZ_HINT`)만 NULL 이다.
+- `ChatQuizCard` — 방에 올라간 질문 카드(방·문항당 1개). `ChatQuizHint` — 방의 첫 대화 힌트 표시(방당 1개).
 - `ChatPeriod` — 채팅이 열려 있는 주말 구간(금 00:00 ~ 월 00:00). 값 객체.
 - `ChatRoomStatus`(SCHEDULED/ACTIVE/ENDED), `ChatEndReason`(EXPIRED/USER_ENDED/INSUFFICIENT_MEMBERS).
-- destination — 전송 `/pub/chat/rooms/{roomId}`, 구독 `/sub/chat/rooms/{roomId}`. 구독 토픽에는 메시지 프레임과 READ 이벤트 두 종류가 흐른다([STOMP 프레임](#stomp-프레임-fe-계약)).
+- destination — 전송 `/pub/chat/rooms/{roomId}`, 구독 `/sub/chat/rooms/{roomId}`. 구독 토픽에는 메시지 프레임과 READ·QUIZ_CARD_REJECTED 이벤트가 흐른다([STOMP 프레임](#stomp-프레임-fe-계약)).
 
 ## 생명주기
 ```text
@@ -56,14 +57,41 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 
 값 추가 전용이다 — 채팅 연장([#121](https://github.com/ditto-develop/ditto-server/issues/121)) 등은 해당 기능을 만들 때 코드를 추가한다.
 
+## 퀴즈 메시지 (IMP-1, FE 계약)
+
+서버 기능 플래그 `QUIZ_CHAT`이 켜져 있을 때만 생긴다([ADR 0051](../adr/0051-server-feature-flags.md)). 꺼져 있으면 `QUIZ_HINT`·`QUIZ_CARD` 메시지도, `senderId: null`도 나오지 않는다.
+
+| 유형 | 누가 | `content` (JSON 문자열, 암호화 저장) | 안 읽음·푸시 |
+|---|---|---|---|
+| `QUIZ_HINT` 첫 대화 힌트 | 서버. `senderId` = null | `{"quizId","kind","question","answer","hintQuestion"}` — `kind`: `SAME`·`DIFFERENT`(1:1), `UNANIMOUS`·`SPLIT`(그룹). `answer`는 SAME·UNANIMOUS 만 | 세지 않는다. 메시지별 `unreadCount`도 SYSTEM 처럼 0. 방 목록 안 읽음 수에서도 뺀다. 푸시·알림 센터 없음(같은 순간 '채팅방 오픈' 알림이 나간다) |
+| `QUIZ_CARD` 질문 카드 | 회원 | 1:1 `{"quizId","question","choices":[{"choiceId","content"}],"senderChoiceId","peerChoiceId","hintQuestion"}` / 그룹 `{"quizId","question","choices":[{"choiceId","content","count"}],"hintQuestion"}` | 일반 메시지와 같다. 푸시 본문 "질문을 보냈어요." |
+
+- **첫 대화 힌트는 방이 `ACTIVE`가 되는 순간 1회** 남는다. 생명주기 스케줄러가 개방 직후 "열려 있는데 힌트가 없는 방"을 찾아 만든다 — 예약 개방된 방은 같은 주기, 주말 중 수락으로 처음부터 열린 방은 다음 주기(1분 안)다. 방당 1개는 `chat_quiz_hint` 유니크가 보장하고, 고를 문항이 없던 방(원본 매칭이 지워진 QA 방 등)도 메시지 없이 표시를 남겨 다시 집지 않는다.
+- **플래그를 켠 뒤 열린 방만** 대상이다. 켜는 순간 이미 열려 있던 방에는 빈 표시를 남긴다(`QuizChatEnableListener`) — 주말 도중에 켜도 대화 중인 방에 힌트가 끼어들지 않는다. 시각 비교를 쓰지 않는 이유는 [ADR 0051](../adr/0051-server-feature-flags.md).
+- 힌트 단계가 실패해도 같은 주기의 마감·평가 개방·알림은 그대로 돈다(스케줄러가 격리한다).
+- QA: 콘솔 방 화면이 힌트 상태와 이유(꺼짐·대기·만듦·빈 표시)를 보여 주고, [힌트 다시 만들기]가 표시·메시지를 지워 다음 주기에 다시 만들게 한다.
+- 힌트 선정: 1:1 은 같은 답 중 그 답의 전체 비율(마감 스냅샷)이 가장 낮은 문항(SAME), 없으면 첫 문항(DIFFERENT). 그룹은 만장일치 중 비율이 가장 낮은 문항(UNANIMOUS), 없으면 인원 차가 가장 작은 문항(SPLIT). 동률은 문항 순서. 기준 멤버는 열리는 순간 남아 있는 사람이고, 늦게 합류한 사람은 이미 남은 힌트를 본다.
+- **질문 카드는 기존 전송 목적지로 한 프레임에** 보낸다: `{ "messageType": "QUIZ_CARD", "quizId", "content": "덧붙인 한마디(빈 문자열 허용)" }`. 서버가 한 트랜잭션에서 카드 → 한마디 순으로 저장하고 둘 다 브로드캐스트한다 — 순서를 서버가 정한다. 카드 내용은 서버가 만든다(클라이언트 값을 안 믿는다). 그 방의 퀴즈셋 문항이어야 하고 방이 `ACTIVE`여야 한다.
+- 같은 방에 같은 문항은 한 번만 올라간다(`chat_quiz_card` 유니크). 전송은 방 행을 먼저 잠가 같은 문항 동시 전송도 줄을 세운다. 이미 올라온 문항이면 카드는 버리고 한마디만 저장한 뒤, 보낸 사람에게 `QUIZ_CARD_REJECTED`(7007) 이벤트를 보낸다. 한마디는 이미 저장됐으므로 FE 는 다시 보내지 않는다.
+- 힌트·카드는 **보낸 시점 값으로 굳는다.** 나중에 문항 문구가 바뀌어도 이미 남은 메시지는 그대로다.
+- **클라이언트가 보낼 수 있는 유형은 `TEXT`·`IMAGE`·`QUIZ_CARD`뿐이다**(`ChatMessageType.CLIENT_SENDABLE`). 그 밖은 `CHAT_MESSAGE_TYPE_NOT_SENDABLE`(7010). 예전에는 `SYSTEM`도 보낼 수 있어 사건(`USER_LEFT` 등)을 위조할 수 있었다.
+- 카드 오류: 기능 꺼짐 `FEATURE_DISABLED`(0006), 방의 퀴즈셋 문항이 아님 `QUIZ_NOT_IN_ROOM`(7011), `quizId` 없음 `BAD_REQUEST`(0001), 방의 퀴즈셋을 못 찾음 `CHAT_ROOM_QUIZ_SET_NOT_FOUND`(7012).
+
+## 대화방 답변 보기 (IMP-1)
+
+- 1:1·재매칭: `GET /api/v1/chat/rooms/{roomId}/quiz-compare` — 두 사람의 문항별 답(상대 선택 포함, [ADR 0052](../adr/0052-pair-room-answer-compare.md)). 재매칭은 원래 그룹 퀴즈 기준. 그룹: `GET /quiz-distribution` — 남아 있는 멤버의 선택지별 인원만.
+- **방이 생긴 뒤부터 끝나기 전까지만** 보인다. 끝난 방 7004, 상대 탈퇴·차단 7008, 방 유형이 맞지 않으면 7009, 방의 퀴즈셋을 못 찾으면 7012. 개방 전(`SCHEDULED`)에도 보이고 `canSendCard=false` + `chatOpensAt`으로 딤드 버튼을 그린다.
+- 비율은 그 주 전체 완주자 기준 마감 스냅샷이다([quiz 도메인](quiz.md) "퀴즈 기록·통계"). 그룹 분포는 방 멤버 기준 실시간 인원이다.
+
 ## STOMP 프레임 (FE 계약)
 
-구독 토픽 `/sub/chat/rooms/{roomId}`에는 두 종류의 프레임이 흐른다. 클라이언트는 `type` 유무로 가른다 — 메시지 프레임에는 `type`이 없고 `messageType`이 있다.
+구독 토픽 `/sub/chat/rooms/{roomId}`에는 메시지·READ·카드 거부 세 종류의 프레임이 흐른다. 클라이언트는 `type` 유무로 가른다 — 메시지 프레임에는 `type`이 없고 `messageType`이 있다.
 
 | 프레임 | 페이로드 | 언제 |
 |---|---|---|
 | 메시지 | `ChatMessageResponse`(REST 메시지 조회와 같은 모양, `unreadCount` 포함) | 전송·SYSTEM 사건(종료·이탈·투표) 직후 |
 | READ 이벤트 | `{ "type": "READ", "roomId", "memberId", "previousLastReadMessageId", "lastReadMessageId" }` | `POST /read`로 그 회원의 커서가 **실제로 전진**했을 때 |
+| 카드 거부 이벤트 | `{ "type": "QUIZ_CARD_REJECTED", "roomId", "memberId", "quizId", "code": "7007", "message" }` | 이미 올라온 문항을 카드로 다시 보냈을 때. 개인 큐가 없어 방 토픽으로 보내고 `memberId`가 자기인 수신자만 토스트를 띄운다 |
 
 - READ 이벤트는 **저장하지 않는다.** 읽음의 원본은 `chat_room_member.last_read_message_id`이고, 재접속하면 메시지 조회의 `unreadCount`가 최신 상태를 준다. 그래서 유실돼도 재조회로 복구된다.
 - **이탈자의 읽음은 발행하지 않는다.** 이탈자는 `unreadCount`에 세지 않으므로 이벤트가 나가면 수신 측이 하나 더 뺀다. 커서는 기록한다 — 이탈자는 이제 방을 조회할 수 없어 이 경로로 들어올 일이 없지만, 나가기 직전에 들어온 요청이 커서를 되돌리지 않게 기록 자체는 남긴다.
@@ -75,16 +103,16 @@ SCHEDULED ──개방 시각 도달──> ACTIVE ──만료 또는 사용자
 ## 핵심 규칙·불변식
 - 방 생성: `PersonalMatch` 수락(ACCEPT) 시, 그룹은 `GroupMatch` 활성화 시 같은 트랜잭션에서 생성, 멱등(이미 있으면 no-op).
 - 페이징: `id` 커서(`id < cursor` DESC), OFFSET 금지. 응답 `nextCursor` = 반환된 가장 과거 메시지 id(페이지가 가득 찼을 때만, 아니면 null).
-- 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 방 안읽음 수(`ChatRoomResponse.unreadCount`, 내가 안 읽은 수) = `id > last_read` 카운트.
+- 읽음: 멤버별 `last_read_message_id` 단조 증가(뒤로 안 감). 방 안읽음 수(`ChatRoomResponse.unreadCount`, 내가 안 읽은 수) = `id > last_read` 카운트(첫 대화 힌트 제외).
   - `lastReadMessageId`는 **그 방의 메시지**여야 한다(아니면 `BAD_REQUEST`). `chat_message.id`는 방 구분 없는 전역 값이라 다른 방 id 가 오면 커서가 안 본 메시지를 건너뛰어 전진하고, 커서를 되돌리는 경로가 없어 복구할 수 없다.
   - 갱신은 **멤버 행을 잠그고** 한다. FE 는 메시지가 들어올 때마다 `POST /read`를 응답을 기다리지 않고 부르므로 같은 회원의 요청이 겹친다. 잠금 없이 읽으면 둘 다 옛 커서를 보고 늦게 커밋된 쪽이 덮어 커서가 뒤로 간다. 잠그는 건 내 행 하나라 다른 회원과는 경합하지 않지만, 그래서 `markAsRead` 트랜잭션은 짧아야 한다. 외부 호출은 READ 이벤트 발행처럼 커밋 뒤 컨트롤러에서 한다.
 - **메시지별 안읽음 수**(`ChatMessageResponse.unreadCount`, 카카오톡의 `1`) = 발신자를 뺀 **현재 참여자**(`left_at IS NULL`) 중 커서가 그 메시지 앞에 있는(`last_read < id` 또는 NULL) 수. 규칙은 `ChatMessage.unreadCountAmong` 한 곳에 있다.
   - 발신자를 빼는 이유: 발신자 커서는 본인 메시지를 가리키지 않을 수 있어 넣으면 항상 1이 남는다. 조회자가 아니라 발신자를 빼므로 **조회자와 무관한 값**이고, REST 응답과 STOMP 브로드캐스트가 같은 수를 낸다.
   - 이탈자를 빼는 이유: 나간 사람은 영영 읽지 않아 넣으면 숫자가 줄지 않는다.
-  - SYSTEM 메시지는 읽음 표시 대상이 아니라 항상 0.
+  - 서버가 만든 메시지(SYSTEM·QUIZ_HINT)는 읽음 표시 대상이 아니라 항상 0.
   - 스키마 변경 없이 방 멤버 목록(≤ 그룹 정원)을 한 번 읽어 메모리에서 센다 — 메시지당 쿼리를 내지 않는다.
 - 인가: 방 멤버만 조회·구독·전송 가능. STOMP 구독 인가는 `StompAuthChannelInterceptor`. WS 인증 배경: [ADR 0009](../adr/0009-websocket-stomp-auth.md).
-- 전송 내용: trim 후 공백 불가, 최대 1000자. 컬럼은 암호문 길이 때문에 `VARCHAR(4100)`이다.
+- 전송 내용: trim 후 공백 불가, 최대 1000자. 컬럼은 암호문 길이 때문에 `VARCHAR(8200)`이다 — 질문 카드·힌트 JSON 은 문항·선택지·힌트 질문을 함께 실어 텍스트 상한보다 길 수 있다.
 - **본문은 암호화해 저장한다**([ADR 0043](../adr/0043-chat-content-server-side-encryption.md)). DB 에는 `enc:v1:` 접두어 암호문이 남고, 접두어 없는 행은 도입 전 평문이라 그대로 읽는다. 본문으로 검색·정렬하는 쿼리는 만들 수 없다.
 - **운영 콘솔은 더미가 들어 있던 방의 대화만 연다**(`AdminQaRoomService.findRoom`). 실회원끼리의 대화는 운영자도 보지 않는다.
 - **방별 알림 끄기**(`PUT`/`DELETE /api/v1/chat/rooms/{roomId}/mute`, `chat_room_member.muted_at`): 켜고 끄는 상태라 멱등이고 끝난 방도 막지 않는다. 푸시만 막고 센터 적재는 둔다 — 규칙은 [notification](notification.md) "방별 알림 끄기".
