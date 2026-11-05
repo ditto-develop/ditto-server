@@ -138,7 +138,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                             .summary("퀴즈 기록 주차 상세")
                             .description(
                                 "phase 로 두 화면을 가릅니다. IN_PROGRESS(결과 공개 전)에는 choices[].percent·minority 와 result 키 자체가 없습니다. " +
-                                    "CLOSED 의 숫자는 마감 스냅샷(어드민 제외 완주자 기준)입니다. 끝까지 풀지 않은 셋이면 404(4006).",
+                                    "CLOSED 의 숫자는 마감 스냅샷(완주자 기준)입니다. 끝까지 풀지 않은 셋이면 404(4006).",
                             )
                             .pathParameters(parameterWithName("quizSetId").description("퀴즈셋 ID"))
                             .responseFields(

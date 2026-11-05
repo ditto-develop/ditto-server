@@ -1,6 +1,5 @@
 package com.ditto.api.quiz.stat
 
-import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.QuizChoiceStat
 import com.ditto.domain.quiz.entity.QuizMemberStat
 import com.ditto.domain.quiz.entity.QuizProgressStatus
@@ -28,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class QuizStatSnapshotWriter(
     private val quizProgressRepository: QuizProgressRepository,
-    private val memberRepository: MemberRepository,
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
     private val quizAnswerRepository: QuizAnswerRepository,
@@ -58,13 +56,12 @@ class QuizStatSnapshotWriter(
         )
     }
 
-    /** 완주자(어드민 제외)의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람은 기록·통계 모두에서 빠진다. */
+    /** 완주자의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람은 기록·통계 모두에서 빠진다. */
     private fun answersOfParticipants(quizSetId: Long, quizIds: List<Long>): Map<Long, Map<Long, Long>> {
-        val completedIds = quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
+        val participantIds = quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
             .map { it.memberId }
-        if (completedIds.isEmpty() || quizIds.isEmpty()) return emptyMap()
+        if (participantIds.isEmpty() || quizIds.isEmpty()) return emptyMap()
 
-        val participantIds = memberRepository.findAllById(completedIds).filterNot { it.isAdmin() }.map { it.id }
         val answersByMember = quizAnswerRepository.findByMemberIdInAndQuizIdIn(participantIds, quizIds)
             .groupBy { it.memberId }
         return participantIds.associateWith { id -> answersByMember[id].orEmpty().associate { it.quizId to it.choiceId } }
