@@ -39,10 +39,10 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
       - run: chmod +x gradlew
-      - name: Build & Test & Coverage Check
-        run: ./gradlew build check --no-daemon
-      - name: SonarCloud Analysis
-        run: ./gradlew sonarqube --no-daemon
+      # 한 번의 Gradle 실행으로 빌드·테스트·커버리지 게이트·Sonar 분석까지 한다. 따로 돌리면 Gradle 기동과
+      # 설정 단계를 두 번 치른다. 실패 시점(테스트 vs Sonar)은 로그의 태스크 이름으로 구분된다.
+      - name: Build & Test & Coverage Check & SonarCloud Analysis
+        run: ./gradlew build check sonarqube --no-daemon
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - uses: dorny/test-reporter@v1

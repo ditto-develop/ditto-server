@@ -52,7 +52,7 @@ ditto-server/
 ├── .github/workflows/
 │   ├── ci.yml                   # PR: 빌드 + 테스트 + SonarCloud
 │   └── cd.yml                   # main push: ECR → ECS 배포
-└── Dockerfile                   # API 이미지 (multi-stage)
+└── Dockerfile                   # API 이미지 (미리 만든 bootJar 복사)
 ```
 
 모듈별 역할·작성 규칙은 [`docs/modules/`](docs/modules/) 참조.
@@ -196,7 +196,7 @@ PR → Build & Test → SonarCloud 분석 → 테스트 리포트
 
 ### CD (push → main)
 ```
-main push → API Docker Build → Alloy Docker Build → Private ECR Push
+main push → API bootJar (Gradle 캐시) → API Docker Build → Alloy Docker Build → Private ECR Push
   → ECS Task Definition 배포 → force-new-deployment
 ```
 
@@ -330,6 +330,7 @@ RDS (Public Subnet)              →  RDS (Private Subnet + Bastion)
    ```bash
    aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com
 
+   ./gradlew :api:bootJar   # Dockerfile 은 jar 를 복사만 한다
    docker build --platform linux/arm64 -t <ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com/ditto-api:latest .
    docker push <ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com/ditto-api:latest
 
