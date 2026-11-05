@@ -1,21 +1,12 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
-
-# :api:test 가 check 를 거쳐 jsTest(node --test)까지 돌린다.
-RUN apk add --no-cache nodejs
-
-WORKDIR /app
-COPY . .
-RUN chmod +x gradlew
-RUN ./gradlew :api:test --no-daemon --parallel
-RUN ./gradlew :api:bootJar --no-daemon --parallel
-
+# jar 는 CD 러너가 Gradle 캐시로 미리 만든다(`./gradlew :api:bootJar`). 테스트는 PR CI 에서 이미 통과했으므로
+# 이미지 빌드 안에서 다시 돌리지 않는다. 로컬에서 이미지를 만들 때도 bootJar 를 먼저 실행할 것. 배경: ADR 0050.
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
 RUN addgroup -S ditto && adduser -S ditto -G ditto
 
-COPY --from=builder /app/api/build/libs/*.jar app.jar
+COPY api/build/libs/*.jar app.jar
 
 RUN chown -R ditto:ditto /app
 USER ditto
