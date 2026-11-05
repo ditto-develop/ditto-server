@@ -29,6 +29,15 @@ class FeatureFlags(
 
     fun isEnabled(key: FeatureFlagKey): Boolean = snapshot().enabledKeys.contains(key)
 
+    /**
+     * 이름(문자열)으로 묻는 켜짐 여부. 요청한 순서대로 담고, 한 스냅샷에서 읽어 값끼리 어긋나지 않는다.
+     * [FeatureFlagKey]에 없는 이름은 false — FE 가 BE 보다 먼저 새 키를 확인하는 코드를 배포할 수 있게 한다.
+     */
+    fun statesOf(rawKeys: Collection<String>): Map<String, Boolean> {
+        val enabledNames = snapshot().enabledKeys.mapTo(HashSet()) { it.name }
+        return rawKeys.associateWith { it in enabledNames }
+    }
+
     /** 이 인스턴스의 캐시를 버린다. 다음 조회가 DB 를 다시 읽는다. */
     fun evict() {
         cached = null

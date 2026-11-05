@@ -18,6 +18,8 @@
 - `enabled_at`은 마지막으로 켠 시각(서버 시각, 화면 표시용). 이미 켜진 플래그를 다시 켜도 유지, 끄면 지운다.
 - 켜기 전부터 진행 중이던 대상은 시각으로 거르지 않고, 꺼짐 → 켜짐 순간 `FeatureFlagEnableListener`가 같은 트랜잭션에서 빼 둔다. 전환은 플래그 행을 잠그고 한다.
 - 어드민 화면 `/admin/feature-flags`는 QA 도구 스위치와 무관하게 열린다.
+- FE 조회: `GET /api/v1/feature-flags?keys=...`(API Key만, JWT 불필요). 요청한 키만 답하고, enum에 없는 키는 false. FE도 1분 캐시 → 반영까지 최대 약 2분.
+- FE 화면 전용 플래그(서버 동작 없음): `RECORDS`(기록 탭·대화방 '우리의 답변'). 배포 순서는 BE → 어드민 켜기 → FE.
 
 ## 상태 전이
 - `override(dateTime, authorName, authorEmail)` → `enabled = true`.
