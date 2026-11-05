@@ -7,4 +7,7 @@ package com.ditto.domain.system.entity
  */
 enum class FeatureFlagKey(val description: String) {
     QUIZ_CHAT("대화방 첫 대화 힌트 메시지와 질문 카드 전송 (IMP-1)"),
+
+    /** 서버 동작은 없다. FE 가 `GET /api/v1/feature-flags` 로 읽어 화면을 보이거나 감춘다. */
+    RECORDS("기록 탭·대화방 '우리의 답변' 화면 (FE)"),
 }

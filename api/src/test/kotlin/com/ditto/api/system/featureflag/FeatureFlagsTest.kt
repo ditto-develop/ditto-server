@@ -62,8 +62,19 @@ class FeatureFlagsTest(
         val views = featureFlagAdminService.list()
 
         views.map { it.key } shouldBe FeatureFlagKey.entries
-        views.single().enabled shouldBe false
-        views.single().updatedByMemberId.shouldBeNull()
+        views.forEach {
+            it.enabled shouldBe false
+            it.updatedByMemberId.shouldBeNull()
+        }
+    }
+
+    "이름으로 물으면 요청한 순서대로 답하고, 켠 것만 true, 모르는 이름은 false 다" {
+        enableDirectlyInDb()
+
+        val states = featureFlags.statesOf(listOf("RECORDS", "QUIZ_CHAT", "UNKNOWN"))
+
+        states.keys.toList() shouldBe listOf("RECORDS", "QUIZ_CHAT", "UNKNOWN")
+        states shouldBe mapOf("RECORDS" to false, "QUIZ_CHAT" to true, "UNKNOWN" to false)
     }
 
     "다시 켜도 처음 켠 시각을 유지한다" {
