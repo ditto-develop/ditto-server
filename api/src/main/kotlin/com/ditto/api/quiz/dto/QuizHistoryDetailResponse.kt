@@ -18,7 +18,7 @@ data class QuizHistoryDetailResponse(
     val weekStartedOn: LocalDate,
     val phase: QuizHistoryPhase,
     val resultOpensAt: LocalDateTime,
-    /** 진행 중: 홈과 같은 지금까지 완주자 수. 결과 공개 후: 스냅샷의 최종 참여자 수(어드민 제외). */
+    /** 진행 중: 홈과 같은 지금까지 완주자 수. 결과 공개 후: 스냅샷의 최종 참여자 수. */
     val participantCount: Long,
     val answers: List<QuizHistoryAnswer>,
     @field:JsonInclude(JsonInclude.Include.NON_NULL)

@@ -40,7 +40,7 @@ class QuizStatSnapshotServiceTest(
     fun member(role: MemberRole = MemberRole.USER) =
         memberRepository.save(MemberFixture.create(nickname = "회원${seq++}", status = MemberStatus.ACTIVE, role = role)).id
 
-    "마감된 셋의 완주자로 스냅샷을 만든다 — 중간에 멈춘 사람과 어드민은 모집단에서 빠진다" {
+    "어드민을 포함한 완주자로 스냅샷을 만들고 중간에 멈춘 사람은 뺀다" {
         val set = seeder.quizSet(questions = 3)
         val a = member()
         val b = member()
@@ -48,17 +48,19 @@ class QuizStatSnapshotServiceTest(
         val stopped = member()
         seeder.answer(a, set, listOf(1, 1, 1))
         seeder.answer(b, set, listOf(1, 2, 1))
-        seeder.answer(admin, set, listOf(2, 2, 2))
+        seeder.answer(admin, set, listOf(2, 2, 1))
         seeder.answer(stopped, set, listOf(2))
 
         val snapshot = quizStatSnapshotService.getOrCreate(set.quizSetId)
 
-        snapshot.participantCount shouldBe 2
+        snapshot.participantCount shouldBe 3
         snapshot.overlapThreshold shouldBe 2
-        snapshot.percentOf(set.choice(1, 1)) shouldBe 100
-        snapshot.percentOf(set.choice(2, 1)) shouldBe 50
+        snapshot.percentOf(set.choice(1, 1)) shouldBe 67
+        snapshot.percentOf(set.choice(2, 1)) shouldBe 33
         quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, a)!!.overlapCount shouldBe 1
-        quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, admin).shouldBeNull()
+        quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, b)!!.overlapCount shouldBe 2
+        quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, admin)!!.overlapCount shouldBe 1
+        quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, stopped).shouldBeNull()
     }
 
     "이미 있으면 다시 계산하지 않는다 — 마감 뒤 들어온 답은 숫자를 바꾸지 않는다" {
@@ -86,9 +88,9 @@ class QuizStatSnapshotServiceTest(
         quizStatSnapshotService.snapshotEnded(LocalDateTime.of(2026, 10, 29, 0, 0)) shouldBe 0
     }
 
-    "소수 의견은 참여자 20명 이상에서 선택 수 × 5 ≤ 참여자 수일 때다" {
+    "소수 의견은 참여자 수와 상관없이 선택 수 × 5 ≤ 참여자 수일 때다" {
         val set = seeder.quizSet(questions = 1)
-        repeat(19) { seeder.answer(member(), set, listOf(1)) }
+        repeat(4) { seeder.answer(member(), set, listOf(1)) }
         seeder.answer(member(), set, listOf(2))
 
         val snapshot = quizStatSnapshotService.getOrCreate(set.quizSetId)

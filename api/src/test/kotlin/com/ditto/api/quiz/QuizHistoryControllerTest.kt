@@ -138,7 +138,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                             .summary("퀴즈 기록 주차 상세")
                             .description(
                                 "phase 로 두 화면을 가릅니다. IN_PROGRESS(결과 공개 전)에는 choices[].percent·minority 와 result 키 자체가 없습니다. " +
-                                    "CLOSED 의 숫자는 마감 스냅샷(어드민 제외 완주자 기준)입니다. 끝까지 풀지 않은 셋이면 404(4006).",
+                                    "CLOSED 의 숫자는 마감 스냅샷(완주자 기준)입니다. 끝까지 풀지 않은 셋이면 404(4006).",
                             )
                             .pathParameters(parameterWithName("quizSetId").description("퀴즈셋 ID"))
                             .responseFields(
@@ -156,7 +156,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.answers[].choices[].choiceId").description("선택지 ID"),
                                 fieldWithPath("data.answers[].choices[].content").description("선택지 문구"),
                                 fieldWithPath("data.answers[].choices[].percent").description("CLOSED 만: 정수 %, 문항 안 합 100").optional(),
-                                fieldWithPath("data.answers[].choices[].minority").description("CLOSED 만: 소수 의견 여부 (참여자 20명 이상에서 20% 이하)").optional(),
+                                fieldWithPath("data.answers[].choices[].minority").description("CLOSED 만: 소수 의견 여부 (고른 사람이 참여자의 20% 이하)").optional(),
                                 fieldWithPath("data.answers[].myChoiceId").description("내가 고른 선택지 ID"),
                                 fieldWithPath("data.result").description("CLOSED 만").optional(),
                                 fieldWithPath("data.result.overlapThreshold").description("'나와 {overlapThreshold}개 이상 답이 겹친 사람'의 기준 = ceil(문항 수 × 2/3)"),

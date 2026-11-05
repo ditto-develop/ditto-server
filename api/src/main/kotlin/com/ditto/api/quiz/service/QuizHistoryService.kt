@@ -55,7 +55,6 @@ class QuizHistoryService(
                 weekStartedOn = set.weekStartedOn,
                 matchingType = set.matchingType,
                 title = set.title,
-                // 어드민은 모집단에서 빠져 회원 행이 없다 — 0으로 둔다.
                 minorityCount = if (set.id in closedIds) minorityBySetId[set.id] ?: 0 else null,
             )
         }
@@ -114,8 +113,7 @@ class QuizHistoryService(
         val result = QuizHistoryResult(
             overlapThreshold = snapshot.overlapThreshold,
             overlapCount = memberStat?.overlapCount ?: 0,
-            // 스냅샷 회원 행과 같은 규칙이다. 행이 없는 어드민도 같은 숫자를 보도록 답에서 센다.
-            minorityCount = answers.count { answer -> answer.choices.any { it.choiceId == answer.myChoiceId && it.minority == true } },
+            minorityCount = memberStat?.minorityCount ?: 0,
         )
         return detail(quizSet, QuizHistoryPhase.CLOSED, snapshot.participantCount.toLong(), answers, result)
     }

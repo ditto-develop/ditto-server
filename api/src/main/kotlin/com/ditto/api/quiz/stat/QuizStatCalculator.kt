@@ -5,12 +5,11 @@ package com.ditto.api.quiz.stat
  *
  * 규칙은 `docs/domains/quiz.md` "퀴즈 기록·통계"에 있다. 요약:
  * - 비율은 정수 %, 문항 안 합이 100이 되도록 최대 잉여법으로 보정한다.
- * - 소수 의견 = `선택 수 × 5 ≤ 참여자 수` 이면서 참여자 [MINORITY_MIN_PARTICIPANTS]명 이상.
+ * - 소수 의견 = `선택 수 × 5 ≤ 참여자 수`.
  * - 겹친 사람 = 본인 제외, 같은 답이 `ceil(문항 수 × 2/3)`개 이상인 완주자 수.
  */
 object QuizStatCalculator {
 
-    const val MINORITY_MIN_PARTICIPANTS = 20
     private const val MINORITY_RATIO_DIVISOR = 5
 
     /**
@@ -63,7 +62,7 @@ object QuizStatCalculator {
 
     /** 반올림한 %가 아니라 실제 선택 수로 판정한다 — 반올림하면 19.6%와 20.4%가 같은 20이 된다. */
     fun isMinority(selectCount: Int, participantCount: Int): Boolean =
-        participantCount >= MINORITY_MIN_PARTICIPANTS && selectCount * MINORITY_RATIO_DIVISOR <= participantCount
+        selectCount * MINORITY_RATIO_DIVISOR <= participantCount
 
     /**
      * `ceil(문항 수 × 2/3)`. 정수로 `(2n + 2) / 3` 이 같은 값이다(2n 을 3으로 나눈 나머지가 0·1·2 일 때 모두 올림이 된다).

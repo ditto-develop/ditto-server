@@ -19,7 +19,7 @@ class QuizStatCalculatorTest : FreeSpec({
         }
     }
 
-    "소수 의견은 선택 수 × 5 ≤ 참여자 수 이면서 참여자 20명 이상일 때만이다" - {
+    "소수 의견은 선택 수 × 5 ≤ 참여자 수일 때다" - {
         "참여자 20명 중 4명(20%)은 소수 의견이다" {
             QuizStatCalculator.isMinority(selectCount = 4, participantCount = 20) shouldBe true
         }
@@ -28,8 +28,8 @@ class QuizStatCalculatorTest : FreeSpec({
             QuizStatCalculator.isMinority(selectCount = 5, participantCount = 21) shouldBe false
         }
 
-        "참여자가 19명이면 0명이 고른 답도 소수 의견이 아니다" {
-            QuizStatCalculator.isMinority(selectCount = 0, participantCount = 19) shouldBe false
+        "참여자가 5명이면 1명이 고른 답도 소수 의견이다" {
+            QuizStatCalculator.isMinority(selectCount = 1, participantCount = 5) shouldBe true
         }
     }
 

@@ -11,7 +11,7 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
 
-/** 마감 스냅샷의 완주자별 결과. 어드민은 모집단에서 빠지므로 행이 없다. */
+/** 마감 스냅샷의 완주자별 결과. */
 @Entity
 @Table(
     name = "quiz_member_stat",

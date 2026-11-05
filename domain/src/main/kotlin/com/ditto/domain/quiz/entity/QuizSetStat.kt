@@ -14,7 +14,7 @@ import org.hibernate.annotations.Comment
  * 마감된 퀴즈셋의 통계 스냅샷 머리 행. 퀴즈셋당 하나이고, 있으면 그 셋의 [QuizChoiceStat]·[QuizMemberStat]도 다 있다
  * (한 트랜잭션에 같이 저장한다).
  *
- * 마감 시점 완주자(어드민 제외)가 모집단이다. 마감 뒤에는 답이 바뀌지 않으므로 다시 계산하지 않는다 —
+ * 마감 시점 완주자가 모집단이다. 마감 뒤에는 답이 바뀌지 않으므로 다시 계산하지 않는다.
  * 화면마다 다시 세면 반올림·모집단이 화면마다 갈린다.
  */
 @Entity
@@ -33,7 +33,7 @@ class QuizSetStat private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
-    @Comment("마감 시점 완주자 수 (어드민 제외)")
+    @Comment("마감 시점 완주자 수")
     @Column(name = "participant_count", nullable = false)
     val participantCount: Int,
 
