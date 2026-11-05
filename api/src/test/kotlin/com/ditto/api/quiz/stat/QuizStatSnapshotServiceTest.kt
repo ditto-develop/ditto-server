@@ -40,7 +40,7 @@ class QuizStatSnapshotServiceTest(
     fun member(role: MemberRole = MemberRole.USER) =
         memberRepository.save(MemberFixture.create(nickname = "회원${seq++}", status = MemberStatus.ACTIVE, role = role)).id
 
-    "마감된 셋의 완주자로 스냅샷을 만든다 — 중간에 멈춘 사람은 빠지고 어드민은 들어간다" {
+    "어드민을 포함한 완주자로 스냅샷을 만들고 중간에 멈춘 사람은 뺀다" {
         val set = seeder.quizSet(questions = 3)
         val a = member()
         val b = member()

@@ -55,7 +55,6 @@ class QuizHistoryService(
                 weekStartedOn = set.weekStartedOn,
                 matchingType = set.matchingType,
                 title = set.title,
-                // 어드민은 모집단에서 빠져 회원 행이 없다 — 0으로 둔다.
                 minorityCount = if (set.id in closedIds) minorityBySetId[set.id] ?: 0 else null,
             )
         }
