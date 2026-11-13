@@ -11,7 +11,7 @@ import com.ditto.domain.match.repository.querydsl.GroupMatchMemberCount
 import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
-import com.ditto.domain.match.repository.querydsl.PersonalMatchRequestCount
+import com.ditto.domain.match.repository.querydsl.PersonalMatchStatusCount
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
@@ -297,6 +297,36 @@ class MatchStatsQueryTest(
         }
     }
 
+    "countReceiversWhoAcceptedInWeek" - {
+        "받은 신청을 수락한 회원만 세고 수락된 신청을 보낸 회원은 세지 않는다" {
+            val quizSet = saveQuizSet()
+            val accepter = saveMember(Gender.FEMALE)
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.MALE),
+                    accepter,
+                    quizSet.id,
+                    PersonalMatchStatus.ACCEPTED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.MALE),
+                    accepter,
+                    quizSet.id,
+                    PersonalMatchStatus.CANCELLED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.MALE), saveMember(Gender.FEMALE), quizSet.id),
+            )
+
+            val counts = personalMatchRepository.countReceiversWhoAcceptedInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.FEMALE, 1L))
+        }
+    }
+
     "countRequestsPerStatusInWeek" - {
         "그 주 신청을 보낸 회원의 성별과 상태로 묶어 건수를 센다" {
             val quizSet = saveQuizSet()
@@ -321,9 +351,9 @@ class MatchStatsQueryTest(
             val counts = personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE)
 
             counts shouldContainExactlyInAnyOrder listOf(
-                PersonalMatchRequestCount(Gender.MALE, PersonalMatchStatus.PENDING, 2L),
-                PersonalMatchRequestCount(Gender.MALE, PersonalMatchStatus.REJECTED, 1L),
-                PersonalMatchRequestCount(Gender.FEMALE, PersonalMatchStatus.ACCEPTED, 1L),
+                PersonalMatchStatusCount(Gender.MALE, PersonalMatchStatus.PENDING, 2L),
+                PersonalMatchStatusCount(Gender.MALE, PersonalMatchStatus.REJECTED, 1L),
+                PersonalMatchStatusCount(Gender.FEMALE, PersonalMatchStatus.ACCEPTED, 1L),
             )
         }
 
@@ -349,7 +379,7 @@ class MatchStatsQueryTest(
             )
 
             counts shouldContainExactlyInAnyOrder listOf(
-                PersonalMatchRequestCount(Gender.FEMALE, PersonalMatchStatus.PENDING, 1L),
+                PersonalMatchStatusCount(Gender.FEMALE, PersonalMatchStatus.PENDING, 1L),
             )
         }
     }

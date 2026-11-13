@@ -41,6 +41,8 @@ class MatchStatsService(
                 personalMatchRepository.countRequestersInWeek(week.startedOn, memberFilter),
             personalMatchReceiverCounts =
                 personalMatchRepository.countReceiversInWeek(week.startedOn, memberFilter),
+            personalMatchAcceptedReceiverCounts =
+                personalMatchRepository.countReceiversWhoAcceptedInWeek(week.startedOn, memberFilter),
             personalMatchRequestCounts =
                 personalMatchRepository.countRequestsPerStatusInWeek(week.startedOn, memberFilter),
             groupMatchMemberCounts =

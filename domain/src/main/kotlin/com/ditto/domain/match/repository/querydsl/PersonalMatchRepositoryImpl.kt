@@ -115,19 +115,23 @@ class PersonalMatchRepositoryImpl(
     override fun countRequestersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount> =
         countDistinctMembersJoinedOn(member.id.eq(personalMatch.requesterId), weekStartedOn, filter)
 
-    // 받는 사람 컬럼이 없어 두 회원 중 신청자가 아닌 쪽으로 잇는다. 양쪽을 따로 세면 한 사람이 두 번 세진다.
     override fun countReceiversInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount> =
-        countDistinctMembersJoinedOn(
-            member.id.eq(personalMatch.memberId1).or(member.id.eq(personalMatch.memberId2))
-                .and(member.id.ne(personalMatch.requesterId)),
-            weekStartedOn,
-            filter,
-        )
+        countDistinctMembersJoinedOn(receiverJoinCondition(), weekStartedOn, filter)
+
+    override fun countReceiversWhoAcceptedInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchMemberCount> = countDistinctMembersJoinedOn(
+        receiverJoinCondition(),
+        weekStartedOn,
+        filter,
+        personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+    )
 
     override fun countRequestsPerStatusInWeek(
         weekStartedOn: LocalDate,
         filter: MemberFilter,
-    ): List<PersonalMatchRequestCount> {
+    ): List<PersonalMatchStatusCount> {
         val countExpression = personalMatch.count()
         return queryFactory
             .select(member.gender, personalMatch.status, countExpression)
@@ -141,7 +145,7 @@ class PersonalMatchRepositoryImpl(
             .groupBy(member.gender, personalMatch.status)
             .fetch()
             .map { row ->
-                PersonalMatchRequestCount(
+                PersonalMatchStatusCount(
                     gender = row.get(member.gender),
                     status = row.get(personalMatch.status) ?: error("personal_match.status 가 비어 있습니다"),
                     count = row.get(countExpression) ?: 0L,
@@ -149,10 +153,16 @@ class PersonalMatchRepositoryImpl(
             }
     }
 
+    // 받는 사람 컬럼이 없어 두 회원 중 신청자가 아닌 쪽으로 잇는다. 양쪽을 따로 세면 한 사람이 두 번 세진다.
+    private fun receiverJoinCondition(): BooleanExpression =
+        member.id.`in`(personalMatch.memberId1, personalMatch.memberId2)
+            .and(member.id.ne(personalMatch.requesterId))
+
     private fun countDistinctMembersJoinedOn(
         memberJoinCondition: BooleanExpression,
         weekStartedOn: LocalDate,
         filter: MemberFilter,
+        statusCondition: BooleanExpression? = null,
     ): List<PersonalMatchMemberCount> {
         val countExpression = member.id.countDistinct()
         return queryFactory
@@ -163,6 +173,7 @@ class PersonalMatchRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 member.matchesFilter(filter),
+                statusCondition,
             )
             .groupBy(member.gender)
             .fetch()

@@ -38,5 +38,7 @@ interface PersonalMatchRepositoryCustom {
 
     fun countReceiversInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
 
-    fun countRequestsPerStatusInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchRequestCount>
+    fun countReceiversWhoAcceptedInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
+
+    fun countRequestsPerStatusInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchStatusCount>
 }
