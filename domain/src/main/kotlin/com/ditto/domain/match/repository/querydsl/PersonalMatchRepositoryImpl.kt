@@ -111,4 +111,63 @@ class PersonalMatchRepositoryImpl(
                 PersonalMatchMemberCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L)
             }
     }
+
+    override fun countRequestersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount> =
+        countDistinctMembersJoinedOn(member.id.eq(personalMatch.requesterId), weekStartedOn, filter)
+
+    // 받는 사람 컬럼이 없어 두 회원 중 신청자가 아닌 쪽으로 잇는다. 양쪽을 따로 세면 한 사람이 두 번 세진다.
+    override fun countReceiversInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount> =
+        countDistinctMembersJoinedOn(
+            member.id.eq(personalMatch.memberId1).or(member.id.eq(personalMatch.memberId2))
+                .and(member.id.ne(personalMatch.requesterId)),
+            weekStartedOn,
+            filter,
+        )
+
+    override fun countRequestsPerStatusInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchRequestCount> {
+        val countExpression = personalMatch.count()
+        return queryFactory
+            .select(member.gender, personalMatch.status, countExpression)
+            .from(personalMatch)
+            .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(personalMatch.requesterId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                member.matchesFilter(filter),
+            )
+            .groupBy(member.gender, personalMatch.status)
+            .fetch()
+            .map { row ->
+                PersonalMatchRequestCount(
+                    gender = row.get(member.gender),
+                    status = row.get(personalMatch.status) ?: error("personal_match.status 가 비어 있습니다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
+    private fun countDistinctMembersJoinedOn(
+        memberJoinCondition: BooleanExpression,
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<PersonalMatchMemberCount> {
+        val countExpression = member.id.countDistinct()
+        return queryFactory
+            .select(member.gender, countExpression)
+            .from(personalMatch)
+            .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(memberJoinCondition)
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                member.matchesFilter(filter),
+            )
+            .groupBy(member.gender)
+            .fetch()
+            .map { row ->
+                PersonalMatchMemberCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L)
+            }
+    }
 }
