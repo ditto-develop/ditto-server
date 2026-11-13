@@ -327,6 +327,26 @@ const StatsCalc = (() => {
         };
     };
 
+    // EXPIRED 는 쓰는 경로가 없어 뺀다.
+    const PERSONAL_REQUEST_STATUS_LABELS = { ACCEPTED: '수락', REJECTED: '거절', PENDING: '응답 없음', CANCELLED: '취소' };
+
+    // 사람 단계는 세는 회원에게, 신청 결과는 보낸 회원에게 회원 조건이 걸린다.
+    const personalRequestFunnel = (matchStats, genderLabels) => {
+        const stageRows = [
+            genderRow('후보 받음', matchStats.matchCandidateCounts, genderLabels),
+            genderRow('신청 보냄', matchStats.personalMatchRequesterCounts, genderLabels),
+            genderRow('신청 받음', matchStats.personalMatchReceiverCounts, genderLabels),
+            genderRow('성사', matchStats.personalMatchMemberCounts, genderLabels),
+        ];
+        const requestCountsByStatus = sumCountsBy(matchStats.personalMatchRequestCounts, (countRow) => countRow.status);
+        return {
+            candidateCount: stageRows[0].totalCount,
+            stageRows,
+            requestCount: sumCounts(matchStats.personalMatchRequestCounts),
+            requestStatusCounts: labeledCounts(requestCountsByStatus, PERSONAL_REQUEST_STATUS_LABELS),
+        };
+    };
+
     const isBeforeMatchingBatch = (weekStartedOn, today) => today < addDays(weekStartedOn, MATCHING_BATCH_DAY_OFFSET);
 
     // 분모는 모두 열린 방이다. 전원은 나간 사람까지 참여자로 친다.
@@ -778,6 +798,7 @@ const StatsCalc = (() => {
         quizParticipation,
         participantGenderRows,
         matchFunnel,
+        personalRequestFunnel,
         isBeforeMatchingBatch,
         chatActivity,
         questionDistributions,

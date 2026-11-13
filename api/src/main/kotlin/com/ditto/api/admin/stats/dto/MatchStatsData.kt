@@ -5,6 +5,7 @@ import com.ditto.domain.match.repository.querydsl.GroupMatchMemberCount
 import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
+import com.ditto.domain.match.repository.querydsl.PersonalMatchRequestCount
 import com.ditto.domain.quiz.repository.querydsl.UnmatchedMember
 import java.time.LocalDate
 
@@ -12,6 +13,9 @@ data class MatchStatsData(
     val matchCandidateCounts: List<MatchCandidateCount>,
     val candidateCountsPerOwner: List<Long>,
     val personalMatchMemberCounts: List<PersonalMatchMemberCount>,
+    val personalMatchRequesterCounts: List<PersonalMatchMemberCount>,
+    val personalMatchReceiverCounts: List<PersonalMatchMemberCount>,
+    val personalMatchRequestCounts: List<PersonalMatchRequestCount>,
     val groupMatchMemberCounts: List<GroupMatchMemberCount>,
     val pairScores: List<Double>,
     val acceptedPairScores: List<Double?>,

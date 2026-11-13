@@ -37,6 +37,12 @@ class MatchStatsService(
                 matchCandidateRepository.countCandidatesPerOwnerInWeek(week.startedOn, memberFilter),
             personalMatchMemberCounts =
                 personalMatchRepository.countAcceptedMembersInWeek(week.startedOn, memberFilter),
+            personalMatchRequesterCounts =
+                personalMatchRepository.countRequestersInWeek(week.startedOn, memberFilter),
+            personalMatchReceiverCounts =
+                personalMatchRepository.countReceiversInWeek(week.startedOn, memberFilter),
+            personalMatchRequestCounts =
+                personalMatchRepository.countRequestsPerStatusInWeek(week.startedOn, memberFilter),
             groupMatchMemberCounts =
                 groupMatchMemberRepository.countInvitedMembersInWeek(week.startedOn, memberFilter),
             pairScores = matchCandidateRepository.findPairScoresInWeek(week.startedOn),

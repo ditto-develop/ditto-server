@@ -373,6 +373,26 @@
                             </div>
                         </div>
                     </div>
+                    <div class="grid cols-2 stats-align-start" id="matchPersonalRequestCards">
+                        <div class="card">
+                            <h3 class="with-info">1:1 후보 → 신청 → 성사
+                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-stage', '1:1 후보 → 신청 → 성사', '단계마다 그 회차 1:1에서 해당하는 회원 수입니다. 신청 보냄은 한 번이라도 신청한 회원, 신청 받음은 한 번이라도 신청을 받은 회원이고 결과와 상관없이 셉니다. 괄호 안은 후보를 받은 회원 대비 비율입니다.')}"></th:block></h3>
+                            <p class="muted" id="matchPersonalRequestStageSummary"></p>
+                            <div class="tbl-scroll">
+                                <table class="tbl">
+                                    <thead id="matchPersonalRequestStageHead"></thead>
+                                    <tbody id="matchPersonalRequestStageRows"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="with-info">1:1 신청 결과
+                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-result', '1:1 신청 결과', '그 회차 1:1 신청 건수를 지금 상태로 나눈 것입니다. 회원 조건은 신청을 보낸 회원에게 겁니다. 취소는 두 사람 중 한쪽이 다른 신청으로 성사돼 자동으로 정리된 신청입니다.')}"></th:block></h3>
+                            <p class="muted" id="matchPersonalRequestResultSummary"></p>
+                            <div id="matchPersonalRequestResultShares"></div>
+                            <p class="muted">1:1 신청은 응답 마감이 없어서, 회차가 진행 중이면 응답 없음에 아직 기다리는 신청도 들어갑니다.</p>
+                        </div>
+                    </div>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card" id="matchCandidateExposureCard">
                             <h3>1:1 후보 노출 쏠림</h3>

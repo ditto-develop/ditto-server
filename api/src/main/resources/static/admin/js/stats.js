@@ -315,9 +315,32 @@
             genderLabels,
             rows: funnel.unmatchedGenderRows,
         });
+        renderPersonalRequestFunnel(matchStats, quizMatchingTypeLabels, genderLabels);
         renderCandidateExposure(matchStats, quizMatchingTypeLabels);
         renderMembersUnmatchedInEveryRound(matchStats, weekStartedOn, today);
         renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const renderPersonalRequestFunnel = (matchStats, quizMatchingTypeLabels, genderLabels) => {
+        byId('matchPersonalRequestCards').hidden = !Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
+        const funnel = StatsCalc.personalRequestFunnel(matchStats, genderLabels);
+        const candidateShareText = (count) => StatsCalc.percentText(count, funnel.candidateCount);
+        fillNowrapPieces('matchPersonalRequestStageSummary', funnel.stageRows.slice(1).map((row) =>
+            `${row.label} ${countText(row.totalCount, '명')}(${candidateShareText(row.totalCount)})`));
+        fillGenderTable({
+            headId: 'matchPersonalRequestStageHead',
+            bodyId: 'matchPersonalRequestStageRows',
+            firstColumnLabel: '단계',
+            genderLabels,
+            rows: funnel.stageRows,
+        });
+        if (funnel.requestCount === 0) {
+            byId('matchPersonalRequestResultSummary').textContent = '이 회차 1:1 신청이 없습니다.';
+            byId('matchPersonalRequestResultShares').replaceChildren();
+            return;
+        }
+        byId('matchPersonalRequestResultSummary').textContent = `신청 ${countText(funnel.requestCount, '건')}`;
+        fillShares('matchPersonalRequestResultShares', funnel.requestStatusCounts, { unit: '건' });
     };
 
     const renderCandidateExposure = ({ candidateCountsPerOwner }, quizMatchingTypeLabels) => {
