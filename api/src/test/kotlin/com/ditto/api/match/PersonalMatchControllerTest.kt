@@ -81,7 +81,9 @@ class PersonalMatchControllerTest : ControllerUnitTest() {
                             .summary("1:1 매칭 요청")
                             .description(
                                 "상대방에게 1:1 매칭을 요청합니다. 이번 퀴즈셋에서 내가 이미 성사됐으면 5003(ALREADY_MATCHED), " +
-                                    "상대가 다른 사람과 성사됐으면 5010(COUNTERPART_ALREADY_MATCHED)으로 실패하고 상대에게 알림이 가지 않습니다.",
+                                    "상대가 다른 사람과 성사됐으면 5010(COUNTERPART_ALREADY_MATCHED), " +
+                                    "상대가 이번 퀴즈셋의 내 후보가 아니면 5011(NOT_MATCH_CANDIDATE)로 실패하고 " +
+                                    "상대에게 알림이 가지 않습니다.",
                             )
                             .requestFields(
                                 fieldWithPath("receiverId").description("요청 대상 회원 ID"),

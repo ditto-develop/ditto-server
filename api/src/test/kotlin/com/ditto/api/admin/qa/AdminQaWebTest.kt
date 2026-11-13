@@ -180,6 +180,7 @@ class AdminQaWebTest(
             val quizSet = saveCurrentWeekQuizSet()
             val tester = saveMember("테스터")
             val dummy = saveMember("dummy-female-aaaa")
+            saveCandidatePair(quizSet, dummy, tester)
 
             mockMvc.perform(
                 post("/admin/qa/dummies/{dummyId}/personal-matches", dummy.id)

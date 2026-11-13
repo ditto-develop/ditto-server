@@ -10,8 +10,10 @@ import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
+import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
 import com.ditto.domain.match.entity.PersonalMatchStatus
+import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.match.repository.PersonalMatchRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.repository.MemberRepository
@@ -32,6 +34,7 @@ class PersonalMatchServiceTest(
     private val personalMatchService: PersonalMatchService,
     private val personalMatchFacade: PersonalMatchFacade,
     private val personalMatchRepository: PersonalMatchRepository,
+    private val matchCandidateRepository: MatchCandidateRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val quizSetRepository: QuizSetRepository,
     private val memberRepository: MemberRepository,
@@ -40,6 +43,11 @@ class PersonalMatchServiceTest(
 
     // 요청·수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 조회 경로는 주차를 보지 않는다.
     fun thisWeekQuizSetId(): Long = quizSetRepository.save(QuizSetFixture.currentWeek()).id
+
+    // 신청은 후보 쌍에만 된다. 한 방향 행만 있어도 쌍으로 본다.
+    fun saveCandidatePair(memberId: Long, otherMemberId: Long, quizSetId: Long) = matchCandidateRepository.save(
+        MatchCandidateFixture.create(ownerMemberId = memberId, otherMemberId = otherMemberId, quizSetId = quizSetId)
+    )
 
     fun saveAccepted(requesterId: Long, receiverId: Long, quizSetId: Long) = personalMatchRepository.save(
         PersonalMatchFixture.create(
@@ -108,6 +116,7 @@ class PersonalMatchServiceTest(
     "정상적인 매칭 요청 시 PENDING 상태의 매칭이 생성된다" {
         // given
         val quizSetId = thisWeekQuizSetId()
+        saveCandidatePair(1L, 2L, quizSetId)
         val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when
@@ -133,6 +142,7 @@ class PersonalMatchServiceTest(
     "이미 PENDING 요청이 있는 동일 페어가 다시 요청하면 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
+        saveCandidatePair(1L, 2L, quizSetId)
         personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
         )
@@ -147,6 +157,7 @@ class PersonalMatchServiceTest(
     "역방향 PENDING 요청이 있을 때 반대 방향으로 요청해도 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
+        saveCandidatePair(1L, 2L, quizSetId)
         personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = 2L, receiverId = 1L, quizSetId = quizSetId)
         )
@@ -170,7 +181,7 @@ class PersonalMatchServiceTest(
         }.errorCode shouldBe ErrorCode.ALREADY_MATCHED
     }
 
-    "이번 퀴즈셋에서 이미 성사된 회원이 다른 사람에게 신청하면 ALREADY_MATCHED 예외가 발생한다" {
+    "이번 퀴즈셋에서 이미 성사된 회원이 다른 사람에게 신청하면 후보가 아니어도 ALREADY_MATCHED 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
         saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
@@ -200,7 +211,34 @@ class PersonalMatchServiceTest(
         // given
         val quizSetId = thisWeekQuizSetId()
         saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId + 1)
+        saveCandidatePair(1L, 3L, quizSetId)
         val request = PersonalMatchRequest(receiverId = 3L, quizSetId = quizSetId)
+
+        // when
+        val result = personalMatchService.requestMatch(requesterId = 1L, request = request)
+
+        // then
+        result.status shouldBe PersonalMatchStatus.PENDING
+    }
+
+    "후보가 아닌 상대에게 신청하면 NOT_MATCH_CANDIDATE 예외가 발생하고 신청이 남지 않는다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveCandidatePair(1L, 2L, quizSetId + 1)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
+
+        // when & then
+        shouldThrow<WarnException> {
+            personalMatchService.requestMatch(requesterId = 1L, request = request)
+        }.errorCode shouldBe ErrorCode.NOT_MATCH_CANDIDATE
+        personalMatchRepository.findAll().shouldBeEmpty()
+    }
+
+    "상대가 나를 후보로 받은 쪽 행만 있어도 신청할 수 있다" {
+        // given
+        val quizSetId = thisWeekQuizSetId()
+        saveCandidatePair(2L, 1L, quizSetId)
+        val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when
         val result = personalMatchService.requestMatch(requesterId = 1L, request = request)
@@ -313,6 +351,7 @@ class PersonalMatchServiceTest(
         // given
         val quizSetId = thisWeekQuizSetId()
         val (acceptorId, requesterId, lateRequesterId) = saveMemberIds(3)
+        saveCandidatePair(lateRequesterId, acceptorId, quizSetId)
         val match = personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = requesterId, receiverId = acceptorId, quizSetId = quizSetId)
         )
