@@ -16,7 +16,7 @@ data class MatchStatsData(
     val personalMatchRequesterCounts: List<PersonalMatchMemberCount>,
     val personalMatchReceiverCounts: List<PersonalMatchMemberCount>,
     val personalMatchAcceptedReceiverCounts: List<PersonalMatchMemberCount>,
-    val personalMatchRequestCounts: List<PersonalMatchStatusCount>,
+    val personalMatchStatusCounts: List<PersonalMatchStatusCount>,
     val groupMatchMemberCounts: List<GroupMatchMemberCount>,
     val pairScores: List<Double>,
     val acceptedPairScores: List<Double?>,

@@ -52,7 +52,7 @@ class PersonalMatchService(
         lockMembersInIdOrder(requesterId, receiverId)
         matchWeekPolicy.validateCurrentWeek(quizSetId)
         validateNeitherMatched(selfId = requesterId, counterpartId = receiverId, quizSetId = quizSetId)
-        // 후보를 다시 만들면 성사된 회원은 후보에서 빠져서, 성사 검사보다 먼저 하면 ALREADY_MATCHED 대신 이 에러가 난다.
+        // 후보를 다시 만들면 성사된 회원은 후보에서 빠져서, 성사 검사보다 먼저 하면 ALREADY_MATCHED 대신 NOT_MATCH_CANDIDATE 가 난다.
         validateCandidatePair(requesterId = requesterId, receiverId = receiverId, quizSetId = quizSetId)
 
         val memberId1 = minOf(requesterId, receiverId)

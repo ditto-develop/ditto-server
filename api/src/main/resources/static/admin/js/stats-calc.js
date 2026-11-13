@@ -336,19 +336,24 @@ const StatsCalc = (() => {
     };
 
     const personalRequestFunnel = (matchStats, genderLabels) => {
-        const requestCountsByStatus = sumCountsBy(matchStats.personalMatchRequestCounts, (countRow) => countRow.status);
+        const requestCountsByStatus = sumCountsBy(matchStats.personalMatchStatusCounts, (countRow) => countRow.status);
         const requestStatusCounts = labeledCounts(requestCountsByStatus, PERSONAL_REQUEST_STATUS_LABELS);
         const requestCount = sumCounts(requestStatusCounts);
         return {
-            candidateRow: genderRow('후보 받음', matchStats.matchCandidateCounts, genderLabels),
-            sentRow: genderRow('신청 보냄', matchStats.personalMatchRequesterCounts, genderLabels),
-            receivedRow: genderRow('신청 받음', matchStats.personalMatchReceiverCounts, genderLabels),
-            acceptedReceivedRow: genderRow('받은 신청 수락', matchStats.personalMatchAcceptedReceiverCounts, genderLabels),
-            matchedRow: genderRow('성사', matchStats.personalMatchMemberCounts, genderLabels),
-            requestCount,
-            acceptedRequestCount: requestCountsByStatus.get('ACCEPTED') || 0,
-            requestCountWithoutAutoCancel: requestCount - (requestCountsByStatus.get('CANCELLED') || 0),
-            requestStatusCounts,
+            stageRows: {
+                candidateRow: genderRow('후보 받음', matchStats.matchCandidateCounts, genderLabels),
+                sentRow: genderRow('신청 보냄', matchStats.personalMatchRequesterCounts, genderLabels),
+                receivedRow: genderRow('신청 받음', matchStats.personalMatchReceiverCounts, genderLabels),
+                acceptedReceivedRow:
+                    genderRow('받은 신청 수락', matchStats.personalMatchAcceptedReceiverCounts, genderLabels),
+                matchedRow: genderRow('성사', matchStats.personalMatchMemberCounts, genderLabels),
+            },
+            result: {
+                requestCount,
+                acceptedRequestCount: requestCountsByStatus.get('ACCEPTED') || 0,
+                requestCountWithoutAutoCancel: requestCount - (requestCountsByStatus.get('CANCELLED') || 0),
+                requestStatusCounts,
+            },
         };
     };
 

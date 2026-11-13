@@ -421,7 +421,7 @@ describe('personalRequestFunnel', () => {
         personalMatchReceiverCounts: [{ gender: 'FEMALE', count: 2 }, { gender: null, count: 1 }],
         personalMatchAcceptedReceiverCounts: [{ gender: 'FEMALE', count: 1 }],
         personalMatchMemberCounts: [{ gender: 'MALE', count: 1 }, { gender: 'FEMALE', count: 1 }],
-        personalMatchRequestCounts: [
+        personalMatchStatusCounts: [
             { gender: 'MALE', status: 'PENDING', count: 2 },
             { gender: 'FEMALE', status: 'PENDING', count: 1 },
             { gender: 'MALE', status: 'CANCELLED', count: 3 },
@@ -433,22 +433,19 @@ describe('personalRequestFunnel', () => {
     test('단계마다 회원을 성별로 센다', () => {
         const funnel = StatsCalc.personalRequestFunnel(matchStats, GENDER_LABELS);
 
-        assert.deepEqual(
-            [funnel.candidateRow, funnel.sentRow, funnel.receivedRow, funnel.acceptedReceivedRow, funnel.matchedRow],
-            [
-                { label: '후보 받음', countsInColumnOrder: [4, 3, 0], totalCount: 7 },
-                { label: '신청 보냄', countsInColumnOrder: [3, 1, 0], totalCount: 4 },
-                { label: '신청 받음', countsInColumnOrder: [0, 2, 1], totalCount: 3 },
-                { label: '받은 신청 수락', countsInColumnOrder: [0, 1, 0], totalCount: 1 },
-                { label: '성사', countsInColumnOrder: [1, 1, 0], totalCount: 2 },
-            ],
-        );
+        assert.deepEqual(funnel.stageRows, {
+            candidateRow: { label: '후보 받음', countsInColumnOrder: [4, 3, 0], totalCount: 7 },
+            sentRow: { label: '신청 보냄', countsInColumnOrder: [3, 1, 0], totalCount: 4 },
+            receivedRow: { label: '신청 받음', countsInColumnOrder: [0, 2, 1], totalCount: 3 },
+            acceptedReceivedRow: { label: '받은 신청 수락', countsInColumnOrder: [0, 1, 0], totalCount: 1 },
+            matchedRow: { label: '성사', countsInColumnOrder: [1, 1, 0], totalCount: 2 },
+        });
     });
 
     test('신청 결과는 성별을 합쳐 수락·거절·응답 대기·자동 취소 순으로 내고 0건인 상태도 넣는다', () => {
         const funnel = StatsCalc.personalRequestFunnel(matchStats, GENDER_LABELS);
 
-        assert.deepEqual(funnel.requestStatusCounts, [
+        assert.deepEqual(funnel.result.requestStatusCounts, [
             { label: '수락', count: 1 },
             { label: '거절', count: 0 },
             { label: '응답 대기', count: 3 },
@@ -459,9 +456,9 @@ describe('personalRequestFunnel', () => {
     test('신청 건수는 막대와 같은 값이고 자동 취소를 뺀 건수와 수락 건수를 낸다', () => {
         const funnel = StatsCalc.personalRequestFunnel(matchStats, GENDER_LABELS);
 
-        assert.equal(funnel.requestCount, 7);
-        assert.equal(funnel.requestCountWithoutAutoCancel, 4);
-        assert.equal(funnel.acceptedRequestCount, 1);
+        assert.equal(funnel.result.requestCount, 7);
+        assert.equal(funnel.result.requestCountWithoutAutoCancel, 4);
+        assert.equal(funnel.result.acceptedRequestCount, 1);
     });
 });
 

@@ -229,7 +229,7 @@ class AdminStatsWebTest(
                                 """"personalMatchRequesterCounts":[{"gender":null,"count":1}],""" +
                                 """"personalMatchReceiverCounts":[{"gender":null,"count":1}],""" +
                                 """"personalMatchAcceptedReceiverCounts":[{"gender":null,"count":1}],""" +
-                                """"personalMatchRequestCounts":[{"gender":null,"status":"ACCEPTED","count":1}],""" +
+                                """"personalMatchStatusCounts":[{"gender":null,"status":"ACCEPTED","count":1}],""" +
                                 """"groupMatchMemberCounts":""" +
                                 """[{"isGroupActive":false,"status":"PENDING","gender":null,"count":1}],""" +
                                 """"pairScores":[80.0],"acceptedPairScores":[80.0],""" +

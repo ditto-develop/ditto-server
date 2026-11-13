@@ -323,16 +323,26 @@
 
     const renderPersonalRequestFunnel = (matchStats, quizMatchingTypeLabels, genderLabels) => {
         byId('matchPersonalRequestCards').hidden = !Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
-        const { candidateRow, sentRow, receivedRow, acceptedReceivedRow, matchedRow, ...requests } =
-            StatsCalc.personalRequestFunnel(matchStats, genderLabels);
-        const pieceOf = (row, baseRow) => {
+        const { stageRows, result } = StatsCalc.personalRequestFunnel(matchStats, genderLabels);
+        renderPersonalRequestStages(stageRows, genderLabels);
+        renderPersonalRequestResult(result);
+    };
+
+    // 받은 신청 수락만 신청 받음 대비다. 받은 회원이 없으면 그 조각을 뺀다.
+    const renderPersonalRequestStages = (
+        { candidateRow, sentRow, receivedRow, acceptedReceivedRow, matchedRow },
+        genderLabels,
+    ) => {
+        const pieceOf = (row, baseRow, baseLabel = '') => {
             const shareText = StatsCalc.percentText(row.totalCount, baseRow.totalCount);
-            return `${row.label} ${countText(row.totalCount, '명')}(${shareText})`;
+            return `${row.label} ${countText(row.totalCount, '명')}(${baseLabel}${shareText})`;
         };
+        const acceptedReceivedPieces =
+            receivedRow.totalCount === 0 ? [] : [pieceOf(acceptedReceivedRow, receivedRow, '받은 회원 중 ')];
         fillNowrapPieces('matchPersonalRequestStageSummary', [
             pieceOf(sentRow, candidateRow),
             pieceOf(receivedRow, candidateRow),
-            `받은 회원 중 수락 ${StatsCalc.percentText(acceptedReceivedRow.totalCount, receivedRow.totalCount)}`,
+            ...acceptedReceivedPieces,
             pieceOf(matchedRow, candidateRow),
         ]);
         fillGenderTable({
@@ -342,12 +352,10 @@
             genderLabels,
             rows: [candidateRow, sentRow, receivedRow, acceptedReceivedRow, matchedRow],
         });
-        renderPersonalRequestResult(requests);
     };
 
-    const renderPersonalRequestResult = (
-        { requestCount, acceptedRequestCount, requestCountWithoutAutoCancel, requestStatusCounts },
-    ) => {
+    const renderPersonalRequestResult = (result) => {
+        const { requestCount, acceptedRequestCount, requestCountWithoutAutoCancel, requestStatusCounts } = result;
         byId('matchPersonalRequestResultNote').hidden = requestCount === 0;
         if (requestCount === 0) {
             byId('matchPersonalRequestResultSummary').textContent = '해당하는 1:1 신청이 없습니다.';
