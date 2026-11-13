@@ -373,10 +373,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid cols-2 stats-align-start" id="matchPersonalRequestCards">
+                    <div id="matchPersonalRequestCards">
+                    <div class="grid cols-2 stats-align-start">
                         <div class="card">
                             <h3 class="with-info">1:1 후보 → 신청 → 성사
-                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-stage', '1:1 후보 → 신청 → 성사', '단계마다 그 회차 1:1에서 해당하는 회원 수입니다. 신청 보냄은 한 번이라도 신청한 회원, 신청 받음은 한 번이라도 신청을 받은 회원이고 결과와 상관없이 셉니다. 괄호 안은 후보를 받은 회원 대비 비율입니다.')}"></th:block></h3>
+                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-stage', '1:1 후보 → 신청 → 성사', '그 회차 1:1에서 단계별 회원 수입니다. 신청 보냄은 한 번이라도 신청한 회원, 신청 받음은 한 번이라도 신청을 받은 회원이고 결과와 상관없이 셉니다. 둘은 같은 신청을 보낸 쪽과 받은 쪽에서 센 것이라 이어지는 단계가 아닙니다. 받은 신청 수락은 받은 신청 중 하나를 수락한 회원입니다. 괄호 안은 후보를 받은 회원 중 비율입니다.')}"></th:block></h3>
                             <p class="muted" id="matchPersonalRequestStageSummary"></p>
                             <div class="tbl-scroll">
                                 <table class="tbl">
@@ -387,11 +388,12 @@
                         </div>
                         <div class="card">
                             <h3 class="with-info">1:1 신청 결과
-                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-result', '1:1 신청 결과', '그 회차 1:1 신청 건수를 지금 상태로 나눈 것입니다. 회원 조건은 신청을 보낸 회원에게 겁니다. 취소는 두 사람 중 한쪽이 다른 신청으로 성사돼 자동으로 정리된 신청입니다.')}"></th:block></h3>
+                                <th:block th:replace="~{fragments :: info('info-stats-match-personal-request-result', '1:1 신청 결과', '그 회차 1:1 신청을 지금 상태별로 센 건수입니다. 회원 조건은 신청을 보낸 회원 기준입니다.')}"></th:block></h3>
                             <p class="muted" id="matchPersonalRequestResultSummary"></p>
                             <div id="matchPersonalRequestResultShares"></div>
-                            <p class="muted">1:1 신청은 응답 마감이 없어서, 회차가 진행 중이면 응답 없음에 아직 기다리는 신청도 들어갑니다.</p>
+                            <p class="muted" id="matchPersonalRequestResultNote">자동 취소는 두 사람 중 한쪽이 다른 신청으로 성사돼 정리된 신청으로, 여러 명에게 신청한 회원이 다른 곳에서 성사된 경우가 많습니다. 응답 마감이 없어 진행 중인 회차의 응답 대기에는 아직 기다리는 신청도 들어갑니다.</p>
                         </div>
+                    </div>
                     </div>
                     <div class="grid cols-2 stats-align-start">
                         <div class="card" id="matchCandidateExposureCard">

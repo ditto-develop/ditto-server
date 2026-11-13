@@ -328,22 +328,27 @@ const StatsCalc = (() => {
     };
 
     // EXPIRED 는 쓰는 경로가 없어 뺀다.
-    const PERSONAL_REQUEST_STATUS_LABELS = { ACCEPTED: '수락', REJECTED: '거절', PENDING: '응답 없음', CANCELLED: '취소' };
+    const PERSONAL_REQUEST_STATUS_LABELS = {
+        ACCEPTED: '수락',
+        REJECTED: '거절',
+        PENDING: '응답 대기',
+        CANCELLED: '자동 취소',
+    };
 
-    // 사람 단계는 세는 회원에게, 신청 결과는 보낸 회원에게 회원 조건이 걸린다.
     const personalRequestFunnel = (matchStats, genderLabels) => {
-        const stageRows = [
-            genderRow('후보 받음', matchStats.matchCandidateCounts, genderLabels),
-            genderRow('신청 보냄', matchStats.personalMatchRequesterCounts, genderLabels),
-            genderRow('신청 받음', matchStats.personalMatchReceiverCounts, genderLabels),
-            genderRow('성사', matchStats.personalMatchMemberCounts, genderLabels),
-        ];
         const requestCountsByStatus = sumCountsBy(matchStats.personalMatchRequestCounts, (countRow) => countRow.status);
+        const requestStatusCounts = labeledCounts(requestCountsByStatus, PERSONAL_REQUEST_STATUS_LABELS);
+        const requestCount = sumCounts(requestStatusCounts);
         return {
-            candidateCount: stageRows[0].totalCount,
-            stageRows,
-            requestCount: sumCounts(matchStats.personalMatchRequestCounts),
-            requestStatusCounts: labeledCounts(requestCountsByStatus, PERSONAL_REQUEST_STATUS_LABELS),
+            candidateRow: genderRow('후보 받음', matchStats.matchCandidateCounts, genderLabels),
+            sentRow: genderRow('신청 보냄', matchStats.personalMatchRequesterCounts, genderLabels),
+            receivedRow: genderRow('신청 받음', matchStats.personalMatchReceiverCounts, genderLabels),
+            acceptedReceivedRow: genderRow('받은 신청 수락', matchStats.personalMatchAcceptedReceiverCounts, genderLabels),
+            matchedRow: genderRow('성사', matchStats.personalMatchMemberCounts, genderLabels),
+            requestCount,
+            acceptedRequestCount: requestCountsByStatus.get('ACCEPTED') || 0,
+            requestCountWithoutAutoCancel: requestCount - (requestCountsByStatus.get('CANCELLED') || 0),
+            requestStatusCounts,
         };
     };
 
