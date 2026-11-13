@@ -11,6 +11,7 @@ import com.ditto.domain.match.repository.querydsl.GroupMatchMemberCount
 import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
+import com.ditto.domain.match.repository.querydsl.PersonalMatchStatusCount
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
@@ -197,6 +198,189 @@ class MatchStatsQueryTest(
             val counts = personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter(gender = Gender.FEMALE))
 
             counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.FEMALE, 1L))
+        }
+    }
+
+    "countRequestersInWeek" - {
+        "그 주 활성 퀴즈셋에서 신청을 보낸 회원을 상태와 상관없이 한 번씩 센다" {
+            val quizSet = saveQuizSet()
+            val man = saveMember(Gender.MALE)
+            personalMatchRepository.save(PersonalMatchFixture.create(man, saveMember(Gender.FEMALE), quizSet.id))
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(man, saveMember(Gender.FEMALE), quizSet.id, PersonalMatchStatus.REJECTED),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.FEMALE),
+                    saveMember(Gender.MALE),
+                    quizSet.id,
+                    PersonalMatchStatus.CANCELLED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(), saveMember(), saveQuizSet(isActive = false).id),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(),
+                    saveMember(),
+                    saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)).id,
+                ),
+            )
+
+            val counts = personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(
+                PersonalMatchMemberCount(Gender.MALE, 1L),
+                PersonalMatchMemberCount(Gender.FEMALE, 1L),
+            )
+        }
+
+        "관리자는 빼고 회원 조건을 보낸 회원에게 건다" {
+            val quizSet = saveQuizSet()
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.FEMALE), saveMember(Gender.MALE), quizSet.id),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.FEMALE, MemberRole.ADMIN),
+                    saveMember(Gender.MALE),
+                    quizSet.id,
+                ),
+            )
+
+            val counts = personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter(gender = Gender.FEMALE))
+
+            counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.FEMALE, 1L))
+        }
+    }
+
+    "countReceiversInWeek" - {
+        "받은 회원이 member_id_1 쪽이든 member_id_2 쪽이든 한 번만 센다" {
+            val quizSet = saveQuizSet()
+            val smallerIdSender = saveMember(Gender.MALE)
+            val receiver = saveMember(Gender.FEMALE)
+            val largerIdSender = saveMember(Gender.MALE)
+            personalMatchRepository.save(PersonalMatchFixture.create(smallerIdSender, receiver, quizSet.id))
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(largerIdSender, receiver, quizSet.id, PersonalMatchStatus.CANCELLED),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(),
+                    saveMember(),
+                    saveQuizSet(weekStartedOn = WEEK.minusWeeks(1)).id,
+                ),
+            )
+
+            val counts = personalMatchRepository.countReceiversInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.FEMALE, 1L))
+        }
+
+        "관리자는 빼고 회원 조건을 받은 회원에게 건다" {
+            val quizSet = saveQuizSet()
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.FEMALE), saveMember(Gender.MALE), quizSet.id),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.FEMALE),
+                    saveMember(Gender.MALE, MemberRole.ADMIN),
+                    quizSet.id,
+                ),
+            )
+
+            val counts = personalMatchRepository.countReceiversInWeek(WEEK, MemberFilter(gender = Gender.MALE))
+
+            counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.MALE, 1L))
+        }
+    }
+
+    "countReceiversWhoAcceptedInWeek" - {
+        "받은 신청을 수락한 회원만 세고 수락된 신청을 보낸 회원은 세지 않는다" {
+            val quizSet = saveQuizSet()
+            val accepter = saveMember(Gender.FEMALE)
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.MALE),
+                    accepter,
+                    quizSet.id,
+                    PersonalMatchStatus.ACCEPTED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.MALE),
+                    accepter,
+                    quizSet.id,
+                    PersonalMatchStatus.CANCELLED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.MALE), saveMember(Gender.FEMALE), quizSet.id),
+            )
+
+            val counts = personalMatchRepository.countReceiversWhoAcceptedInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(PersonalMatchMemberCount(Gender.FEMALE, 1L))
+        }
+    }
+
+    "countRequestsPerStatusInWeek" - {
+        "그 주 신청을 보낸 회원의 성별과 상태로 묶어 건수를 센다" {
+            val quizSet = saveQuizSet()
+            val man = saveMember(Gender.MALE)
+            personalMatchRepository.save(PersonalMatchFixture.create(man, saveMember(Gender.FEMALE), quizSet.id))
+            personalMatchRepository.save(PersonalMatchFixture.create(man, saveMember(Gender.FEMALE), quizSet.id))
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(man, saveMember(Gender.FEMALE), quizSet.id, PersonalMatchStatus.REJECTED),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.FEMALE),
+                    saveMember(Gender.MALE),
+                    quizSet.id,
+                    PersonalMatchStatus.ACCEPTED,
+                ),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(), saveMember(), saveQuizSet(isActive = false).id),
+            )
+
+            val counts = personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE)
+
+            counts shouldContainExactlyInAnyOrder listOf(
+                PersonalMatchStatusCount(Gender.MALE, PersonalMatchStatus.PENDING, 2L),
+                PersonalMatchStatusCount(Gender.MALE, PersonalMatchStatus.REJECTED, 1L),
+                PersonalMatchStatusCount(Gender.FEMALE, PersonalMatchStatus.ACCEPTED, 1L),
+            )
+        }
+
+        "관리자가 보낸 신청은 빼고 회원 조건을 보낸 회원에게 건다" {
+            val quizSet = saveQuizSet()
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.FEMALE), saveMember(Gender.MALE), quizSet.id),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(saveMember(Gender.MALE), saveMember(Gender.FEMALE), quizSet.id),
+            )
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(
+                    saveMember(Gender.FEMALE, MemberRole.ADMIN),
+                    saveMember(Gender.MALE),
+                    quizSet.id,
+                ),
+            )
+
+            val counts = personalMatchRepository.countRequestsPerStatusInWeek(
+                WEEK,
+                MemberFilter(gender = Gender.FEMALE),
+            )
+
+            counts shouldContainExactlyInAnyOrder listOf(
+                PersonalMatchStatusCount(Gender.FEMALE, PersonalMatchStatus.PENDING, 1L),
+            )
         }
     }
 

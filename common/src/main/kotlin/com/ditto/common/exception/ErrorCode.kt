@@ -40,6 +40,7 @@ enum class ErrorCode(
     NOT_MATCHING_PERIOD(403, "5008", "매칭 기간이 아닙니다."),
     MATCH_CANDIDATES_ALREADY_RESPONDED(409, "5009", "그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어 매칭 후보를 다시 만들 수 없습니다."),
     COUNTERPART_ALREADY_MATCHED(409, "5010", "상대가 이미 다른 사람과 매칭되었습니다."),
+    NOT_MATCH_CANDIDATE(403, "5011", "매칭 후보에게만 신청할 수 있습니다."),
     CANNOT_REPORT_SELF(400, "6001", "자기 자신을 신고할 수 없습니다."),
     DUPLICATE_REPORT(409, "6002", "이미 신고한 사용자입니다."),
     REPORT_ETC_REASON_REQUIRED(400, "6003", "기타 사유는 상세 설명을 입력해야 합니다."),

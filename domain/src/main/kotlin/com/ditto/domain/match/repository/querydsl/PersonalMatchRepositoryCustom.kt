@@ -33,4 +33,12 @@ interface PersonalMatchRepositoryCustom {
     fun existsPendingOfMemberInWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
 
     fun countAcceptedMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
+
+    fun countRequestersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
+
+    fun countReceiversInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
+
+    fun countReceiversWhoAcceptedInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
+
+    fun countRequestsPerStatusInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchStatusCount>
 }
