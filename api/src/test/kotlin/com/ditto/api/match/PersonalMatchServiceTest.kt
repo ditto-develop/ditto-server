@@ -44,9 +44,13 @@ class PersonalMatchServiceTest(
     // 요청·수락·거절은 이번 주 퀴즈셋만 받는다(MatchWeekPolicy). 조회 경로는 주차를 보지 않는다.
     fun thisWeekQuizSetId(): Long = quizSetRepository.save(QuizSetFixture.currentWeek()).id
 
-    // 신청은 후보 쌍에만 된다. 한 방향 행만 있어도 쌍으로 본다.
-    fun saveCandidatePair(memberId: Long, otherMemberId: Long, quizSetId: Long) = matchCandidateRepository.save(
-        MatchCandidateFixture.create(ownerMemberId = memberId, otherMemberId = otherMemberId, quizSetId = quizSetId)
+    // 신청은 후보 쌍에만 된다.
+    fun saveCandidate(ownerMemberId: Long, otherMemberId: Long, quizSetId: Long) = matchCandidateRepository.save(
+        MatchCandidateFixture.create(
+            ownerMemberId = ownerMemberId,
+            otherMemberId = otherMemberId,
+            quizSetId = quizSetId,
+        )
     )
 
     fun saveAccepted(requesterId: Long, receiverId: Long, quizSetId: Long) = personalMatchRepository.save(
@@ -116,7 +120,7 @@ class PersonalMatchServiceTest(
     "정상적인 매칭 요청 시 PENDING 상태의 매칭이 생성된다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        saveCandidatePair(1L, 2L, quizSetId)
+        saveCandidate(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = quizSetId)
         val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when
@@ -142,7 +146,7 @@ class PersonalMatchServiceTest(
     "이미 PENDING 요청이 있는 동일 페어가 다시 요청하면 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        saveCandidatePair(1L, 2L, quizSetId)
+        saveCandidate(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = quizSetId)
         personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId)
         )
@@ -157,7 +161,7 @@ class PersonalMatchServiceTest(
     "역방향 PENDING 요청이 있을 때 반대 방향으로 요청해도 MATCH_REQUEST_ALREADY_EXISTS 예외가 발생한다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        saveCandidatePair(1L, 2L, quizSetId)
+        saveCandidate(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = quizSetId)
         personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = 2L, receiverId = 1L, quizSetId = quizSetId)
         )
@@ -211,7 +215,7 @@ class PersonalMatchServiceTest(
         // given
         val quizSetId = thisWeekQuizSetId()
         saveAccepted(requesterId = 1L, receiverId = 2L, quizSetId = quizSetId + 1)
-        saveCandidatePair(1L, 3L, quizSetId)
+        saveCandidate(ownerMemberId = 1L, otherMemberId = 3L, quizSetId = quizSetId)
         val request = PersonalMatchRequest(receiverId = 3L, quizSetId = quizSetId)
 
         // when
@@ -224,7 +228,7 @@ class PersonalMatchServiceTest(
     "후보가 아닌 상대에게 신청하면 NOT_MATCH_CANDIDATE 예외가 발생하고 신청이 남지 않는다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        saveCandidatePair(1L, 2L, quizSetId + 1)
+        saveCandidate(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = quizSetId + 1)
         val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when & then
@@ -234,10 +238,10 @@ class PersonalMatchServiceTest(
         personalMatchRepository.findAll().shouldBeEmpty()
     }
 
-    "상대가 나를 후보로 받은 쪽 행만 있어도 신청할 수 있다" {
+    "상대만 나를 후보로 받았어도 신청할 수 있다" {
         // given
         val quizSetId = thisWeekQuizSetId()
-        saveCandidatePair(2L, 1L, quizSetId)
+        saveCandidate(ownerMemberId = 2L, otherMemberId = 1L, quizSetId = quizSetId)
         val request = PersonalMatchRequest(receiverId = 2L, quizSetId = quizSetId)
 
         // when
@@ -351,7 +355,7 @@ class PersonalMatchServiceTest(
         // given
         val quizSetId = thisWeekQuizSetId()
         val (acceptorId, requesterId, lateRequesterId) = saveMemberIds(3)
-        saveCandidatePair(lateRequesterId, acceptorId, quizSetId)
+        saveCandidate(ownerMemberId = lateRequesterId, otherMemberId = acceptorId, quizSetId = quizSetId)
         val match = personalMatchRepository.save(
             PersonalMatchFixture.create(requesterId = requesterId, receiverId = acceptorId, quizSetId = quizSetId)
         )
