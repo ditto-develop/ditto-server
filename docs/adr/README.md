@@ -48,6 +48,7 @@
 - [0050 — 태스크 정의는 커밋 이미지를 가리키고, OOM 이 나면 JVM 을 바로 끝낸다](0050-ecs-image-pinning-and-oom-exit.md)
 - [0051 — 서버 기능 플래그는 DB 한 행 + 인스턴스별 1분 캐시로 두고 어드민 화면에서 바꾼다](0051-server-feature-flags.md)
 - [0052 — 1:1·재매칭 방에서는 상대의 문항별 답을 보여 준다 (ADR 0020 갱신)](0052-pair-room-answer-compare.md)
+- [0053 — 시크릿 매칭을 위해 마감 뒤 1:1 응시를 토 20:00까지 받는다](0053-late-one-to-one-submission-for-secret-matching.md)
 
 ## 언제 ADR을 쓰는가
 

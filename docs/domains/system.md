@@ -20,6 +20,7 @@
 - 어드민 화면 `/admin/feature-flags`는 QA 도구 스위치와 무관하게 열린다.
 - FE 조회: `GET /api/v1/feature-flags?keys=...`(API Key만, JWT 불필요). 요청한 키만 답하고, enum에 없는 키는 false. FE도 1분 캐시 → 반영까지 최대 약 2분.
 - FE 화면 전용 플래그(서버 동작 없음): `RECORDS`(기록 탭·대화방 '우리의 답변'). 배포 순서는 BE → 어드민 켜기 → FE.
+- `SECRET_MATCHING`(IMP-2 시크릿 매칭): 마감 뒤 1:1 응시와 그룹 미성사자 1:1 예외를 연다. 켜기는 대상 주 목 00:00 전, 끄기는 월 00:00 뒤에 한다. 중간에 끄면 늦게 완주한 회원이 라운드 없이 남는다([ADR 0053](../adr/0053-late-one-to-one-submission-for-secret-matching.md)).
 
 ## 상태 전이
 - `override(dateTime, authorName, authorEmail)` → `enabled = true`.
