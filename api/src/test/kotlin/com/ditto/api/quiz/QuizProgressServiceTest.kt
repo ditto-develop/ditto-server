@@ -143,6 +143,25 @@ class QuizProgressServiceTest(
             answers[0].choiceId shouldBe choice2.id
         }
 
+        "마지막 문항을 낸 시각이 완주 시각으로 남는다" {
+            val memberId = setupMember()
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(startDate = now.minusDays(1), endDate = now.plusDays(1)),
+            )
+            val quiz1 = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, displayOrder = 1))
+            val quiz2 = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id, question = "두번째", displayOrder = 2))
+            val choice1 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz1.id))
+            val choice2 = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz2.id))
+            val firstAnsweredAt = now.withNano(0)
+            val lastAnsweredAt = firstAnsweredAt.plusHours(3)
+
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz1.id, choice1.id), firstAnsweredAt)
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSet.id)!!.completedAt shouldBe null
+
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quiz2.id, choice2.id), lastAnsweredAt)
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSet.id)!!.completedAt shouldBe lastAnsweredAt
+        }
+
         "비활성 퀴즈 세트의 퀴즈에 답안을 제출하면 예외가 발생한다" {
             val memberId = setupMember()
             val quizSet = quizSetRepository.save(
