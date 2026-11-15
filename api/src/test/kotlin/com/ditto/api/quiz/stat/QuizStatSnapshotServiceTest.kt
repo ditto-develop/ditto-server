@@ -63,6 +63,21 @@ class QuizStatSnapshotServiceTest(
         quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, stopped).shouldBeNull()
     }
 
+    "마감 뒤에 완주한 사람은 스냅샷에 들지 않는다" {
+        val set = seeder.quizSet(questions = 1)
+        val responseDeadline = QuizSeeder.CLOSED_WEEK.plusDays(2).atTime(23, 59, 59)
+        val onTime = member()
+        val late = member()
+        seeder.answer(onTime, set, listOf(1), answeredAt = responseDeadline)
+        seeder.answer(late, set, listOf(2), answeredAt = responseDeadline.plusHours(10))
+
+        val snapshot = quizStatSnapshotService.getOrCreate(set.quizSetId)
+
+        snapshot.participantCount shouldBe 1
+        snapshot.percentOf(set.choice(1, 1)) shouldBe 100
+        quizMemberStatRepository.findByQuizSetIdAndMemberId(set.quizSetId, late).shouldBeNull()
+    }
+
     "이미 있으면 다시 계산하지 않는다 — 마감 뒤 들어온 답은 숫자를 바꾸지 않는다" {
         val set = seeder.quizSet(questions = 1)
         seeder.answer(member(), set, listOf(1))

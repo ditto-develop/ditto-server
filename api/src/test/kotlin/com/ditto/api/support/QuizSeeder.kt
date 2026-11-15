@@ -52,11 +52,11 @@ class QuizSeeder(
     }
 
     /** [picks]는 문항마다 고른 선택지 번호(1·2). 모두 답하면 완주(COMPLETED)다. */
-    fun answer(memberId: Long, set: SeededQuizSet, picks: List<Int>) {
+    fun answer(memberId: Long, set: SeededQuizSet, picks: List<Int>, answeredAt: LocalDateTime? = null) {
         val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = set.quizSetId, totalCount = set.quizIds.size)
         picks.forEachIndexed { i, pick ->
             quizAnswerRepository.save(QuizAnswerFixture.create(memberId = memberId, quizId = set.quizIds[i], choiceId = set.choiceIds[i][pick - 1]))
-            progress.recordAnswer()
+            progress.recordAnswer(answeredAt)
         }
         quizProgressRepository.save(progress)
     }

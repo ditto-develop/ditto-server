@@ -10,10 +10,12 @@ import com.ditto.domain.quiz.repository.QuizChoiceStatRepository
 import com.ditto.domain.quiz.repository.QuizMemberStatRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.quiz.repository.QuizSetStatRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 /**
  * 퀴즈셋 하나의 통계 스냅샷을 계산해 저장한다. 머리 행·선택지·회원 행을 **자기 트랜잭션 하나에** 담는다 —
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Component
 class QuizStatSnapshotWriter(
+    private val quizSetRepository: QuizSetRepository,
     private val quizProgressRepository: QuizProgressRepository,
     private val quizRepository: QuizRepository,
     private val quizChoiceRepository: QuizChoiceRepository,
@@ -37,13 +40,16 @@ class QuizStatSnapshotWriter(
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun write(quizSetId: Long) {
+        val responseDeadline = quizSetRepository.findById(quizSetId)
+            .orElseThrow { IllegalStateException("퀴즈셋이 없다: quizSetId=$quizSetId") }
+            .endDate
         val quizIds = quizRepository.findByQuizSetIdOrderByDisplayOrderAsc(quizSetId).map { it.id }
         val choiceIdsByQuizId = quizChoiceRepository.findByQuizIdInOrderByDisplayOrderAsc(quizIds)
             .groupBy({ it.quizId }, { it.id })
         // 선택지가 하나도 없는 문항도 문항 수에는 들어간다(겹친 사람 기준이 문항 수로 정해진다).
         val orderedChoices = quizIds.associateWith { choiceIdsByQuizId[it].orEmpty() }
 
-        val result = QuizStatCalculator.calculate(orderedChoices, answersOfParticipants(quizSetId, quizIds))
+        val result = QuizStatCalculator.calculate(orderedChoices, answersOfParticipants(quizSetId, quizIds, responseDeadline))
 
         quizSetStatRepository.saveAndFlush(
             QuizSetStat.of(quizSetId, result.participantCount, result.overlapThreshold),
@@ -56,9 +62,17 @@ class QuizStatSnapshotWriter(
         )
     }
 
-    /** 완주자의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람은 기록·통계 모두에서 빠진다. */
-    private fun answersOfParticipants(quizSetId: Long, quizIds: List<Long>): Map<Long, Map<Long, Long>> {
+    /**
+     * 마감까지 완주한 사람의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람은 기록·통계 모두에서 빠지고,
+     * 마감 뒤에 완주한 사람(시크릿 매칭)은 자기 답을 이 스냅샷에 대조만 한다.
+     */
+    private fun answersOfParticipants(
+        quizSetId: Long,
+        quizIds: List<Long>,
+        responseDeadline: LocalDateTime,
+    ): Map<Long, Map<Long, Long>> {
         val participantIds = quizProgressRepository.findByQuizSetIdAndStatus(quizSetId, QuizProgressStatus.COMPLETED)
+            .filter { it.isCompletedOnTime(responseDeadline) }
             .map { it.memberId }
         if (participantIds.isEmpty() || quizIds.isEmpty()) return emptyMap()
 
