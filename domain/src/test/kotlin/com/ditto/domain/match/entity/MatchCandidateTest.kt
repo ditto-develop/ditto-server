@@ -5,6 +5,7 @@ import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
 
 class MatchCandidateTest(
@@ -19,6 +20,16 @@ class MatchCandidateTest(
             matchCandidateRepository.save(MatchCandidateFixture.create(ownerMemberId = 1L, otherMemberId = 4L, quizSetId = 99L, score = 70.0))
 
             matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(1L, 10L) shouldHaveSize 2
+        }
+
+        "출처를 주지 않으면 정규 매칭 후보로 저장되고, 준 출처는 그대로 남는다" {
+            val regular = matchCandidateRepository.saveAndFlush(MatchCandidateFixture.create(otherMemberId = 2L))
+            val secret = matchCandidateRepository.saveAndFlush(
+                MatchCandidateFixture.create(otherMemberId = 3L, candidateOrigin = CandidateOrigin.SECRET_FIRST),
+            )
+
+            matchCandidateRepository.findById(regular.id).get().candidateOrigin shouldBe CandidateOrigin.REGULAR
+            matchCandidateRepository.findById(secret.id).get().candidateOrigin shouldBe CandidateOrigin.SECRET_FIRST
         }
 
         "동일 (owner, other, quizSet) 조합 중복 저장은 UK 위반으로 예외" {

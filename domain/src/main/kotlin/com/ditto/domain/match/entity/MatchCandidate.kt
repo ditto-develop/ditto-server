@@ -3,6 +3,8 @@ package com.ditto.domain.match.entity
 import com.ditto.domain.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -43,6 +45,11 @@ class MatchCandidate private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
+    @Comment("후보를 만든 매칭 (REGULAR, SECRET_FIRST, SECRET_SECOND)")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "candidate_origin", nullable = false, length = 20)
+    val candidateOrigin: CandidateOrigin,
+
     @Comment("매칭 점수 (0.0 ~ 100.0)")
     @Column(nullable = false)
     val score: Double,
@@ -67,6 +74,7 @@ class MatchCandidate private constructor(
             score: Double,
             matchedQuestionCount: Int,
             totalQuestionCount: Int,
+            candidateOrigin: CandidateOrigin = CandidateOrigin.REGULAR,
         ): MatchCandidate {
             // 배치가 생성하는 값이므로 위반 시 클라이언트가 아닌 알고리즘 버그다. 경계에서 불변식을 강제한다.
             require(ownerMemberId != otherMemberId) {
@@ -85,6 +93,7 @@ class MatchCandidate private constructor(
                 ownerMemberId = ownerMemberId,
                 otherMemberId = otherMemberId,
                 quizSetId = quizSetId,
+                candidateOrigin = candidateOrigin,
                 score = score,
                 matchedQuestionCount = matchedQuestionCount,
                 totalQuestionCount = totalQuestionCount,
