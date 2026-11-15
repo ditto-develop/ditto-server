@@ -77,6 +77,11 @@ class QuizProgress private constructor(
         status = QuizProgressStatus.IN_PROGRESS
     }
 
+    fun isCompletedOnTime(deadline: LocalDateTime): Boolean {
+        if (status != QuizProgressStatus.COMPLETED) return false
+        return completedAt?.let { it <= deadline } ?: true
+    }
+
     /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */
     fun selectPreferredGender(preferredGender: GenderPreference) {
         this.preferredGender = preferredGender

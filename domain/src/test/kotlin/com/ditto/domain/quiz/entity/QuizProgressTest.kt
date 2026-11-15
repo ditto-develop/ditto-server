@@ -110,6 +110,31 @@ class QuizProgressTest(
         }
     }
 
+    "마감까지 완주했는지" - {
+        val deadline = LocalDateTime.of(2026, 11, 18, 23, 59, 59)
+
+        fun progressAnsweredAt(answeredAt: LocalDateTime?, totalCount: Int = 1): QuizProgress =
+            QuizProgressFixture.create(memberId = 1L, quizSetId = 1L, totalCount = totalCount)
+                .apply { recordAnswer(answeredAt) }
+
+        "마감 시각까지 완주했으면 참이다" {
+            progressAnsweredAt(deadline).isCompletedOnTime(deadline) shouldBe true
+            progressAnsweredAt(deadline.minusDays(1)).isCompletedOnTime(deadline) shouldBe true
+        }
+
+        "마감 뒤에 완주했으면 거짓이다" {
+            progressAnsweredAt(deadline.plusNanos(1_000)).isCompletedOnTime(deadline) shouldBe false
+        }
+
+        "완주 시각이 없으면 마감 전에 완주한 것으로 본다" {
+            progressAnsweredAt(null).isCompletedOnTime(deadline) shouldBe true
+        }
+
+        "완주하지 않았으면 거짓이다" {
+            progressAnsweredAt(deadline.minusDays(1), totalCount = 2).isCompletedOnTime(deadline) shouldBe false
+        }
+    }
+
     "매칭 성별 선호" - {
         "기본값은 OPPOSITE(이성)이다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())

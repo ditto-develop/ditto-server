@@ -123,9 +123,11 @@ class MatchmakingService(
     }
 
     // 배치·NO_MATCH 알림·어드민 재계산이 모두 이 계산으로 풀을 정한다. 한쪽만 바뀌면 화면 이유가 배치와 어긋난다.
+    // 마감 뒤에 완주한 회원은 시크릿 매칭 라운드가 맡는다.
     private fun findPool(quizSet: QuizSet): MatchingPool {
         val completedProgresses =
             quizProgressRepository.findByQuizSetIdAndStatus(quizSet.id, QuizProgressStatus.COMPLETED)
+                .filter { it.isCompletedOnTime(quizSet.endDate) }
         val memberIds = availableMemberIds(quizSet.id, quizSet.matchingType, completedProgresses)
         return MatchingPool(quizSet.id, completedProgresses, memberIds)
     }
