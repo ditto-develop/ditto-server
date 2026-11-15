@@ -3,6 +3,7 @@ package com.ditto.api.admin.match
 import com.ditto.api.config.AdminQaToolsProperties
 import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
+import com.ditto.api.match.service.SecretRoundBatchResult
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 
 /**
- * 매칭 운영. 실시간 스케줄러(목 00:01)와 별개로, 어드민이 동일 배치 로직을 수동 실행하거나
+ * 매칭 운영. 실시간 스케줄러(목 00:01, 시크릿 매칭 금·토 20:01)와 별개로, 어드민이 같은 배치 로직을 수동 실행하거나
  * 특정 퀴즈셋의 매칭 후보를 다시 만든다. 수동 실행은 어드민 설정 시각([ServerTimeProvider]) 기준으로 동작한다.
  */
 @Controller
@@ -42,6 +43,29 @@ class AdminMatchController(
         matchResultNotifier.notifyFor(quizSetIds)
         redirectAttributes.addFlashAttribute("message", "정기 매칭을 지금 돌렸습니다.")
         return "redirect:/admin/matching"
+    }
+
+    /** 지금 서버 시각에 돌 차례인 시크릿 매칭 라운드를 돌린다. 시각 조정으로 금·토 라운드를 QA 할 때 쓴다. */
+    @PostMapping("/admin/matching/run-secret-round")
+    fun runSecretRound(redirectAttributes: RedirectAttributes): String {
+        val result = matchingBatchFacade.runSecretRound(serverTimeProvider.now())
+        matchResultNotifier.notifyFor(result.regularQuizSetIds)
+        redirectAttributes.addFlashAttribute("message", secretRoundMessage(result))
+        return "redirect:/admin/matching"
+    }
+
+    private fun secretRoundMessage(result: SecretRoundBatchResult): String {
+        if (result.roundResults.isEmpty()) {
+            return "돌릴 시크릿 매칭이 없습니다. 기능 플래그가 꺼져 있거나, 이번 주 1차 라운드 시각 전이거나, 활성 1:1 퀴즈셋이 없습니다."
+        }
+        return result.roundResults.joinToString(" ") { round ->
+            val name = "퀴즈셋 #${round.quizSetId} ${round.round.description}"
+            if (round.alreadyGenerated) {
+                "$name 은 이미 돌았습니다."
+            } else {
+                "$name: 대상 ${round.poolSize}명, 새 후보를 받은 회원 ${round.newCandidateOwnerIds.size}명."
+            }
+        }
     }
 
     /**
