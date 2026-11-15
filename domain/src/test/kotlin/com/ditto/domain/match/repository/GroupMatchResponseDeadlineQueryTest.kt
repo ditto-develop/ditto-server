@@ -79,6 +79,30 @@ class GroupMatchResponseDeadlineQueryTest(
         }
     }
 
+    "existsAcceptedInFormedGroupOfWeek" - {
+
+        "그 주 성사된 그룹에 수락했으면 참이다" {
+            val formedGroupId = saveGroup(acceptedCount = 3)
+            saveInvitation(formedGroupId, memberId = 1L, accepted = true)
+
+            groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(1L, thisWeekStartedOn) shouldBe true
+        }
+
+        "성사 전 그룹, 성사된 그룹의 대기 초대, 다른 주의 성사 그룹은 보지 않는다" {
+            saveInvitation(saveGroup(acceptedCount = 1), memberId = 2L, accepted = true)
+            saveInvitation(saveGroup(acceptedCount = 3), memberId = 3L)
+            saveInvitation(
+                saveGroup(weekStartedOn = thisWeekStartedOn.minusWeeks(1), acceptedCount = 3),
+                memberId = 4L,
+                accepted = true,
+            )
+
+            listOf(2L, 3L, 4L).forEach { memberId ->
+                groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(memberId, thisWeekStartedOn) shouldBe false
+            }
+        }
+    }
+
     "declinePendingInvitations" - {
 
         "주어진 그룹의 대기 초대만 거절로 바꾸고 바꾼 수를 돌려준다" {

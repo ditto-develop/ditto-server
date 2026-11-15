@@ -67,6 +67,20 @@ class GroupMatchMemberRepositoryImpl(
             )
             .fetchFirst() != null
 
+    override fun existsAcceptedInFormedGroupOfWeek(memberId: Long, weekStartedOn: LocalDate): Boolean =
+        queryFactory
+            .selectOne()
+            .from(groupMatchMember)
+            .join(groupMatch).on(groupMatchMember.roomId.eq(groupMatch.id))
+            .join(quizSet).on(groupMatch.quizSetId.eq(quizSet.id))
+            .where(
+                groupMatchMember.memberId.eq(memberId),
+                groupMatchMember.status.eq(InvitationStatus.ACCEPTED),
+                groupMatch.isActive.isTrue,
+                quizSet.weekStartedOn.eq(weekStartedOn),
+            )
+            .fetchFirst() != null
+
     /**
      * 같은 그룹 채팅방에 **함께 들어간** 사이인가.
      *

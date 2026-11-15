@@ -1,13 +1,17 @@
 package com.ditto.api.quiz.service
 
 import com.ditto.api.config.quiz.QuizProperties
+import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
+import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
@@ -20,6 +24,7 @@ import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.sanction.repository.SanctionRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,6 +41,8 @@ class QuizProgressService(
     private val quizSetRepository: QuizSetRepository,
     private val quizProperties: QuizProperties,
     private val sanctionRepository: SanctionRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val featureFlags: FeatureFlags,
 ) {
     @Transactional
     fun submitAnswer(
@@ -43,17 +50,16 @@ class QuizProgressService(
         request: SubmitAnswerRequest,
         now: LocalDateTime,
     ) {
-        validateAvailableDay(now)
-        validateNotQuizBlocked(memberId, now)
+        val submission = AnswerSubmission(memberId, now, featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING))
+        val (quiz, quizSet) = requireSubmittableQuiz(submission, request.quizId)
 
-        val quiz = findQuiz(request.quizId)
-
-        validateActiveQuizSet(quiz.quizSetId, now)
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
-        val otherTypeProgresses = findOtherTypeProgressesThisWeek(memberId, quiz.quizSetId, now)
-        validateNoOtherTypeCompleted(otherTypeProgresses)
-        discardOtherTypeProgresses(memberId, otherTypeProgresses)
+        val otherTypeProgresses = findOtherTypeProgressesOfWeek(memberId, quizSet)
+        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
+            validateGroupFinisherCanTakeOneToOne(submission, quizSet)
+        }
+        discardUnfinishedProgresses(memberId, otherTypeProgresses)
 
         val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
 
@@ -128,7 +134,7 @@ class QuizProgressService(
         quizSetId: Long,
         now: LocalDateTime,
     ): QuizSetWithProgressResponse {
-        validateActiveQuizSet(quizSetId, now)
+        validateViewableQuizSet(findQuizSet(quizSetId), now)
 
         val quizzes = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId))
         val quizIds = quizzes.map { it.id }
@@ -170,20 +176,60 @@ class QuizProgressService(
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, quizSetIds)
     }
 
+    // 플래그가 꺼져 있으면 기존 검사 순서(요일 → 제재 → 문항 → 기간)를 그대로 지킨다.
+    private fun requireSubmittableQuiz(submission: AnswerSubmission, quizId: Long): Pair<Quiz, QuizSet> {
+        val (memberId, now) = submission
+        if (!submission.secretMatchingEnabled) {
+            validateAvailableDay(now)
+            validateNotQuizBlocked(memberId, now)
+            val quiz = findQuiz(quizId)
+            val quizSet = findQuizSet(quiz.quizSetId)
+            validateActiveQuizSet(quizSet, now)
+            return quiz to quizSet
+        }
+
+        val quiz = findQuiz(quizId)
+        val quizSet = findQuizSet(quiz.quizSetId)
+        validateSubmissionWindow(quizSet, now)
+        validateNotQuizBlocked(memberId, now)
+        return quiz to quizSet
+    }
+
+    private fun validateSubmissionWindow(quizSet: QuizSet, now: LocalDateTime) {
+        when (QuizSubmissionWindow.of(quizSet, now, lateSubmissionEnabled = true)) {
+            QuizSubmissionWindow.LATE -> return
+            QuizSubmissionWindow.LATE_CLOSED -> throw WarnException(ErrorCode.QUIZ_SECRET_MATCHING_CLOSED)
+            // 기간 밖이면 기존과 같은 오류 코드가 나가도록 기존 검사를 그대로 탄다.
+            QuizSubmissionWindow.REGULAR, QuizSubmissionWindow.OUTSIDE -> {
+                validateAvailableDay(now)
+                validateActiveQuizSet(quizSet, now)
+            }
+        }
+    }
+
+    private fun validateViewableQuizSet(quizSet: QuizSet, now: LocalDateTime) {
+        val lateSubmissionEnabled = featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)
+        when (QuizSubmissionWindow.of(quizSet, now, lateSubmissionEnabled)) {
+            QuizSubmissionWindow.LATE -> return
+            QuizSubmissionWindow.LATE_CLOSED -> throw WarnException(ErrorCode.QUIZ_SECRET_MATCHING_CLOSED)
+            QuizSubmissionWindow.REGULAR, QuizSubmissionWindow.OUTSIDE -> validateActiveQuizSet(quizSet, now)
+        }
+    }
+
     private fun findQuiz(quizId: Long): Quiz =
         quizRepository
             .findById(quizId)
             .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
 
+    private fun findQuizSet(quizSetId: Long): QuizSet =
+        quizSetRepository
+            .findById(quizSetId)
+            .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
+
     private fun validateActiveQuizSet(
-        quizSetId: Long,
+        quizSet: QuizSet,
         now: LocalDateTime,
     ) {
-        val quizSet =
-            quizSetRepository
-                .findById(quizSetId)
-                .orElseThrow { ErrorException(ErrorCode.NOT_FOUND) }
-
         val isInPeriod = now >= quizSet.startDate && now <= quizSet.endDate
 
         if (!quizSet.isActive || !isInPeriod) {
@@ -215,32 +261,43 @@ class QuizProgressService(
         }
     }
 
-    // 주차·유형당 활성 셋이 하나라, 다른 활성 셋은 곧 다른 유형이다.
-    private fun findOtherTypeProgressesThisWeek(
+    // 주차·유형당 활성 셋이 하나라, 같은 주의 다른 활성 셋은 곧 다른 유형이다.
+    // 늦은 응시 때도 찾아야 해서 응답 기간이 아니라 제출한 셋의 주차로 찾는다.
+    private fun findOtherTypeProgressesOfWeek(
         memberId: Long,
-        quizSetId: Long,
-        now: LocalDateTime,
+        quizSet: QuizSet,
     ): List<QuizProgress> {
-        val otherQuizSetIds = quizSetRepository.findCurrentWeekActive(now).map { it.id } - quizSetId
+        val otherQuizSetIds = quizSetRepository.findByWeekStartedOn(quizSet.weekStartedOn)
+            .filter { it.isActive }
+            .map { it.id } - quizSet.id
         if (otherQuizSetIds.isEmpty()) return emptyList()
 
         return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
     }
 
-    private fun validateNoOtherTypeCompleted(otherTypeProgresses: List<QuizProgress>) {
-        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
+    // 그룹을 완주했어도 성사된 그룹에 수락하지 않았으면 그룹 응답 마감 뒤에는 1:1 을 풀 수 있다.
+    private fun validateGroupFinisherCanTakeOneToOne(submission: AnswerSubmission, quizSet: QuizSet) {
+        val (memberId, now) = submission
+        val canTakeOneToOne = submission.secretMatchingEnabled &&
+            quizSet.matchingType == MatchingType.ONE_TO_ONE &&
+            GroupResponseDeadline.hasPassed(quizSet.operationWeek, now) &&
+            !groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(memberId, quizSet.weekStartedOn)
+        if (!canTakeOneToOne) {
             throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
         }
+        log.info { "그룹 완주자 1:1 응시 허용: memberId=$memberId quizSetId=${quizSet.id} week=${quizSet.weekStartedOn}" }
     }
 
     // 한 주에는 한 유형만 푼다. 다른 유형을 풀다 말았으면 그 답을 지우고 이 유형으로 갈아탄다.
-    private fun discardOtherTypeProgresses(
+    // 완주한 진행은 지우지 않는다.
+    private fun discardUnfinishedProgresses(
         memberId: Long,
         otherTypeProgresses: List<QuizProgress>,
     ) {
-        if (otherTypeProgresses.isEmpty()) return
+        val unfinishedProgresses = otherTypeProgresses.filter { it.status != QuizProgressStatus.COMPLETED }
+        if (unfinishedProgresses.isEmpty()) return
 
-        val quizSetIds = otherTypeProgresses.map { it.quizSetId }
+        val quizSetIds = unfinishedProgresses.map { it.quizSetId }
         val quizIds = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(quizSetIds).map { it.id }
         quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, quizIds)
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, quizSetIds)
@@ -293,3 +350,9 @@ class QuizProgressService(
             .associateBy { it.quizId }
     }
 }
+
+private data class AnswerSubmission(
+    val memberId: Long,
+    val now: LocalDateTime,
+    val secretMatchingEnabled: Boolean,
+)
