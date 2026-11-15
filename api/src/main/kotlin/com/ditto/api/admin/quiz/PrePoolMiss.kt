@@ -8,10 +8,11 @@ import java.time.LocalDateTime
 
 /** 1:1·그룹 공통으로, 매칭 풀에 들기 전 단계에서 빠진 이유. 풀에 들 수 있으면 null 이다. */
 object PrePoolMiss {
-    fun of(progress: QuizProgress, member: Member?, generatedAt: LocalDateTime?): MatchMissReason? = when {
+    fun of(progress: QuizProgress, member: Member?, timeline: MatchingTimeline): MatchMissReason? = when {
         member == null -> MatchMissReason.MEMBER_DELETED
         progress.status != QuizProgressStatus.COMPLETED -> MatchMissReason.NOT_COMPLETED
-        isCompletedAfter(progress, generatedAt) -> MatchMissReason.COMPLETED_AFTER_GENERATION
+        !progress.isCompletedOnTime(timeline.responseDeadline) -> MatchMissReason.COMPLETED_AFTER_DEADLINE
+        isCompletedAfter(progress, timeline.generatedAt) -> MatchMissReason.COMPLETED_AFTER_GENERATION
         else -> null
     }
 
@@ -19,3 +20,9 @@ object PrePoolMiss {
     fun isCompletedAfter(progress: QuizProgress, generatedAt: LocalDateTime?): Boolean =
         generatedAt != null && progress.updatedAt.isAfter(generatedAt)
 }
+
+/** 매칭 이유를 가르는 두 시각. [generatedAt]은 정규 매칭 후보가 처음 생긴 시각이고, 아직 없으면 null 이다. */
+class MatchingTimeline(
+    val responseDeadline: LocalDateTime,
+    val generatedAt: LocalDateTime?,
+)

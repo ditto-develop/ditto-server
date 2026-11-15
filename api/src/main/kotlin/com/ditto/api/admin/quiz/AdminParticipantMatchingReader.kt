@@ -5,6 +5,7 @@ import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
 import com.ditto.api.admin.quiz.dto.QuizSetMatching
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.MatchCandidate
@@ -40,7 +41,10 @@ class AdminParticipantMatchingReader(
 
     private fun readOneToOne(source: MatchingReadSource): QuizSetMatching {
         val candidatesByOwnerId = findCandidates(source).groupBy { it.ownerMemberId }
-        val generatedAt = candidatesByOwnerId.values.flatten().minOfOrNull { it.createdAt }
+        // 시크릿 매칭 후보는 정규 매칭 뒤에 더해지므로 매칭 시각은 정규 후보로 정한다.
+        val generatedAt = candidatesByOwnerId.values.flatten()
+            .filter { it.candidateOrigin == CandidateOrigin.REGULAR }
+            .minOfOrNull { it.createdAt }
         val personalMatches = personalMatchRepository.findByQuizSetIdIn(listOf(source.quizSet.id))
         val nicknames = loadNicknames(
             source,
@@ -92,7 +96,8 @@ class AdminParticipantMatchingReader(
             return ParticipantMatching(groupCandidates = groupCandidates)
         }
         val member = context.source.membersById[progress.memberId]
-        val prePoolMissReason = PrePoolMiss.of(progress, member, context.generatedAt)
+        val timeline = MatchingTimeline(context.source.quizSet.endDate, context.generatedAt)
+        val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
         if (prePoolMissReason != null) return ParticipantMatching(missReason = prePoolMissReason)
 
         if (context.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)

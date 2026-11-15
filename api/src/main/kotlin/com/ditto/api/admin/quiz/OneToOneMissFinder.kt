@@ -22,7 +22,8 @@ class OneToOneMissFinder(
         val prePoolMissByMemberId = buildMap {
             withoutCandidate.forEach { progress ->
                 val member = input.source.membersById[progress.memberId]
-                val prePoolMissReason = PrePoolMiss.of(progress, member, input.generatedAt)
+                val timeline = MatchingTimeline(input.source.quizSet.endDate, input.generatedAt)
+                val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
                 if (prePoolMissReason != null) put(progress.memberId, prePoolMissReason)
             }
         }

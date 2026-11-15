@@ -5,6 +5,7 @@ import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
 import com.ditto.api.admin.quiz.dto.QuizSetParticipation
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.PersonalMatch
@@ -62,7 +63,8 @@ class MemberMatchingReader(
             val candidates = candidatesByQuizSetId[quizSetId].orEmpty()
             val requests = requestsByQuizSetId[quizSetId].orEmpty()
             val missReason = if (candidates.isEmpty()) {
-                oneToOneMissOf(member, participation.progress, requests, generatedAtByQuizSetId[quizSetId])
+                val timeline = MatchingTimeline(participation.quizSet.endDate, generatedAtByQuizSetId[quizSetId])
+                oneToOneMissOf(member, participation.progress, requests, timeline)
             } else {
                 null
             }
@@ -75,9 +77,9 @@ class MemberMatchingReader(
         member: Member,
         progress: QuizProgress,
         requests: List<PersonalMatch>,
-        generatedAt: LocalDateTime?,
+        timeline: MatchingTimeline,
     ): MatchMissReason {
-        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+        val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
         if (prePoolMissReason != null) return prePoolMissReason
 
         return when {
@@ -103,7 +105,8 @@ class MemberMatchingReader(
                 .filter { it.quizSetId == quizSetId }
                 .map { GroupCandidate.of(it, invitationsByGroupMatchId[it.id].orEmpty(), member.id, nicknames) }
             val missReason = if (groupCandidates.isEmpty()) {
-                groupMissOf(member, participation.progress, generatedAtByQuizSetId[quizSetId])
+                val timeline = MatchingTimeline(participation.quizSet.endDate, generatedAtByQuizSetId[quizSetId])
+                groupMissOf(member, participation.progress, timeline)
             } else {
                 null
             }
@@ -112,10 +115,10 @@ class MemberMatchingReader(
     }
 
     // 참여 현황(AdminParticipantMatchingReader.groupMatchingOf)과 같은 규칙이다. 한쪽을 고치면 같이 고친다.
-    private fun groupMissOf(member: Member, progress: QuizProgress, generatedAt: LocalDateTime?): MatchMissReason {
-        val prePoolMissReason = PrePoolMiss.of(progress, member, generatedAt)
+    private fun groupMissOf(member: Member, progress: QuizProgress, timeline: MatchingTimeline): MatchMissReason {
+        val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
         if (prePoolMissReason != null) return prePoolMissReason
-        if (generatedAt == null) return MatchMissReason.NOT_GENERATED
+        if (timeline.generatedAt == null) return MatchMissReason.NOT_GENERATED
         return MatchMissReason.NOT_ASSIGNED_TO_GROUP
     }
 
@@ -132,7 +135,9 @@ class MemberMatchingReader(
 
     private fun findOneToOneGeneratedTimes(quizSetIds: Collection<Long>): Map<Long, LocalDateTime> =
         quizSetIds
-            .mapNotNull { quizSetId -> matchCandidateRepository.findFirstByQuizSetIdOrderByIdAsc(quizSetId) }
+            .mapNotNull { quizSetId ->
+                matchCandidateRepository.findFirstByQuizSetIdAndCandidateOriginOrderByIdAsc(quizSetId, CandidateOrigin.REGULAR)
+            }
             .associate { it.quizSetId to it.createdAt }
 
     private fun findGroupGeneratedTimes(quizSetIds: Collection<Long>): Map<Long, LocalDateTime> {

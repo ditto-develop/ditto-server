@@ -6,6 +6,7 @@ import com.ditto.api.admin.quiz.dto.PersonalRequestState
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.entity.PersonalMatchStatus
@@ -31,6 +32,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class AdminQuizParticipantMatchingTest(
@@ -64,9 +66,9 @@ class AdminQuizParticipantMatchingTest(
         MemberFixture.create(nickname = nickname, email = "$nickname@example.com", status = status, gender = gender, age = age),
     ).id
 
-    fun saveCompleted(memberId: Long, quizSetId: Long, answers: Map<Long, Long>) {
+    fun saveCompleted(memberId: Long, quizSetId: Long, answers: Map<Long, Long>, completedAt: LocalDateTime? = null) {
         val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 2)
-        repeat(2) { progress.recordAnswer() }
+        repeat(2) { progress.recordAnswer(completedAt) }
         quizProgressRepository.save(progress)
         answers.forEach { (quizId, choiceId) ->
             quizAnswerRepository.save(QuizAnswerFixture.create(memberId = memberId, quizId = quizId, choiceId = choiceId))
@@ -135,6 +137,34 @@ class AdminQuizParticipantMatchingTest(
             val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
 
             matching.of(late).missReason shouldBe MatchMissReason.COMPLETED_AFTER_GENERATION
+        }
+
+        "응답 마감 뒤에 완주한 참여자는 시크릿 매칭 대상으로 표시하고 다시 만들기를 권하지 않는다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val responseDeadline = quizSetRepository.findById(quizSetId).get().endDate
+            val early = saveMember("정시")
+            val partner = saveMember("정시짝", gender = Gender.FEMALE)
+            listOf(early, partner).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
+            saveCandidatePair(quizSetId, early, partner, score = 100.0)
+            val late = saveMember("마감뒤", gender = Gender.FEMALE)
+            saveCompleted(late, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L), completedAt = responseDeadline.plusHours(10))
+
+            val matching = adminQuizParticipantService.getParticipants(quizSetId).matching
+
+            matching.of(late).missReason shouldBe MatchMissReason.COMPLETED_AFTER_DEADLINE
+            MatchMissReason.COMPLETED_AFTER_DEADLINE.nextAction.shouldBeNull()
+        }
+
+        "시크릿 매칭 후보만 있으면 정규 매칭 전으로 본다" {
+            val (quizSetId, firstQuizId, secondQuizId) = saveQuizSetWithTwoQuizzes()
+            val a = saveMember("시크릿만A")
+            val b = saveMember("시크릿만B", gender = Gender.FEMALE)
+            listOf(a, b).forEach { saveCompleted(it, quizSetId, mapOf(firstQuizId to 1L, secondQuizId to 1L)) }
+            matchCandidateRepository.save(
+                MatchCandidate.create(a, b, quizSetId, 100.0, 2, 2, candidateOrigin = CandidateOrigin.SECRET_FIRST),
+            )
+
+            adminQuizParticipantService.getParticipants(quizSetId).matching.isGenerated shouldBe false
         }
 
         "풀 안에서 짝 자격이 없으면 성별·나이 미상과 그 밖의 경우를 나눈다" {

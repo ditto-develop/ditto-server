@@ -200,6 +200,7 @@ enum class MatchMissReason(
     MEMBER_DELETED("삭제된 회원", null, MissEmphasis.EXPECTED),
     NOT_GENERATED("매칭 전", "'매칭 수동 실행'에서 다시 만들거나 [정기 매칭 지금 돌리기] 누르기", MissEmphasis.EXPECTED),
     NOT_COMPLETED("퀴즈 미완료", "퀴즈를 끝까지 풀기", MissEmphasis.EXPECTED),
+    COMPLETED_AFTER_DEADLINE("응답 마감 뒤 퀴즈 완료(시크릿 매칭 대상)", null, MissEmphasis.EXPECTED),
     COMPLETED_AFTER_GENERATION(
         "매칭 뒤 퀴즈 완료",
         "'매칭 수동 실행'에서 다시 만들기(그룹은 응답이 시작되면 다시 만들 수 없음)",
