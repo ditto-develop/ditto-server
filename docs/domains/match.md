@@ -10,6 +10,7 @@
 ## 불변식
 - **후보를 담는 곳이 타입마다 다르다.** 1:1은 `match_candidate`(페어 2행), 그룹은 `group_match` + `group_match_member`. 배치 대상 anti-join(`findEndedQuizSetsWithoutCandidates`)도 양쪽을 다 봐야 한다 — 한쪽만 보면 그 타입 퀴즈셋이 매주 재계산된다.
 - 1:1 후보 풀 자격(점수화 전 하드 필터, `isValidPair`): 성별 상호 선호(`QuizProgress.preferredGender`, 기본 `OPPOSITE`)와 나이차 ≤10 — 둘 다 대칭 조건이라 점수화 **전**에 걸러 살아남는 페어가 항상 대칭이게 한다.
+- **정규 매칭 풀은 응답 마감까지 완주한 사람이다**(`QuizProgress.isCompletedOnTime(endDate)`, #377). 마감 뒤에 완주한 사람은 시크릿 매칭 라운드가 맡는다. 배치·NO_MATCH 대상·어드민 재계산이 같은 풀(`MatchmakingService.findPool`)을 쓴다. 완주 시각이 없는 행은 마감 전 완주로 본다.
 - **성별·나이 미상 회원은 풀에서 빼지 않는다.** `MatchParticipant.gender·age`가 nullable 이고, 그 조건을 쓰는 1:1만 자격 미달로 거른다. 그룹은 두 조건을 쓰지 않으므로 미상 회원도 그대로 후보가 된다.
 - 점수: 퀴즈 답변 일치율(`MatchScoreCalculator`).
 - 1:1 선발: 회원마다 자격 페어를 점수 높은 순으로 5개 고르고, 둘 중 한 명이라도 고른 페어는 남긴다(`TopPicksSelector`, [ADR 0040](../adr/0040-one-to-one-top-picks-per-member.md)). 점수로 따로 거르지 않는다. 자격 상대가 있으면 누구나 후보를 받고(자격 상대가 5명 이상이면 최소 5명), 여러 사람이 고른 회원은 5명을 넘게 받는다.
