@@ -83,6 +83,13 @@ class QuizProgress private constructor(
         return completedAt <= deadline
     }
 
+    // 시크릿 매칭 라운드는 라운드 시각 전에 완주한 사람만 넣는다. 완주 시각이 없으면 마감 전 완주라 들어간다.
+    fun isCompletedBefore(time: LocalDateTime): Boolean {
+        if (status != QuizProgressStatus.COMPLETED) return false
+        val completedAt = completedAt ?: return true
+        return completedAt < time
+    }
+
     /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */
     fun selectPreferredGender(preferredGender: GenderPreference) {
         this.preferredGender = preferredGender

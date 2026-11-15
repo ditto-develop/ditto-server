@@ -4,7 +4,9 @@ import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
@@ -32,6 +34,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
@@ -434,6 +437,116 @@ class MatchmakingServiceTest(
                 rooms shouldHaveSize 1
                 rooms.first().id shouldBe activatedRoom.id
                 rooms.first().isActive shouldBe true
+            }
+        }
+
+        "generateSecretRoundCandidates" - {
+            // 2026-11-16(월) 시작 주. 1차 라운드 금 20:00, 2차 라운드 토 20:00.
+            val monday = LocalDate.of(2026, 11, 16)
+            val firstRoundStartsAt = monday.plusDays(4).atTime(20, 0)
+
+            fun saveWeekQuizSetWithTwoQuizzes(): Triple<Long, Long, Long> {
+                val quizSetId = quizSetRepository.save(
+                    QuizSetFixture.create(
+                        startDate = monday.atStartOfDay(),
+                        endDate = monday.plusDays(2).atTime(23, 59, 59),
+                        matchingType = MatchingType.ONE_TO_ONE,
+                    ),
+                ).id
+                val quizId1 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 1)).id
+                val quizId2 = quizRepository.save(QuizFixture.create(quizSetId = quizSetId, displayOrder = 2)).id
+                return Triple(quizSetId, quizId1, quizId2)
+            }
+
+            fun saveCompleted(quizSetId: Long, quizId1: Long, quizId2: Long, memberId: Long, completedAt: LocalDateTime? = null) {
+                saveAnswers(memberId, quizId1 to 1L, quizId2 to 1L)
+                saveCompletedProgress(memberId, quizSetId, total = 2, completedAt = completedAt)
+            }
+
+            fun candidatePairsOf(quizSetId: Long, origin: CandidateOrigin): List<Set<Long>> =
+                matchCandidateRepository.findAll()
+                    .filter { it.quizSetId == quizSetId && it.candidateOrigin == origin }
+                    .map { setOf(it.ownerMemberId, it.otherMemberId) }
+                    .distinct()
+
+            "1차 라운드는 기존 후보를 남기고 아직 후보가 아닌 쌍만 출처를 붙여 더한다" {
+                val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
+                val a = saveMember("시크릿A")
+                val b = saveMember("시크릿B")
+                val c = saveMember("시크릿C")
+                listOf(a, b, c).forEach { saveCompleted(quizSetId, quizId1, quizId2, it) }
+                matchCandidateRepository.saveAll(
+                    listOf(
+                        MatchCandidateFixture.create(ownerMemberId = a, otherMemberId = b, quizSetId = quizSetId),
+                        MatchCandidateFixture.create(ownerMemberId = b, otherMemberId = a, quizSetId = quizSetId),
+                    ),
+                )
+
+                val result = matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_FIRST)
+
+                result.alreadyGenerated shouldBe false
+                result.poolSize shouldBe 3
+                result.savedCount shouldBe 4
+                result.newCandidateOwnerIds shouldBe setOf(a, b, c)
+                candidatePairsOf(quizSetId, CandidateOrigin.REGULAR) shouldContainExactlyInAnyOrder listOf(setOf(a, b))
+                candidatePairsOf(quizSetId, CandidateOrigin.SECRET_FIRST) shouldContainExactlyInAnyOrder
+                    listOf(setOf(a, c), setOf(b, c))
+            }
+
+            "라운드 시각 전에 늦게 완주한 회원은 들고, 라운드 시각부터 완주한 회원은 빠진다" {
+                val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
+                val thursdayFinisher = saveMember("목요일완주")
+                val beforeRoundFinisher = saveMember("금요일1959완주")
+                val atRoundFinisher = saveMember("금요일2000완주")
+                saveCompleted(quizSetId, quizId1, quizId2, thursdayFinisher, monday.plusDays(3).atTime(10, 0))
+                saveCompleted(quizSetId, quizId1, quizId2, beforeRoundFinisher, firstRoundStartsAt.minusSeconds(1))
+                saveCompleted(quizSetId, quizId1, quizId2, atRoundFinisher, firstRoundStartsAt)
+
+                val result = matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_FIRST)
+
+                result.poolSize shouldBe 2
+                candidatePairsOf(quizSetId, CandidateOrigin.SECRET_FIRST) shouldContainExactlyInAnyOrder
+                    listOf(setOf(thursdayFinisher, beforeRoundFinisher))
+            }
+
+            "1:1 성사자는 빠지고, 거절 쌍은 다시 짝짓지 않으며, 대기 신청 쌍은 다시 짝지을 수 있다" {
+                val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
+                val matchedA = saveMember("성사A")
+                val matchedB = saveMember("성사B")
+                val rejecter = saveMember("거절한사람")
+                val rejected = saveMember("거절당한사람")
+                val pendingReceiver = saveMember("대기받은사람")
+                listOf(matchedA, matchedB, rejecter, rejected, pendingReceiver)
+                    .forEach { saveCompleted(quizSetId, quizId1, quizId2, it) }
+                personalMatchRepository.saveAll(
+                    listOf(
+                        PersonalMatchFixture.create(matchedA, matchedB, quizSetId, PersonalMatchStatus.ACCEPTED),
+                        PersonalMatchFixture.create(rejected, rejecter, quizSetId, PersonalMatchStatus.REJECTED),
+                        PersonalMatchFixture.create(rejecter, pendingReceiver, quizSetId, PersonalMatchStatus.PENDING),
+                    ),
+                )
+
+                val result = matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_FIRST)
+
+                result.poolSize shouldBe 3
+                candidatePairsOf(quizSetId, CandidateOrigin.SECRET_FIRST) shouldContainExactlyInAnyOrder
+                    listOf(setOf(rejecter, pendingReceiver), setOf(rejected, pendingReceiver))
+            }
+
+            "같은 라운드를 다시 돌리면 건너뛰고, 2차 라운드는 1차 후보 쌍을 다시 뽑지 않는다" {
+                val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
+                val a = saveMember("재실행A")
+                val b = saveMember("재실행B")
+                listOf(a, b).forEach { saveCompleted(quizSetId, quizId1, quizId2, it) }
+                matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_FIRST)
+
+                val rerun = matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_FIRST)
+                val secondRound = matchmakingService.generateSecretRoundCandidates(quizSetId, CandidateOrigin.SECRET_SECOND)
+
+                rerun.alreadyGenerated shouldBe true
+                secondRound.alreadyGenerated shouldBe false
+                secondRound.savedCount shouldBe 0
+                matchCandidateRepository.countByQuizSetId(quizSetId) shouldBe 2
             }
         }
     },

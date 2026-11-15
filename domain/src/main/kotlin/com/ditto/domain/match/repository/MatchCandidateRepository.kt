@@ -1,5 +1,6 @@
 package com.ditto.domain.match.repository
 
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.MatchCandidate
 import com.ditto.domain.match.repository.querydsl.MatchCandidateRepositoryCustom
 import org.springframework.data.jpa.repository.JpaRepository
@@ -14,6 +15,8 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
     fun findByOwnerMemberIdAndQuizSetId(ownerMemberId: Long, quizSetId: Long): List<MatchCandidate>
 
     fun existsByQuizSetId(quizSetId: Long): Boolean
+
+    fun existsByQuizSetIdAndCandidateOrigin(quizSetId: Long, candidateOrigin: CandidateOrigin): Boolean
 
     /** 후보는 퀴즈셋마다 한 번에 만들어져, 첫 후보의 생성 시각이 그 셋의 매칭 시각이다. */
     fun findFirstByQuizSetIdOrderByIdAsc(quizSetId: Long): MatchCandidate?
