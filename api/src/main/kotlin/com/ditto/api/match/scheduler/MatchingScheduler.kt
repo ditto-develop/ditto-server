@@ -34,4 +34,16 @@ class MatchingScheduler(
         val quizSetIds = matchingBatchFacade.runScheduledMatching(LocalDateTime.now())
         matchResultNotifier.notifyFor(quizSetIds)
     }
+
+    // 라운드는 금·토 20:00. 목요일 배치처럼 직전 답안이 커밋될 1분을 두고, 배포·실패에 대비해 같은 밤 두 번 더 돈다.
+    @Scheduled(cron = "\${matching.secret-round.cron:0 1 20-22 * * FRI,SAT}")
+    @SchedulerLock(
+        name = "secret-matching",
+        lockAtMostFor = SchedulerLockDurations.WEEKLY_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
+    fun generateSecretRound() {
+        val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
+        matchResultNotifier.notifyFor(result.regularQuizSetIds)
+    }
 }

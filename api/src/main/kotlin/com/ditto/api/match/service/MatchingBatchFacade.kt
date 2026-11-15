@@ -1,8 +1,13 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.match.SecretMatchingSchedule
 import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.api.system.featureflag.FeatureFlags
+import com.ditto.domain.match.entity.CandidateOrigin
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -22,6 +27,7 @@ class MatchingBatchFacade(
     private val quizSetRepository: QuizSetRepository,
     private val matchmakingService: MatchmakingService,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val featureFlags: FeatureFlags,
 ) {
 
     /**
@@ -41,6 +47,29 @@ class MatchingBatchFacade(
             .findEndedQuizSetsWithoutCandidates(now.minusDays(RETRY_WINDOW_DAYS), now)
             .mapNotNull { quizSet -> generatedQuizSetIdOrNull(quizSet.id) }
     }
+
+    /**
+     * [now]에 시각이 지난 시크릿 매칭 라운드를 그 주 활성 1:1 셋마다 돌린다. 같은 라운드가 이미 돈 셋은 건너뛰어서
+     * 같은 밤 재시도가 안전하다. 셋마다 자기 트랜잭션이고, 실패한 셋은 경고 로그만 남긴다.
+     *
+     * 라운드가 후보를 넣으면 정규 배치(후보가 없는 셋만 집는다)가 그 셋을 다시 못 집는다. 그래서 목요일 정규 배치가
+     * 놓친 셋을 먼저 메운다. 평소에는 할 일이 없다.
+     */
+    fun runSecretRound(now: LocalDateTime): SecretRoundBatchResult {
+        if (!featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)) return SecretRoundBatchResult.NOTHING_DUE
+        val (week, round) = SecretMatchingSchedule.dueRoundAt(now) ?: return SecretRoundBatchResult.NOTHING_DUE
+
+        val regularQuizSetIds = runScheduledMatching(now)
+        val roundResults = quizSetRepository.findByWeekStartedOn(week.startedOn)
+            .filter { it.isActive && it.matchingType == MatchingType.ONE_TO_ONE }
+            .mapNotNull { secretRoundResultOrNull(it.id, round) }
+        return SecretRoundBatchResult(regularQuizSetIds, roundResults)
+    }
+
+    private fun secretRoundResultOrNull(quizSetId: Long, round: CandidateOrigin): SecretRoundResult? =
+        runCatchingExceptions { matchmakingService.generateSecretRoundCandidates(quizSetId, round) }
+            .onFailure { logger.warn(it) { "시크릿 매칭 실패 — 이 퀴즈셋만 건너뛰고 계속한다: quizSetId=$quizSetId round=$round" } }
+            .getOrNull()
 
     /** 후보를 생성하고 그 퀴즈셋 ID를 돌려준다. 실패하면 경고 로그만 남기고 null. */
     private fun generatedQuizSetIdOrNull(quizSetId: Long): Long? =

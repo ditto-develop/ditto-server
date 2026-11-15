@@ -21,6 +21,16 @@ object SecretMatchingSchedule {
         return week.startedOn.with(TemporalAdjusters.nextOrSame(roundDay)).atTime(ROUND_TIME)
     }
 
+    /** [now]가 속한 주에서 시각이 지난 가장 늦은 라운드. 1차 라운드 전이면 null 이다. */
+    fun dueRoundAt(now: LocalDateTime): Pair<OperationWeek, CandidateOrigin>? {
+        val week = OperationWeek.containing(now.toLocalDate())
+        val dueRound = ROUND_DAYS.keys
+            .filter { roundStartsAt(it, week) <= now }
+            .maxByOrNull { roundStartsAt(it, week) }
+            ?: return null
+        return week to dueRound
+    }
+
     fun lateSubmissionClosesAt(week: OperationWeek): LocalDateTime =
         roundStartsAt(CandidateOrigin.SECRET_SECOND, week)
 }

@@ -20,6 +20,14 @@ class SecretMatchingScheduleTest : FreeSpec({
         SecretMatchingSchedule.lateSubmissionClosesAt(week) shouldBe LocalDateTime.of(2026, 11, 21, 20, 0)
     }
 
+    "지금 돌릴 라운드는 시각이 지난 가장 늦은 라운드다" {
+        SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 20, 19, 59)) shouldBe null
+        SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 20, 20, 1)) shouldBe (week to CandidateOrigin.SECRET_FIRST)
+        SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 21, 20, 1)) shouldBe (week to CandidateOrigin.SECRET_SECOND)
+        SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 22, 23, 59)) shouldBe (week to CandidateOrigin.SECRET_SECOND)
+        SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 23, 20, 1)) shouldBe null
+    }
+
     "정규 매칭은 라운드 시각이 없다" {
         shouldThrow<IllegalArgumentException> { SecretMatchingSchedule.roundStartsAt(CandidateOrigin.REGULAR, week) }
     }
