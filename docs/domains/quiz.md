@@ -10,7 +10,7 @@
 ## 불변식
 - 1차 제재(경고) 차단 구간에는 답안 제출·진행 초기화 불가 (`QUIZ_BLOCKED_BY_SANCTION`) — 구간은 `sanction`(WARNING·ACTIVE)의 starts/ends datetime, 판정 시각은 컨트롤러가 주입하는 `ServerTimeProvider.now()`. 배경: `docs/domains/sanction.md`.
 - `QuizSet.weekStartedOn`(주간 식별자)은 항상 `startDate`가 속한 주의 월요일로 파생된다 — `create()`뿐 아니라 `update()`로 `startDate`가 다른 주로 바뀌면 함께 재파생된다. DB 유일 제약은 없지만 **활성 셋은 주차·타입당 하나**로 서비스가 강제한다(아래). `year/month/week`는 저장하지 않고 `OperationWeek` 파생 표시값으로만 제공. 배경: [ADR 0010](../adr/0010-week-identifier-week-started-on.md).
-- 어드민은 퀴즈셋 기간을 직접 입력하지 않는다. 주차(그 주 월요일, `QuizSetForm.weekStartedOn`)만 고르면 `QuizResponsePeriod`가 **월요일 00:00:00 ~ 수요일 23:59:59**로 기간을 만든다 — 목 00:01 매칭 배치(`endDate < now`)·금 채팅 개시 흐름에 맞춘 값이고, 일시 자유 입력 시절의 실수(한 주 이탈·요일 어긋남)를 없애기 위해서다. 종료를 `LocalTime.MAX`로 두지 않는 이유: DATETIME(6) 저장 시 반올림돼 목요일 00:00이 될 수 있다. 자유 입력 시절에 만든 셋도 수정 저장하면 같은 규칙으로 기간이 다시 쓰인다. 엔티티(`QuizSet.create`)는 여전히 임의 기간을 받는다 — 테스트 픽스처가 조회 로직 검증에 임의 기간을 쓴다. 화면은 flatpickr 달력에서 월요일만 활성화하고, 스크립트가 없으면 date 입력 + 월요일 스냅으로 내려간다(`quiz-week-picker.js`).
+- 어드민은 퀴즈셋 기간을 직접 입력하지 않는다. 주차(그 주 월요일, `QuizSetForm.weekStartedOn`)만 고르면 `QuizResponsePeriod`가 **월요일 00:00:00 ~ 수요일 23:59:59**로 기간을 만든다 — 목 00:01 매칭 배치(`endDate < now`)·금 채팅 개시 흐름에 맞춘 값이고, 일시 자유 입력 시절의 실수(한 주 이탈·요일 어긋남)를 없애기 위해서다. 종료를 `LocalTime.MAX`로 두지 않는 이유: DATETIME(6) 저장 시 반올림돼 목요일 00:00이 될 수 있다. 자유 입력 시절에 만든 셋도 수정 저장하면 같은 규칙으로 기간이 다시 쓰인다. 답이 있는 셋의 주차를 앞으로 옮기면 완주 시각이 마감 뒤가 된 회원이 정규 매칭 풀과 마감 통계에서 빠진다(완주 시각이 없는 행은 남는다). 엔티티(`QuizSet.create`)는 여전히 임의 기간을 받는다 — 테스트 픽스처가 조회 로직 검증에 임의 기간을 쓴다. 화면은 flatpickr 달력에서 월요일만 활성화하고, 스크립트가 없으면 date 입력 + 월요일 스냅으로 내려간다(`quiz-week-picker.js`).
 - 두 회원의 답변 일치 비교(프로필의 "나와 같은 답")는 **둘 다 완주(COMPLETED)한 가장 최근 퀴즈셋**을 기준으로 한다 — 완주해야 문항 수가 같아 비교가 성립한다. 조회는 `QuizProgressRepository.findLatestQuizSetIdCompletedByBoth`, 수치는 매칭과 같은 `MatchScoreCalculator`를 쓴다. 상대의 선택지는 노출하지 않는다: [ADR 0020](../adr/0020-peer-profile-answer-match-summary.md).
 - 매칭이 기준으로 삼는 퀴즈셋은 `findCompletedQuizSetInWeek(memberId, matchingType, weekStartedOn)` — **회원이 그 운영 주에 완주한 해당 타입의 활성 셋**이다. 주차 없이 "가장 최근 완주"를 찾으면 지난 사이클 후보가 계속 노출된다([ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)).
 - **활성 셋은 주차·타입당 하나다.** 생성·수정·활성화 세 경로가 모두 `AdminQuizService.validateNoOtherActiveInWeek`를 타고, 이미 활성인 셋이 있으면 거부한다 — 기존 셋을 자동으로 끄지 않는 이유는 운영 중인 셋이 말없이 닫히면 안 되기 때문이다. 타입까지 범위에 넣는 것은 한 주에 1:1용과 그룹용을 나란히 여는 것이 정상 운영이라서다(`findCurrentWeekActive`가 여러 셋을 돌려준다).
@@ -34,8 +34,8 @@
 ## 퀴즈 기록·통계 (IMP-1)
 - **"참여" = 그 셋을 끝까지 제출(COMPLETED)한 것이다.** 중간에 멈춘 셋은 기록·통계 모두에서 빠진다.
 - **결과 공개 시각 = 응답 마감 뒤 첫 자정**(`QuizResultSchedule`, 지금 규칙이면 목 00:00). 그 전에는 비율·소수 의견·겹친 사람을 응답에 싣지 않는다(키 자체가 없다) — 화면이 안 그리는 것만으로는 값이 실려 나가 미리 볼 수 있다. 판단은 서버 시각이다.
-- **마감 스냅샷**(`quiz_set_stat`·`quiz_choice_stat`·`quiz_member_stat`)이 공개 뒤 숫자의 원본이다. 목 00:00 배치(`QuizStatSnapshotScheduler`, 매칭 00:01 보다 앞)가 만들고, 배치가 놓쳤으면 조회하는 쪽이 그 자리에서 만든다. 셋당 1회, 동시 생성은 머리 행 유니크가 막고 진 쪽은 다시 읽는다. 마감 뒤 답은 바뀌지 않으므로 다시 계산하지 않는다.
-  - 모집단은 마감 시점 완주자 전원이다. 어드민도 실제로 퀴즈·매칭에 참여한다. 빼면 진행 중(홈) 참여자 수와 공개 뒤 숫자가 어긋나고, 어드민 기록의 겹친 사람이 늘 0이 된다(#367). #367 전에 만든 스냅샷은 어드민이 빠져 있어 [통계 스냅샷 다시 만들기]로 다시 만든다.
+- **마감 스냅샷**(`quiz_set_stat`·`quiz_choice_stat`·`quiz_member_stat`)이 공개 뒤 숫자의 원본이다. 목 00:00 배치(`QuizStatSnapshotScheduler`, 매칭 00:01 보다 앞)가 만들고, 배치가 놓쳤으면 조회하는 쪽이 그 자리에서 만든다. 셋당 1회, 동시 생성은 머리 행 유니크가 막고 진 쪽은 다시 읽는다. 한 번 만들면 다시 계산하지 않는다.
+  - 모집단은 마감까지 완주한 사람 전원이다(`QuizProgress.isCompletedOnTime(endDate)`). 마감 뒤에 완주한 사람(시크릿 매칭)은 빠지므로, 늦게 만들거나 다시 만들어도 숫자가 같다. 어드민도 실제로 퀴즈·매칭에 참여한다. 빼면 진행 중(홈) 참여자 수와 공개 뒤 숫자가 어긋나고, 어드민 기록의 겹친 사람이 늘 0이 된다(#367). #367 전에 만든 스냅샷은 어드민이 빠져 있어 [통계 스냅샷 다시 만들기]로 다시 만든다.
   - 비율은 정수 %, 문항 안 합 100 이 되도록 최대 잉여법으로 보정해 **저장한다**. 화면마다 다시 계산하면 반올림이 갈린다.
   - **소수 의견** = `선택 수 × 5 ≤ 참여자 수`. 참여자 수 하한은 없다(#367, 그룹 셋이 한 주 8~14명이라 하한이 있으면 늘 0개였다). 참여자가 5명 미만이면 아무도 고르지 않은 선택지만 해당돼 회원의 소수 의견은 0개다. 반올림한 %가 아니라 실제 수로 판정한다(19.6%와 20.4%가 같은 20이 되지 않게).
   - **겹친 사람** = 같은 셋 완주자 중 본인 제외, 같은 답이 `ceil(문항 수 × 2/3)`개 이상인 사람 수(12문항 8개). 기준은 스냅샷 시점 문항 수로 고정해 저장한다.
@@ -47,7 +47,10 @@
 
 ## 상태 전이
 - 상태 enum: `quiz/entity/QuizProgressStatus`.
-- TODO: 진행 상태 전이를 서비스 로직 확인 후 명시.
+- 답을 낼 때마다 `answeredCount`가 늘고, 문항 수에 닿으면 `COMPLETED`, 그 전에는 `IN_PROGRESS`다(`QuizProgress.recordAnswer`).
+- **완주 시각** `completed_at`은 `COMPLETED`로 넘어가는 답의 서버 시각(오버라이드 포함)이다. `BaseEntity.updatedAt`은 실제 시계라 오버라이드 QA 에 못 써서 따로 둔다. 컬럼 추가 전에 완주한 행과 어드민 더미는 null 이고, null 은 마감 전에 완주한 것으로 읽는다(백필하지 않음, #377).
+- "마감까지 완주했나"는 `isCompletedOnTime(endDate)` 하나로 판단한다. 정규 매칭 풀과 마감 통계 스냅샷이 이 기준을 쓴다.
+- 마감 뒤에 완주한 회원은 **시크릿 매칭**(IMP-2, 금·토 20:00 에 도는 1:1 추가 라운드)이 맡는다. 라운드는 아직 없고 IMP-2 후속 작업에서 붙는다.
 
 ## 핵심 파일
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/quiz/entity/`

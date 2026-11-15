@@ -64,7 +64,7 @@ class QuizProgressService(
         }
 
         quizAnswerRepository.save(QuizAnswer.create(memberId, request.quizId, request.choiceId))
-        updateProgress(memberId, quiz.quizSetId)
+        updateProgress(memberId, quiz.quizSetId, now)
     }
 
     @Transactional(readOnly = true)
@@ -259,17 +259,18 @@ class QuizProgressService(
     private fun updateProgress(
         memberId: Long,
         quizSetId: Long,
+        answeredAt: LocalDateTime,
     ) {
         val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)
         if (progress != null) {
-            progress.recordAnswer()
+            progress.recordAnswer(answeredAt)
             return
         }
 
         val totalCount = quizRepository.countByQuizSetId(quizSetId).toInt()
         val newProgress = QuizProgress.create(memberId, quizSetId, totalCount)
 
-        newProgress.recordAnswer()
+        newProgress.recordAnswer(answeredAt)
         quizProgressRepository.save(newProgress)
     }
 

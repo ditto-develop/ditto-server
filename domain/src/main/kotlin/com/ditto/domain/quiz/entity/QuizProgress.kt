@@ -13,6 +13,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
+import java.time.LocalDateTime
 
 @Entity
 @Table(
@@ -60,13 +61,26 @@ class QuizProgress private constructor(
     var preferredGender: GenderPreference = preferredGender
         protected set
 
-    fun recordAnswer() {
+    @Comment("완주 시각 (서버 시각)")
+    @Column(name = "completed_at")
+    var completedAt: LocalDateTime? = null
+        protected set
+
+    fun recordAnswer(answeredAt: LocalDateTime? = null) {
         answeredCount++
         if (answeredCount >= totalCount) {
             status = QuizProgressStatus.COMPLETED
+            completedAt = answeredAt
             return
         }
         status = QuizProgressStatus.IN_PROGRESS
+    }
+
+    // 컬럼 추가 전에 완주한 행과 더미는 완주 시각이 없다. 마감 전에 완주한 것으로 본다.
+    fun isCompletedOnTime(deadline: LocalDateTime): Boolean {
+        if (status != QuizProgressStatus.COMPLETED) return false
+        val completedAt = completedAt ?: return true
+        return completedAt <= deadline
     }
 
     /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */

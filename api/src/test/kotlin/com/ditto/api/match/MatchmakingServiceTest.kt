@@ -32,6 +32,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class MatchmakingServiceTest(
@@ -86,9 +87,10 @@ class MatchmakingServiceTest(
             quizSetId: Long,
             total: Int,
             preferredGender: GenderPreference = GenderPreference.ANY,
+            completedAt: LocalDateTime? = null,
         ) {
             val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = total)
-            repeat(total) { progress.recordAnswer() } // COMPLETED 로 만든다
+            repeat(total) { progress.recordAnswer(completedAt) } // COMPLETED 로 만든다
             progress.selectPreferredGender(preferredGender)
             quizProgressRepository.save(progress)
         }
@@ -124,6 +126,24 @@ class MatchmakingServiceTest(
                     .first { it.otherMemberId == b }
                 abCandidate.matchedQuestionCount shouldBe 2
                 abCandidate.totalQuestionCount shouldBe 2
+            }
+
+            "마감 뒤 완주자는 풀에서 빠지고 마감 시각 완주자와 완주 시각 미기록자는 남는다" {
+                val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
+                val endDate = quizSetRepository.findById(quizSetId).get().endDate
+                val onTime = saveMember("정시완주")
+                val withoutCompletedAt = saveMember("시각미기록")
+                val late = saveMember("늦은완주")
+                listOf(onTime, withoutCompletedAt, late).forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                saveCompletedProgress(onTime, quizSetId, total = 2, completedAt = endDate)
+                saveCompletedProgress(withoutCompletedAt, quizSetId, total = 2)
+                saveCompletedProgress(late, quizSetId, total = 2, completedAt = endDate.plusSeconds(1))
+
+                val summary = matchmakingService.generateMatchingCandidates(quizSetId)
+
+                summary.participantCount shouldBe 2
+                summary.matches.map { it.memberIds } shouldContainExactlyInAnyOrder listOf(setOf(onTime, withoutCompletedAt))
+                matchmakingService.matchingPoolMemberIds(quizSetId) shouldBe setOf(onTime, withoutCompletedAt)
             }
 
             "차단 관계인 두 사람은 후보 페어가 되지 않는다" {

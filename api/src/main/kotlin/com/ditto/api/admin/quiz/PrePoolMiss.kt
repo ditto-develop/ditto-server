@@ -15,7 +15,7 @@ object PrePoolMiss {
         else -> null
     }
 
-    // 완주 뒤에는 진행 기록이 바뀌지 않아 수정 시각이 곧 완주 시각이다.
+    // 완주 뒤에는 진행 기록이 바뀌지 않아 수정 시각(updatedAt)이 곧 완주한 실제 시각이다.
     fun isCompletedAfter(progress: QuizProgress, generatedAt: LocalDateTime?): Boolean =
         generatedAt != null && progress.updatedAt.isAfter(generatedAt)
 }

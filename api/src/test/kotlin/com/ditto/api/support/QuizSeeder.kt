@@ -48,15 +48,15 @@ class QuizSeeder(
                 quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "Q$order-$c", displayOrder = c)).id
             }
         }
-        return SeededQuizSet(set.id, quizzes.map { it.first }, quizzes.map { it.second })
+        return SeededQuizSet(set.id, set.endDate, quizzes.map { it.first }, quizzes.map { it.second })
     }
 
     /** [picks]는 문항마다 고른 선택지 번호(1·2). 모두 답하면 완주(COMPLETED)다. */
-    fun answer(memberId: Long, set: SeededQuizSet, picks: List<Int>) {
+    fun answer(memberId: Long, set: SeededQuizSet, picks: List<Int>, answeredAt: LocalDateTime? = null) {
         val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = set.quizSetId, totalCount = set.quizIds.size)
         picks.forEachIndexed { i, pick ->
             quizAnswerRepository.save(QuizAnswerFixture.create(memberId = memberId, quizId = set.quizIds[i], choiceId = set.choiceIds[i][pick - 1]))
-            progress.recordAnswer()
+            progress.recordAnswer(answeredAt)
         }
         quizProgressRepository.save(progress)
     }
@@ -72,6 +72,7 @@ class QuizSeeder(
 
 data class SeededQuizSet(
     val quizSetId: Long,
+    val responseDeadline: LocalDateTime,
     val quizIds: List<Long>,
     /** 문항마다 선택지 1·2 의 ID */
     val choiceIds: List<List<Long>>,
