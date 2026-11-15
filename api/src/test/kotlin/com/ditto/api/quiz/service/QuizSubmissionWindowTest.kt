@@ -56,7 +56,9 @@ class QuizSubmissionWindowTest : FreeSpec({
         "그룹 셋은 마감 뒤에 늦은 응시를 받지 않는다" {
             windowAt(monday.plusDays(3).atStartOfDay(), MatchingType.GROUP) shouldBe QuizSubmissionWindow.OUTSIDE
         }
+    }
 
+    "비활성 셋" - {
         "비활성 셋은 응답 기간에도 응시 기간이 아니다" {
             QuizSubmissionWindow.of(
                 quizSet(isActive = false),

@@ -533,15 +533,17 @@ class QuizProgressServiceTest(
     }
 
     "시크릿 매칭 늦은 응시" - {
-        // 2026-11-16(월) 시작 주. 응답 마감 수 23:59:59, 그룹 응답 마감 금 00:00, 늦은 응시 마감 토 20:00.
+        // 2026-11-16(월) 시작 주. 응답 마감 수 23:59:59, 늦은 응시 마감 토 20:00. 플래그는 켜지 않으면 꺼져 있다.
         val monday = LocalDate.of(2026, 11, 16)
         val responseDeadline = monday.plusDays(2).atTime(23, 59, 59)
         val thursday = monday.plusDays(3).atTime(10, 0)
-        val friday = monday.plusDays(4).atTime(10, 0)
         val saturdayRound = monday.plusDays(5).atTime(20, 0)
 
         fun enableSecretMatching() =
             featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+
+        fun disableSecretMatching() =
+            featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = false, adminMemberId = 1L)
 
         fun setupWeekQuizSet(matchingType: MatchingType, quizCount: Int = 1): Pair<Long, List<QuizWithChoice>> {
             val quizSet = quizSetRepository.save(
@@ -564,13 +566,7 @@ class QuizProgressServiceTest(
         fun submitAt(memberId: Long, quizWithChoice: QuizWithChoice, at: LocalDateTime) =
             quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizWithChoice.quizId, quizWithChoice.choiceId), at)
 
-        fun completeGroupQuiz(memberId: Long): Long {
-            val (groupQuizSetId, groupQuizzes) = setupWeekQuizSet(MatchingType.GROUP)
-            submitAt(memberId, groupQuizzes[0], monday.atTime(10, 0))
-            return groupQuizSetId
-        }
-
-        "켜져 있으면 응답 마감 뒤 목요일에 1:1 을 완주하고 그 시각이 완주 시각으로 남는다" {
+        "켜져 있으면 응답 마감 뒤 목요일에 1:1 을 완주할 수 있고, 마감 전 완주로 치지 않는다" {
             enableSecretMatching()
             val memberId = setupMember()
             val (quizSetId, quizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
@@ -599,6 +595,7 @@ class QuizProgressServiceTest(
         }
 
         "꺼져 있으면 목요일 제출은 지금처럼 참여 불가 요일이다" {
+            disableSecretMatching()
             val memberId = setupMember()
             val (_, quizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
 
@@ -625,7 +622,20 @@ class QuizProgressServiceTest(
             quizProgressService.getQuizSetWithProgress(memberId, quizSetId, thursday).totalCount shouldBe 1
         }
 
+        "켜져 있어도 토 20:00 부터는 문항 조회를 4007 로 거절한다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val (quizSetId, _) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<WarnException> {
+                quizProgressService.getQuizSetWithProgress(memberId, quizSetId, saturdayRound)
+            }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_SECRET_MATCHING_CLOSED
+        }
+
         "꺼져 있으면 목요일 문항 조회는 지금처럼 활성 셋이 아니다" {
+            disableSecretMatching()
             val memberId = setupMember()
             val (quizSetId, _) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
 
@@ -636,7 +646,39 @@ class QuizProgressServiceTest(
             exception.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ACTIVE_SET
         }
 
-        "그룹을 완주했지만 성사되지 않았으면 금요일부터 1:1 을 풀 수 있고 그룹 답은 남는다" {
+    }
+
+    "시크릿 매칭 그룹 완주자 1:1 예외" - {
+        val monday = LocalDate.of(2026, 11, 16)
+        val thursday = monday.plusDays(3).atTime(10, 0)
+        val friday = monday.plusDays(4).atTime(10, 0)
+
+        fun enableSecretMatching() =
+            featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+
+        fun setupWeekQuizSet(matchingType: MatchingType): Pair<Long, List<QuizWithChoice>> {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = monday.atStartOfDay(),
+                    endDate = monday.plusDays(2).atTime(23, 59, 59),
+                    matchingType = matchingType,
+                ),
+            )
+            val quiz = quizRepository.save(QuizFixture.create(quizSetId = quizSet.id))
+            val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+            return quizSet.id to listOf(QuizWithChoice(quizId = quiz.id, choiceId = choice.id))
+        }
+
+        fun submitAt(memberId: Long, quizWithChoice: QuizWithChoice, at: LocalDateTime) =
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizWithChoice.quizId, quizWithChoice.choiceId), at)
+
+        fun completeGroupQuiz(memberId: Long): Long {
+            val (groupQuizSetId, groupQuizzes) = setupWeekQuizSet(MatchingType.GROUP)
+            submitAt(memberId, groupQuizzes[0], monday.atTime(10, 0))
+            return groupQuizSetId
+        }
+
+        "그룹을 완주했지만 성사된 그룹에 수락하지 않았으면 금요일부터 1:1 을 풀 수 있고 그룹 답은 남는다" {
             enableSecretMatching()
             val memberId = setupMember()
             val groupQuizSetId = completeGroupQuiz(memberId)

@@ -7,15 +7,16 @@ import java.time.LocalDateTime
 
 /** 퀴즈셋에 지금 답을 낼 수 있는 구간. */
 enum class QuizSubmissionWindow {
-    /** 월~수 정규 응답 기간 */
+    /** 셋의 응답 기간(startDate~endDate) */
     REGULAR,
 
     /** 응답 마감 뒤 토 20:00 전. 시크릿 매칭이 켜져 있을 때 활성 1:1 셋만 */
     LATE,
 
-    /** 토 20:00 부터 그 주 일요일까지. 늦은 응시가 마감됐다 */
+    /** 토 20:00 부터 그 주 일요일까지. 4007 로 거절한다 */
     LATE_CLOSED,
 
+    /** 시작 전, 비활성 셋, 늦은 응시가 없는 셋의 마감 뒤, 다음 주 */
     OUTSIDE,
     ;
 
@@ -27,7 +28,7 @@ enum class QuizSubmissionWindow {
 
             val week = quizSet.operationWeek
             if (now < SecretMatchingSchedule.lateSubmissionClosesAt(week)) return LATE
-            if (now < week.startedOn.plusWeeks(1).atStartOfDay()) return LATE_CLOSED
+            if (now in week.dateTimeRange) return LATE_CLOSED
             return OUTSIDE
         }
     }

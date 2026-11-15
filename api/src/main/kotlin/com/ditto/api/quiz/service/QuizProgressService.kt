@@ -50,12 +50,15 @@ class QuizProgressService(
         request: SubmitAnswerRequest,
         now: LocalDateTime,
     ) {
-        val (quiz, quizSet) = requireSubmittableQuiz(memberId, request.quizId, now)
+        val submission = AnswerSubmission(memberId, now, featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING))
+        val (quiz, quizSet) = requireSubmittableQuiz(submission, request.quizId)
 
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
         val otherTypeProgresses = findOtherTypeProgressesOfWeek(memberId, quizSet)
-        validateNoOtherTypeCompleted(memberId, quizSet, otherTypeProgresses, now)
+        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
+            validateGroupFinisherCanTakeOneToOne(submission, quizSet)
+        }
         discardUnfinishedProgresses(memberId, otherTypeProgresses)
 
         val existingQuizAnswer = quizAnswerRepository.findByMemberIdAndQuizId(memberId, request.quizId)
@@ -131,10 +134,7 @@ class QuizProgressService(
         quizSetId: Long,
         now: LocalDateTime,
     ): QuizSetWithProgressResponse {
-        val quizSet = findQuizSet(quizSetId)
-        if (submissionWindowOf(quizSet, now) != QuizSubmissionWindow.LATE) {
-            validateActiveQuizSet(quizSet, now)
-        }
+        validateViewableQuizSet(findQuizSet(quizSetId), now)
 
         val quizzes = quizRepository.findByQuizSetIdInOrderByDisplayOrderAsc(listOf(quizSetId))
         val quizIds = quizzes.map { it.id }
@@ -177,13 +177,9 @@ class QuizProgressService(
     }
 
     // 플래그가 꺼져 있으면 기존 검사 순서(요일 → 제재 → 문항 → 기간)를 그대로 지킨다.
-    // 켜져 있으면 늦은 응시인지 알아야 해서 문항과 셋을 먼저 읽는다.
-    private fun requireSubmittableQuiz(
-        memberId: Long,
-        quizId: Long,
-        now: LocalDateTime,
-    ): Pair<Quiz, QuizSet> {
-        if (!isSecretMatchingEnabled()) {
+    private fun requireSubmittableQuiz(submission: AnswerSubmission, quizId: Long): Pair<Quiz, QuizSet> {
+        val (memberId, now) = submission
+        if (!submission.secretMatchingEnabled) {
             validateAvailableDay(now)
             validateNotQuizBlocked(memberId, now)
             val quiz = findQuiz(quizId)
@@ -200,9 +196,10 @@ class QuizProgressService(
     }
 
     private fun validateSubmissionWindow(quizSet: QuizSet, now: LocalDateTime) {
-        when (submissionWindowOf(quizSet, now)) {
+        when (QuizSubmissionWindow.of(quizSet, now, lateSubmissionEnabled = true)) {
             QuizSubmissionWindow.LATE -> return
             QuizSubmissionWindow.LATE_CLOSED -> throw WarnException(ErrorCode.QUIZ_SECRET_MATCHING_CLOSED)
+            // 기간 밖이면 기존과 같은 오류 코드가 나가도록 기존 검사를 그대로 탄다.
             QuizSubmissionWindow.REGULAR, QuizSubmissionWindow.OUTSIDE -> {
                 validateAvailableDay(now)
                 validateActiveQuizSet(quizSet, now)
@@ -210,10 +207,14 @@ class QuizProgressService(
         }
     }
 
-    private fun submissionWindowOf(quizSet: QuizSet, now: LocalDateTime): QuizSubmissionWindow =
-        QuizSubmissionWindow.of(quizSet, now, lateSubmissionEnabled = isSecretMatchingEnabled())
-
-    private fun isSecretMatchingEnabled(): Boolean = featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)
+    private fun validateViewableQuizSet(quizSet: QuizSet, now: LocalDateTime) {
+        val lateSubmissionEnabled = featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)
+        when (QuizSubmissionWindow.of(quizSet, now, lateSubmissionEnabled)) {
+            QuizSubmissionWindow.LATE -> return
+            QuizSubmissionWindow.LATE_CLOSED -> throw WarnException(ErrorCode.QUIZ_SECRET_MATCHING_CLOSED)
+            QuizSubmissionWindow.REGULAR, QuizSubmissionWindow.OUTSIDE -> validateActiveQuizSet(quizSet, now)
+        }
+    }
 
     private fun findQuiz(quizId: Long): Quiz =
         quizRepository
@@ -261,7 +262,7 @@ class QuizProgressService(
     }
 
     // 주차·유형당 활성 셋이 하나라, 같은 주의 다른 활성 셋은 곧 다른 유형이다.
-    // 늦은 응시(목~토)에도 찾아야 해서 응답 기간이 아니라 제출한 셋의 주차로 찾는다.
+    // 늦은 응시 때도 찾아야 해서 응답 기간이 아니라 제출한 셋의 주차로 찾는다.
     private fun findOtherTypeProgressesOfWeek(
         memberId: Long,
         quizSet: QuizSet,
@@ -274,27 +275,21 @@ class QuizProgressService(
         return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
     }
 
-    private fun validateNoOtherTypeCompleted(
-        memberId: Long,
-        quizSet: QuizSet,
-        otherTypeProgresses: List<QuizProgress>,
-        now: LocalDateTime,
-    ) {
-        if (otherTypeProgresses.none { it.status == QuizProgressStatus.COMPLETED }) return
-        if (isOneToOneAfterUnformedGroup(memberId, quizSet, now)) return
-        throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
-    }
-
-    // 그룹을 완주했어도 그룹이 성사되지 않았으면 그룹 응답 마감(금 00:00)부터 1:1 을 풀 수 있다(시크릿 매칭).
-    private fun isOneToOneAfterUnformedGroup(memberId: Long, quizSet: QuizSet, now: LocalDateTime): Boolean {
-        if (!isSecretMatchingEnabled()) return false
-        if (quizSet.matchingType != MatchingType.ONE_TO_ONE) return false
-        if (!GroupResponseDeadline.hasPassed(quizSet.operationWeek, now)) return false
-        return !groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(memberId, quizSet.weekStartedOn)
+    // 그룹을 완주했어도 성사된 그룹에 수락하지 않았으면 그룹 응답 마감 뒤에는 1:1 을 풀 수 있다.
+    private fun validateGroupFinisherCanTakeOneToOne(submission: AnswerSubmission, quizSet: QuizSet) {
+        val (memberId, now) = submission
+        val canTakeOneToOne = submission.secretMatchingEnabled &&
+            quizSet.matchingType == MatchingType.ONE_TO_ONE &&
+            GroupResponseDeadline.hasPassed(quizSet.operationWeek, now) &&
+            !groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(memberId, quizSet.weekStartedOn)
+        if (!canTakeOneToOne) {
+            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
+        }
+        log.info { "그룹 완주자 1:1 응시 허용: memberId=$memberId quizSetId=${quizSet.id} week=${quizSet.weekStartedOn}" }
     }
 
     // 한 주에는 한 유형만 푼다. 다른 유형을 풀다 말았으면 그 답을 지우고 이 유형으로 갈아탄다.
-    // 완주한 진행은 그룹 미성사 예외로 1:1 을 풀 때만 여기 오는데, 그 그룹 답은 남긴다.
+    // 완주한 진행은 지우지 않는다.
     private fun discardUnfinishedProgresses(
         memberId: Long,
         otherTypeProgresses: List<QuizProgress>,
@@ -355,3 +350,9 @@ class QuizProgressService(
             .associateBy { it.quizId }
     }
 }
+
+private data class AnswerSubmission(
+    val memberId: Long,
+    val now: LocalDateTime,
+    val secretMatchingEnabled: Boolean,
+)

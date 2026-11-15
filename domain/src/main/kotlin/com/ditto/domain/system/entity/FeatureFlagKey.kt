@@ -11,5 +11,5 @@ enum class FeatureFlagKey(val description: String) {
     /** 서버 동작은 없다. FE 가 `GET /api/v1/feature-flags` 로 읽어 화면을 보이거나 감춘다. */
     RECORDS("기록 탭·대화방 '우리의 답변' 화면 (FE)"),
 
-    SECRET_MATCHING("금·토 20:00 시크릿 매칭과 마감 뒤 1:1 응시 (IMP-2)"),
+    SECRET_MATCHING("시크릿 매칭: 마감 뒤 1:1 응시와 그룹 완주자 1:1 (IMP-2)"),
 }
