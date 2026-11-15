@@ -20,13 +20,14 @@
 - **1:1은 한 사람이 퀴즈셋당 하나만 성사된다**(#235). 신청·수락 모두 둘 중 누가 이번 퀴즈셋에서 이미 `ACCEPTED`면 막는다. 내가 성사됐으면 `ALREADY_MATCHED`(5003), 상대가 성사됐으면 `COUNTERPART_ALREADY_MATCHED`(5010). 신청이 만들어지지 않으므로 신청 알림도 없다. 성사되면 두 사람이 그 퀴즈셋에서 주고받은 남은 `PENDING`은 `CANCELLED`가 된다(그룹 자동 거절과 같은 이유, 알림 없음). 같은 사람이 낀 신청·수락은 두 회원의 `member` 행을 id 순서로 잠근 뒤 판단해 줄을 세운다. 잠금이 트랜잭션의 첫 조회여야 해서, 수락은 `PersonalMatchFacade`가 두 회원 id를 먼저 읽고 `acceptMatch`가 그 id로 잠금부터 시작한다([ADR 0035](../adr/0035-personal-match-member-row-lock.md)). 매칭 행은 회원 잠금 뒤에만 쓴다. 순서가 바뀌면 정리 UPDATE와 엇갈려 교착이 된다.
 - **1:1 신청은 그 퀴즈셋의 후보 쌍에만 된다**(#373). `match_candidate`에 두 사람 쌍이 어느 방향이든 있어야 하고, 없으면 `NOT_MATCH_CANDIDATE`(5011)다. 성사 전 열람 권한과 같은 판단(`existsPairByQuizSetId`)이다. 앱이 후보 화면에서만 신청하게 해도 서버가 따로 막는다. 검사는 성사 검사 뒤에 둔다. 정상 흐름에서는 나지 않고, 후보를 다시 만든 뒤 열어 둔 후보 화면에서 신청할 때 난다.
 - `match_candidate`: 페어당 양방향 2행(`ownerMemberId`/`otherMemberId`)으로 저장(내 후보 조회 단순화). 정규 재계산은 `deleteByQuizSetId` 후 대체, anti-join 단일 쿼리 멱등 스케줄러(기본 매주 목 00:01, `test` 프로필 비활성). 행마다 만든 매칭(`candidate_origin`: REGULAR·SECRET_FIRST·SECRET_SECOND)을 남긴다.
-- **시크릿 매칭 라운드**(IMP-2, `SECRET_MATCHING` 플래그, [ADR 0054](../adr/0054-secret-matching-round.md)): 1차·2차 라운드가 같은 1:1 퀴즈셋에 후보를 **더한다**(지우지 않는다). 요일·시각은 `SecretMatchingSchedule` 한 곳이고 지금은 금·토 20:00 이다.
-  - 풀: 그 셋 완주자 중 완주 시각이 라운드 시각 전이고(`isCompletedBefore`, 시각 없음은 포함) 1:1 성사가 없는 활성 회원. 목요일 미성사자·늦은 응시자·1:1 을 푼 그룹 미성사자가 들어온다.
-  - 다시 짝짓지 않는 쌍: 그 셋의 후보 쌍 ∪ 그 셋에서 거절(REJECTED)이 있었던 쌍. 거절은 이번 주 것만 본다(누적 제외는 풀을 줄여서 하지 않음). 대기·자동 취소 신청 쌍은 다시 짝지을 수 있다(기획: 거절 이력 쌍만 제외). 선발은 정규와 같은 상위 5명 규칙.
-  - 셋 하나에 라운드 하나가 자기 트랜잭션이다. 첫 조회로 셋 행을 잠그고(`QuizSetRepository.findWithLockById`), 같은 라운드 후보가 이미 있으면 건너뛴다. 정규 재생성도 같은 잠금을 먼저 잡는다.
-  - 배치(`MatchingBatchFacade.runSecretRound`)는 시작할 때 목요일 정규 배치를 먼저 부른다. 라운드가 후보를 넣으면 정규 배치(후보가 없는 셋만 집는다)가 그 셋을 다시 못 집기 때문이다.
-  - cron 은 실제 시계로 금·토 20:01·21:01·22:01(재시도), 어드민 [시크릿 매칭 지금 돌리기]는 서버 시각이다. 라운드마다 풀 인원·성별·새 후보 없음을 로그 한 줄로 남긴다.
-- **시크릿 매칭 후보가 생긴 1:1 셋은 정규 재생성을 거부한다**(`MATCH_CANDIDATES_SECRET_ROUND_STARTED`, 5012). 정규 후보를 지우고 다시 뽑으면 열린 결과 화면의 후보가 바뀌고 시크릿 후보와 쌍이 겹친다. QA 도구의 [매칭 기록 초기화]는 시크릿 후보까지 지운다.
+- **시크릿 매칭 라운드**(IMP-2, `SECRET_MATCHING` 플래그). 배경과 감수한 점은 [ADR 0054](../adr/0054-secret-matching-round.md).
+  - 1차·2차 라운드가 같은 1:1 퀴즈셋에 후보를 더한다(지우지 않는다). 라운드 시각은 `SecretMatchingSchedule` 한 곳이다.
+  - 풀: 그 셋 완주자 중 완주 시각이 라운드 시각 전이고(`isCompletedBefore`, 시각 없음은 포함) 1:1 성사가 없는 활성 회원.
+  - 다시 짝짓지 않는 쌍: 그 셋의 후보 쌍 ∪ 그 셋의 거절(REJECTED) 쌍. 대기·자동 취소 신청 쌍은 다시 짝지을 수 있다. 선발은 정규와 같은 상위 5명 규칙.
+  - 셋 하나에 라운드 하나가 자기 트랜잭션이고, 셋 행 잠금(`QuizSetRepository.findWithLockById`)을 먼저 잡는다. 같은 라운드 후보가 있으면 건너뛴다.
+  - 배치(`MatchingBatchFacade.runSecretRound`)는 시각이 지난 가장 늦은 라운드 하나만 돌린다. 정규 배치를 먼저 부르고, 정규가 이번에도 실패한 셋은 건너뛴다.
+  - 정규 매칭 결과 알림은 정규 후보를 받은 회원에게만 간다(`findRegularOwnerMemberIdsByQuizSetId`).
+- **시크릿 매칭 후보가 생긴 1:1 셋은 정규 재생성을 거부한다**(`MATCH_CANDIDATES_SECRET_ROUND_STARTED`, 5012). QA 도구의 [매칭 기록 초기화]는 시크릿 후보까지 지운다.
 - 그룹 유니크: `GroupMatchMember`(UK `room_id`+`member_id`). `GroupMatch`의 `quizSetId` UK 없음 → 퀴즈셋당 다수 그룹, 구조상 한 멤버가 같은 퀴즈셋의 여러 후보 그룹에 속할 수 있지만, 배치는 겹치지 않게 나눠 한 그룹에만 넣는다(ADR 0033).
 - **매칭이 다루는 퀴즈셋은 이번 운영 주 것뿐이다**(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 기준은 "조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋"(`findCompletedQuizSetInWeek`)이며, 주차 무관 조회는 레포에 없다. 후보 행은 지난 주 것도 남으므로 주차로 좁히지 않으면 지난 사이클 후보가 계속 노출된다 — 1:1·그룹이 타입별로 독립해 최신 셋을 찾기 때문에 한쪽만 이번 주인 응답이 섞인다. 후보 응답은 `weekStartedOn` + `year`/`month`/`week`를 함께 내려준다(ADR 0010 규약).
 - **응답 경로도 이번 주만 받는다.** 그룹 수락·거절, 1:1 요청·수락·거절은 대상 퀴즈셋이 이번 주가 아니면 `NOT_MATCHING_PERIOD`(5008) — 화면에서 감추는 것만으로는 지난 주 그룹이 오늘 성사돼 채팅방이 열리는 것을 못 막는다. 그룹은 여기에 더해 **그 주 금요일 00:00(채팅 개방) 이후 응답을 받지 않는다**(`GroupResponseDeadline`, [ADR 0036](../adr/0036-group-response-deadline-friday.md)). 1:1은 주차만 본다.
@@ -50,7 +51,8 @@
 - **재생성 결과는 저장하지 않는다.** `generateMatchingCandidates`가 `CandidateGenerationSummary`(후보 풀 인원·삭제/저장 행 수·매칭 목록)를 돌려주고, 어드민 화면은 flash로 한 번 보여주며 REST(`/api/v1/admin/quiz-sets/{id}/matching/regenerate`)는 `data`에 실어 준다. 서버 로그(info)에도 같은 내용을 남긴다.
 - **어드민 참여 현황(`/admin/quiz-sets/{id}/participants`)의 "후보가 없는 이유"는 지금 DB 상태로 다시 계산한 값이다.** 매칭 이력을 따로 저장하지 않기 때문이다. 배치와 같은 풀(`MatchmakingService.loadMatchingPoolParticipants`)과 자격 판단(`OneToOneMatchingProcessor.findMemberIdsWithEligiblePair`)을 쓰고, 단계 순서는 `OneToOneMissFinder` 한 곳에서 정한다.
   - 진행 기록의 수정 시각(`updatedAt`)이 저장된 후보보다 늦으면 "매칭 뒤 퀴즈 완료"로 따로 표시하고, 다시 계산하는 풀에서도 뺀다. 그 사람들이 섞이면 매칭 때 없던 짝이 생겨서 원래 참여자의 이유가 달라진다(매칭 뒤에 만든 더미가 흔한 경우).
-  - 응답 마감 뒤에 완주한 회원은 "응답 마감 뒤 퀴즈 완료(시크릿 매칭 대상)"로 따로 표시하고 다시 만들기를 권하지 않는다. 다시 만들어도 정규 풀에 들지 않는다. 판정 순서는 `PrePoolMiss` 한 곳이다.
+  - 응답 마감 뒤에 완주한 회원은 "응답 마감 뒤 퀴즈 완료"로 따로 표시하고 다시 만들기를 권하지 않는다. 다시 만들어도 정규 풀에 들지 않는다. 판정 순서는 `PrePoolMiss` 한 곳이다.
+  - 시크릿 매칭 후보에는 "시크릿 매칭 1차/2차" 배지를 붙인다.
   - 매칭 시각(첫 후보 생성 시각)은 정규 후보로만 정한다. 시크릿 후보만 있으면 정규 매칭 전으로 본다.
   - 자격 상대가 있으면 매칭이 반드시 후보를 주므로 선발을 다시 돌리지 않는다. 자격 상대가 있는데 저장된 후보가 없을 때, 아직 매칭을 돌리지 않았으면 "매칭 전", 돌렸으면 "지금 다시 매칭하면 후보가 됨"으로 표시한다.
   - 규칙을 바꾸기 전(ADR 0040 이전)에 만든 후보가 남은 셋에서는 컷으로 빠졌던 회원도 "지금 다시 매칭하면 후보가 됨"으로 보인다. 상태가 아니라 규칙이 바뀐 것이라, 실회원 셋은 안내대로 재생성하지 않는다.
