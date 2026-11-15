@@ -48,7 +48,8 @@ class DummyAnswerRecorder(
     }
 
     // status·answeredCount 는 protected set 이라 recordAnswer 를 푼 문항 수만큼 호출해 상태를 맞춘다.
+    // 더미는 마감이 지난 셋에도 만들 수 있어서 완주 시각을 비워 둔다. 그래야 정규 매칭 풀에 든다.
     private fun progressOf(memberId: Long, questions: QuizQuestions, answeredCount: Int): QuizProgress =
         QuizProgress.create(memberId, questions.quizSetId, questions.quizzes.size)
-            .apply { repeat(answeredCount) { recordAnswer() } }
+            .apply { repeat(answeredCount) { recordAnswer(answeredAt = null) } }
 }

@@ -72,7 +72,7 @@ class MatchmakingService(
             rowCounts = replaceCandidates(quizSetId, matchingType, matches),
             matches = matches,
         )
-        logGeneration(summary, matchingDuration)
+        logGeneration(summary, pool.lateCompletedCount, matchingDuration)
         return summary
     }
 
@@ -98,10 +98,14 @@ class MatchmakingService(
         return loadParticipants(pool)
     }
 
-    private fun logGeneration(summary: CandidateGenerationSummary, matchingDuration: Duration) {
+    private fun logGeneration(
+        summary: CandidateGenerationSummary,
+        lateCompletedCount: Int,
+        matchingDuration: Duration,
+    ) {
         logger.info {
             "매칭 후보 생성: quizSetId=${summary.quizSetId} type=${summary.matchingType} " +
-                "참여자=${summary.participantCount}명 삭제=${summary.rowCounts.deletedCount}행 " +
+                "참여자=${summary.participantCount}명 늦은완주제외=${lateCompletedCount}명 삭제=${summary.rowCounts.deletedCount}행 " +
                 "저장=${summary.rowCounts.savedCount}행 매칭=${summary.matches.size}건 " +
                 "계산=${matchingDuration.inWholeMilliseconds}ms"
         }
@@ -125,11 +129,11 @@ class MatchmakingService(
     // 배치·NO_MATCH 알림·어드민 재계산이 모두 이 계산으로 풀을 정한다. 한쪽만 바뀌면 화면 이유가 배치와 어긋난다.
     // 마감 뒤에 완주한 회원은 시크릿 매칭 라운드가 맡는다.
     private fun findPool(quizSet: QuizSet): MatchingPool {
-        val completedProgresses =
+        val (completedProgresses, lateCompletedProgresses) =
             quizProgressRepository.findByQuizSetIdAndStatus(quizSet.id, QuizProgressStatus.COMPLETED)
-                .filter { it.isCompletedOnTime(quizSet.endDate) }
+                .partition { it.isCompletedOnTime(quizSet.endDate) }
         val memberIds = availableMemberIds(quizSet.id, quizSet.matchingType, completedProgresses)
-        return MatchingPool(quizSet.id, completedProgresses, memberIds)
+        return MatchingPool(quizSet.id, completedProgresses, memberIds, lateCompletedProgresses.size)
     }
 
     /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
@@ -233,6 +237,7 @@ class MatchmakingService(
         val quizSetId: Long,
         val completedProgresses: List<QuizProgress>,
         val memberIds: Set<Long>,
+        val lateCompletedCount: Int,
     )
 
     companion object {

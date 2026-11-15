@@ -128,22 +128,22 @@ class MatchmakingServiceTest(
                 abCandidate.totalQuestionCount shouldBe 2
             }
 
-            "마감 뒤에 완주한 회원은 풀에 들지 않는다" {
+            "마감 뒤 완주자는 풀에서 빠지고 마감 시각 완주자와 완주 시각 미기록자는 남는다" {
                 val (quizSetId, quizId1, quizId2) = saveOneToOneQuizSetWithTwoQuizzes()
                 val endDate = quizSetRepository.findById(quizSetId).get().endDate
                 val onTime = saveMember("정시완주")
-                val noTime = saveMember("시각없음")
+                val withoutCompletedAt = saveMember("시각미기록")
                 val late = saveMember("늦은완주")
-                listOf(onTime, noTime, late).forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
+                listOf(onTime, withoutCompletedAt, late).forEach { saveAnswers(it, quizId1 to 1L, quizId2 to 1L) }
                 saveCompletedProgress(onTime, quizSetId, total = 2, completedAt = endDate)
-                saveCompletedProgress(noTime, quizSetId, total = 2)
+                saveCompletedProgress(withoutCompletedAt, quizSetId, total = 2)
                 saveCompletedProgress(late, quizSetId, total = 2, completedAt = endDate.plusSeconds(1))
 
                 val summary = matchmakingService.generateMatchingCandidates(quizSetId)
 
                 summary.participantCount shouldBe 2
-                summary.matches.map { it.memberIds } shouldContainExactlyInAnyOrder listOf(setOf(onTime, noTime))
-                matchmakingService.matchingPoolMemberIds(quizSetId) shouldBe setOf(onTime, noTime)
+                summary.matches.map { it.memberIds } shouldContainExactlyInAnyOrder listOf(setOf(onTime, withoutCompletedAt))
+                matchmakingService.matchingPoolMemberIds(quizSetId) shouldBe setOf(onTime, withoutCompletedAt)
             }
 
             "차단 관계인 두 사람은 후보 페어가 되지 않는다" {

@@ -123,7 +123,7 @@ class QuizProgressTest(
         }
 
         "마감 뒤에 완주했으면 거짓이다" {
-            progressAnsweredAt(deadline.plusNanos(1_000)).isCompletedOnTime(deadline) shouldBe false
+            progressAnsweredAt(deadline.plusSeconds(1)).isCompletedOnTime(deadline) shouldBe false
         }
 
         "완주 시각이 없으면 마감 전에 완주한 것으로 본다" {

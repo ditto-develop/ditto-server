@@ -49,7 +49,8 @@ class QuizStatSnapshotWriter(
         // 선택지가 하나도 없는 문항도 문항 수에는 들어간다(겹친 사람 기준이 문항 수로 정해진다).
         val orderedChoices = quizIds.associateWith { choiceIdsByQuizId[it].orEmpty() }
 
-        val result = QuizStatCalculator.calculate(orderedChoices, answersOfParticipants(quizSetId, quizIds, responseDeadline))
+        val participantAnswers = answersOfParticipants(quizSetId, quizIds, responseDeadline)
+        val result = QuizStatCalculator.calculate(orderedChoices, participantAnswers)
 
         quizSetStatRepository.saveAndFlush(
             QuizSetStat.of(quizSetId, result.participantCount, result.overlapThreshold),
@@ -62,10 +63,7 @@ class QuizStatSnapshotWriter(
         )
     }
 
-    /**
-     * 마감까지 완주한 사람의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람은 기록·통계 모두에서 빠지고,
-     * 마감 뒤에 완주한 사람(시크릿 매칭)은 자기 답을 이 스냅샷에 대조만 한다.
-     */
+    /** 마감까지 완주한 사람의 `memberId → (quizId → choiceId)`. 중간에 멈춘 사람과 마감 뒤 완주자는 빠진다. */
     private fun answersOfParticipants(
         quizSetId: Long,
         quizIds: List<Long>,

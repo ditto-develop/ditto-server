@@ -61,7 +61,6 @@ class QuizProgress private constructor(
     var preferredGender: GenderPreference = preferredGender
         protected set
 
-    // 컬럼 추가 전에 완주한 행과 더미는 null 이다. null 은 마감 전에 완주한 것으로 읽는다.
     @Comment("완주 시각 (서버 시각)")
     @Column(name = "completed_at")
     var completedAt: LocalDateTime? = null
@@ -77,9 +76,11 @@ class QuizProgress private constructor(
         status = QuizProgressStatus.IN_PROGRESS
     }
 
+    // 컬럼 추가 전에 완주한 행과 더미는 완주 시각이 없다. 마감 전에 완주한 것으로 본다.
     fun isCompletedOnTime(deadline: LocalDateTime): Boolean {
         if (status != QuizProgressStatus.COMPLETED) return false
-        return completedAt?.let { it <= deadline } ?: true
+        val completedAt = completedAt ?: return true
+        return completedAt <= deadline
     }
 
     /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */

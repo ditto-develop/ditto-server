@@ -48,7 +48,7 @@ class QuizSeeder(
                 quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id, content = "Q$order-$c", displayOrder = c)).id
             }
         }
-        return SeededQuizSet(set.id, quizzes.map { it.first }, quizzes.map { it.second })
+        return SeededQuizSet(set.id, set.endDate, quizzes.map { it.first }, quizzes.map { it.second })
     }
 
     /** [picks]는 문항마다 고른 선택지 번호(1·2). 모두 답하면 완주(COMPLETED)다. */
@@ -72,6 +72,7 @@ class QuizSeeder(
 
 data class SeededQuizSet(
     val quizSetId: Long,
+    val responseDeadline: LocalDateTime,
     val quizIds: List<Long>,
     /** 문항마다 선택지 1·2 의 ID */
     val choiceIds: List<List<Long>>,

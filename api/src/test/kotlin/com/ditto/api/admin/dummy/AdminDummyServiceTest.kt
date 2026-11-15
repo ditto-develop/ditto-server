@@ -1,6 +1,7 @@
 package com.ditto.api.admin.dummy
 
 import com.ditto.api.admin.dummy.dto.DummyGenerateForm
+import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -37,6 +38,7 @@ class AdminDummyServiceTest(
     private val quizAnswerRepository: QuizAnswerRepository,
     private val memberRepository: MemberRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
+    private val matchmakingService: MatchmakingService,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
@@ -87,6 +89,16 @@ class AdminDummyServiceTest(
                 progress.status shouldBe QuizProgressStatus.COMPLETED
                 quizAnswerRepository.findByMemberIdAndQuizIdIn(dummy.id, quizIds).size shouldBe 3
             }
+        }
+
+        "마감이 지난 셋에 만든 더미도 정규 매칭 풀에 든다" {
+            val quizSetId = setupQuizSet(quizCount = 1)
+
+            adminDummyService.generate(DummyGenerateForm(quizSetId = quizSetId, maleCount = 1, femaleCount = 1))
+
+            val dummyIds = memberRepository.findByNicknameStartingWith(DummyMarker.NICKNAME_PREFIX).map { it.id }.toSet()
+            dummyIds.forEach { quizProgressRepository.findByMemberIdAndQuizSetId(it, quizSetId)!!.completedAt shouldBe null }
+            matchmakingService.matchingPoolMemberIds(quizSetId) shouldBe dummyIds
         }
 
         "더미의 매칭 성별 선호는 실회원과 같은 OPPOSITE 다" {
