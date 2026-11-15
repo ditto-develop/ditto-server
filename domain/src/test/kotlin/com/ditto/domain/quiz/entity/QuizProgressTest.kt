@@ -9,6 +9,7 @@ import com.ditto.domain.support.IntegrationTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class QuizProgressTest(
@@ -76,6 +77,36 @@ class QuizProgressTest(
             found shouldNotBe null
             found!!.answeredCount shouldBe 2
             found.status shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "완주하는 답의 시각이 완주 시각으로 남는다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val progress = quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 2),
+            )
+            val firstAnsweredAt = LocalDateTime.of(2026, 11, 16, 10, 0)
+            val lastAnsweredAt = LocalDateTime.of(2026, 11, 20, 19, 59, 59)
+
+            progress.recordAnswer(firstAnsweredAt)
+            progress.completedAt shouldBe null
+
+            progress.recordAnswer(lastAnsweredAt)
+            quizProgressRepository.saveAndFlush(progress)
+
+            val found = quizProgressRepository.findByMemberIdAndQuizSetId(1L, quizSet.id)
+            found!!.completedAt shouldBe lastAnsweredAt
+        }
+
+        "시각 없이 완주하면 완주 시각은 비어 있다" {
+            val quizSet = quizSetRepository.save(QuizSetFixture.create())
+            val progress = quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = 1L, quizSetId = quizSet.id, totalCount = 1),
+            )
+
+            progress.recordAnswer()
+
+            progress.status shouldBe QuizProgressStatus.COMPLETED
+            progress.completedAt shouldBe null
         }
     }
 

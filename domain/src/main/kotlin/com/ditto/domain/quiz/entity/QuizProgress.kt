@@ -13,6 +13,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.Comment
+import java.time.LocalDateTime
 
 @Entity
 @Table(
@@ -60,10 +61,17 @@ class QuizProgress private constructor(
     var preferredGender: GenderPreference = preferredGender
         protected set
 
-    fun recordAnswer() {
+    // 컬럼 추가 전에 완주한 행과 더미는 null 이다. null 은 마감 전에 완주한 것으로 읽는다.
+    @Comment("완주 시각 (서버 시각)")
+    @Column(name = "completed_at")
+    var completedAt: LocalDateTime? = null
+        protected set
+
+    fun recordAnswer(answeredAt: LocalDateTime? = null) {
         answeredCount++
         if (answeredCount >= totalCount) {
             status = QuizProgressStatus.COMPLETED
+            completedAt = answeredAt
             return
         }
         status = QuizProgressStatus.IN_PROGRESS
