@@ -2,9 +2,15 @@ package com.ditto.api.quiz
 
 import com.ditto.api.quiz.dto.SubmitAnswerRequest
 import com.ditto.api.quiz.service.QuizProgressService
+import com.ditto.api.system.featureflag.FeatureFlagAdminService
+import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.match.GroupMatchFixture
+import com.ditto.domain.match.entity.GroupMatchMember
+import com.ditto.domain.match.repository.GroupMatchMemberRepository
+import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
@@ -21,10 +27,12 @@ import com.ditto.common.exception.WarnException
 import com.ditto.domain.sanction.SanctionFixture
 import com.ditto.domain.sanction.entity.SanctionLevel
 import com.ditto.domain.sanction.repository.SanctionRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.TemporalAdjusters
 import javax.sql.DataSource
@@ -38,8 +46,15 @@ class QuizProgressServiceTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val memberRepository: MemberRepository,
     private val sanctionRepository: SanctionRepository,
+    private val featureFlags: FeatureFlags,
+    private val featureFlagAdminService: FeatureFlagAdminService,
+    private val groupMatchRepository: GroupMatchRepository,
+    private val groupMatchMemberRepository: GroupMatchMemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
+
+    beforeTest { featureFlags.evict() }
+    afterTest { featureFlags.evict() }
 
     val now = LocalDateTime.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
 
@@ -514,6 +529,149 @@ class QuizProgressServiceTest(
 
             quizAnswerRepository.findAll().size shouldBe 1
             quizProgressRepository.findAll().size shouldBe 1
+        }
+    }
+
+    "시크릿 매칭 늦은 응시" - {
+        // 2026-11-16(월) 시작 주. 응답 마감 수 23:59:59, 그룹 응답 마감 금 00:00, 늦은 응시 마감 토 20:00.
+        val monday = LocalDate.of(2026, 11, 16)
+        val responseDeadline = monday.plusDays(2).atTime(23, 59, 59)
+        val thursday = monday.plusDays(3).atTime(10, 0)
+        val friday = monday.plusDays(4).atTime(10, 0)
+        val saturdayRound = monday.plusDays(5).atTime(20, 0)
+
+        fun enableSecretMatching() =
+            featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+
+        fun setupWeekQuizSet(matchingType: MatchingType, quizCount: Int = 1): Pair<Long, List<QuizWithChoice>> {
+            val quizSet = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = monday.atStartOfDay(),
+                    endDate = responseDeadline,
+                    matchingType = matchingType,
+                ),
+            )
+            val quizzes = (1..quizCount).map { order ->
+                val quiz = quizRepository.save(
+                    QuizFixture.create(quizSetId = quizSet.id, question = "질문$order", displayOrder = order),
+                )
+                val choice = quizChoiceRepository.save(QuizChoiceFixture.create(quizId = quiz.id))
+                QuizWithChoice(quizId = quiz.id, choiceId = choice.id)
+            }
+            return quizSet.id to quizzes
+        }
+
+        fun submitAt(memberId: Long, quizWithChoice: QuizWithChoice, at: LocalDateTime) =
+            quizProgressService.submitAnswer(memberId, SubmitAnswerRequest(quizWithChoice.quizId, quizWithChoice.choiceId), at)
+
+        fun completeGroupQuiz(memberId: Long): Long {
+            val (groupQuizSetId, groupQuizzes) = setupWeekQuizSet(MatchingType.GROUP)
+            submitAt(memberId, groupQuizzes[0], monday.atTime(10, 0))
+            return groupQuizSetId
+        }
+
+        "켜져 있으면 응답 마감 뒤 목요일에 1:1 을 완주하고 그 시각이 완주 시각으로 남는다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val (quizSetId, quizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            submitAt(memberId, quizzes[0], thursday)
+
+            val progress = quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)!!
+            progress.status shouldBe QuizProgressStatus.COMPLETED
+            progress.completedAt shouldBe thursday
+            progress.isCompletedOnTime(responseDeadline) shouldBe false
+        }
+
+        "토 20:00 부터는 4007 로 거절하고 그 답은 저장하지 않는다. 그 전에 낸 답은 남는다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val (quizSetId, quizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE, quizCount = 2)
+            submitAt(memberId, quizzes[0], saturdayRound.minusMinutes(10))
+
+            val exception = shouldThrow<WarnException> { submitAt(memberId, quizzes[1], saturdayRound) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_SECRET_MATCHING_CLOSED
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, quizzes[1].quizId) shouldBe null
+            quizAnswerRepository.findByMemberIdAndQuizId(memberId, quizzes[0].quizId) shouldNotBe null
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, quizSetId)!!.status shouldBe
+                QuizProgressStatus.IN_PROGRESS
+        }
+
+        "꺼져 있으면 목요일 제출은 지금처럼 참여 불가 요일이다" {
+            val memberId = setupMember()
+            val (_, quizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<ErrorException> { submitAt(memberId, quizzes[0], thursday) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_NOT_AVAILABLE_DAY
+        }
+
+        "켜져 있어도 그룹 셋은 목요일에 받지 않는다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val (_, quizzes) = setupWeekQuizSet(MatchingType.GROUP)
+
+            val exception = shouldThrow<ErrorException> { submitAt(memberId, quizzes[0], thursday) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_NOT_AVAILABLE_DAY
+        }
+
+        "켜져 있으면 목요일에 1:1 셋 문항을 이어 풀 수 있게 조회된다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val (quizSetId, _) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            quizProgressService.getQuizSetWithProgress(memberId, quizSetId, thursday).totalCount shouldBe 1
+        }
+
+        "꺼져 있으면 목요일 문항 조회는 지금처럼 활성 셋이 아니다" {
+            val memberId = setupMember()
+            val (quizSetId, _) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<ErrorException> {
+                quizProgressService.getQuizSetWithProgress(memberId, quizSetId, thursday)
+            }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ACTIVE_SET
+        }
+
+        "그룹을 완주했지만 성사되지 않았으면 금요일부터 1:1 을 풀 수 있고 그룹 답은 남는다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            val (oneToOneQuizSetId, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            submitAt(memberId, oneToOneQuizzes[0], friday)
+
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, oneToOneQuizSetId)!!.status shouldBe
+                QuizProgressStatus.COMPLETED
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, groupQuizSetId)!!.status shouldBe
+                QuizProgressStatus.COMPLETED
+        }
+
+        "그룹 완주자는 금요일 전에는 1:1 을 풀 수 없다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            completeGroupQuiz(memberId)
+            val (_, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], thursday) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+        }
+
+        "성사된 그룹에 수락했으면 금요일에도 1:1 을 풀 수 없다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            val formedGroup = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId, acceptedCount = 3))
+            groupMatchMemberRepository.save(GroupMatchMember.candidate(formedGroup.id, memberId).apply { accept() })
+            val (_, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], friday) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
         }
     }
 })

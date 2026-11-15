@@ -11,6 +11,9 @@ interface GroupMatchMemberRepositoryCustom {
     /** [weekStartedOn] 주차의 아직 성사되지 않은 그룹에 수락해 둔 초대가 있는지. 탈퇴 제한 판단에 쓴다. */
     fun existsAcceptedInUnformedGroupOfWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
 
+    /** [weekStartedOn] 주차의 성사된 그룹에 수락했는지. 그 뒤 채팅방을 나갔어도 참이다. */
+    fun existsAcceptedInFormedGroupOfWeek(memberId: Long, weekStartedOn: LocalDate): Boolean
+
     /** 두 멤버가 같은 그룹 채팅방에 **함께 들어갔는지** — 양쪽 수락 + 그룹 성사. 성사 후 관계 판정. */
     fun existsSharedRoom(memberId: Long, otherMemberId: Long): Boolean
 

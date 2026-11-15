@@ -255,6 +255,23 @@ class QuizProgressControllerTest : ControllerUnitTest() {
     }
 
     @Test
+    @DisplayName("시크릿 매칭 늦은 응시가 마감된 뒤 답안을 제출하면 에러를 반환한다")
+    fun submitAnswerAfterSecretMatchingClosed() {
+        every { quizProgressService.submitAnswer(any(), any(), any()) } throws
+            WarnException(ErrorCode.QUIZ_SECRET_MATCHING_CLOSED)
+        val request = mapOf("quizId" to 1L, "choiceId" to 2L)
+
+        mockMvc.perform(
+            post("/api/v1/quiz-progress/answers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("4007"))
+    }
+
+    @Test
     @DisplayName("퀴즈 진행을 초기화한다")
     fun resetProgress() {
         every { quizProgressService.resetProgress(any(), any()) } returns Unit
