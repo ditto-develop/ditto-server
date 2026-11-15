@@ -91,7 +91,7 @@ class MatchResultNotifier(
             if (roomIds.isEmpty()) emptyList()
             else groupMatchMemberRepository.findByRoomIdIn(roomIds).map { it.memberId }
 
-        return (matchCandidateRepository.findOwnerMemberIdsByQuizSetId(quizSetId) + groupMemberIds).distinct()
+        return (matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(quizSetId) + groupMemberIds).distinct()
     }
 
     companion object {

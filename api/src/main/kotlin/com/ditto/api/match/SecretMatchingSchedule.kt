@@ -7,7 +7,10 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
-/** 시크릿 매칭 시각. 1차·2차 라운드의 요일과 시각을 여기서만 정한다. 마감 뒤 1:1 응시는 마지막 라운드 전까지 받는다. */
+/**
+ * 시크릿 매칭 라운드 시각. 라운드 풀·늦은 응시 마감은 이 시각으로 판단한다.
+ * cron(`MatchingScheduler.generateSecretRound`)은 이 시각에 맞춰 따로 적혀 있어 바꿀 때 함께 고친다.
+ */
 object SecretMatchingSchedule {
 
     private val ROUND_TIME: LocalTime = LocalTime.of(20, 0)
@@ -16,8 +19,9 @@ object SecretMatchingSchedule {
         CandidateOrigin.SECRET_SECOND to DayOfWeek.SATURDAY,
     )
 
-    fun roundStartsAt(round: CandidateOrigin, week: OperationWeek): LocalDateTime {
-        val roundDay = requireNotNull(ROUND_DAYS[round]) { "시크릿 매칭 라운드가 아니다: $round" }
+    /** [secretRound]는 SECRET_FIRST·SECRET_SECOND 만 받는다. */
+    fun roundStartsAt(secretRound: CandidateOrigin, week: OperationWeek): LocalDateTime {
+        val roundDay = requireNotNull(ROUND_DAYS[secretRound]) { "시크릿 매칭 라운드가 아니다: $secretRound" }
         return week.startedOn.with(TemporalAdjusters.nextOrSame(roundDay)).atTime(ROUND_TIME)
     }
 
@@ -25,8 +29,10 @@ object SecretMatchingSchedule {
     fun dueRoundAt(now: LocalDateTime): Pair<OperationWeek, CandidateOrigin>? {
         val week = OperationWeek.containing(now.toLocalDate())
         val dueRound = ROUND_DAYS.keys
-            .filter { roundStartsAt(it, week) <= now }
-            .maxByOrNull { roundStartsAt(it, week) }
+            .associateWith { roundStartsAt(it, week) }
+            .filterValues { it <= now }
+            .maxByOrNull { it.value }
+            ?.key
             ?: return null
         return week to dueRound
     }

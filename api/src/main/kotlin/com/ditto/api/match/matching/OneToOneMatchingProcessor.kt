@@ -46,7 +46,7 @@ class OneToOneMatchingProcessor : MatchingProcessor {
         a.isMutuallyCompatibleWith(b) &&
             isWithinAgeGap(a, b) &&
             !a.isBlockedWith(b) &&
-            !a.isAlreadyPairedWith(b)
+            !a.isExcludedPartnerOf(b)
 
     /** 나이 미상이면 나이차를 판단할 수 없으므로 자격 미달로 본다. */
     private fun isWithinAgeGap(a: MatchParticipant, b: MatchParticipant): Boolean {

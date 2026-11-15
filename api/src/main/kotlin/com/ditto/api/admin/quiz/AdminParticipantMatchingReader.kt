@@ -19,7 +19,6 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgress
 import org.springframework.stereotype.Component
-import java.time.LocalDateTime
 
 /**
  * 참여 현황 화면용으로 퀴즈셋의 저장된 매칭 후보와 1:1 신청을 참여자별로 모은다.
@@ -71,6 +70,7 @@ class AdminParticipantMatchingReader(
     private fun readGroup(source: MatchingReadSource): QuizSetMatching {
         val groupMatches = groupMatchRepository.findByQuizSetId(source.quizSet.id)
         val generatedAt = groupMatches.minOfOrNull { it.createdAt }
+        val timeline = MatchingTimeline(source.quizSet.endDate, generatedAt)
         val invitationsByGroupMatchId = findInvitations(groupMatches).groupBy { it.roomId }
         val rooms = groupMatches.map { GroupRoom(it, invitationsByGroupMatchId[it.id].orEmpty()) }
         val invitedMemberIds = rooms.flatMap { room -> room.invitations.map { it.memberId } }
@@ -78,7 +78,7 @@ class AdminParticipantMatchingReader(
 
         val byMemberId = source.progresses.associate { progress ->
             val myRooms = rooms.filter { room -> room.invitations.any { it.memberId == progress.memberId } }
-            progress.memberId to groupMatchingOf(progress, myRooms, GroupReadContext(source, nicknames, generatedAt))
+            progress.memberId to groupMatchingOf(progress, myRooms, GroupReadContext(source, nicknames, timeline))
         }
         return QuizSetMatching(generatedAt, byMemberId)
     }
@@ -96,11 +96,10 @@ class AdminParticipantMatchingReader(
             return ParticipantMatching(groupCandidates = groupCandidates)
         }
         val member = context.source.membersById[progress.memberId]
-        val timeline = MatchingTimeline(context.source.quizSet.endDate, context.generatedAt)
-        val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
+        val prePoolMissReason = PrePoolMiss.of(progress, member, context.timeline)
         if (prePoolMissReason != null) return ParticipantMatching(missReason = prePoolMissReason)
 
-        if (context.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)
+        if (context.timeline.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)
         return ParticipantMatching(missReason = MatchMissReason.NOT_ASSIGNED_TO_GROUP)
     }
 
@@ -132,6 +131,6 @@ class AdminParticipantMatchingReader(
     private class GroupReadContext(
         val source: MatchingReadSource,
         val nicknames: Map<Long, String>,
-        val generatedAt: LocalDateTime?,
+        val timeline: MatchingTimeline,
     )
 }

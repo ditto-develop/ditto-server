@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * 매칭 운영. 실시간 스케줄러(목 00:01, 시크릿 매칭 금·토 20:01)와 별개로, 어드민이 같은 배치 로직을 수동 실행하거나
@@ -48,24 +50,51 @@ class AdminMatchController(
     /** 지금 서버 시각에 돌 차례인 시크릿 매칭 라운드를 돌린다. 시각 조정으로 금·토 라운드를 QA 할 때 쓴다. */
     @PostMapping("/admin/matching/run-secret-round")
     fun runSecretRound(redirectAttributes: RedirectAttributes): String {
-        val result = matchingBatchFacade.runSecretRound(serverTimeProvider.now())
-        matchResultNotifier.notifyFor(result.regularQuizSetIds)
-        redirectAttributes.addFlashAttribute("message", secretRoundMessage(result))
+        val now = serverTimeProvider.now()
+        val result = matchingBatchFacade.runSecretRound(now)
+        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+        addSecretRoundFlash(redirectAttributes, now, result)
         return "redirect:/admin/matching"
     }
 
-    private fun secretRoundMessage(result: SecretRoundBatchResult): String {
-        if (result.roundResults.isEmpty()) {
-            return "돌릴 시크릿 매칭이 없습니다. 기능 플래그가 꺼져 있거나, 이번 주 1차 라운드 시각 전이거나, 활성 1:1 퀴즈셋이 없습니다."
-        }
-        return result.roundResults.joinToString(" ") { round ->
-            val name = "퀴즈셋 #${round.quizSetId} ${round.round.description}"
-            if (round.alreadyGenerated) {
-                "$name 은 이미 돌았습니다."
-            } else {
-                "$name: 대상 ${round.poolSize}명, 새 후보를 받은 회원 ${round.newCandidateOwnerIds.size}명."
+    private fun addSecretRoundFlash(redirectAttributes: RedirectAttributes, now: LocalDateTime, result: SecretRoundBatchResult) {
+        val serverTime = now.format(FLASH_TIME_FORMAT)
+        when (result.status) {
+            SecretRoundBatchResult.Status.FLAG_OFF ->
+                redirectAttributes.addFlashAttribute("notice", "시크릿 매칭 기능 플래그가 꺼져 있어 돌리지 않았습니다.")
+            SecretRoundBatchResult.Status.NO_ROUND_DUE ->
+                redirectAttributes.addFlashAttribute("notice", "서버 시각 $serverTime 기준으로 아직 돌 차례인 시크릿 매칭 라운드가 없습니다.")
+            SecretRoundBatchResult.Status.RAN -> {
+                // 후보도 정규 메움도 없으면 한 일이 없어서 성공색 대신 안내로 보여 준다.
+                val changedAnything = result.backfilledRegularQuizSetIds.isNotEmpty() ||
+                    result.roundResults.any { it.savedCount > 0 }
+                redirectAttributes.addFlashAttribute(if (changedAnything) "message" else "notice", secretRoundSummary(serverTime, result))
+                if (result.failedQuizSetIds.isNotEmpty()) {
+                    val failedIds = result.failedQuizSetIds.joinToString(", ") { "#$it" }
+                    redirectAttributes.addFlashAttribute("error", "시크릿 매칭: 퀴즈셋 $failedIds 처리에 실패했습니다. 서버 로그를 확인하세요.")
+                }
             }
         }
+    }
+
+    private fun secretRoundSummary(serverTime: String, result: SecretRoundBatchResult): String {
+        val secretRound = requireNotNull(result.secretRound) { "라운드를 돌렸는데 라운드가 없다" }
+        val parts = mutableListOf("서버 시각 $serverTime 기준 ${secretRound.description}")
+        if (result.backfilledRegularQuizSetIds.isNotEmpty()) {
+            val ids = result.backfilledRegularQuizSetIds.joinToString(", ") { "#$it" }
+            parts += "후보가 없던 정기 매칭을 먼저 돌렸습니다(퀴즈셋 $ids)"
+        }
+        result.roundResults.forEach { roundResult ->
+            parts += if (roundResult.alreadyGenerated) {
+                "퀴즈셋 #${roundResult.quizSetId}: 이미 돈 라운드라 건너뜀"
+            } else {
+                "퀴즈셋 #${roundResult.quizSetId}: 후보 추가 ${roundResult.newCandidateOwnerIds.size}명 / 대상 ${roundResult.poolSize}명(미성사 회원)"
+            }
+        }
+        if (result.roundResults.isEmpty() && result.failedQuizSetIds.isEmpty()) {
+            parts += "이번 주 활성 1:1 퀴즈셋이 없습니다"
+        }
+        return parts.joinToString(" · ")
     }
 
     /**
@@ -106,6 +135,7 @@ class AdminMatchController(
     }
 
     companion object {
+        private val FLASH_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         private val RESETTABLE_BY_QA_TOOLS = setOf(
             ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED,
             ErrorCode.MATCH_CANDIDATES_SECRET_ROUND_STARTED,

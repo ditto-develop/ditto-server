@@ -45,7 +45,7 @@ class MatchCandidate private constructor(
     @Column(name = "quiz_set_id", nullable = false)
     val quizSetId: Long,
 
-    @Comment("후보를 만든 매칭 (REGULAR, SECRET_FIRST, SECRET_SECOND)")
+    @Comment("후보 출처 (REGULAR, SECRET_FIRST, SECRET_SECOND)")
     @Enumerated(EnumType.STRING)
     @Column(name = "candidate_origin", nullable = false, length = 20)
     val candidateOrigin: CandidateOrigin,

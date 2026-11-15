@@ -1,0 +1,33 @@
+# ADR 0054 — 시크릿 매칭 라운드는 같은 퀴즈셋에 후보를 더하고, 실제 시각 cron 과 셋 잠금으로 돈다
+
+- 상태: Accepted (2026-11-15)
+- 근거: 기획 IMP-2 시크릿 매칭 v0.1(D-3·D-4·SM-06), 이슈 #381
+
+## Context
+
+IMP-2 는 금·토 20:00 에 1:1 추가 라운드를 돌려, 이번 주 1:1 완주자 중 아직 성사되지 않은 사람에게 새 후보를 준다([ADR 0053](0053-late-one-to-one-submission-for-secret-matching.md)이 마감 뒤 응시를 열었다). 기획은 "기존 후보 유지, 신규 후보 추가, 라운드 구분 값 필요", "거절 이력 있는 쌍만 제외, 그 외 이전 후보 재노출 허용"이다.
+
+정규 매칭은 목 00:01 cron 이 "마감됐고 후보가 하나도 없는 셋"(anti-join)을 골라 후보를 통째로 만든다. 실행 기록 테이블은 없다.
+
+## Decision
+
+- **후보 출처 컬럼** `match_candidate.candidate_origin`(REGULAR·SECRET_FIRST·SECRET_SECOND, 기본 REGULAR). 라운드는 같은 셋에 새 행을 더하고 기존 후보를 지우지 않는다. 유일키 `(owner, other, quiz_set_id)`는 그대로라 같은 쌍은 한 번만 생긴다. 값 이름에 요일을 넣지 않고 1차·2차로 부른다. 요일·시각은 `SecretMatchingSchedule` 한 곳에 둔다.
+- **다시 짝짓지 않는 쌍** = 그 셋의 후보 쌍 ∪ 그 셋의 거절(REJECTED) 쌍. 지난 주 거절은 보지 않는다. 한 번 거절하면 영영 빼는 방식은 매주 같은 작은 풀에서 후보를 계속 줄인다. 대기·자동 취소 쌍은 다시 짝지을 수 있다.
+- **멱등**: 실행 기록 테이블 대신 "그 셋에 그 라운드 출처 행이 있는가"로 판단한다. 셋 하나에 라운드 하나가 자기 트랜잭션이고, 첫 조회로 셋 행을 잠가 cron 과 수동 실행, 정규 재생성이 줄을 선다.
+- **실행 시계**: 목요일 배치처럼 cron 은 실제 시계, 어드민 수동 실행은 서버 시각(오버라이드)이다. cron 은 직전 답안 커밋을 기다려 20:01 에 돌고, 배포·실패에 대비해 같은 밤 21:01·22:01 에 다시 돈다(이미 돈 셋은 건너뜀). 매분 폴링은 기존 패턴과 다르고, QA 스위치를 켠 서버에서 오버라이드한 주의 라운드가 실회원에게 진짜로 돌 수 있어 택하지 않았다.
+- **정규 먼저**: 라운드는 시작할 때 목요일 정규 배치를 한 번 부른다. 목요일 배치가 실패한 셋에 라운드가 먼저 행을 넣으면 그 셋은 "후보 있음"이 되어 정규 배치가 다시 집지 않기 때문이다.
+- **재생성 거부**: 시크릿 후보가 생긴 1:1 셋은 정규 재생성을 5012 로 거부한다.
+
+## Consequences
+
+- 얻음: 테이블 하나 없이 컬럼 하나로 라운드를 구분하고, 후보 조회·신청·열람 권한은 바뀌지 않는다.
+- 감수한 것: 후보가 0건으로 끝난 라운드는 같은 밤 재시도 때 다시 계산된다. 풀이 라운드 시각으로 잘려 결과가 같아 해롭지 않다.
+- 감수한 것: 목요일 배치가 실패했으면 그 셋의 NO_MATCH 알림이 금 20:01 에 늦게 나간다. 20:01 과 21:01 이 모두 실패하면 결과가 최대 2시간 늦다.
+- 감수한 것: 같은 A–B 가 지난 주에 거절했어도 이번 주 시크릿 라운드에서 다시 짝지어질 수 있다. 문제가 되면 정규·시크릿에 함께 "최근 N주" 제외를 넣는다.
+- 어드민 참여 현황은 응답 마감 뒤 완주자를 "시크릿 매칭 대상"으로 분류하고, 매칭 시각은 정규 후보로만 정한다.
+- 결과 알림(`SECRET_MATCH_RESULT`)과 화면 API 의 라운드 표시는 IMP-2 후속 작업이다.
+
+## Links
+
+- 핵심 파일: `api/.../match/service/MatchmakingService.kt`(`generateSecretRoundCandidates`), `MatchingBatchFacade.kt`(`runSecretRound`), `match/scheduler/MatchingScheduler.kt`, `match/SecretMatchingSchedule.kt`, `domain/.../match/entity/CandidateOrigin.kt`.
+- 관련 ADR: [0027](0027-matching-batch-per-quiz-set-transaction.md)(셋별 트랜잭션), [0040](0040-one-to-one-top-picks-per-member.md)(상위 5명), [0049](0049-scheduler-lock-shedlock.md)(cron 잠금), [0053](0053-late-one-to-one-submission-for-secret-matching.md).

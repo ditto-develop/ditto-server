@@ -105,7 +105,7 @@ class MatchingBatchFacadeTest(
                 val (quizSetId, quizId) = saveWeekQuizSet()
                 listOf("꺼짐A", "꺼짐B").forEach { saveCompleted(quizSetId, quizId, it) }
 
-                matchingBatchFacade.runSecretRound(fridayRun) shouldBe SecretRoundBatchResult.NOTHING_DUE
+                matchingBatchFacade.runSecretRound(fridayRun) shouldBe SecretRoundBatchResult.FLAG_OFF
                 originsOf(quizSetId) shouldBe emptyList()
             }
 
@@ -114,11 +114,11 @@ class MatchingBatchFacadeTest(
                 val (quizSetId, quizId) = saveWeekQuizSet()
                 listOf("이른A", "이른B").forEach { saveCompleted(quizSetId, quizId, it) }
 
-                matchingBatchFacade.runSecretRound(fridayRun.minusMinutes(2)) shouldBe SecretRoundBatchResult.NOTHING_DUE
+                matchingBatchFacade.runSecretRound(fridayRun.minusMinutes(2)) shouldBe SecretRoundBatchResult.NO_ROUND_DUE
                 originsOf(quizSetId) shouldBe emptyList()
             }
 
-            "금 20:01 에는 정규 배치가 놓친 셋을 먼저 메우고 그 주 1:1 셋에 1차 라운드를 돌린다" {
+            "금 20:01 에는 정규 배치가 놓친 셋을 먼저 메우고, 그 주 1:1 셋에만 1차 라운드를 돌리며 정규 쌍은 다시 뽑지 않는다" {
                 enableSecretMatching()
                 val (oneToOneId, oneToOneQuizId) = saveWeekQuizSet()
                 val (groupId, groupQuizId) = saveWeekQuizSet(MatchingType.GROUP)
@@ -127,8 +127,8 @@ class MatchingBatchFacadeTest(
 
                 val result = matchingBatchFacade.runSecretRound(fridayRun)
 
-                result.regularQuizSetIds.sorted() shouldBe listOf(oneToOneId, groupId).sorted()
-                result.roundResults.map { it.quizSetId to it.round } shouldBe listOf(oneToOneId to CandidateOrigin.SECRET_FIRST)
+                result.backfilledRegularQuizSetIds.sorted() shouldBe listOf(oneToOneId, groupId).sorted()
+                result.roundResults.map { it.quizSetId to it.secretRound } shouldBe listOf(oneToOneId to CandidateOrigin.SECRET_FIRST)
                 originsOf(oneToOneId) shouldBe listOf(CandidateOrigin.REGULAR, CandidateOrigin.REGULAR)
             }
 
@@ -147,7 +147,7 @@ class MatchingBatchFacadeTest(
 
                 val result = matchingBatchFacade.runSecretRound(saturdayRun)
 
-                result.roundResults.single().round shouldBe CandidateOrigin.SECRET_SECOND
+                result.roundResults.single().secretRound shouldBe CandidateOrigin.SECRET_SECOND
                 result.roundResults.single().newCandidateOwnerIds shouldBe setOf(a, b, late)
                 originsOf(quizSetId).count { it == CandidateOrigin.SECRET_SECOND } shouldBe 4
             }

@@ -35,7 +35,7 @@ class MatchingScheduler(
         matchResultNotifier.notifyFor(quizSetIds)
     }
 
-    // 라운드는 금·토 20:00. 목요일 배치처럼 직전 답안이 커밋될 1분을 두고, 배포·실패에 대비해 같은 밤 두 번 더 돈다.
+    // SecretMatchingSchedule 의 라운드 시각(금·토 20:00)에 맞춘다. 바꿀 때 함께 고친다. 재시도 이유는 ADR 0054.
     @Scheduled(cron = "\${matching.secret-round.cron:0 1 20-22 * * FRI,SAT}")
     @SchedulerLock(
         name = "secret-matching",
@@ -44,6 +44,6 @@ class MatchingScheduler(
     )
     fun generateSecretRound() {
         val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
-        matchResultNotifier.notifyFor(result.regularQuizSetIds)
+        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
     }
 }

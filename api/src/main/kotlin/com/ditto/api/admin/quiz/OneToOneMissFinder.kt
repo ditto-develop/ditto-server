@@ -19,10 +19,10 @@ class OneToOneMissFinder(
 ) {
     fun findMisses(input: OneToOneMissInput): Map<Long, MatchMissReason> {
         val withoutCandidate = input.source.progresses.filter { it.memberId !in input.candidateOwnerIds }
+        val timeline = MatchingTimeline(input.source.quizSet.endDate, input.generatedAt)
         val prePoolMissByMemberId = buildMap {
             withoutCandidate.forEach { progress ->
                 val member = input.source.membersById[progress.memberId]
-                val timeline = MatchingTimeline(input.source.quizSet.endDate, input.generatedAt)
                 val prePoolMissReason = PrePoolMiss.of(progress, member, timeline)
                 if (prePoolMissReason != null) put(progress.memberId, prePoolMissReason)
             }

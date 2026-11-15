@@ -12,7 +12,7 @@ import com.ditto.domain.member.entity.GenderPreference
  *
  * @property answers quizId -> choiceId (같은 quizId에 같은 choiceId 면 답변 일치)
  * @property preferredGender 이 퀴즈에서의 매칭 성별 선호
- * @property alreadyPairedMemberIds 같은 퀴즈셋에서 이미 후보였거나 신청을 거절한 적이 있는 상대. 시크릿 매칭만 채운다
+ * @property excludedPartnerIds 다시 짝짓지 않을 상대. 같은 퀴즈셋에서 이미 후보였거나 신청을 거절한 적이 있다. 시크릿 매칭만 채운다
  */
 data class MatchParticipant(
     val memberId: Long,
@@ -21,7 +21,7 @@ data class MatchParticipant(
     val age: Int? = null,
     val preferredGender: GenderPreference = GenderPreference.ANY,
     val blockedMemberIds: Set<Long> = emptySet(),
-    val alreadyPairedMemberIds: Set<Long> = emptySet(),
+    val excludedPartnerIds: Set<Long> = emptySet(),
 ) {
     /** 이 참여자가 [other]의 성별을 매칭 대상으로 받아들이는가. 어느 한쪽이라도 성별 미상이면 판단할 수 없다. */
     fun accepts(other: MatchParticipant): Boolean {
@@ -42,9 +42,9 @@ data class MatchParticipant(
     fun isBlockedWith(other: MatchParticipant): Boolean =
         other.memberId in blockedMemberIds || memberId in other.blockedMemberIds
 
-    /** 둘이 이미 이어진 적이 있는가. 한쪽만 채워져 있어도 페어를 깨도록 양쪽을 본다. */
-    fun isAlreadyPairedWith(other: MatchParticipant): Boolean =
-        other.memberId in alreadyPairedMemberIds || memberId in other.alreadyPairedMemberIds
+    /** 둘을 다시 짝짓지 않아야 하는가. 한쪽만 채워져 있어도 페어를 깨도록 양쪽을 본다. */
+    fun isExcludedPartnerOf(other: MatchParticipant): Boolean =
+        other.memberId in excludedPartnerIds || memberId in other.excludedPartnerIds
 }
 
 /**

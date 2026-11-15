@@ -62,7 +62,6 @@ class MatchmakingService(
      */
     @Transactional
     fun generateMatchingCandidates(quizSetId: Long): CandidateGenerationSummary {
-        // 시크릿 매칭 라운드와 같은 잠금을 먼저 잡아, 라운드가 후보를 더하는 도중에 지우고 다시 만들지 않게 한다.
         val quizSet = quizSetRepository.findWithLockById(quizSetId) ?: throw WarnException(ErrorCode.NOT_FOUND)
         validateNoSecretRoundCandidates(quizSet)
         val matchingType = quizSet.matchingType
@@ -80,38 +79,36 @@ class MatchmakingService(
             rowCounts = replaceCandidates(quizSetId, matchingType, matches),
             matches = matches,
         )
-        logGeneration(summary, pool.cutOffCount, matchingDuration)
+        logGeneration(summary, pool.completedAfterCutoffCount, matchingDuration)
         return summary
     }
 
     /**
      * 시크릿 매칭 라운드 하나를 이 셋에 돌려 1:1 후보를 더한다. 기존 후보는 지우지 않는다.
-     *
-     * 첫 조회로 셋을 잠가 cron 과 수동 실행이 겹쳐도 한쪽만 만든다. 같은 라운드 후보가 이미 있으면 건너뛰어서
-     * 같은 밤 재시도가 아무 일도 하지 않는다. 풀은 라운드 시각 전에 완주했고 1:1 성사가 없는 활성 회원이다.
+     * [secretRound]는 SECRET_FIRST·SECRET_SECOND 만 받는다. 같은 라운드 후보가 이미 있으면 건너뛴다.
      */
     @Transactional
-    fun generateSecretRoundCandidates(quizSetId: Long, round: CandidateOrigin): SecretRoundResult {
+    fun generateSecretRoundCandidates(quizSetId: Long, secretRound: CandidateOrigin): SecretRoundResult {
         val quizSet = quizSetRepository.findWithLockById(quizSetId) ?: throw WarnException(ErrorCode.NOT_FOUND)
-        if (matchCandidateRepository.existsByQuizSetIdAndCandidateOrigin(quizSetId, round)) {
-            return SecretRoundResult.alreadyGenerated(quizSetId, round)
+        if (matchCandidateRepository.existsByQuizSetIdAndCandidateOrigin(quizSetId, secretRound)) {
+            return SecretRoundResult.skipped(quizSetId, secretRound)
         }
 
-        val roundStartsAt = SecretMatchingSchedule.roundStartsAt(round, quizSet.operationWeek)
+        val roundStartsAt = SecretMatchingSchedule.roundStartsAt(secretRound, quizSet.operationWeek)
         val pool = findPool(quizSet) { it.isCompletedBefore(roundStartsAt) }
         val participants = if (pool.memberIds.size < 2) emptyList() else loadSecretRoundParticipants(pool)
         val matches = oneToOneProcessor().match(participants)
-        val saved = matchCandidateRepository.saveAll(toCandidates(quizSetId, matches, round))
+        val saved = matchCandidateRepository.saveAll(toCandidates(quizSetId, matches, secretRound))
 
         val result = SecretRoundResult(
             quizSetId = quizSetId,
-            round = round,
+            secretRound = secretRound,
             alreadyGenerated = false,
             poolSize = pool.memberIds.size,
             savedCount = saved.size,
             newCandidateOwnerIds = saved.mapTo(mutableSetOf()) { it.ownerMemberId },
         )
-        logSecretRound(result, participants, pool.cutOffCount)
+        logSecretRound(result, participants, pool.completedAfterCutoffCount)
         return result
     }
 
@@ -150,17 +147,21 @@ class MatchmakingService(
         }
     }
 
-    private fun logSecretRound(result: SecretRoundResult, participants: List<MatchParticipant>, cutOffCount: Int) {
+    private fun logSecretRound(
+        result: SecretRoundResult,
+        participants: List<MatchParticipant>,
+        completedAfterRoundCount: Int,
+    ) {
         val genderCounts = participants.groupingBy { it.gender }.eachCount()
         val withoutNewCandidate = result.poolSize - result.newCandidateOwnerIds.size
         logger.info {
-            "시크릿 매칭 후보 생성: quizSetId=${result.quizSetId} round=${result.round} " +
-                "풀=${result.poolSize}명 성별=$genderCounts 라운드뒤완주제외=${cutOffCount}명 " +
+            "시크릿 매칭 후보 생성: quizSetId=${result.quizSetId} round=${result.secretRound} " +
+                "풀=${result.poolSize}명 성별=$genderCounts 라운드뒤완주제외=${completedAfterRoundCount}명 " +
                 "새후보없음=${withoutNewCandidate}명 저장=${result.savedCount}행"
         }
     }
 
-    // 시크릿 후보가 생긴 뒤 정규 후보를 지우고 다시 뽑으면, 열린 결과 화면의 후보가 바뀌고 같은 쌍이 겹친다.
+    // 시크릿 후보가 생긴 뒤 정규 후보를 지우고 다시 뽑으면 열린 결과 화면의 후보가 바뀐다.
     private fun validateNoSecretRoundCandidates(quizSet: QuizSet) {
         if (quizSet.matchingType != MatchingType.ONE_TO_ONE) return
         if (matchCandidateRepository.existsByQuizSetIdAndCandidateOriginNot(quizSet.id, CandidateOrigin.REGULAR)) {
@@ -187,17 +188,16 @@ class MatchmakingService(
         MatchingType.GROUP -> groupCandidateWriter.replace(quizSetId, matches)
     }
 
-    // 배치·NO_MATCH 알림·어드민 재계산이 모두 이 계산으로 풀을 정한다. 한쪽만 바뀌면 화면 이유가 배치와 어긋난다.
-    // 마감 뒤에 완주한 회원은 시크릿 매칭 라운드가 맡는다.
+    // 정규 배치·NO_MATCH 알림·어드민 재계산이 모두 이 풀을 쓴다. 한쪽만 바뀌면 화면 이유가 배치와 어긋난다.
     private fun findRegularPool(quizSet: QuizSet): MatchingPool =
         findPool(quizSet) { it.isCompletedOnTime(quizSet.endDate) }
 
-    private fun findPool(quizSet: QuizSet, isCompletedInTime: (QuizProgress) -> Boolean): MatchingPool {
-        val (completedProgresses, cutOffProgresses) =
+    private fun findPool(quizSet: QuizSet, isInPool: (QuizProgress) -> Boolean): MatchingPool {
+        val (completedProgresses, completedAfterCutoffProgresses) =
             quizProgressRepository.findByQuizSetIdAndStatus(quizSet.id, QuizProgressStatus.COMPLETED)
-                .partition(isCompletedInTime)
+                .partition(isInPool)
         val memberIds = availableMemberIds(quizSet.id, quizSet.matchingType, completedProgresses)
-        return MatchingPool(quizSet.id, completedProgresses, memberIds, cutOffProgresses.size)
+        return MatchingPool(quizSet.id, completedProgresses, memberIds, completedAfterCutoffProgresses.size)
     }
 
     /** 완료자 중 해당 매칭 타입의 제외 정책에 걸리지 않은 회원 */
@@ -245,28 +245,28 @@ class MatchmakingService(
     }
 
     private fun loadSecretRoundParticipants(pool: MatchingPool): List<MatchParticipant> {
-        val alreadyPairedIdsByMember = loadAlreadyPairedIdsByMember(pool.quizSetId, pool.memberIds)
+        val excludedPartnerIdsByMember = loadExcludedPartnerIdsByMember(pool.quizSetId, pool.memberIds)
         return loadParticipants(pool).map {
-            it.copy(alreadyPairedMemberIds = alreadyPairedIdsByMember[it.memberId].orEmpty())
+            it.copy(excludedPartnerIds = excludedPartnerIdsByMember[it.memberId].orEmpty())
         }
     }
 
     /**
      * 이 셋에서 이미 후보였거나 신청을 거절한 적이 있는 상대를 회원별로 모은다(방향 무관).
-     * 대기·자동 취소 신청 쌍은 다시 보여 줘도 된다(기획: 거절 이력 쌍만 제외).
+     * 대기·자동 취소 신청 쌍은 넣지 않는다.
      */
-    private fun loadAlreadyPairedIdsByMember(quizSetId: Long, memberIds: Set<Long>): Map<Long, Set<Long>> {
+    private fun loadExcludedPartnerIdsByMember(quizSetId: Long, memberIds: Set<Long>): Map<Long, Set<Long>> {
         val candidatePairs = matchCandidateRepository.findByQuizSetIdInAndOwnerMemberIdIn(listOf(quizSetId), memberIds)
             .map { it.ownerMemberId to it.otherMemberId }
         val rejectedPairs = personalMatchRepository.findByQuizSetIdAndStatus(quizSetId, PersonalMatchStatus.REJECTED)
             .map { it.memberId1 to it.memberId2 }
 
-        val pairedIdsByMember = mutableMapOf<Long, MutableSet<Long>>()
+        val excludedPartnerIdsByMember = mutableMapOf<Long, MutableSet<Long>>()
         (candidatePairs + rejectedPairs).forEach { (memberA, memberB) ->
-            pairedIdsByMember.getOrPut(memberA) { mutableSetOf() }.add(memberB)
-            pairedIdsByMember.getOrPut(memberB) { mutableSetOf() }.add(memberA)
+            excludedPartnerIdsByMember.getOrPut(memberA) { mutableSetOf() }.add(memberB)
+            excludedPartnerIdsByMember.getOrPut(memberB) { mutableSetOf() }.add(memberA)
         }
-        return pairedIdsByMember
+        return excludedPartnerIdsByMember
     }
 
     /**
@@ -336,7 +336,7 @@ class MatchmakingService(
         val quizSetId: Long,
         val completedProgresses: List<QuizProgress>,
         val memberIds: Set<Long>,
-        val cutOffCount: Int,
+        val completedAfterCutoffCount: Int,
     )
 
     companion object {

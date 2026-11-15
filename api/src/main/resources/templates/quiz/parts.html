@@ -8,6 +8,7 @@
         <a class="member-search-link" th:href="@{/admin/quiz-sets/{id}/participants(id=${quizSetId},q=|#${c.otherMemberId}|)}"
            th:text="|${c.otherNickname ?: '삭제된 회원'} (#${c.otherMemberId})|">닉네임 (#2)</a>
         <span class="muted" th:text="|${#numbers.formatDecimal(c.score, 1, 1)} (${c.matchedQuestionCount}/${c.totalQuestionCount})|">66.7 (2/3)</span>
+        <span class="badge cat" th:if="${c.isFromSecretRound}" th:text="${c.candidateOrigin.description}">시크릿 매칭 1차</span>
         <span th:if="${c.requestState != null}" th:class="${c.requestState.tone.cssClass}" th:text="${c.requestState.label}">신청함</span>
     </div>
     <div class="nowrap" th:each="r : ${matching.outsideRequests}">

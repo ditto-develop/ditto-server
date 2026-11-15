@@ -156,7 +156,7 @@ class NotifierFailureTest {
     @Test
     @DisplayName("매칭 결과 — 후보 회원 조회가 실패해도 예외 대신 0 을 돌려준다")
     fun matchResultAbsorbsCandidateQueryFailure() {
-        every { matchCandidateRepository.findOwnerMemberIdsByQuizSetId(any()) } throws connectionFailure()
+        every { matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(any()) } throws connectionFailure()
 
         matchResultNotifier.notifyFor(listOf(QUIZ_SET_ID)) shouldBe 0
     }

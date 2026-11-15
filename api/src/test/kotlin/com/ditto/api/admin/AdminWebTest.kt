@@ -702,16 +702,11 @@ class AdminWebTest {
     }
 
     @Test
-    @DisplayName("시크릿 매칭 지금 돌리기는 돌 라운드가 없으면 그 이유를 알린다")
-    fun runSecretRoundWithNothingDue() {
+    @DisplayName("시크릿 매칭 지금 돌리기는 플래그가 꺼져 있으면 돌리지 않았다고 안내한다")
+    fun runSecretRoundWithFlagOff() {
         mockMvc.perform(post("/admin/matching/run-secret-round").with(authentication(admin())).with(csrf()))
             .andExpect(redirectedUrl("/admin/matching"))
-            .andExpect(
-                flash().attribute(
-                    "message",
-                    "돌릴 시크릿 매칭이 없습니다. 기능 플래그가 꺼져 있거나, 이번 주 1차 라운드 시각 전이거나, 활성 1:1 퀴즈셋이 없습니다.",
-                ),
-            )
+            .andExpect(flash().attribute("notice", "시크릿 매칭 기능 플래그가 꺼져 있어 돌리지 않았습니다."))
     }
 
     @Test
