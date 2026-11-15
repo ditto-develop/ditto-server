@@ -533,6 +533,31 @@ class MatchmakingServiceTest(
                     listOf(setOf(rejecter, pendingReceiver), setOf(rejected, pendingReceiver))
             }
 
+            "시크릿 후보가 생긴 셋은 정규 재생성을 거부하고 후보를 건드리지 않는다" {
+                val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
+                val a = saveMember("재생성거부A")
+                val b = saveMember("재생성거부B")
+                val c = saveMember("재생성거부C")
+                listOf(a, b, c).forEach { saveCompleted(quizSetId, quizId1, quizId2, it) }
+                matchCandidateRepository.saveAll(
+                    listOf(
+                        MatchCandidateFixture.create(ownerMemberId = a, otherMemberId = b, quizSetId = quizSetId),
+                        MatchCandidateFixture.create(
+                            ownerMemberId = a,
+                            otherMemberId = c,
+                            quizSetId = quizSetId,
+                            candidateOrigin = CandidateOrigin.SECRET_FIRST,
+                        ),
+                    ),
+                )
+                val candidateCountBefore = matchCandidateRepository.countByQuizSetId(quizSetId)
+
+                val exception = shouldThrow<WarnException> { matchmakingService.generateMatchingCandidates(quizSetId) }
+
+                exception.errorCode shouldBe ErrorCode.MATCH_CANDIDATES_SECRET_ROUND_STARTED
+                matchCandidateRepository.countByQuizSetId(quizSetId) shouldBe candidateCountBefore
+            }
+
             "같은 라운드를 다시 돌리면 건너뛰고, 2차 라운드는 1차 후보 쌍을 다시 뽑지 않는다" {
                 val (quizSetId, quizId1, quizId2) = saveWeekQuizSetWithTwoQuizzes()
                 val a = saveMember("재실행A")

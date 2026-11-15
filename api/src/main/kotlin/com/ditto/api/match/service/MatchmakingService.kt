@@ -57,11 +57,14 @@ class MatchmakingService(
      * 퀴즈셋 하나가 트랜잭션 하나다 — 배치([MatchingBatchFacade])가 셋별로 격리해 부른다. 배경: ADR 0027.
      *
      * @return 생성 결과 요약. 어드민 화면·REST 응답에 실리고 로그에도 남지만 저장하지는 않는다.
-     * @throws WarnException 응답이 시작된 그룹 퀴즈셋처럼 대체할 수 없는 상태면 아무것도 바꾸지 않고 던진다
+     * @throws WarnException 응답이 시작된 그룹 퀴즈셋, 시크릿 매칭 후보가 생긴 1:1 퀴즈셋처럼 대체할 수 없는 상태면
+     *   아무것도 바꾸지 않고 던진다
      */
     @Transactional
     fun generateMatchingCandidates(quizSetId: Long): CandidateGenerationSummary {
-        val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.NOT_FOUND) }
+        // 시크릿 매칭 라운드와 같은 잠금을 먼저 잡아, 라운드가 후보를 더하는 도중에 지우고 다시 만들지 않게 한다.
+        val quizSet = quizSetRepository.findWithLockById(quizSetId) ?: throw WarnException(ErrorCode.NOT_FOUND)
+        validateNoSecretRoundCandidates(quizSet)
         val matchingType = quizSet.matchingType
         val processor = matchingProcessors.firstOrNull { it.matchingType == matchingType }
             ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "매칭 전략이 없는 타입입니다: $matchingType")
@@ -154,6 +157,14 @@ class MatchmakingService(
             "시크릿 매칭 후보 생성: quizSetId=${result.quizSetId} round=${result.round} " +
                 "풀=${result.poolSize}명 성별=$genderCounts 라운드뒤완주제외=${cutOffCount}명 " +
                 "새후보없음=${withoutNewCandidate}명 저장=${result.savedCount}행"
+        }
+    }
+
+    // 시크릿 후보가 생긴 뒤 정규 후보를 지우고 다시 뽑으면, 열린 결과 화면의 후보가 바뀌고 같은 쌍이 겹친다.
+    private fun validateNoSecretRoundCandidates(quizSet: QuizSet) {
+        if (quizSet.matchingType != MatchingType.ONE_TO_ONE) return
+        if (matchCandidateRepository.existsByQuizSetIdAndCandidateOriginNot(quizSet.id, CandidateOrigin.REGULAR)) {
+            throw WarnException(ErrorCode.MATCH_CANDIDATES_SECRET_ROUND_STARTED)
         }
     }
 

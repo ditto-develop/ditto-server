@@ -63,7 +63,8 @@ class MatchAdminControllerTest : ControllerUnitTest() {
                             .description(
                                 "특정 퀴즈셋의 매칭 후보를 재생성합니다(기존 후보 삭제 후 재계산). " +
                                     "마감·후보 존재 여부와 무관하게 실행됩니다. " +
-                                    "이미 응답(수락·거절·성사)이 시작된 그룹 퀴즈셋은 5009(MATCH_CANDIDATES_ALREADY_RESPONDED)로 실패하며 " +
+                                    "이미 응답(수락·거절·성사)이 시작된 그룹 퀴즈셋은 5009(MATCH_CANDIDATES_ALREADY_RESPONDED), " +
+                                    "시크릿 매칭 후보가 생긴 1:1 퀴즈셋은 5012(MATCH_CANDIDATES_SECRET_ROUND_STARTED)로 실패하며 " +
                                     "기존 후보를 건드리지 않습니다. 결과는 저장되지 않고 이 응답에만 실립니다.",
                             )
                             .pathParameters(parameterWithName("quizSetId").description("퀴즈 세트 ID"))

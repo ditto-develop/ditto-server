@@ -99,9 +99,16 @@ class AdminMatchController(
 
     private fun regenerationFailedMessage(quizSetId: Long, exception: WarnException): String {
         val failed = "퀴즈셋 #$quizSetId 매칭 다시 만들기 실패: ${exception.message}"
-        if (exception.errorCode != ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED) return failed
+        if (exception.errorCode !in RESETTABLE_BY_QA_TOOLS) return failed
         // 매칭 기록 초기화는 QA 도구라 꺼진 서버에서는 안내할 곳이 없다.
         if (!adminQaToolsProperties.enabled) return failed
         return "$failed 퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요."
+    }
+
+    companion object {
+        private val RESETTABLE_BY_QA_TOOLS = setOf(
+            ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED,
+            ErrorCode.MATCH_CANDIDATES_SECRET_ROUND_STARTED,
+        )
     }
 }
