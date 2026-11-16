@@ -80,11 +80,15 @@ class QuizProgressStatsQueryTest(
         ),
     )
 
-    fun saveProgress(memberId: Long, quizSet: QuizSet, completed: Boolean = true) {
+    fun saveProgress(memberId: Long, quizSet: QuizSet, completed: Boolean = true, completedAt: LocalDateTime? = null) {
         val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 2)
-        repeat(if (completed) 2 else 1) { progress.recordAnswer() }
+        repeat(if (completed) 2 else 1) { progress.recordAnswer(completedAt) }
         quizProgressRepository.save(progress)
     }
+
+    // 응답 마감(수 23:59:59) 뒤 목요일에 완주한 진행. 시크릿 매칭 늦은 응시다.
+    fun saveLateCompletion(memberId: Long, quizSet: QuizSet) =
+        saveProgress(memberId, quizSet, completedAt = quizSet.endDate.plusHours(12))
 
     fun nicknameOf(memberId: Long): String = memberRepository.findById(memberId).orElseThrow().nickname
 
@@ -124,6 +128,26 @@ class QuizProgressStatsQueryTest(
             counts shouldContainExactlyInAnyOrder listOf(
                 QuizProgressCount(MatchingType.ONE_TO_ONE, QuizProgressStatus.COMPLETED, Gender.FEMALE, 1L),
             )
+        }
+    }
+
+    "응답 마감 뒤 완주(시크릿 매칭)" - {
+        "회차 진행·완주자·재참여에서 뺀다" {
+            val previous = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val current = saveQuizSet()
+            val onTime = saveMember()
+            val late = saveMember()
+            val lateAgain = saveMember()
+            saveProgress(onTime, current)
+            saveLateCompletion(late, current)
+            saveProgress(lateAgain, previous)
+            saveLateCompletion(lateAgain, current)
+
+            quizProgressRepository.countProgressesInWeek(WEEK, null, MemberFilter.NONE) shouldBe listOf(
+                QuizProgressCount(MatchingType.ONE_TO_ONE, QuizProgressStatus.COMPLETED, Gender.MALE, 1L),
+            )
+            quizProgressRepository.countMembersCompletedInWeeks(listOf(WEEK), null, MemberFilter.NONE) shouldBe 1L
+            quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE) shouldBe emptyList()
         }
     }
 
@@ -318,6 +342,25 @@ class QuizProgressStatsQueryTest(
                 null,
                 MemberFilter.NONE,
             ) shouldBe listOf(UnmatchedMember(unmatched, nicknameOf(unmatched)))
+        }
+
+        "그룹이 성사되지 않았어도 같은 주 1:1 로 성사됐으면 미매칭이 아니다" {
+            val previousGroup = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP)
+            val previousOneToOne = saveQuizSet(weekStartedOn = WEEK.minusWeeks(1))
+            val current = saveQuizSet()
+            val secretMatched = saveMember()
+            saveProgress(secretMatched, previousGroup)
+            saveLateCompletion(secretMatched, previousOneToOne)
+            saveProgress(secretMatched, current)
+            personalMatchRepository.save(
+                PersonalMatchFixture.create(secretMatched, saveMember(), previousOneToOne.id, PersonalMatchStatus.ACCEPTED),
+            )
+
+            quizProgressRepository.findMembersUnmatchedInEveryRound(
+                listOf(WEEK, WEEK.minusWeeks(1)),
+                null,
+                MemberFilter.NONE,
+            ) shouldBe emptyList()
         }
 
         "매칭 유형을 주면 그 유형 셋의 완주만 본다" {

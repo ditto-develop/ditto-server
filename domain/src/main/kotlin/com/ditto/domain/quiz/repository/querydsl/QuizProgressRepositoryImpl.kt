@@ -19,6 +19,7 @@ import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.querydsl.core.types.dsl.BooleanExpression
 import com.querydsl.core.types.dsl.Expressions
+import com.querydsl.jpa.JPAExpressions
 import com.querydsl.jpa.impl.JPAQuery
 import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
@@ -241,7 +242,7 @@ class QuizProgressRepositoryImpl(
                 matchedInProgressSet().not(),
             )
             .groupBy(member.id, member.nickname)
-            // 한 주에 진행은 하나라 성사되지 않은 완주가 있는 회차 수로 센다.
+            // 한 주에 정규 완주는 하나라 성사되지 않은 완주가 있는 회차 수로 센다.
             .having(quizSet.weekStartedOn.countDistinct().eq(roundWeeks.distinct().size.toLong()))
             .orderBy(member.id.asc())
             .fetch()
@@ -274,6 +275,7 @@ class QuizProgressRepositoryImpl(
                 againSet.id.eq(againProgress.quizSetId),
                 againSet.isActive.isTrue,
                 againSet.weekStartedOn.eq(weekStartedOn),
+                againProgress.completedAt.isNull.or(againProgress.completedAt.loe(againSet.endDate)),
             )
             .where(
                 quizSet.weekStartedOn.eq(previousWeekStartedOn),
@@ -295,12 +297,17 @@ class QuizProgressRepositoryImpl(
     }
 
     // 매칭 장의 성사와 같다. 1:1 은 ACCEPTED 쌍, 그룹은 성사된 그룹을 수락한 회원이다.
-    private fun matchedInProgressSet(): BooleanExpression =
-        Expressions.anyOf(
+    // 그룹 미성사 뒤 같은 주 1:1(시크릿 매칭)로 성사될 수 있어 그 셋이 아니라 그 주의 성사를 본다.
+    private fun matchedInProgressSet(): BooleanExpression {
+        val sameWeekSet = QQuizSet("sameWeekSet")
+        val sameWeekSetIds = JPAExpressions.select(sameWeekSet.id)
+            .from(sameWeekSet)
+            .where(sameWeekSet.weekStartedOn.eq(quizSet.weekStartedOn))
+        return Expressions.anyOf(
             queryFactory.selectOne()
                 .from(personalMatch)
                 .where(
-                    personalMatch.quizSetId.eq(quizProgress.quizSetId),
+                    personalMatch.quizSetId.`in`(sameWeekSetIds),
                     personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
                     personalMatch.memberId1.eq(quizProgress.memberId)
                         .or(personalMatch.memberId2.eq(quizProgress.memberId)),
@@ -310,17 +317,23 @@ class QuizProgressRepositoryImpl(
                 .from(groupMatchMember)
                 .join(groupMatch).on(groupMatch.id.eq(groupMatchMember.roomId), groupMatch.isActive.isTrue)
                 .where(
-                    groupMatch.quizSetId.eq(quizProgress.quizSetId),
+                    groupMatch.quizSetId.`in`(sameWeekSetIds),
                     groupMatchMember.memberId.eq(quizProgress.memberId),
                     groupMatchMember.status.eq(InvitationStatus.ACCEPTED),
                 )
                 .exists(),
         )
+    }
 
     // 같은 주에 QA 용 비활성 셋이 있을 수 있어 매칭과 같이 활성 셋만 본다.
+    // 응답 마감 뒤 완주(시크릿 매칭)는 지표가 정규 매칭 기준이라 뺀다. 완주 시각이 없으면 마감 전 완주다.
     private fun <T> JPAQuery<T>.fromProgressOfActiveSetsWithMember(): JPAQuery<T> =
         from(quizProgress)
-            .join(quizSet).on(quizSet.id.eq(quizProgress.quizSetId), quizSet.isActive.isTrue)
+            .join(quizSet).on(
+                quizSet.id.eq(quizProgress.quizSetId),
+                quizSet.isActive.isTrue,
+                quizProgress.completedAt.isNull.or(quizProgress.completedAt.loe(quizSet.endDate)),
+            )
             .join(member).on(member.id.eq(quizProgress.memberId))
 
     private fun matchingTypeIs(matchingType: MatchingType?): BooleanExpression? =
