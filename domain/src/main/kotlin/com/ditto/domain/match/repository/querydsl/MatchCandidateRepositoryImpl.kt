@@ -56,6 +56,7 @@ class MatchCandidateRepositoryImpl(
             .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
+                matchCandidate.candidateOrigin.eq(CandidateOrigin.REGULAR),
                 member.matchesFilter(filter),
             )
             .groupBy(member.gender)
@@ -71,6 +72,7 @@ class MatchCandidateRepositoryImpl(
             .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
+                matchCandidate.candidateOrigin.eq(CandidateOrigin.REGULAR),
                 member.matchesFilter(filter),
             )
             .groupBy(matchCandidate.ownerMemberId)
@@ -83,6 +85,7 @@ class MatchCandidateRepositoryImpl(
             .join(quizSet).on(quizSet.id.eq(matchCandidate.quizSetId), quizSet.isActive.isTrue)
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
+                matchCandidate.candidateOrigin.eq(CandidateOrigin.REGULAR),
                 matchCandidate.ownerMemberId.lt(matchCandidate.otherMemberId),
             )
             .fetch()
@@ -101,6 +104,7 @@ class MatchCandidateRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+                personalMatchFromSecretRound().not(),
             )
             .fetch()
 

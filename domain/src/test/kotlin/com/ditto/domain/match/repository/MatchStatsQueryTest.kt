@@ -3,6 +3,7 @@ package com.ditto.domain.match.repository
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.match.PersonalMatchFixture
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.entity.PersonalMatchStatus
@@ -23,6 +24,7 @@ import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import javax.sql.DataSource
 
@@ -62,9 +64,18 @@ class MatchStatsQueryTest(
     )
 
     // 후보 행은 두 방향으로 저장된다.
-    fun saveCandidatePair(quizSet: QuizSet, oneMemberId: Long, otherMemberId: Long, score: Double = 80.0) {
-        matchCandidateRepository.save(MatchCandidateFixture.create(oneMemberId, otherMemberId, quizSet.id, score))
-        matchCandidateRepository.save(MatchCandidateFixture.create(otherMemberId, oneMemberId, quizSet.id, score))
+    fun saveCandidatePair(
+        quizSet: QuizSet,
+        oneMemberId: Long,
+        otherMemberId: Long,
+        score: Double = 80.0,
+        candidateOrigin: CandidateOrigin = CandidateOrigin.REGULAR,
+    ) {
+        listOf(oneMemberId to otherMemberId, otherMemberId to oneMemberId).forEach { (ownerId, otherId) ->
+            matchCandidateRepository.save(
+                MatchCandidateFixture.create(ownerId, otherId, quizSet.id, score, candidateOrigin = candidateOrigin),
+            )
+        }
     }
 
     fun saveGroup(quizSet: QuizSet, acceptedCount: Int = 0, score: Double = 80.0): Long =
@@ -80,6 +91,24 @@ class MatchStatsQueryTest(
             InvitationStatus.PENDING -> Unit
         }
         groupMatchMemberRepository.save(invitation)
+    }
+
+    "시크릿 매칭 라운드 후보와 그 쌍의 신청은 정규 매칭 지표에서 뺀다" {
+        val quizSet = saveQuizSet()
+        val (regularA, regularB, secretA, secretB) = List(4) { saveMember() }
+        saveCandidatePair(quizSet, regularA, regularB, score = 70.0)
+        saveCandidatePair(quizSet, secretA, secretB, score = 90.0, candidateOrigin = CandidateOrigin.SECRET_FIRST)
+        personalMatchRepository.save(PersonalMatchFixture.create(regularA, regularB, quizSet.id, PersonalMatchStatus.ACCEPTED))
+        personalMatchRepository.save(PersonalMatchFixture.create(secretA, secretB, quizSet.id, PersonalMatchStatus.ACCEPTED))
+
+        matchCandidateRepository.countCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
+            listOf(MatchCandidateCount(Gender.MALE, 2L))
+        matchCandidateRepository.countCandidatesPerOwnerInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder listOf(1L, 1L)
+        matchCandidateRepository.findPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
+        matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
+        personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 2L
+        personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
+        personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
     }
 
     "countCandidateOwnersInWeek" - {
