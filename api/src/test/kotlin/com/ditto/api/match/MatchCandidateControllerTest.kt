@@ -6,6 +6,7 @@ import com.ditto.api.match.dto.MatchCandidateResponse
 import com.ditto.api.match.dto.ScoreSummary
 import com.ditto.api.match.service.MatchCandidateService
 import com.ditto.api.support.ControllerUnitTest
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.quiz.entity.MatchingType
 import java.time.LocalDate
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
@@ -56,6 +57,7 @@ class MatchCandidateControllerTest : ControllerUnitTest() {
                         totalQuestions = 8,
                         reasons = listOf("전체 8문항 중 7문항이 일치했어요"),
                     ),
+                    candidateOrigin = CandidateOrigin.SECRET_FIRST,
                 ),
             ),
         )
@@ -67,6 +69,7 @@ class MatchCandidateControllerTest : ControllerUnitTest() {
             .andExpect(jsonPath("$.data.weekStartedOn").value("2026-09-14"))
             .andExpect(jsonPath("$.data.candidates.length()").value(1))
             .andExpect(jsonPath("$.data.candidates[0].userId").value(2))
+            .andExpect(jsonPath("$.data.candidates[0].candidateOrigin").value("SECRET_FIRST"))
             .andDo(
                 document(
                     "match-candidate-list",
@@ -104,6 +107,10 @@ class MatchCandidateControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.candidates[].scoreBreakdown.matchedQuestions").description("일치한 문항 수"),
                                 fieldWithPath("data.candidates[].scoreBreakdown.totalQuestions").description("전체 비교 문항 수"),
                                 fieldWithPath("data.candidates[].scoreBreakdown.reasons[]").description("매칭 사유 문구"),
+                                fieldWithPath("data.candidates[].candidateOrigin").description(
+                                    "후보 출처 (REGULAR: 목요일 정규 매칭 / SECRET_FIRST: 금 20:00 시크릿 매칭 / SECRET_SECOND: 토 20:00 시크릿 매칭). " +
+                                        "1:1 후보에만 있고 그룹 구성원 카드에는 없다",
+                                ),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
                             .build(),
