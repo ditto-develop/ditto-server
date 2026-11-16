@@ -84,6 +84,6 @@ class AdminDummyService(
             caricature = DummyMemberFactory.randomCaricatureOf(gender),
         )
         val member = memberRepository.save(DummyMemberFactory.create(profile))
-        dummyAnswerRecorder.recordAnswers(member.id, questions, questions.pickAllRandomly())
+        dummyAnswerRecorder.recordAnswers(member.id, questions, questions.pickAllRandomly(), form.completedAtServerTime)
     }
 }

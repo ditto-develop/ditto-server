@@ -93,6 +93,14 @@
                         <p class="muted" style="margin:6px 0 0">숫자를 넣으면 앞에서부터 그 수만큼만 답하고 '진행 중'으로 남깁니다. 그 뒤 문항에 고른 답은 무시합니다.
                             0이면 퀴즈를 시작하지 않은 회원이라 참여 현황에 나오지 않습니다.</p>
                     </div>
+                    <div class="field">
+                        <label>완주 시각</label>
+                        <select th:field="*{completedAtServerTime}">
+                            <option value="false">남기지 않음 · 마감 전에 완주한 것으로 봄</option>
+                            <option value="true">지금 서버 시각 · 응답 마감 뒤면 늦은 완주(시크릿 매칭 대상)</option>
+                        </select>
+                        <p class="muted" style="margin:6px 0 0">끝까지 푼 더미에만 남습니다. 늦은 완주는 정규 매칭에서 빠지고 시크릿 매칭 라운드 풀에 듭니다.</p>
+                    </div>
                     <div class="ro-quiz" th:each="quiz, stat : ${questions.quizzes}">
                         <span class="no" th:text="${stat.count}">1</span>
                         <div style="min-width:0">

@@ -30,7 +30,7 @@ class SingleDummyCreator(
             chosenOrRandom(form, quiz, questions.choicesOf(quiz))
         }
         val member = save(profile)
-        dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices)
+        dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices, form.completedAtServerTime)
         return CreatedDummy(member, answeredCount = pickedChoices.size, quizCount = questions.quizzes.size)
     }
 

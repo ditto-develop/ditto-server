@@ -38,6 +38,13 @@
                     <div class="field"><label>최소 나이</label><input type="number" th:field="*{minAge}" min="1"/></div>
                     <div class="field"><label>최대 나이</label><input type="number" th:field="*{maxAge}" min="1"/></div>
                 </div>
+                <div class="field">
+                    <label>완주 시각</label>
+                    <select th:field="*{completedAtServerTime}">
+                        <option value="false">남기지 않음 · 마감 전에 완주한 것으로 봄</option>
+                        <option value="true">지금 서버 시각 · 응답 마감 뒤면 늦은 완주(시크릿 매칭 대상)</option>
+                    </select>
+                </div>
                 <p class="muted">더미는 이성을 원하도록 만들어서 1:1은 남녀를 함께 생성해야 후보가 생깁니다.
                     그룹은 성별과 상관없이 3명 이상이면 후보가 생깁니다.</p>
                 <hr class="sep"/>

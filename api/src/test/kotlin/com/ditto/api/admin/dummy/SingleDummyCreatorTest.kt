@@ -140,6 +140,19 @@ class SingleDummyCreatorTest(
             created.toDisplayText() shouldBe "${dummy.nickname} (#${dummy.id} · 남성 · 2/3 풀이)"
         }
 
+        "완주 시각은 기본으로 비우고, 지금 서버 시각을 고르면 응답 마감 뒤 늦은 완주로 남긴다" {
+            val setup = setupQuizSet()
+            val quizSet = quizSetRepository.findById(setup.quizSetId).orElseThrow()
+
+            val onTime = singleDummyCreator.create(form(setup.quizSetId)).member
+            val late = singleDummyCreator.create(form(setup.quizSetId).apply { completedAtServerTime = true }).member
+
+            quizProgressRepository.findByMemberIdAndQuizSetId(onTime.id, setup.quizSetId).shouldNotBeNull()
+                .completedAt shouldBe null
+            quizProgressRepository.findByMemberIdAndQuizSetId(late.id, setup.quizSetId).shouldNotBeNull()
+                .isCompletedLate(quizSet.endDate) shouldBe true
+        }
+
         "푼 문항 수가 0이면 답과 진행 없이 회원만 만든다" {
             val setup = setupQuizSet()
 
