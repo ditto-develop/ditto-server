@@ -27,13 +27,11 @@ enum class SecretMatchingState {
     ENDED,
 }
 
-/** 홈 상태를 정하는 데 필요한 사실. 모두 [now] 기준 [week] 것이다. */
+/** 플래그가 켜져 있고 이번 주 활성 1:1 셋이 있을 때 홈 상태를 정하는 데 필요한 사실. 모두 [now] 기준 [week] 것이다. */
 data class SecretMatchingFacts(
     val now: LocalDateTime,
     val week: OperationWeek,
-    val secretMatchingEnabled: Boolean,
-    /** 이번 주 활성 1:1 셋 */
-    val oneToOneQuizSet: QuizSet?,
+    val oneToOneQuizSet: QuizSet,
     val oneToOneProgress: QuizProgress?,
     val hasOneToOneAcceptance: Boolean,
     val isAcceptedInFormedGroup: Boolean,
@@ -50,7 +48,7 @@ data class SecretMatchingStage(
         // 조건이 겹치므로 위에서부터 빠져나가는 순서가 곧 규칙이다.
         fun determine(facts: SecretMatchingFacts): SecretMatchingStage {
             val quizSet = facts.oneToOneQuizSet
-            if (!facts.secretMatchingEnabled || quizSet == null || facts.now <= quizSet.endDate) return none()
+            if (facts.now <= quizSet.endDate) return none()
             if (facts.hasOneToOneAcceptance || facts.isAcceptedInFormedGroup || facts.isQuizBlocked) return none()
             if (facts.hasSecretCandidates) return facts.stageWithNextRound(SecretMatchingState.SECRET_RESULT)
 
@@ -82,7 +80,7 @@ data class SecretMatchingStage(
             return SecretMatchingStage(SecretMatchingState.ENDED, null)
         }
 
-        private fun none() = SecretMatchingStage(SecretMatchingState.NONE, null)
+        fun none() = SecretMatchingStage(SecretMatchingState.NONE, null)
 
         private fun SecretMatchingFacts.isBeforeLastRound(): Boolean =
             now < SecretMatchingSchedule.lateSubmissionClosesAt(week)

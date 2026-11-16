@@ -20,6 +20,12 @@ interface MatchCandidateRepository : JpaRepository<MatchCandidate, Long>, MatchC
 
     fun existsByQuizSetIdAndCandidateOriginNot(quizSetId: Long, candidateOrigin: CandidateOrigin): Boolean
 
+    fun existsByOwnerMemberIdAndQuizSetIdAndCandidateOriginNot(
+        ownerMemberId: Long,
+        quizSetId: Long,
+        candidateOrigin: CandidateOrigin,
+    ): Boolean
+
     /** 정규 매칭 후보는 퀴즈셋마다 한 번에 만들어져, 첫 정규 후보의 생성 시각이 그 셋의 매칭 시각이다. */
     fun findFirstByQuizSetIdAndCandidateOriginOrderByIdAsc(quizSetId: Long, candidateOrigin: CandidateOrigin): MatchCandidate?
 

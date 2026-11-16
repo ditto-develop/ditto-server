@@ -31,8 +31,6 @@ class SecretMatchingStageTest : FreeSpec({
 
     fun facts(
         now: LocalDateTime,
-        secretMatchingEnabled: Boolean = true,
-        hasOneToOneQuizSet: Boolean = true,
         oneToOneProgress: QuizProgress? = null,
         hasOneToOneAcceptance: Boolean = false,
         isAcceptedInFormedGroup: Boolean = false,
@@ -42,8 +40,7 @@ class SecretMatchingStageTest : FreeSpec({
     ) = SecretMatchingFacts(
         now = now,
         week = week,
-        secretMatchingEnabled = secretMatchingEnabled,
-        oneToOneQuizSet = oneToOneQuizSet.takeIf { hasOneToOneQuizSet },
+        oneToOneQuizSet = oneToOneQuizSet,
         oneToOneProgress = oneToOneProgress,
         hasOneToOneAcceptance = hasOneToOneAcceptance,
         isAcceptedInFormedGroup = isAcceptedInFormedGroup,
@@ -55,16 +52,8 @@ class SecretMatchingStageTest : FreeSpec({
     fun stageOf(facts: SecretMatchingFacts) = SecretMatchingStage.determine(facts)
 
     "카드를 띄우지 않는 경우" - {
-        "플래그가 꺼져 있으면 NONE 이다" {
-            stageOf(facts(friday, secretMatchingEnabled = false)) shouldBe SecretMatchingStage(SecretMatchingState.NONE, null)
-        }
-
         "응답 마감까지는 NONE 이다" {
-            stageOf(facts(responseDeadline)).state shouldBe SecretMatchingState.NONE
-        }
-
-        "이번 주 1:1 셋이 없으면 NONE 이다" {
-            stageOf(facts(friday, hasOneToOneQuizSet = false)).state shouldBe SecretMatchingState.NONE
+            stageOf(facts(responseDeadline)) shouldBe SecretMatchingStage(SecretMatchingState.NONE, null)
         }
 
         "1:1 성사, 성사된 그룹 수락, 경고 제재 중이면 시크릿 후보가 있어도 NONE 이다" {
