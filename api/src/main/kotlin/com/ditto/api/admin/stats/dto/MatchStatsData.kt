@@ -6,6 +6,7 @@ import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchStatusCount
+import com.ditto.domain.match.repository.querydsl.SecretCandidateOwnerCount
 import com.ditto.domain.quiz.repository.querydsl.UnmatchedMember
 import java.time.LocalDate
 
@@ -24,4 +25,12 @@ data class MatchStatsData(
     val activeGroupMemberCounts: List<ActiveGroupMemberCount>,
     val unmatchedRoundWeeks: List<LocalDate>,
     val membersUnmatchedInEveryRound: List<UnmatchedMember>,
+    val secretMatching: SecretMatchingStats,
+)
+
+/** 시크릿 매칭(IMP-2). 위 지표는 정규 매칭만 세서 이 숫자는 따로 본다. */
+data class SecretMatchingStats(
+    val lateCompletedMemberCount: Long,
+    val candidateOwnerCounts: List<SecretCandidateOwnerCount>,
+    val acceptedPairCount: Long,
 )

@@ -1,6 +1,7 @@
 package com.ditto.api.admin.stats
 
 import com.ditto.api.admin.stats.dto.MatchStatsData
+import com.ditto.api.admin.stats.dto.SecretMatchingStats
 import com.ditto.api.admin.stats.dto.StatsFilter
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
@@ -57,6 +58,12 @@ class MatchStatsService(
                 unmatchedRoundWeeks,
                 filter.matchingType.quizMatchingType,
                 memberFilter,
+            ),
+            secretMatching = SecretMatchingStats(
+                lateCompletedMemberCount = quizProgressRepository.countLateCompletersInWeek(week.startedOn, memberFilter),
+                candidateOwnerCounts =
+                    matchCandidateRepository.countSecretCandidateOwnersInWeek(week.startedOn, memberFilter),
+                acceptedPairCount = personalMatchRepository.countSecretRoundAcceptedPairsInWeek(week.startedOn),
             ),
         )
     }

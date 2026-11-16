@@ -318,7 +318,31 @@
         renderPersonalRequestFunnel(matchStats, quizMatchingTypeLabels, genderLabels);
         renderCandidateExposure(matchStats, quizMatchingTypeLabels);
         renderMembersUnmatchedInEveryRound(matchStats, weekStartedOn, today);
+        renderSecretMatching(matchStats.secretMatching, quizMatchingTypeLabels);
         renderMatchScores(matchStats, quizMatchingTypeLabels, genderLabels);
+    };
+
+    const SECRET_ROUND_LABELS = { SECRET_FIRST: '1차(금)', SECRET_SECOND: '2차(토)' };
+
+    // 시크릿 매칭은 1:1 만이라 그룹만 고르면 숨긴다.
+    const renderSecretMatching = (
+        { lateCompletedMemberCount, candidateOwnerCounts, acceptedPairCount },
+        quizMatchingTypeLabels,
+    ) => {
+        byId('matchSecretMatchingCard').hidden = !Object.hasOwn(quizMatchingTypeLabels, 'ONE_TO_ONE');
+        const ownerCountOf = (round) => candidateOwnerCounts.find((it) => it.candidateOrigin === round)?.count ?? 0;
+        const hasAny = lateCompletedMemberCount > 0 || candidateOwnerCounts.length > 0 || acceptedPairCount > 0;
+        if (!hasAny) {
+            byId('matchSecretMatchingSummary').textContent = '이 회차 시크릿 매칭 기록이 없습니다.';
+            return;
+        }
+        fillNowrapPieces('matchSecretMatchingSummary', [
+            `늦게 완주 ${countText(lateCompletedMemberCount, '명')}`,
+            ...Object.entries(SECRET_ROUND_LABELS).map(
+                ([round, label]) => `${label} 후보 받음 ${countText(ownerCountOf(round), '명')}`,
+            ),
+            `시크릿 후보에서 성사 ${countText(acceptedPairCount, '쌍')}`,
+        ]);
     };
 
     const renderPersonalRequestFunnel = (matchStats, quizMatchingTypeLabels, genderLabels) => {

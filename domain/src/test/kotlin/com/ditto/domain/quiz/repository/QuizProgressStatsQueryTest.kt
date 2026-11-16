@@ -148,6 +148,7 @@ class QuizProgressStatsQueryTest(
             )
             quizProgressRepository.countMembersCompletedInWeeks(listOf(WEEK), null, MemberFilter.NONE) shouldBe 1L
             quizProgressRepository.countMembersCompletedAgain(WEEK.minusWeeks(1), WEEK, MemberFilter.NONE) shouldBe emptyList()
+            quizProgressRepository.countLateCompletersInWeek(WEEK, MemberFilter.NONE) shouldBe 2L
         }
     }
 

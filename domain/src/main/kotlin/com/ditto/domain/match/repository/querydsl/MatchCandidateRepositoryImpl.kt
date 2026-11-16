@@ -64,6 +64,32 @@ class MatchCandidateRepositoryImpl(
             .map { row -> MatchCandidateCount(gender = row.get(member.gender), count = row.get(countExpression) ?: 0L) }
     }
 
+    override fun countSecretCandidateOwnersInWeek(
+        weekStartedOn: LocalDate,
+        filter: MemberFilter,
+    ): List<SecretCandidateOwnerCount> {
+        val countExpression = matchCandidate.ownerMemberId.countDistinct()
+        return queryFactory
+            .select(matchCandidate.candidateOrigin, countExpression)
+            .from(matchCandidate)
+            .join(quizSet).on(quizSet.id.eq(matchCandidate.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(matchCandidate.ownerMemberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                matchCandidate.candidateOrigin.ne(CandidateOrigin.REGULAR),
+                member.matchesFilter(filter),
+            )
+            .groupBy(matchCandidate.candidateOrigin)
+            .fetch()
+            .map { row ->
+                SecretCandidateOwnerCount(
+                    candidateOrigin = row.get(matchCandidate.candidateOrigin)
+                        ?: throw IllegalStateException("group by 키 candidateOrigin 이 비었다"),
+                    count = row.get(countExpression) ?: 0L,
+                )
+            }
+    }
+
     override fun countCandidatesPerOwnerInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<Long> =
         queryFactory
             .select(matchCandidate.count())

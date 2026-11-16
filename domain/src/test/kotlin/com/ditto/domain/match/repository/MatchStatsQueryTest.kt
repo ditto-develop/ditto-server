@@ -13,6 +13,7 @@ import com.ditto.domain.match.repository.querydsl.GroupMatchScore
 import com.ditto.domain.match.repository.querydsl.MatchCandidateCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchMemberCount
 import com.ditto.domain.match.repository.querydsl.PersonalMatchStatusCount
+import com.ditto.domain.match.repository.querydsl.SecretCandidateOwnerCount
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
 import com.ditto.domain.member.entity.MemberRole
@@ -109,6 +110,9 @@ class MatchStatsQueryTest(
         personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 2L
         personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
         personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
+        matchCandidateRepository.countSecretCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
+            listOf(SecretCandidateOwnerCount(CandidateOrigin.SECRET_FIRST, 2L))
+        personalMatchRepository.countSecretRoundAcceptedPairsInWeek(WEEK) shouldBe 1L
     }
 
     "countCandidateOwnersInWeek" - {

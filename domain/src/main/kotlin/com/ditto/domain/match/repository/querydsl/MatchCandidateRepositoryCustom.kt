@@ -27,6 +27,9 @@ interface MatchCandidateRepositoryCustom {
 
     fun countCandidateOwnersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<MatchCandidateCount>
 
+    /** 그 주 활성 셋에서 시크릿 매칭 라운드마다 후보를 받은 회원 수. 정규 후보는 [countCandidateOwnersInWeek]가 센다. */
+    fun countSecretCandidateOwnersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<SecretCandidateOwnerCount>
+
     /** 그 주 활성 셋에서 후보를 받은 회원마다 받은 후보 수. 화면이 구간으로 묶는다. */
     fun countCandidatesPerOwnerInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<Long>
 

@@ -155,6 +155,18 @@ class PersonalMatchRepositoryImpl(
             }
     }
 
+    override fun countSecretRoundAcceptedPairsInWeek(weekStartedOn: LocalDate): Long =
+        queryFactory
+            .select(personalMatch.count())
+            .from(personalMatch)
+            .join(quizSet).on(quizSet.id.eq(personalMatch.quizSetId), quizSet.isActive.isTrue)
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
+                personalMatchFromSecretRound(),
+            )
+            .fetchOne() ?: 0L
+
     // 받는 사람 컬럼이 없어 두 회원 중 신청자가 아닌 쪽으로 잇는다. 양쪽을 따로 세면 한 사람이 두 번 세진다.
     private fun receiverJoinCondition(): BooleanExpression =
         member.id.`in`(personalMatch.memberId1, personalMatch.memberId2)

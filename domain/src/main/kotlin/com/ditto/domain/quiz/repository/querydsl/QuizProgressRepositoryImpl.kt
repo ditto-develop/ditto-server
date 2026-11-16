@@ -129,6 +129,20 @@ class QuizProgressRepositoryImpl(
             .fetchOne() ?: 0L
     }
 
+    override fun countLateCompletersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): Long =
+        queryFactory
+            .select(quizProgress.memberId.countDistinct())
+            .from(quizProgress)
+            .join(quizSet).on(quizSet.id.eq(quizProgress.quizSetId), quizSet.isActive.isTrue)
+            .join(member).on(member.id.eq(quizProgress.memberId))
+            .where(
+                quizSet.weekStartedOn.eq(weekStartedOn),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                quizProgress.completedAt.gt(quizSet.endDate),
+                member.matchesFilter(filter),
+            )
+            .fetchOne() ?: 0L
+
     override fun countAdminMembersCompletedInWeek(weekStartedOn: LocalDate): Long =
         queryFactory
             .select(quizProgress.memberId.countDistinct())
