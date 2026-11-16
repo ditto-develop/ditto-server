@@ -17,7 +17,9 @@ import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.quiz.QuizProgressFixture
+import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.review.MemberReviewFixture
 import com.ditto.domain.review.ReviewAnswerFixture
 import com.ditto.domain.review.entity.MeetingStatus
@@ -27,6 +29,7 @@ import com.ditto.domain.review.repository.ReviewAnswerRepository
 import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document
 import com.epages.restdocs.apispec.ResourceDocumentation.resource
 import com.epages.restdocs.apispec.ResourceSnippetParameters
+import java.time.LocalDate
 import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -53,6 +56,9 @@ class MyProfileControllerTest : RestDocsTest() {
 
     @Autowired
     private lateinit var quizProgressRepository: QuizProgressRepository
+
+    @Autowired
+    private lateinit var quizSetRepository: QuizSetRepository
 
     @Autowired
     private lateinit var chatRoomMemberRepository: ChatRoomMemberRepository
@@ -307,8 +313,8 @@ class MyProfileControllerTest : RestDocsTest() {
     @DisplayName("내 통계를 조회한다")
     fun getMyStats() {
         val member = saveActiveMember()
-        saveCompletedQuizProgress(member.id, quizSetId = 1L)
-        saveCompletedQuizProgress(member.id, quizSetId = 2L)
+        saveCompletedQuizProgress(member.id, weekStartedOn = LocalDate.of(2026, 11, 9))
+        saveCompletedQuizProgress(member.id, weekStartedOn = LocalDate.of(2026, 11, 16))
         chatRoomMemberRepository.save(ChatRoomMemberFixture.create(roomId = 1L, memberId = member.id))
         saveReceivedAnswer(member.id, MeetingStatus.MET, rating = 5, comment = "대화가 편하고 좋았어요")
 
@@ -337,7 +343,7 @@ class MyProfileControllerTest : RestDocsTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.participationWeeks").description("참여 주차 (완주한 퀴즈 수)"),
+                                fieldWithPath("data.participationWeeks").description("참여 주차 (퀴즈를 완주한 운영 주 수. 같은 주에 그룹·1:1 을 둘 다 완주해도 한 주)"),
                                 fieldWithPath("data.matchCount").description("매칭 성사 (개설된 채팅방 수)"),
                                 fieldWithPath("data.meetingCount").description("만남 횟수 ('만났어요' 평가를 받은 개수)"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
@@ -430,9 +436,12 @@ class MyProfileControllerTest : RestDocsTest() {
         ),
     )
 
-    /** 완주(COMPLETED) 상태의 퀴즈 진행 하나를 만든다 — 총 1문항을 답한 것으로 둔다. */
-    private fun saveCompletedQuizProgress(memberId: Long, quizSetId: Long) {
-        val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSetId, totalCount = 1)
+    /** [weekStartedOn] 주 퀴즈셋을 완주(COMPLETED)한 진행 하나를 만든다 — 총 1문항을 답한 것으로 둔다. */
+    private fun saveCompletedQuizProgress(memberId: Long, weekStartedOn: LocalDate) {
+        val quizSet = quizSetRepository.save(
+            QuizSetFixture.create(startDate = weekStartedOn.atStartOfDay(), endDate = weekStartedOn.plusDays(2).atTime(23, 59, 59)),
+        )
+        val progress = QuizProgressFixture.create(memberId = memberId, quizSetId = quizSet.id, totalCount = 1)
         progress.recordAnswer()
         quizProgressRepository.save(progress)
     }

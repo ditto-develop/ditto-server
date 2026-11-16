@@ -16,8 +16,7 @@ import com.ditto.domain.member.entity.Job
 import com.ditto.domain.member.entity.Location
 import com.ditto.domain.member.entity.ProfileChanges
 import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.quiz.entity.QuizProgressStatus
-import com.ditto.domain.quiz.repository.QuizProgressRepository
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.repository.ReviewAnswerRepository
 import org.springframework.stereotype.Service
@@ -34,7 +33,7 @@ class MyProfileService(
     private val userService: UserService,
     private val introNoteService: IntroNoteService,
     private val memberRepository: MemberRepository,
-    private val quizProgressRepository: QuizProgressRepository,
+    private val quizSetRepository: QuizSetRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val reviewAnswerRepository: ReviewAnswerRepository,
     private val memberRatingService: MemberRatingService,
@@ -96,10 +95,7 @@ class MyProfileService(
 
     @Transactional(readOnly = true)
     fun getMyStats(memberId: Long): MyStatsResponse = MyStatsResponse(
-        participationWeeks = quizProgressRepository.countByMemberIdAndStatus(
-            memberId = memberId,
-            status = QuizProgressStatus.COMPLETED,
-        ),
+        participationWeeks = quizSetRepository.countCompletedWeeksOf(memberId),
         matchCount = chatRoomMemberRepository.countByMemberId(memberId),
         meetingCount = reviewAnswerRepository.countAnsweredInEndedRoomsByReviewedMemberIdAndMeetingStatus(
             reviewedMemberId = memberId,

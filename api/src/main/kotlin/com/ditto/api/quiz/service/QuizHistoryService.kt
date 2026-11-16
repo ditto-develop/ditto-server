@@ -79,7 +79,7 @@ class QuizHistoryService(
 
         return QuizHistoryResponse(
             summary = QuizHistorySummary(
-                participatedWeeks = quizSets.size,
+                participatedWeeks = quizSets.map { it.weekStartedOn }.distinct().size,
                 answeredQuestions = progresses.sumOf { it.totalCount },
                 minorityCount = weeks.sumOf { it.minorityCount ?: 0 },
             ),

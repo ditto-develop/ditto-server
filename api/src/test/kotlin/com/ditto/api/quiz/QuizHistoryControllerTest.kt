@@ -76,7 +76,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.summary.participatedWeeks").description("끝까지 푼 주의 수"),
+                                fieldWithPath("data.summary.participatedWeeks").description("끝까지 푼 주의 수 (같은 주에 그룹·1:1 을 둘 다 완주해도 한 주)"),
                                 fieldWithPath("data.summary.answeredQuestions").description("끝까지 푼 주들의 답 수 합"),
                                 fieldWithPath("data.summary.minorityCount").description("결과가 공개된 주에서 내 답이 소수 의견이었던 문항 수 합"),
                                 fieldWithPath("data.currentWeek").description("이번 운영 주 퀴즈를 완주했을 때만. 아니면 null").optional(),

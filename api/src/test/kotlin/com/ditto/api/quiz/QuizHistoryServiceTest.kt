@@ -10,6 +10,7 @@ import com.ditto.common.serialization.ObjectMapperFactory
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
 import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
@@ -80,6 +81,19 @@ class QuizHistoryServiceTest(
 
             week.lateCompletion shouldBe true
             week.minorityCount shouldBe 1
+        }
+
+        "같은 주에 그룹과 1:1 을 둘 다 완주해도 참여 주는 한 주다" {
+            val me = member()
+            val group = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK, matchingType = MatchingType.GROUP)
+            val oneToOne = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK)
+            seeder.answer(me, group, listOf(1, 1, 1))
+            seeder.answer(me, oneToOne, listOf(1, 1, 1))
+
+            val history = quizHistoryService.getHistory(me, WEDNESDAY_EVENING)
+
+            history.weeks.size shouldBe 2
+            history.summary.participatedWeeks shouldBe 1
         }
 
         "이번 주를 완주하지 않았으면 currentWeek 는 null 이다" {

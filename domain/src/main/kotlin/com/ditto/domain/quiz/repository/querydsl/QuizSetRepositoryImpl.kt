@@ -86,4 +86,15 @@ class QuizSetRepositoryImpl(
             )
             .orderBy(quizSet.weekStartedOn.desc(), quizSet.id.desc())
             .fetch()
+
+    override fun countCompletedWeeksOf(memberId: Long): Long =
+        queryFactory
+            .select(quizSet.weekStartedOn.countDistinct())
+            .from(quizProgress)
+            .join(quizSet).on(quizProgress.quizSetId.eq(quizSet.id))
+            .where(
+                quizProgress.memberId.eq(memberId),
+                quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+            )
+            .fetchOne() ?: 0L
 }
