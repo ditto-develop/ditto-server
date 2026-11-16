@@ -33,8 +33,9 @@ class MatchingScheduler(
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
     fun generateForEndedQuizSets() {
-        val quizSetIds = matchingBatchFacade.runScheduledMatching(LocalDateTime.now())
-        matchResultNotifier.notifyFor(quizSetIds)
+        val now = LocalDateTime.now()
+        val quizSetIds = matchingBatchFacade.runScheduledMatching(now)
+        matchResultNotifier.notifyFor(quizSetIds, now)
     }
 
     // SecretMatchingSchedule 의 라운드 시각(금·토 20:00)에 맞춘다. 바꿀 때 함께 고친다. 재시도 이유는 ADR 0054.
@@ -45,8 +46,9 @@ class MatchingScheduler(
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
     fun generateSecretRound() {
-        val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
-        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+        val now = LocalDateTime.now()
+        val result = matchingBatchFacade.runSecretRound(now)
+        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds, now)
         secretMatchResultNotifier.notifyFor(result.roundResults)
     }
 }

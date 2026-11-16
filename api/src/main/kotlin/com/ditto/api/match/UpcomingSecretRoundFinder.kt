@@ -19,7 +19,7 @@ class UpcomingSecretRoundFinder(
     private val quizSetRepository: QuizSetRepository,
 ) {
 
-    fun findFor(week: OperationWeek, now: LocalDateTime): LocalDateTime? {
+    fun nextRoundToAnnounce(week: OperationWeek, now: LocalDateTime): LocalDateTime? {
         if (!featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)) return null
         if (week != OperationWeek.containing(now.toLocalDate())) return null
         if (!hasActiveOneToOneQuizSet(week)) return null

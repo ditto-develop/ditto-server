@@ -5,7 +5,6 @@ import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
-import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
@@ -42,24 +41,22 @@ class MatchResultNotifier(
     private val notificationAppender: NotificationAppender,
     private val quizSetRepository: QuizSetRepository,
     private val upcomingSecretRoundFinder: UpcomingSecretRoundFinder,
-    private val serverTimeProvider: ServerTimeProvider,
 ) {
     /**
      * 후보가 생성된 퀴즈셋들에 대해 알린다. 조회 실패는 여기서 삼킨다. 어드민 재생성 경로에서 예외가
      * 올라가면 이미 커밋된 배치가 실패한 것처럼 보인다. 실제로 남긴 알림 수(결과·노매칭 합)를 돌려주고
-     * 실패하면 0 이다.
+     * 실패하면 0 이다. [now]는 배치를 돌린 시각이고 시크릿 매칭 안내 문구를 정한다.
      */
-    fun notifyFor(quizSetIds: Collection<Long>): Int =
-        runCatchingExceptions { appendMatchResults(quizSetIds) }
+    fun notifyFor(quizSetIds: Collection<Long>, now: LocalDateTime): Int =
+        runCatchingExceptions { appendMatchResults(quizSetIds, now) }
             .onFailure { logger.warn(it) { "매칭 결과 알림 실패 — 무시한다: quizSetIds=$quizSetIds" } }
             .getOrDefault(0)
 
-    private fun appendMatchResults(quizSetIds: Collection<Long>): Int {
+    private fun appendMatchResults(quizSetIds: Collection<Long>, now: LocalDateTime): Int {
         if (quizSetIds.isEmpty()) {
             return 0
         }
 
-        val now = serverTimeProvider.now()
         var matchedCount = 0
         var unmatchedCount = 0
         quizSetIds.forEach { quizSetId ->
@@ -71,7 +68,7 @@ class MatchResultNotifier(
             )
             unmatchedCount += notificationAppender.appendAll(
                 memberIds = unmatchedMemberIds(quizSetId, matchedMemberIds),
-                content = NotificationMessages.noMatch(secretRoundAtForOneToOne(quizSetId, now)),
+                content = NotificationMessages.noMatch(secretRoundAtIfOneToOne(quizSetId, now)),
                 targetId = quizSetId,
             )
         }
@@ -82,22 +79,26 @@ class MatchResultNotifier(
         return matchedCount + unmatchedCount
     }
 
-    private fun secretRoundAtForOneToOne(quizSetId: Long, now: LocalDateTime): LocalDateTime? {
+    private fun secretRoundAtIfOneToOne(quizSetId: Long, now: LocalDateTime): LocalDateTime? {
         val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return null
         if (quizSet.matchingType != MatchingType.ONE_TO_ONE) return null
-        return upcomingSecretRoundFinder.findFor(quizSet.operationWeek, now)
+        return upcomingSecretRoundFinder.nextRoundToAnnounce(quizSet.operationWeek, now)
     }
 
     /**
      * 풀에 들었지만 후보가 없는 회원. 이미 MATCH_RESULT 를 받은 회원은 뺀다. 어드민 재생성으로 후보가
      * 사라진 사람에게 노매칭까지 보내면 같은 주에 두 알림이 나란히 남는다.
+     * 시크릿 후보가 있는 회원도 뺀다. 놓친 정규 배치를 시크릿 라운드가 메우면 같은 순간 시크릿 결과 알림을 받는다.
      */
     private fun unmatchedMemberIds(quizSetId: Long, matchedMemberIds: List<Long>): Set<Long> =
-        (matchmakingService.matchingPoolMemberIds(quizSetId) - matchedMemberIds)
+        (matchmakingService.matchingPoolMemberIds(quizSetId) - matchedMemberIds - candidateOwnerIds(quizSetId))
             .filterNot { memberId ->
                 notificationRepository.existsByMemberIdAndTypeAndTargetId(memberId, NotificationType.MATCH_RESULT, quizSetId)
             }
             .toSet()
+
+    private fun candidateOwnerIds(quizSetId: Long): Set<Long> =
+        matchCandidateRepository.findOwnerMemberIdsByQuizSetId(quizSetId).toSet()
 
     /**
      * 후보를 받은 회원. 후보를 담는 테이블이 매칭 타입마다 달라 양쪽을 모두 본다 —

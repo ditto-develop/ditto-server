@@ -69,7 +69,7 @@ enum class NotificationType(
      * 이번 주 퀴즈를 하나도 끝내지 않은 회원에게 시크릿 매칭을 안내한다(목 12:00). 대상은 그 주 1:1 퀴즈셋이고
      * 주마다 한 번이다. 목~일에는 이번 주 퀴즈 화면이 비어 있어 홈(카드에서 퀴즈로 들어간다)으로 보낸다.
      */
-    SECRET_MATCHING_INVITED(
+    SECRET_MATCH_REMINDER(
         NotificationCategory.MATCHING,
         NotificationTarget.QUIZ_SET,
         DuplicatePolicy.ONCE_PER_TARGET,

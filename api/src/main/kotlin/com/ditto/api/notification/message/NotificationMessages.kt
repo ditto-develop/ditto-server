@@ -49,7 +49,7 @@ object NotificationMessages {
         return NotificationContent(
             type = NotificationType.NO_MATCH,
             title = "이번엔 인연이 닿지 않았어요",
-            body = "${dayNameOf(secretRoundAt)} 저녁 8시에 한 번 더 찾아볼게요.",
+            body = "${roundTimeText(secretRoundAt)}에 한 번 더 찾아볼게요.",
         )
     }
 
@@ -60,11 +60,11 @@ object NotificationMessages {
         body = "같은 답을 한 사람이 더 있어요. 일요일 밤까지 대화를 신청해보세요.",
     )
 
-    /** 이번 주 퀴즈를 하나도 끝내지 않았다. 1:1 퀴즈를 풀면 [roundAt] 라운드에 들어간다. */
-    fun secretMatchingInvited(roundAt: LocalDateTime): NotificationContent = NotificationContent(
-        type = NotificationType.SECRET_MATCHING_INVITED,
+    /** 이번 주 퀴즈를 하나도 끝내지 않았다. 1:1 퀴즈를 풀면 [secretRoundAt] 라운드에 들어간다. */
+    fun secretMatchReminder(secretRoundAt: LocalDateTime): NotificationContent = NotificationContent(
+        type = NotificationType.SECRET_MATCH_REMINDER,
         title = "시크릿 매칭 기회가 있어요",
-        body = "지금 1:1 퀴즈를 풀면 ${dayNameOf(roundAt)} 저녁 8시에 같은 답을 한 사람을 찾아드려요.",
+        body = "지금 1:1 퀴즈를 풀면 ${roundTimeText(secretRoundAt)}에 같은 답을 한 사람을 찾아드려요.",
     )
 
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
@@ -82,7 +82,7 @@ object NotificationMessages {
         type = NotificationType.GROUP_NOT_FORMED,
         title = "이번 주는 인원 미달로 취소됐어요",
         body = secretRoundAt
-            ?.let { "1:1 퀴즈를 풀면 ${dayNameOf(it)} 저녁 8시 시크릿 매칭에 참여할 수 있어요." }
+            ?.let { "1:1 퀴즈를 풀면 ${roundTimeText(it)} 시크릿 매칭에 참여할 수 있어요." }
             ?: "다음 주에 새로운 질문으로 다시 찾아볼게요.",
     )
 
@@ -255,7 +255,9 @@ object NotificationMessages {
             )
         }
 
-    private fun dayNameOf(at: LocalDateTime): String = at.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
+    // 라운드 시각(SecretMatchingSchedule, 20:00)을 바꾸면 "저녁 8시"도 함께 고친다.
+    private fun roundTimeText(secretRoundAt: LocalDateTime): String =
+        "${secretRoundAt.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)} 저녁 8시"
 
     private val DATE = DateTimeFormatter.ofPattern("M월 d일")
     private val DATE_TIME = DateTimeFormatter.ofPattern("M월 d일 HH:mm")

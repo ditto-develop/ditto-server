@@ -149,7 +149,7 @@ class UnformedGroupNotifierTest(
                 notifications(1L).single().body shouldBe "1:1 퀴즈를 풀면 금요일 저녁 8시 시크릿 매칭에 참여할 수 있어요."
             }
 
-            "그 주 1:1 셋이 없으면 기존 문구다" {
+            "그 주 1:1 셋이 없으면 다음 주 안내 문구를 쓴다" {
                 featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
                 unformedGroup(listOf(1L))
 
@@ -158,7 +158,7 @@ class UnformedGroupNotifierTest(
                 notifications(1L).single().body shouldBe "다음 주에 새로운 질문으로 다시 찾아볼게요."
             }
 
-            "기능이 꺼져 있으면 기존 문구다" {
+            "기능이 꺼져 있으면 다음 주 안내 문구를 쓴다" {
                 quizSetId(matchingType = MatchingType.ONE_TO_ONE)
                 unformedGroup(listOf(1L))
 

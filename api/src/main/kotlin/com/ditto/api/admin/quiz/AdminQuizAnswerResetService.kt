@@ -80,7 +80,7 @@ class AdminQuizAnswerResetService(
 
         quizAnswerRepository.deleteByMemberIdAndQuizIds(memberId, findQuizIdsIn(quizSetId))
         quizProgressRepository.deleteByMemberIdAndQuizSetIds(memberId, listOf(quizSetId))
-        quizSetDeleter.deleteMemberMatchResultNotifications(quizSetId, memberId)
+        quizSetDeleter.deleteMemberMatchingNotifications(quizSetId, memberId)
         quizSetDeleter.deleteStatSnapshot(quizSetId)
         return MemberAnswerResetSummary(memberId, memberRepository.findByIdOrNull(memberId)?.nickname)
     }

@@ -179,6 +179,8 @@ class PushNotifier(
         -> Duration.ofDays(3)
         // 종료·마감 6시간 전 알림 — 지나면 무의미하다.
         NotificationType.CHAT_ENDING_SOON, NotificationType.QUIZ_CLOSING_SOON -> Duration.ofHours(6)
+        // 목 12:00 에 보내고 늦은 응시는 토 20:00 에 닫힌다. 그 뒤에 뜨면 풀 수 없는 퀴즈를 권한다.
+        NotificationType.SECRET_MATCH_REMINDER -> Duration.ofDays(2)
         else -> null
     }
 

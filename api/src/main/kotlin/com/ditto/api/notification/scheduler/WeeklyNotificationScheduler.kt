@@ -3,7 +3,7 @@ package com.ditto.api.notification.scheduler
 import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.notification.notifier.QuizNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
-import com.ditto.api.notification.notifier.SecretMatchingInviteNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderNotifier
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import java.time.LocalDateTime
 import org.springframework.scheduling.annotation.Scheduled
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
 class WeeklyNotificationScheduler(
     private val quizNotifier: QuizNotifier,
     private val reviewReminderNotifier: ReviewReminderNotifier,
-    private val secretMatchingInviteNotifier: SecretMatchingInviteNotifier,
+    private val secretMatchReminderNotifier: SecretMatchReminderNotifier,
 ) {
 
     /** 퀴즈 응답 기간은 월요일 00:00 에 시작한다(QuizResponsePeriod). */
@@ -54,13 +54,13 @@ class WeeklyNotificationScheduler(
     }
 
     /** 응답 마감 뒤 첫 시크릿 매칭 라운드(금 20:00) 전에 미참여자를 부른다. 기획이 정한 시각이다. */
-    @Scheduled(cron = "\${notification.secret-matching-invite.cron:0 0 12 * * THU}")
+    @Scheduled(cron = "\${notification.secret-match-reminder.cron:0 0 12 * * THU}")
     @SchedulerLock(
-        name = "secret-matching-invite-notification",
+        name = "secret-match-reminder-notification",
         lockAtMostFor = SchedulerLockDurations.WEEKLY_AT_MOST,
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
-    fun notifySecretMatchingInvite() {
-        secretMatchingInviteNotifier.notifyNotParticipated(LocalDateTime.now())
+    fun notifySecretMatchReminder() {
+        secretMatchReminderNotifier.notifyNonParticipants(LocalDateTime.now())
     }
 }

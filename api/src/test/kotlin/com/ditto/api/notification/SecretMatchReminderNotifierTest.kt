@@ -1,6 +1,7 @@
 package com.ditto.api.notification
 
-import com.ditto.api.notification.notifier.SecretMatchingInviteNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderResult
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.system.featureflag.FeatureFlagAdminService
 import com.ditto.api.system.featureflag.FeatureFlags
@@ -25,8 +26,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
-class SecretMatchingInviteNotifierTest(
-    private val secretMatchingInviteNotifier: SecretMatchingInviteNotifier,
+class SecretMatchReminderNotifierTest(
+    private val secretMatchReminderNotifier: SecretMatchReminderNotifier,
     private val memberRepository: MemberRepository,
     private val quizSetRepository: QuizSetRepository,
     private val quizProgressRepository: QuizProgressRepository,
@@ -41,9 +42,12 @@ class SecretMatchingInviteNotifierTest(
         beforeTest { featureFlags.evict() }
         afterTest { featureFlags.evict() }
 
-        // 2026-11-16(월) 시작 주. 안내는 목 12:00, 1차 라운드는 금 20:00.
+        // 2026-11-16(월) 시작 주. 응답 마감 수 23:59:59, 안내는 목 12:00, 라운드는 금·토 20:00.
         val monday = LocalDate.of(2026, 11, 16)
+        val wednesday = LocalDateTime.of(2026, 11, 18, 12, 0)
         val thursdayNoon = LocalDateTime.of(2026, 11, 19, 12, 0)
+        val fridayRound = LocalDateTime.of(2026, 11, 20, 20, 0)
+        val saturdayRound = LocalDateTime.of(2026, 11, 21, 20, 0)
 
         fun enableSecretMatching() =
             featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
@@ -65,8 +69,8 @@ class SecretMatchingInviteNotifierTest(
             )
         }
 
-        fun invitedMemberIds() = notificationRepository.findAll()
-            .filter { it.type == NotificationType.SECRET_MATCHING_INVITED }
+        fun remindedMemberIds() = notificationRepository.findAll()
+            .filter { it.type == NotificationType.SECRET_MATCH_REMINDER }
             .map { it.memberId }
             .toSet()
 
@@ -74,47 +78,71 @@ class SecretMatchingInviteNotifierTest(
             enableSecretMatching()
             val oneToOne = weekQuizSet(MatchingType.ONE_TO_ONE)
             val group = weekQuizSet(MatchingType.GROUP)
-            val notParticipated = activeMember("미참여")
-            val oneToOneDone = activeMember("1on1완주").also { complete(it.id, oneToOne.id) }
-            val groupDone = activeMember("그룹완주").also { complete(it.id, group.id) }
-            val warned = activeMember("경고").also {
+            val nonParticipant = activeMember("미참여")
+            activeMember("1on1완주").also { complete(it.id, oneToOne.id) }
+            activeMember("그룹완주").also { complete(it.id, group.id) }
+            activeMember("경고").also {
                 sanctionRepository.save(
                     SanctionFixture.create(memberId = it.id, level = SanctionLevel.WARNING, startsAt = monday.atStartOfDay()),
                 )
             }
             memberRepository.save(MemberFixture.create(nickname = "탈퇴", email = "left@ditto.pics", status = MemberStatus.LEFT))
 
-            secretMatchingInviteNotifier.notifyNotParticipated(thursdayNoon) shouldBe 1
+            val result = secretMatchReminderNotifier.notifyNonParticipants(thursdayNoon)
 
-            invitedMemberIds() shouldBe setOf(notParticipated.id)
+            result shouldBe SecretMatchReminderResult(SecretMatchReminderResult.Status.SENT, 1, fridayRound)
+            remindedMemberIds() shouldBe setOf(nonParticipant.id)
             notificationRepository.findAll().single().let {
                 it.title shouldBe "시크릿 매칭 기회가 있어요"
                 it.body shouldBe "지금 1:1 퀴즈를 풀면 금요일 저녁 8시에 같은 답을 한 사람을 찾아드려요."
                 it.targetId shouldBe oneToOne.id
             }
-            listOf(oneToOneDone, groupDone, warned).forEach { (it.id in invitedMemberIds()) shouldBe false }
         }
 
-        "주마다 한 번만 보낸다" {
+        "이미 받은 회원에게는 다시 보내지 않는다" {
             enableSecretMatching()
             weekQuizSet(MatchingType.ONE_TO_ONE)
             activeMember("미참여")
-            secretMatchingInviteNotifier.notifyNotParticipated(thursdayNoon) shouldBe 1
+            secretMatchReminderNotifier.notifyNonParticipants(thursdayNoon).sentCount shouldBe 1
 
-            secretMatchingInviteNotifier.notifyNotParticipated(thursdayNoon.plusHours(1)) shouldBe 0
+            secretMatchReminderNotifier.notifyNonParticipants(thursdayNoon.plusHours(1)).status shouldBe
+                SecretMatchReminderResult.Status.NO_RECIPIENT
         }
 
-        "기능이 꺼져 있거나 그 주 1:1 셋이 없거나 남은 라운드가 없으면 보내지 않는다" {
-            activeMember("미참여")
-            weekQuizSet(MatchingType.GROUP)
-            secretMatchingInviteNotifier.notifyNotParticipated(thursdayNoon) shouldBe 0
-
+        "응답 마감 전에는 보내지 않는다" {
             enableSecretMatching()
-            secretMatchingInviteNotifier.notifyNotParticipated(thursdayNoon) shouldBe 0
-
             weekQuizSet(MatchingType.ONE_TO_ONE)
-            secretMatchingInviteNotifier.notifyNotParticipated(LocalDateTime.of(2026, 11, 21, 20, 0)) shouldBe 0
+            activeMember("미참여")
+
+            secretMatchReminderNotifier.notifyNonParticipants(wednesday).status shouldBe
+                SecretMatchReminderResult.Status.RESPONSE_PERIOD
             notificationRepository.count() shouldBe 0
+        }
+
+        "기능이 꺼져 있으면 보내지 않는다" {
+            weekQuizSet(MatchingType.ONE_TO_ONE)
+            activeMember("미참여")
+
+            secretMatchReminderNotifier.notifyNonParticipants(thursdayNoon).status shouldBe
+                SecretMatchReminderResult.Status.FLAG_OFF
+        }
+
+        "그 주 1:1 셋이 없으면 보내지 않는다" {
+            enableSecretMatching()
+            weekQuizSet(MatchingType.GROUP)
+            activeMember("미참여")
+
+            secretMatchReminderNotifier.notifyNonParticipants(thursdayNoon).status shouldBe
+                SecretMatchReminderResult.Status.NOT_ANNOUNCEABLE
+        }
+
+        "토 20:00 라운드가 시작되면 남은 라운드가 없어 보내지 않는다" {
+            enableSecretMatching()
+            weekQuizSet(MatchingType.ONE_TO_ONE)
+            activeMember("미참여")
+
+            secretMatchReminderNotifier.notifyNonParticipants(saturdayRound).status shouldBe
+                SecretMatchReminderResult.Status.NOT_ANNOUNCEABLE
         }
     },
 )

@@ -59,11 +59,11 @@ class UnformedGroupNotifier(
             // 아무도 수락하지 않은 후보 그룹이 대부분이다 — 알릴 사람이 없으면 조용히 넘긴다.
             if (acceptedMemberIds.isEmpty()) return@forEach
 
+            val secretRoundAt = weekByQuizSetId[group.quizSetId]
+                ?.let { upcomingSecretRoundFinder.nextRoundToAnnounce(it, now) }
             notified += notificationAppender.appendAll(
                 memberIds = acceptedMemberIds,
-                content = NotificationMessages.groupNotFormed(
-                    weekByQuizSetId[group.quizSetId]?.let { upcomingSecretRoundFinder.findFor(it, now) },
-                ),
+                content = NotificationMessages.groupNotFormed(secretRoundAt),
                 targetId = group.id,
             )
         }

@@ -33,7 +33,7 @@ class PersonalMatchNotifier(
     /** 수신자에게 신청 사실을 알린다. 실제로 남겼으면 true. */
     fun notifyRequested(matchId: Long, receiverId: Long, requestedBy: Long): Boolean =
         runCatchingExceptions {
-            val content = nicknameOf(requestedBy)?.let { NotificationMessages.matchRequested(it, isChatOpenNow()) }
+            val content = nicknameOf(requestedBy)?.let { NotificationMessages.matchRequested(it, isChatOpen = isChatOpenNow()) }
             appendToCounterpart(matchId, receiverId, content)
         }
             .onFailure { logger.warn(it) { "대화 신청 알림 실패 — 무시한다: matchId=$matchId" } }
@@ -42,7 +42,7 @@ class PersonalMatchNotifier(
     /** 신청자에게 수락 사실을 알린다. 실제로 남겼으면 true. */
     fun notifyAccepted(matchId: Long, requesterId: Long, acceptedBy: Long): Boolean =
         runCatchingExceptions {
-            val content = nicknameOf(acceptedBy)?.let { NotificationMessages.matchAccepted(it, isChatOpenNow()) }
+            val content = nicknameOf(acceptedBy)?.let { NotificationMessages.matchAccepted(it, isChatOpen = isChatOpenNow()) }
             appendToCounterpart(matchId, requesterId, content)
         }
             .onFailure { logger.warn(it) { "대화 신청 수락 알림 실패 — 무시한다: matchId=$matchId" } }

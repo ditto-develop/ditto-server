@@ -6,7 +6,8 @@ import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.match.service.SecretRoundBatchResult
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.SecretMatchResultNotifier
-import com.ditto.api.notification.notifier.SecretMatchingInviteNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderResult
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * 매칭 운영. 실시간 스케줄러(목 00:01, 시크릿 매칭 금·토 20:01)와 별개로, 어드민이 같은 배치 로직을 수동 실행하거나
@@ -32,7 +34,7 @@ class AdminMatchController(
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
     private val secretMatchResultNotifier: SecretMatchResultNotifier,
-    private val secretMatchingInviteNotifier: SecretMatchingInviteNotifier,
+    private val secretMatchReminderNotifier: SecretMatchReminderNotifier,
     private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @GetMapping("/admin/matching")
@@ -45,8 +47,9 @@ class AdminMatchController(
 
     @PostMapping("/admin/matching/run-scheduled")
     fun runScheduled(redirectAttributes: RedirectAttributes): String {
-        val quizSetIds = matchingBatchFacade.runScheduledMatching(serverTimeProvider.now())
-        matchResultNotifier.notifyFor(quizSetIds)
+        val now = serverTimeProvider.now()
+        val quizSetIds = matchingBatchFacade.runScheduledMatching(now)
+        matchResultNotifier.notifyFor(quizSetIds, now)
         redirectAttributes.addFlashAttribute("message", "정기 매칭을 지금 돌렸습니다.")
         return "redirect:/admin/matching"
     }
@@ -56,42 +59,59 @@ class AdminMatchController(
     fun runSecretRound(redirectAttributes: RedirectAttributes): String {
         val now = serverTimeProvider.now()
         val result = matchingBatchFacade.runSecretRound(now)
-        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
-        secretMatchResultNotifier.notifyFor(result.roundResults)
-        addSecretRoundFlash(redirectAttributes, now, result)
+        val notificationCount = matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds, now) +
+            secretMatchResultNotifier.notifyFor(result.roundResults)
+        redirectAttributes.addSecretRoundFlash(now, result, notificationCount)
         return "redirect:/admin/matching"
     }
 
     /** 목 12:00 안내 알림을 지금 서버 시각으로 보낸다. 이미 받은 회원에게는 다시 가지 않는다. */
-    @PostMapping("/admin/matching/send-secret-invite")
-    fun sendSecretInvite(redirectAttributes: RedirectAttributes): String {
-        val sentCount = secretMatchingInviteNotifier.notifyNotParticipated(serverTimeProvider.now())
-        if (sentCount > 0) {
-            redirectAttributes.addFlashAttribute("message", "시크릿 매칭 안내 알림을 ${sentCount}명에게 보냈습니다.")
-        } else {
-            redirectAttributes.addFlashAttribute(
-                "notice",
-                "보낼 대상이 없습니다. 기능 플래그 꺼짐, 이번 주 1:1 퀴즈셋 없음, 남은 라운드 없음, 이미 보냄 중 하나입니다.",
-            )
+    @PostMapping("/admin/matching/send-secret-reminder")
+    fun sendSecretReminder(redirectAttributes: RedirectAttributes): String {
+        val now = serverTimeProvider.now()
+        val result = secretMatchReminderNotifier.notifyNonParticipants(now)
+        val serverTime = now.format(FLASH_TIME_FORMAT)
+        val (flashKey, flashMessage) = when (result.status) {
+            SecretMatchReminderResult.Status.SENT -> {
+                val roundAt = requireNotNull(result.roundAt) { "보냈는데 안내한 라운드가 없다" }
+                "message" to "${roundAt.format(ROUND_TIME_FORMAT)} 라운드 시크릿 매칭 안내 알림을 ${result.sentCount}명에게 보냈습니다."
+            }
+            SecretMatchReminderResult.Status.NO_RECIPIENT ->
+                "notice" to "보낼 회원이 없습니다. 퀴즈를 하나라도 끝냈거나, 경고 제재 중이거나, 이미 안내를 받은 회원뿐입니다. 0명이 이상하면 서버 로그를 확인하세요."
+            SecretMatchReminderResult.Status.RESPONSE_PERIOD ->
+                "notice" to "서버 시각 $serverTime 기준 아직 응답 기간이라 보내지 않았습니다. 응답 마감(수 23:59:59) 뒤에 보낼 수 있습니다."
+            SecretMatchReminderResult.Status.FLAG_OFF ->
+                "notice" to "시크릿 매칭 기능 플래그가 꺼져 있어 보내지 않았습니다."
+            SecretMatchReminderResult.Status.NOT_ANNOUNCEABLE ->
+                "notice" to "서버 시각 $serverTime 기준 이번 주 1:1 퀴즈셋이 없거나 남은 시크릿 매칭 라운드가 없어 보내지 않았습니다."
+            SecretMatchReminderResult.Status.FAILED ->
+                "error" to "시크릿 매칭 안내 알림을 보내지 못했습니다. 서버 로그를 확인하세요."
         }
+        redirectAttributes.addFlashAttribute(flashKey, flashMessage)
         return "redirect:/admin/matching"
     }
 
-    private fun addSecretRoundFlash(redirectAttributes: RedirectAttributes, now: LocalDateTime, result: SecretRoundBatchResult) {
+    private fun RedirectAttributes.addSecretRoundFlash(
+        now: LocalDateTime,
+        result: SecretRoundBatchResult,
+        notificationCount: Int,
+    ) {
         val serverTime = now.format(FLASH_TIME_FORMAT)
         when (result.status) {
             SecretRoundBatchResult.Status.FLAG_OFF ->
-                redirectAttributes.addFlashAttribute("notice", "시크릿 매칭 기능 플래그가 꺼져 있어 돌리지 않았습니다.")
+                addFlashAttribute("notice", "시크릿 매칭 기능 플래그가 꺼져 있어 돌리지 않았습니다.")
             SecretRoundBatchResult.Status.NO_ROUND_DUE ->
-                redirectAttributes.addFlashAttribute("notice", "서버 시각 $serverTime 기준으로 아직 돌 차례인 시크릿 매칭 라운드가 없습니다.")
+                addFlashAttribute("notice", "서버 시각 $serverTime 기준으로 아직 돌 차례인 시크릿 매칭 라운드가 없습니다.")
             SecretRoundBatchResult.Status.RAN -> {
                 // 후보도 정규 메움도 없으면 한 일이 없어서 성공색 대신 안내로 보여 준다.
                 val changedAnything = result.backfilledRegularQuizSetIds.isNotEmpty() ||
                     result.roundResults.any { it.savedCount > 0 }
-                redirectAttributes.addFlashAttribute(if (changedAnything) "message" else "notice", secretRoundSummary(serverTime, result))
+                val summary = secretRoundSummary(serverTime, result)
+                    .let { if (changedAnything) "$it · 알림 ${notificationCount}건" else it }
+                addFlashAttribute(if (changedAnything) "message" else "notice", summary)
                 if (result.failedQuizSetIds.isNotEmpty()) {
                     val failedIds = result.failedQuizSetIds.joinToString(", ") { "#$it" }
-                    redirectAttributes.addFlashAttribute("error", "시크릿 매칭: 퀴즈셋 $failedIds 처리에 실패했습니다. 서버 로그를 확인하세요.")
+                    addFlashAttribute("error", "시크릿 매칭: 퀴즈셋 $failedIds 처리에 실패했습니다. 서버 로그를 확인하세요.")
                 }
             }
         }
@@ -128,7 +148,7 @@ class AdminMatchController(
         runCatching { matchmakingService.generateMatchingCandidates(id) }
             .fold(
                 onSuccess = { summary ->
-                    matchResultNotifier.notifyFor(listOf(id))
+                    matchResultNotifier.notifyFor(listOf(id), serverTimeProvider.now())
                     redirectAttributes.addFlashAttribute(
                         "message",
                         "퀴즈셋 #$id 매칭 후보를 다시 만들었습니다.",
@@ -156,6 +176,7 @@ class AdminMatchController(
 
     companion object {
         private val FLASH_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        private val ROUND_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("E HH:mm", Locale.KOREAN)
         private val RESETTABLE_BY_QA_TOOLS = setOf(
             ErrorCode.MATCH_CANDIDATES_ALREADY_RESPONDED,
             ErrorCode.MATCH_CANDIDATES_SECRET_ROUND_STARTED,

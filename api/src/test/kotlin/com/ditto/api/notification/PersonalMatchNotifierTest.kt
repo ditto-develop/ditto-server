@@ -28,6 +28,7 @@ class PersonalMatchNotifierTest(
 ) : IntegrationTest(dataSource, {
 
     fun serverTimeIs(at: LocalDateTime) {
+        serverTimeOverrideRepository.deleteAll()
         serverTimeOverrideRepository.save(ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") })
     }
 
@@ -55,7 +56,6 @@ class PersonalMatchNotifierTest(
         }
 
         "대화방이 이미 열린 주말에는 수락하면 바로 열린다고 알린다" {
-            serverTimeOverrideRepository.deleteAll()
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
@@ -109,7 +109,6 @@ class PersonalMatchNotifierTest(
         }
 
         "대화방이 이미 열린 주말이면 방이 열렸다고 알린다" {
-            serverTimeOverrideRepository.deleteAll()
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
