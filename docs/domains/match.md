@@ -27,6 +27,12 @@
   - 셋 하나에 라운드 하나가 자기 트랜잭션이고, 셋 행 잠금(`QuizSetRepository.findWithLockById`)을 먼저 잡는다. 같은 라운드 후보가 있으면 건너뛴다.
   - 배치(`MatchingBatchFacade.runSecretRound`)는 시각이 지난 가장 늦은 라운드 하나만 돌린다. 정규 배치를 먼저 부르고, 정규가 이번에도 실패한 셋은 건너뛴다.
   - 정규 매칭 결과 알림은 정규 후보를 받은 회원에게만 간다(`findRegularOwnerMemberIdsByQuizSetId`).
+  - 1:1 후보 응답(`GET /api/v1/matches/1on1`)은 정규·시크릿 후보를 한 목록에 점수순으로 주고 `candidateOrigin`을 붙인다. 그룹 구성원 카드에는 이 필드가 없다.
+- **시크릿 매칭 홈 상태**(`GET /api/v1/matching/secret-state`)는 서버 시각으로 카드 하나를 정한다. 판단은 `SecretMatchingStage.determine` 한 곳이고 위에서부터 빠져나가는 순서가 규칙이다.
+  - 플래그 꺼짐·이번 주 활성 1:1 셋 없음·응답 마감 전·1:1 성사·성사 그룹 수락·경고 제재 중이면 `NONE`.
+  - 시크릿 후보가 있으면 `SECRET_RESULT`(토 라운드에 새 후보가 없어도 금 후보로 일요일까지). 다음은 1:1 완주자 기준으로 늦은 완주자는 자기 라운드 전까지 `WAITING`, 토 20:00 전이면 `AUTO_ENTERED`, 그 뒤는 `ENDED`(목요일 후보가 남아 있어도).
+  - 1:1 미완주자는 토 20:00 전이면 `ELIGIBLE`, 그 뒤는 `ENDED`. 그룹 완주자는 그룹 응답 마감(금 00:00) 전이면 `NONE`이다. 퀴즈 제출 검사와 같은 조건이라 한쪽을 바꾸면 다른 쪽도 고친다.
+  - `nextRoundAt`은 늦은 완주자는 자기 라운드, 그 밖에는 지금 뒤의 첫 라운드다. 배치가 도는 동안(라운드 정각 뒤 1~2분, 정규 배치 전인 목 00:00~00:01)은 시각으로만 판단해서 실제보다 한 단계 앞서거나 늦은 상태가 잠깐 내려갈 수 있다.
 - **시크릿 매칭 후보가 생긴 1:1 셋은 정규 재생성을 거부한다**(`MATCH_CANDIDATES_SECRET_ROUND_STARTED`, 5012). QA 도구의 [매칭 기록 초기화]는 시크릿 후보까지 지운다.
 - 그룹 유니크: `GroupMatchMember`(UK `room_id`+`member_id`). `GroupMatch`의 `quizSetId` UK 없음 → 퀴즈셋당 다수 그룹, 구조상 한 멤버가 같은 퀴즈셋의 여러 후보 그룹에 속할 수 있지만, 배치는 겹치지 않게 나눠 한 그룹에만 넣는다(ADR 0033).
 - **매칭이 다루는 퀴즈셋은 이번 운영 주 것뿐이다**(`MatchWeekPolicy`, [ADR 0026](../adr/0026-matching-scoped-to-operation-week.md)). 기준은 "조회자가 **이번 운영 주에** 완주한 해당 타입 퀴즈셋"(`findCompletedQuizSetInWeek`)이며, 주차 무관 조회는 레포에 없다. 후보 행은 지난 주 것도 남으므로 주차로 좁히지 않으면 지난 사이클 후보가 계속 노출된다 — 1:1·그룹이 타입별로 독립해 최신 셋을 찾기 때문에 한쪽만 이번 주인 응답이 섞인다. 후보 응답은 `weekStartedOn` + `year`/`month`/`week`를 함께 내려준다(ADR 0010 규약).
