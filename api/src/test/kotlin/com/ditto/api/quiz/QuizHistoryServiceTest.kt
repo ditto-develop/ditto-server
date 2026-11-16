@@ -65,6 +65,21 @@ class QuizHistoryServiceTest(
             history.currentWeek!!.quizSetId shouldBe current.quizSetId
             history.currentWeek!!.resultOpen shouldBe false
             history.currentWeek!!.resultOpensAt shouldBe LocalDateTime.of(2026, 11, 5, 0, 0)
+            history.weeks.map { it.lateCompletion } shouldBe listOf(false, false)
+        }
+
+        "응답 마감 뒤에 완주한 주는 lateCompletion 이고 소수 의견을 내 답과 스냅샷으로 센다" {
+            val me = member()
+            val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK)
+            // 마감 전 완주자 20명 중 1명만 문항 1에서 2번 → 2번이 소수 의견. 나는 마감 뒤에 같은 답을 냈다.
+            seeder.answer(member(), closed, listOf(2, 1, 1))
+            repeat(19) { seeder.answer(member(), closed, listOf(1, 1, 1)) }
+            seeder.answer(me, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+
+            val week = quizHistoryService.getHistory(me, WEDNESDAY_EVENING).weeks.single()
+
+            week.lateCompletion shouldBe true
+            week.minorityCount shouldBe 1
         }
 
         "이번 주를 완주하지 않았으면 currentWeek 는 null 이다" {
@@ -108,6 +123,22 @@ class QuizHistoryServiceTest(
             val result = detail.result.shouldNotBeNull()
             result.overlapThreshold shouldBe 2
             result.overlapCount shouldBe 19
+            result.minorityCount shouldBe 1
+        }
+
+        "응답 마감 뒤에 완주했으면 소수 의견은 내 답으로 세고 겹친 사람 수는 0 이다" {
+            val me = member()
+            val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK, questions = 3)
+            seeder.answer(member(), closed, listOf(2, 1, 1))
+            repeat(19) { seeder.answer(member(), closed, listOf(1, 1, 1)) }
+            seeder.answer(me, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+
+            val detail = quizHistoryService.getDetail(me, closed.quizSetId, WEDNESDAY_EVENING)
+
+            detail.lateCompletion shouldBe true
+            detail.participantCount shouldBe 20L
+            val result = detail.result.shouldNotBeNull()
+            result.overlapCount shouldBe 0
             result.minorityCount shouldBe 1
         }
 
