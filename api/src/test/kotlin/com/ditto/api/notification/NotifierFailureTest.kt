@@ -1,6 +1,7 @@
 package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.match.UpcomingSecretRoundFinder
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
@@ -12,7 +13,10 @@ import com.ditto.api.notification.notifier.QuizNotifier
 import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderNotifier
+import com.ditto.api.notification.notifier.SecretMatchReminderResult
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.entity.ChatMessageType
@@ -28,14 +32,18 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.repository.RematchRepository
 import com.ditto.domain.review.repository.MemberReviewRepository
+import com.ditto.domain.sanction.repository.SanctionRepository
+import com.ditto.domain.system.OperationWeek
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.dao.DataAccessResourceFailureException
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 /**
  * 알림을 남기려다 실패해도 부르는 쪽 흐름이 끊기지 않는지 본다.
@@ -77,6 +85,19 @@ class NotifierFailureTest {
         groupMatchMemberRepository,
         matchmakingService,
         notificationRepository,
+        notificationAppender,
+        quizSetRepository,
+        mockk<UpcomingSecretRoundFinder>(),
+    )
+    private val featureFlags = mockk<FeatureFlags>()
+    private val upcomingSecretRoundFinder = mockk<UpcomingSecretRoundFinder>()
+    private val secretMatchReminderNotifier = SecretMatchReminderNotifier(
+        featureFlags,
+        upcomingSecretRoundFinder,
+        quizSetRepository,
+        quizProgressRepository,
+        memberRepository,
+        mockk<SanctionRepository>(),
         notificationAppender,
     )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(
@@ -158,7 +179,20 @@ class NotifierFailureTest {
     fun matchResultAbsorbsCandidateQueryFailure() {
         every { matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(any()) } throws connectionFailure()
 
-        matchResultNotifier.notifyFor(listOf(QUIZ_SET_ID)) shouldBe 0
+        matchResultNotifier.notifyFor(listOf(QUIZ_SET_ID), LocalDateTime.now()) shouldBe 0
+    }
+
+    @Test
+    @DisplayName("시크릿 매칭 안내 — 퀴즈셋 조회가 실패하면 예외 대신 실패 상태를 돌려준다")
+    fun secretMatchReminderAbsorbsQuizSetQueryFailure() {
+        every { featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING) } returns true
+        every {
+            upcomingSecretRoundFinder.nextRoundToAnnounce(OperationWeek(LocalDate.of(2026, 11, 16)), any())
+        } returns LocalDateTime.of(2026, 11, 20, 20, 0)
+        every { quizSetRepository.findByWeekStartedOn(any()) } throws connectionFailure()
+
+        secretMatchReminderNotifier.notifyNonParticipants(LocalDateTime.of(2026, 11, 19, 12, 0)).status shouldBe
+            SecretMatchReminderResult.Status.FAILED
     }
 
     @Test

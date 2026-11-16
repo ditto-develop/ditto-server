@@ -109,6 +109,17 @@ class AdminQuizQaServiceTest(
             summary.notificationCount shouldBe 3
         }
 
+        "시크릿 매칭 알림도 지우고 퀴즈 열림 알림은 남긴다" {
+            val quizSetId = saveMatchedQuizSet()
+            notificationRepository.save(NotificationFixture.create(type = NotificationType.SECRET_MATCH_RESULT, targetId = quizSetId))
+            notificationRepository.save(NotificationFixture.create(type = NotificationType.SECRET_MATCH_REMINDER, targetId = quizSetId))
+            val quizOpened = notificationRepository.save(NotificationFixture.create(type = NotificationType.QUIZ_OPENED, targetId = quizSetId))
+
+            adminQuizQaService.resetMatching(quizSetId)
+
+            notificationRepository.findAll().map { it.id } shouldBe listOf(quizOpened.id)
+        }
+
         "다른 퀴즈셋의 매칭 기록은 건드리지 않는다" {
             val quizSetId = saveMatchedQuizSet()
             val otherQuizSetId = quizSetRepository.save(QuizSetFixture.currentWeek()).id

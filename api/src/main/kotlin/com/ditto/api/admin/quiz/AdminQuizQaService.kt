@@ -55,7 +55,7 @@ class AdminQuizQaService(
         val targets = quizSetMatchingTargetFinder.findTargetsOf(quizSet.id)
         val candidateRowCount = matchCandidateRepository.deleteByQuizSetId(quizSet.id)
         val matchingNotificationCount = matchingRecordEraser.erase(targets)
-        val matchResultNotificationCount = quizSetDeleter.deleteMatchResultNotifications(quizSet.id)
+        val matchResultNotificationCount = quizSetDeleter.deleteMatchingNotifications(quizSet.id)
         return MatchingEraseSummary(
             quizSetId = quizSet.id,
             quizSetTitle = quizSet.title,

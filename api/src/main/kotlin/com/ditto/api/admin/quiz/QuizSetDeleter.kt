@@ -48,7 +48,7 @@ class QuizSetDeleter(
                 "매칭이 진행된 퀴즈셋은 삭제할 수 없습니다. 그 주 매칭·채팅·평가가 이 퀴즈셋을 기준으로 남아 있습니다.",
             )
         }
-        deleteMatchResultNotifications(quizSetId)
+        deleteMatchingNotifications(quizSetId)
         deleteStatSnapshot(quizSetId)
         deleteQuizzesWithAnswers(quizSetId)
         quizProgressRepository.deleteByQuizSetId(quizSetId)
@@ -60,17 +60,19 @@ class QuizSetDeleter(
             personalMatchRepository.existsByQuizSetId(quizSetId) ||
             groupMatchRepository.existsByQuizSetId(quizSetId)
 
-    /** 매칭 결과 알림만 지우고 지운 수를 돌려준다. 퀴즈 열림·마감 알림은 그 주 대표 셋을 가리킬 뿐이라 남긴다. */
-    fun deleteMatchResultNotifications(quizSetId: Long): Int =
-        deleteNotifications(findMatchResultNotifications(quizSetId))
+    /**
+     * 이 셋을 가리키는 매칭 알림(결과·노매칭·시크릿 결과·시크릿 안내)을 지우고 지운 수를 돌려준다.
+     * 퀴즈 열림·마감 알림은 그 주 대표 셋을 가리킬 뿐이라 남긴다. 퀴즈셋을 가리키는 알림 유형을 새로 만들면 여기서 지울지 정한다.
+     */
+    fun deleteMatchingNotifications(quizSetId: Long): Int =
+        deleteNotifications(findMatchingNotifications(quizSetId))
 
-    fun deleteMemberMatchResultNotifications(quizSetId: Long, memberId: Long): Int =
-        deleteNotifications(findMatchResultNotifications(quizSetId).filter { it.memberId == memberId })
+    fun deleteMemberMatchingNotifications(quizSetId: Long, memberId: Long): Int =
+        deleteNotifications(findMatchingNotifications(quizSetId).filter { it.memberId == memberId })
 
-    private fun findMatchResultNotifications(quizSetId: Long): List<Notification> {
-        val typesReadingQuizSet = NotificationType.pointingTo(NotificationTarget.QUIZ_SET)
-            .filter { it.deepLinkTarget.readsTargetRow }
-        return notificationRepository.findByTypeInAndTargetIdIn(typesReadingQuizSet, listOf(quizSetId))
+    private fun findMatchingNotifications(quizSetId: Long): List<Notification> {
+        val matchingTypes = NotificationType.pointingTo(NotificationTarget.QUIZ_SET) - QUIZ_PERIOD_TYPES
+        return notificationRepository.findByTypeInAndTargetIdIn(matchingTypes, listOf(quizSetId))
     }
 
     private fun deleteNotifications(notifications: List<Notification>): Int {
@@ -95,5 +97,9 @@ class QuizSetDeleter(
         quizAnswerRepository.deleteByQuizIdIn(quizIds)
         quizChoiceRepository.deleteByQuizIdIn(quizIds)
         quizRepository.deleteByQuizSetId(quizSetId)
+    }
+
+    private companion object {
+        val QUIZ_PERIOD_TYPES = setOf(NotificationType.QUIZ_OPENED, NotificationType.QUIZ_CLOSING_SOON)
     }
 }

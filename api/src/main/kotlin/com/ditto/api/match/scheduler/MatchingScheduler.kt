@@ -3,6 +3,7 @@ package com.ditto.api.match.scheduler
 import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.notification.notifier.MatchResultNotifier
+import com.ditto.api.notification.notifier.SecretMatchResultNotifier
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -22,6 +23,7 @@ import java.time.LocalDateTime
 class MatchingScheduler(
     private val matchingBatchFacade: MatchingBatchFacade,
     private val matchResultNotifier: MatchResultNotifier,
+    private val secretMatchResultNotifier: SecretMatchResultNotifier,
 ) {
 
     @Scheduled(cron = "\${matching.scheduler.cron:0 1 0 * * THU}")
@@ -31,8 +33,9 @@ class MatchingScheduler(
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
     fun generateForEndedQuizSets() {
-        val quizSetIds = matchingBatchFacade.runScheduledMatching(LocalDateTime.now())
-        matchResultNotifier.notifyFor(quizSetIds)
+        val now = LocalDateTime.now()
+        val quizSetIds = matchingBatchFacade.runScheduledMatching(now)
+        matchResultNotifier.notifyFor(quizSetIds, now)
     }
 
     // SecretMatchingSchedule 의 라운드 시각(금·토 20:00)에 맞춘다. 바꿀 때 함께 고친다. 재시도 이유는 ADR 0054.
@@ -43,7 +46,9 @@ class MatchingScheduler(
         lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
     )
     fun generateSecretRound() {
-        val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
-        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+        val now = LocalDateTime.now()
+        val result = matchingBatchFacade.runSecretRound(now)
+        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds, now)
+        secretMatchResultNotifier.notifyFor(result.roundResults)
     }
 }

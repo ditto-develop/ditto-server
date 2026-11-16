@@ -13,6 +13,9 @@ interface MatchCandidateRepositoryCustom {
      */
     fun findRegularOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long>
 
+    /** 해당 퀴즈셋에서 정규·시크릿 상관없이 후보를 받은 회원 ID 목록(중복 제거). */
+    fun findOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long>
+
     /**
      * 해당 퀴즈셋에서 두 회원이 **서로의 후보로 노출됐는지** 여부.
      *

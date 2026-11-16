@@ -5,6 +5,8 @@ import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.sanction.entity.SanctionLevel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * 알림 문구를 한곳에 모은다. 정본은 기획의 "알림 문구" 표고, 문구를 바꿀 때 여기만 고친다.
@@ -35,11 +37,34 @@ object NotificationMessages {
         body = "누구인지 확인해보세요.",
     )
 
-    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. */
-    fun noMatch(): NotificationContent = NotificationContent(
-        type = NotificationType.NO_MATCH,
-        title = "이번 주는 답이 닿지 않았어요",
-        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. [secretRoundAt]이 있으면 그 라운드에 자동으로 들어간다고 안내한다. */
+    fun noMatch(secretRoundAt: LocalDateTime?): NotificationContent {
+        if (secretRoundAt == null) {
+            return NotificationContent(
+                type = NotificationType.NO_MATCH,
+                title = "이번 주는 답이 닿지 않았어요",
+                body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+            )
+        }
+        return NotificationContent(
+            type = NotificationType.NO_MATCH,
+            title = "이번엔 인연이 닿지 않았어요",
+            body = "${roundTimeText(secretRoundAt)}에 한 번 더 찾아볼게요.",
+        )
+    }
+
+    /** 시크릿 매칭 라운드에서 1:1 후보가 새로 생겼다. 신청·수락은 일요일 밤까지다. */
+    fun secretMatchResult(): NotificationContent = NotificationContent(
+        type = NotificationType.SECRET_MATCH_RESULT,
+        title = "시크릿 매칭에서 인연을 찾았어요",
+        body = "같은 답을 한 사람이 더 있어요. 일요일 밤까지 대화를 신청해보세요.",
+    )
+
+    /** 이번 주 퀴즈를 하나도 끝내지 않았다. 1:1 퀴즈를 풀면 [secretRoundAt] 라운드에 들어간다. */
+    fun secretMatchReminder(secretRoundAt: LocalDateTime): NotificationContent = NotificationContent(
+        type = NotificationType.SECRET_MATCH_REMINDER,
+        title = "시크릿 매칭 기회가 있어요",
+        body = "지금 1:1 퀴즈를 풀면 ${roundTimeText(secretRoundAt)}에 같은 답을 한 사람을 찾아드려요.",
     )
 
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
@@ -49,11 +74,16 @@ object NotificationMessages {
         body = "답이 비슷한 ${memberCount}명이 모였어요. 멤버를 확인해보세요.",
     )
 
-    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. */
-    fun groupNotFormed(): NotificationContent = NotificationContent(
+    /**
+     * 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다.
+     * [secretRoundAt]이 있으면 1:1 퀴즈를 풀어 그 라운드에 들어갈 수 있다고 안내한다.
+     */
+    fun groupNotFormed(secretRoundAt: LocalDateTime?): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_NOT_FORMED,
         title = "이번 주는 인원 미달로 취소됐어요",
-        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+        body = secretRoundAt
+            ?.let { "1:1 퀴즈를 풀면 ${roundTimeText(it)} 시크릿 매칭에 참여할 수 있어요." }
+            ?: "다음 주에 새로운 질문으로 다시 찾아볼게요.",
     )
 
     /** [requesterNickname] 이 나와 1:1 재매칭을 원한다고 냈다. */
@@ -80,18 +110,18 @@ object NotificationMessages {
         body = "${counterpartNickname}님과 대화방이 다시 열렸어요.",
     )
 
-    /** [requesterNickname] 이 나에게 대화를 신청했다. */
-    fun matchRequested(requesterNickname: String): NotificationContent = NotificationContent(
+    /** [requesterNickname] 이 나에게 대화를 신청했다. 주말(채팅 기간)에는 수락하는 즉시 방이 열린다. */
+    fun matchRequested(requesterNickname: String, isChatOpen: Boolean): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_REQUESTED,
         title = "${requesterNickname}님이 대화를 신청했어요",
-        body = "수락하면 금요일에 대화방이 열려요.",
+        body = if (isChatOpen) "수락하면 바로 대화방이 열려요." else "수락하면 금요일에 대화방이 열려요.",
     )
 
-    /** 내가 보낸 대화 신청을 [accepterNickname] 이 수락했다. */
-    fun matchAccepted(accepterNickname: String): NotificationContent = NotificationContent(
+    /** 내가 보낸 대화 신청을 [accepterNickname] 이 수락했다. 주말(채팅 기간)이면 방이 이미 열렸다. */
+    fun matchAccepted(accepterNickname: String, isChatOpen: Boolean): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_ACCEPTED,
         title = "${accepterNickname}님이 대화 신청을 수락했어요",
-        body = "금요일에 설레는 만남이 시작돼요!",
+        body = if (isChatOpen) "대화방이 열렸어요. 먼저 인사를 건네보세요!" else "금요일에 설레는 만남이 시작돼요!",
     )
 
     /**
@@ -224,6 +254,10 @@ object NotificationMessages {
                 body = "더 이상 서비스를 이용할 수 없어요.",
             )
         }
+
+    // 라운드 시각(SecretMatchingSchedule, 20:00)을 바꾸면 "저녁 8시"도 함께 고친다.
+    private fun roundTimeText(secretRoundAt: LocalDateTime): String =
+        "${secretRoundAt.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)} 저녁 8시"
 
     private val DATE = DateTimeFormatter.ofPattern("M월 d일")
     private val DATE_TIME = DateTimeFormatter.ofPattern("M월 d일 HH:mm")

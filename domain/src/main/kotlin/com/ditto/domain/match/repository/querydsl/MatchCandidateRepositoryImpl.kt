@@ -29,6 +29,14 @@ class MatchCandidateRepositoryImpl(
             )
             .fetch()
 
+    override fun findOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long> =
+        queryFactory
+            .select(matchCandidate.ownerMemberId)
+            .distinct()
+            .from(matchCandidate)
+            .where(matchCandidate.quizSetId.eq(quizSetId))
+            .fetch()
+
     override fun existsPairByQuizSetId(oneMemberId: Long, otherMemberId: Long, quizSetId: Long): Boolean =
         queryFactory
             .selectOne()

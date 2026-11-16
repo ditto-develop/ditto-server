@@ -30,6 +30,8 @@
 | `QUIZ_CLOSING_SOON` | MATCHING | `quiz_set.id`(이번 주 대표 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(수 18:00, 프로퍼티) → `QuizNotifier` — 어느 셋도 끝내지 않은 활성 회원 |
 | `MATCH_RESULT` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` |
 | `NO_MATCH` | MATCHING | `quiz_set.id` | 대상당 1회 | `MatchingScheduler` → `MatchResultNotifier` (매칭 풀에 들었지만 후보 0명) |
+| `SECRET_MATCH_RESULT` | MATCHING | `quiz_set.id`(1:1 셋) | 안읽은 것 접기 | `MatchingScheduler.generateSecretRound`·어드민 [시크릿 매칭 지금 돌리기] → `SecretMatchResultNotifier` — 시크릿 매칭 라운드에서 새 후보를 받은 회원. 안 읽은 금 알림은 토 알림이 대신한다 |
+| `SECRET_MATCH_REMINDER` | MATCHING | `quiz_set.id`(그 주 1:1 셋) | 대상당 1회 | `WeeklyNotificationScheduler`(목 12:00, 프로퍼티)·어드민 [시크릿 매칭 안내 알림 보내기] → `SecretMatchReminderNotifier` — 이번 주 퀴즈를 하나도 끝내지 않은 활성 회원(경고 제재 제외). 응답 마감 뒤에만 보낸다 |
 | `GROUP_FORMED` | MATCHING | `chat_room.id`(그룹) | 대상당 1회 | `GroupMatchService.joinGroupMatch` |
 | `REMATCH_REQUESTED` | MATCHING | `rematch.id` | 대상당 1회 | `MemberReviewController.submitAnswer` → `RematchNotifier` — 먼저 "원한다"를 낸 사람의 상대. 상대에게 평가지가 없으면 미뤘다가 방이 끝날 때(누락 복구로 평가가 열린 방 포함) `ChatRoomLifecycleScheduler`·`ChatController.leave`(그룹 해체)가 `notifyWaitingRequestsFor`로 보낸다 |
 | `REMATCH_REJECTED` | MATCHING | `rematch.id` | 대상당 1회 | 같은 지점 — `CANCELLED(NOT_MUTUAL)` 시 원했던 쪽 |
@@ -52,6 +54,10 @@
 `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`·`MATCH_RESULT`·`NO_MATCH`의 대상이 퀴즈셋인 것은 **"주마다 한 번"을 세기 위해서**다. `MATCH_RESULT`·`NO_MATCH`는 그 셋의 매칭 유형으로 이동할 결과 화면도 고른다. `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`은 한 주에 1:1·그룹 셋이 나란히 열려도 알림은 하나라 **문항이 있는 셋 중** id 가 가장 작은 셋을 대표로 삼는다(문항 수 문구도 그 셋 기준). 문항 있는 셋이 없으면 보내지 않는다. 오픈은 활성 회원 전원, 마감 임박은 그중 어느 셋도 `COMPLETED`하지 않은 회원에게 간다(하나라도 끝냈으면 참여자다 — 문구가 하나라 회원당 한 번). 회원+유형만으로 막으면 평생 한 번만 알린다. `MATCH_REQUESTED`·`MATCH_REJECTED`의 대상이 매칭 건인 것도 같은 이유다 — 한 주에 여러 명에게 신청하고 여러 명에게서 받을 수 있어 회원+유형으로 막으면 첫 건만 알린다.
 
 **노매칭 알림의 수신자는 매칭 풀에 든 회원이다**(`MatchmakingService.matchingPoolMemberIds` — 퀴즈 완료자에서 배치의 제외 정책에 걸린 사람을 뺀 집합). 참여하지 않은 사람에게 "답이 닿지 않았다"는 성립하지 않고, 정지·성사로 풀에서 빠진 사람에게는 틀린 안내다.
+
+**시크릿 매칭(IMP-2)이 켜져 있으면 매칭 알림 문구가 남은 라운드를 안내한다.** 1:1 셋의 `NO_MATCH`와 `GROUP_NOT_FORMED`는 알림이 그 주의 것이고 그 주 활성 1:1 셋과 남은 라운드가 있을 때만 "{요일} 저녁 8시" 안내를 붙인다(`UpcomingSecretRoundFinder`). 재시도로 늦게 나가는 지난 주 알림과 그룹 셋 노매칭은 "다음 주" 문구 그대로다. 그룹 미매칭자는 1:1 퀴즈를 직접 풀어야 라운드에 들어가기 때문이다. 판단 시각은 배치를 돌린 시각이다(cron 은 실제 시각, 어드민은 서버 시각). 시크릿 후보가 있는 회원에게는 노매칭을 보내지 않는다. 놓친 정규 배치를 라운드가 메우면 같은 순간 시크릿 결과 알림을 받기 때문이다.
+
+**1:1 신청·수락 알림은 대화방이 이미 열린 시각(금~일)이면 "바로 열린다"고 쓴다.** 채팅방을 만드는 쪽과 같은 서버 시각·같은 주말 계산(`ChatPeriod.weekendOf`)으로 판단한다. 플래그와 무관하다.
 
 **신고 제재 알림은 검토 결과가 제재(경고·2주 정지·영구 차단)일 때만 간다**(#224). 기각은 알리지 않는다. 신고자에게는 처리됐다는 사실만 알리고 **제재 종류·피신고자를 밝히지 않는다** — 제재는 피신고자의 계정 정보다. 피신고자 문구는 제재 종류(`SanctionLevel`)마다 다르다(경고: 퀴즈 참여가 막히는 주의 월요일, 정지: 해제 시각, 차단: 기간 없음). 둘 다 SYSTEM 이라 수신 설정과 무관하게 푸시가 나가고, 제재가 refresh 토큰만 회수하고 기기 토큰은 남기므로 정지·차단 회원에게도 닿는다. 어드민 직접 제재(신고 없이 어드민이 거는 제재)는 아직 알리지 않는다.
 
@@ -98,7 +104,7 @@
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
 - **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`→`/matching/`(1:1 전용이라 분기 없음), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
+  `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`SECRET_MATCH_RESULT`→`/matching/`(1:1 전용이라 분기 없음), `SECRET_MATCH_REMINDER`→없음(목~일에는 이번 주 퀴즈 화면이 비어 있어 홈 카드에서 퀴즈로 들어간다), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
   방이 지워졌으면 deepLink 없이 보낸다.
   알림 목록 응답(`NotificationResponse.deepLink`)도 같은 값을 준다. 알림 센터가 `type`·`targetId`로 행선지를 따로 정하면
   푸시와 어긋나고, 방 목록에 없는 방(나간 방)은 찾지 못하기 때문이다. 유형마다 갈 화면의 종류는
@@ -109,7 +115,7 @@
 - **뱃지** — 미읽음 수 API 와 같은 기준(`Notification.retentionFrom()` — 30일 창·실제 시각)이라
   인앱 벨 배지와 앱 아이콘 뱃지가 같은 수다.
 - **ttl** — 시효가 있는 알림만 짧게 준다(`CHAT_MESSAGE` 1시간, `CHAT_ENDING_SOON`·`QUIZ_CLOSING_SOON` 6시간 — 종료·마감 6시간 전
-  알림이라 지나면 무의미, `CHAT_ROOM_OPENED`·`CHAT_NO_MESSAGE`·`QUIZ_OPENED` 3일 — 방이 열려 있는 72시간·퀴즈 응답 기간 월~수). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
+  알림이라 지나면 무의미, `CHAT_ROOM_OPENED`·`CHAT_NO_MESSAGE`·`QUIZ_OPENED` 3일 — 방이 열려 있는 72시간·퀴즈 응답 기간 월~수, `SECRET_MATCH_REMINDER` 2일 — 목 12:00 에 보내고 늦은 응시는 토 20:00 에 닫힌다). 나머지는 FCM 기본(4주). 꺼져 있던 기기에 지난 채팅 알림이 몰리는 것을 막는다.
 - **죽은 토큰 정리** — 발송 결과의 `UNREGISTERED` 토큰을 `PushDeadDeviceCleaner`가 지운다(FCM 콜백
   스레드라 자기 트랜잭션). 방치하면 실패율이 쌓여 FCM 이 발송량을 제한한다.
 - **발송 이력** — 알림 한 건마다 `push_send_history` 한 행을 남긴다(#339). 건너뛰면 이유(채팅방 알림 꺼짐·알림 설정 꺼짐·등록된 기기 없음)를,

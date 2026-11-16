@@ -83,6 +83,22 @@ interface SanctionRepository : JpaRepository<Sanction, Long> {
             endsAt = now,
         )
 
+    /** 주어진 시각에 유효한 경고를 받은 회원들. 퀴즈 참여 안내에서 뺀다. */
+    fun findActiveWarningMemberIdsAt(now: LocalDateTime): Set<Long> =
+        findAllByLevelAndStatusAndStartsAtLessThanEqualAndEndsAtGreaterThan(
+            level = SanctionLevel.WARNING,
+            status = SanctionStatus.ACTIVE,
+            startsAt = now,
+            endsAt = now,
+        ).map { it.memberId }.toSet()
+
+    fun findAllByLevelAndStatusAndStartsAtLessThanEqualAndEndsAtGreaterThan(
+        level: SanctionLevel,
+        status: SanctionStatus,
+        startsAt: LocalDateTime,
+        endsAt: LocalDateTime,
+    ): List<Sanction>
+
     fun existsByMemberIdAndLevelAndStatusAndStartsAtLessThanEqualAndEndsAtGreaterThan(
         memberId: Long,
         level: SanctionLevel,
