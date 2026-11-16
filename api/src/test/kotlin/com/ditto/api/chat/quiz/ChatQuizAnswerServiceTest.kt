@@ -2,8 +2,6 @@ package com.ditto.api.chat.quiz
 
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.support.QuizSeeder
-import com.ditto.api.system.featureflag.FeatureFlagAdminService
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatRoomFixture
@@ -31,7 +29,6 @@ import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.rematch.RematchFixture
 import com.ditto.domain.rematch.repository.RematchRepository
-import com.ditto.domain.system.entity.FeatureFlagKey
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import java.time.LocalDateTime
@@ -47,8 +44,6 @@ class ChatQuizAnswerServiceTest(
     private val rematchRepository: RematchRepository,
     private val memberRepository: MemberRepository,
     private val memberBlockRepository: MemberBlockRepository,
-    private val featureFlags: FeatureFlags,
-    private val featureFlagAdminService: FeatureFlagAdminService,
     quizSetRepository: QuizSetRepository,
     quizRepository: QuizRepository,
     quizChoiceRepository: QuizChoiceRepository,
@@ -59,9 +54,6 @@ class ChatQuizAnswerServiceTest(
 
     val seeder = QuizSeeder(quizSetRepository, quizRepository, quizChoiceRepository, quizAnswerRepository, quizProgressRepository)
     var seq = 0
-
-    beforeTest { featureFlags.evict() }
-    afterTest { featureFlags.evict() }
 
     fun member() = memberRepository.save(MemberFixture.create(nickname = "회원${seq++}", status = MemberStatus.ACTIVE)).id
 
@@ -101,7 +93,7 @@ class ChatQuizAnswerServiceTest(
             result.chatOpensAt shouldBe room.opensAt
         }
 
-        "기능이 꺼져 있으면 열린 방이어도 카드를 보낼 수 없다고 답하고, 켜면 보낼 수 있다고 답한다" {
+        "열린 방이면 카드를 보낼 수 있다고 답한다" {
             val me = member()
             val peer = member()
             val set = seeder.quizSet(questions = 1)
@@ -110,14 +102,10 @@ class ChatQuizAnswerServiceTest(
             val match = personalMatchRepository.save(PersonalMatchFixture.create(me, peer, set.quizSetId))
             val room = roomWith(ChatRoomFixture.personal(sourceId = match.id), me, peer)
 
-            chatQuizAnswerService.compare(me, room.id).canSendCard shouldBe false
-
-            featureFlagAdminService.set(FeatureFlagKey.QUIZ_CHAT, enabled = true, adminMemberId = 1L)
             chatQuizAnswerService.compare(me, room.id).canSendCard shouldBe true
         }
 
         "아직 열리지 않은 방은 비교는 보이고 카드는 보낼 수 없다" {
-            featureFlagAdminService.set(FeatureFlagKey.QUIZ_CHAT, enabled = true, adminMemberId = 1L)
             val me = member()
             val peer = member()
             val set = seeder.quizSet(questions = 1)

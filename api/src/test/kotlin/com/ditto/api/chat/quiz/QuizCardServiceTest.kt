@@ -3,7 +3,6 @@ package com.ditto.api.chat.quiz
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.support.QuizSeeder
 import com.ditto.api.support.SeededQuizSet
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatRoomFixture
@@ -24,9 +23,6 @@ import com.ditto.domain.quiz.repository.QuizChoiceRepository
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
-import com.ditto.domain.system.entity.FeatureFlag
-import com.ditto.domain.system.entity.FeatureFlagKey
-import com.ditto.domain.system.repository.FeatureFlagRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -39,8 +35,6 @@ import javax.sql.DataSource
 
 class QuizCardServiceTest(
     private val quizCardService: QuizCardService,
-    private val featureFlags: FeatureFlags,
-    private val featureFlagRepository: FeatureFlagRepository,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val chatMessageRepository: ChatMessageRepository,
@@ -58,14 +52,6 @@ class QuizCardServiceTest(
 
     val seeder = QuizSeeder(quizSetRepository, quizRepository, quizChoiceRepository, quizAnswerRepository, quizProgressRepository)
 
-    fun enable() {
-        featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT).apply { enable(LocalDateTime.of(2026, 1, 1, 0, 0), 1L) })
-        featureFlags.evict()
-    }
-
-    beforeTest { featureFlags.evict() }
-    afterTest { featureFlags.evict() }
-
     fun roomWith(room: ChatRoom, vararg memberIds: Long): ChatRoom =
         chatRoomRepository.save(room).also { saved ->
             chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(saved.id, it) })
@@ -80,7 +66,6 @@ class QuizCardServiceTest(
     }
 
     "1:1 방에 카드를 올리면 카드 → 한마디 순으로 저장하고, 카드에는 서버가 만든 두 사람의 선택을 싣는다" {
-        enable()
         val (room, set) = personalRoom()
 
         val result = quizCardService.send(senderId = 1L, roomId = room.id, quizId = set.quizIds[0], comment = "  왜 그 답이에요?  ")
@@ -99,14 +84,12 @@ class QuizCardServiceTest(
     }
 
     "한마디 없이 카드만 보낼 수 있다" {
-        enable()
         val (room, set) = personalRoom()
 
         quizCardService.send(1L, room.id, set.quizIds[1], comment = "").messages.single().messageType shouldBe ChatMessageType.QUIZ_CARD
     }
 
     "이미 올라온 문항이면 카드는 버리고 한마디만 저장한다" {
-        enable()
         val (room, set) = personalRoom()
         quizCardService.send(1L, room.id, set.quizIds[0], comment = "")
 
@@ -118,7 +101,6 @@ class QuizCardServiceTest(
     }
 
     "그룹 카드는 인원 수만 싣고 누가 골랐는지는 넣지 않는다" {
-        enable()
         val set = seeder.quizSet(questions = 1, matchingType = MatchingType.GROUP)
         seeder.answer(1L, set, listOf(1))
         seeder.answer(2L, set, listOf(1))
@@ -132,13 +114,9 @@ class QuizCardServiceTest(
         card.has("senderChoiceId") shouldBe false
     }
 
-    "기능이 꺼져 있으면 0006, 방의 문항이 아니면 7011, 한마디가 너무 길면 0001 로 막는다" {
+    "방의 문항이 아니면 7011, 한마디가 너무 길면 0001 로 막는다" {
         val (room, set) = personalRoom()
 
-        shouldThrow<WarnException> { quizCardService.send(1L, room.id, set.quizIds[0], "") }
-            .errorCode shouldBe ErrorCode.FEATURE_DISABLED
-
-        enable()
         shouldThrow<WarnException> { quizCardService.send(1L, room.id, 99_999L, "") }.errorCode shouldBe ErrorCode.QUIZ_NOT_IN_ROOM
         shouldThrow<WarnException> { quizCardService.send(1L, room.id, set.quizIds[0], "가".repeat(1001)) }
             .errorCode shouldBe ErrorCode.BAD_REQUEST
@@ -146,7 +124,6 @@ class QuizCardServiceTest(
     }
 
     "끝난 방에는 올릴 수 없다" {
-        enable()
         val (room, set) = personalRoom()
         room.expire(LocalDateTime.of(2026, 3, 16, 0, 0))
         chatRoomRepository.save(room)
@@ -156,7 +133,6 @@ class QuizCardServiceTest(
     }
 
     "두 사람이 같은 문항을 동시에 올려도 카드는 하나, 한마디는 둘 다 남고 늦은 쪽은 7007 을 받는다" {
-        enable()
         val (room, set) = personalRoom()
         val ready = CountDownLatch(2)
         val go = CountDownLatch(1)

@@ -32,10 +32,11 @@ class FeatureFlags(
     /**
      * 이름(문자열)으로 묻는 켜짐 여부. 요청한 순서대로 담고, 한 스냅샷에서 읽어 값끼리 어긋나지 않는다.
      * [FeatureFlagKey]에 없는 이름은 false — FE 가 BE 보다 먼저 새 키를 확인하는 코드를 배포할 수 있게 한다.
+     * 단 공개를 마쳐 지운 키([RETIRED_ALWAYS_ON])는 true 다.
      */
     fun statesOf(rawKeys: Collection<String>): Map<String, Boolean> {
         val enabledNames = snapshot().enabledKeys.mapTo(HashSet()) { it.name }
-        return rawKeys.associateWith { it in enabledNames }
+        return rawKeys.associateWith { it in enabledNames || it in RETIRED_ALWAYS_ON }
     }
 
     /** 이 인스턴스의 캐시를 버린다. 다음 조회가 DB 를 다시 읽는다. */
@@ -47,7 +48,7 @@ class FeatureFlags(
         val now = nanoTicker()
         cached?.takeIf { now - it.loadedAtNanos < TTL.toNanos() }?.let { return it }
 
-        val enabledKeys = featureFlagRepository.findAll().filter { it.enabled }.map { it.key }.toSet()
+        val enabledKeys = featureFlagRepository.findAllByKeyIn(FeatureFlagKey.entries).filter { it.enabled }.map { it.key }.toSet()
         return Snapshot(enabledKeys, now).also { cached = it }
     }
 
@@ -55,5 +56,11 @@ class FeatureFlags(
 
     companion object {
         val TTL: Duration = Duration.ofMinutes(1)
+
+        /**
+         * 켜서 공개를 마치고 enum 에서 지운 키. 조회 API 는 이 키에 계속 true 로 답한다 — FE 는 키를 지운 빌드를 먼저
+         * 내지만, 그 전에 열린 탭·웹뷰는 옛 빌드로 이 키를 묻는다. false 로 답하면 그 화면에서 공개된 기능이 사라진다.
+         */
+        val RETIRED_ALWAYS_ON: Set<String> = setOf("QUIZ_CHAT", "RECORDS")
     }
 }

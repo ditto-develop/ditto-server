@@ -117,14 +117,14 @@ class AdminQaRoomController(
         return QaRoutes.room(roomId)
     }
 
-    /** 힌트 표시와 메시지를 지운다. 방이 열려 있고 QUIZ_CHAT 이 켜져 있으면 다음 주기(1분 안)에 다시 만들어진다. */
+    /** 힌트 표시와 메시지를 지운다. 방이 열려 있으면 다음 주기(1분 안)에 다시 만들어진다. */
     @PostMapping("/admin/qa/rooms/{roomId}/hint/reset")
     fun resetHint(@PathVariable roomId: Long, redirectAttributes: RedirectAttributes): String {
         val removed = quizHintService.resetHint(roomId)
         log.info { "QA 콘솔: 방 #$roomId 첫 대화 힌트 다시 만들기 — 지운 표시 ${if (removed) "있음" else "없음"}" }
         redirectAttributes.addFlashAttribute(
             "message",
-            if (removed) "방 #$roomId 의 첫 대화 힌트를 지웠습니다. 방이 열려 있고 QUIZ_CHAT 이 켜져 있으면 1분 안에 다시 만들어집니다."
+            if (removed) "방 #$roomId 의 첫 대화 힌트를 지웠습니다. 방이 열려 있으면 1분 안에 다시 만들어집니다."
             else "방 #$roomId 에는 지울 힌트가 없습니다.",
         )
         return QaRoutes.room(roomId)
