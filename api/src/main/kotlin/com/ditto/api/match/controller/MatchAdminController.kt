@@ -22,7 +22,8 @@ class MatchAdminController(
     /**
      * 특정 퀴즈셋의 매칭 후보를 재생성한다. 기존 후보를 모두 삭제하고 다시 계산한다(멱등).
      * 스케줄러와 달리 마감·후보 존재 여부와 무관하게 실행한다.
-     * 응답이 시작된 그룹 퀴즈셋은 `MATCH_CANDIDATES_ALREADY_RESPONDED`로 실패한다 — 조용히 건너뛰지 않는다.
+     * 응답이 시작된 그룹 퀴즈셋은 `MATCH_CANDIDATES_ALREADY_RESPONDED`, 시크릿 매칭 후보가 생긴 1:1 퀴즈셋은
+     * `MATCH_CANDIDATES_SECRET_ROUND_STARTED`로 실패한다. 조용히 건너뛰지 않는다.
      */
     @PostMapping("/api/v1/admin/quiz-sets/{quizSetId}/matching/regenerate")
     fun regenerateMatching(@PathVariable quizSetId: Long): ApiResponse<MatchingRegenerateResponse> =

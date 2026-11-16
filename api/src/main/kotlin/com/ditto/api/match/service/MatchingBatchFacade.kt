@@ -1,8 +1,13 @@
 package com.ditto.api.match.service
 
+import com.ditto.api.match.SecretMatchingSchedule
 import com.ditto.api.sanction.service.SanctionExpiryService
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.api.system.featureflag.FeatureFlags
+import com.ditto.domain.match.entity.CandidateOrigin
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
@@ -22,6 +27,7 @@ class MatchingBatchFacade(
     private val quizSetRepository: QuizSetRepository,
     private val matchmakingService: MatchmakingService,
     private val sanctionExpiryService: SanctionExpiryService,
+    private val featureFlags: FeatureFlags,
 ) {
 
     /**
@@ -33,21 +39,70 @@ class MatchingBatchFacade(
      * @return 이번 호출로 후보를 생성한 퀴즈셋 ID(실패한 셋 제외). 알림은 커밋된 뒤에 남겨야 하므로
      *   (`MatchResultNotifier`) 대상 목록을 여기서 흘려보낸다.
      */
-    fun runScheduledMatching(now: LocalDateTime): List<Long> {
-        // 만료 정지 원복을 후보 생성보다 먼저 — 원복된 회원이 이번 매칭 대상에 포함되게 한다 (ADR 0009).
-        sanctionExpiryService.expireDue(now)
+    fun runScheduledMatching(now: LocalDateTime): List<Long> = matchEndedQuizSets(now).generatedQuizSetIds
 
-        return quizSetRepository
-            .findEndedQuizSetsWithoutCandidates(now.minusDays(RETRY_WINDOW_DAYS), now)
-            .mapNotNull { quizSet -> generatedQuizSetIdOrNull(quizSet.id) }
+    /**
+     * [now]에 시각이 지난 가장 늦은 시크릿 매칭 라운드 하나를 그 주 활성 1:1 셋마다 돌린다. 놓친 1차는 메우지 않는다.
+     * 라운드 전에 정규 배치가 놓친 셋을 먼저 메우고, 정규가 이번에도 실패한 셋은 건너뛴다(ADR 0054).
+     */
+    fun runSecretRound(now: LocalDateTime): SecretRoundBatchResult {
+        if (!featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)) {
+            logger.info { "시크릿 매칭 배치: now=$now 플래그 꺼짐" }
+            return SecretRoundBatchResult.FLAG_OFF
+        }
+        val (week, secretRound) = SecretMatchingSchedule.dueRoundAt(now) ?: run {
+            logger.info { "시크릿 매칭 배치: now=$now 돌 차례인 라운드 없음" }
+            return SecretRoundBatchResult.NO_ROUND_DUE
+        }
+
+        val regularOutcome = matchEndedQuizSets(now)
+        val roundTargetIds = quizSetRepository.findByWeekStartedOn(week.startedOn)
+            .filter { it.isActive && it.matchingType == MatchingType.ONE_TO_ONE }
+            .map { it.id }
+            .filter { it !in regularOutcome.failedQuizSetIds }
+        val resultsByQuizSetId = roundTargetIds.associateWith { secretRoundResultOrNull(it, secretRound) }
+        val result = SecretRoundBatchResult(
+            status = SecretRoundBatchResult.Status.RAN,
+            secretRound = secretRound,
+            backfilledRegularQuizSetIds = regularOutcome.generatedQuizSetIds,
+            roundResults = resultsByQuizSetId.values.filterNotNull(),
+            failedQuizSetIds = (regularOutcome.failedQuizSetIds + resultsByQuizSetId.filterValues { it == null }.keys).distinct(),
+        )
+        logSecretRoundBatch(now, result)
+        return result
     }
 
-    /** 후보를 생성하고 그 퀴즈셋 ID를 돌려준다. 실패하면 경고 로그만 남기고 null. */
-    private fun generatedQuizSetIdOrNull(quizSetId: Long): Long? =
+    // 만료 정지 원복을 후보 생성보다 먼저 한다. 원복된 회원이 이번 매칭 대상에 포함되게 한다 (ADR 0009).
+    private fun matchEndedQuizSets(now: LocalDateTime): RegularBatchOutcome {
+        sanctionExpiryService.expireDue(now)
+
+        val (generated, failed) = quizSetRepository
+            .findEndedQuizSetsWithoutCandidates(now.minusDays(RETRY_WINDOW_DAYS), now)
+            .map { quizSet -> quizSet.id to isGenerated(quizSet.id) }
+            .partition { (_, succeeded) -> succeeded }
+        return RegularBatchOutcome(generated.map { it.first }, failed.map { it.first })
+    }
+
+    /** 후보를 생성하면 true. 실패하면 경고 로그만 남기고 false. */
+    private fun isGenerated(quizSetId: Long): Boolean =
         runCatchingExceptions { matchmakingService.generateMatchingCandidates(quizSetId) }
             .onFailure { logger.warn(it) { "매칭 후보 생성 실패 — 이 퀴즈셋만 건너뛰고 계속한다: quizSetId=$quizSetId" } }
-            .map { quizSetId }
+            .isSuccess
+
+    private fun secretRoundResultOrNull(quizSetId: Long, secretRound: CandidateOrigin): SecretRoundResult? =
+        runCatchingExceptions { matchmakingService.generateSecretRoundCandidates(quizSetId, secretRound) }
+            .onFailure { logger.warn(it) { "시크릿 매칭 실패, 이 퀴즈셋만 건너뛴다: quizSetId=$quizSetId round=$secretRound" } }
             .getOrNull()
+
+    private fun logSecretRoundBatch(now: LocalDateTime, result: SecretRoundBatchResult) {
+        val (skipped, generated) = result.roundResults.partition { it.alreadyGenerated }
+        logger.info {
+            "시크릿 매칭 배치: now=$now round=${result.secretRound} 정규메움=${result.backfilledRegularQuizSetIds} " +
+                "생성=${generated.map { it.quizSetId }} 이미돎=${skipped.map { it.quizSetId }} 실패=${result.failedQuizSetIds}"
+        }
+    }
+
+    private class RegularBatchOutcome(val generatedQuizSetIds: List<Long>, val failedQuizSetIds: List<Long>)
 
     companion object {
         /** 한 주 배치가 통째로 실패해도 다음 주에 집을 수 있게 두 주. */

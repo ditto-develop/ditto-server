@@ -70,6 +70,15 @@ class MatchingSchedulerTest(
             matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(b, quizSetId).map { it.otherMemberId } shouldBe listOf(a)
         }
 
+        "시크릿 매칭 플래그가 꺼져 있으면 시크릿 라운드는 아무 후보도 만들지 않는다" {
+            val quizSetId = saveOneToOneQuizSet(endDate = LocalDateTime.now().minusDays(1))
+            val (a, _) = setupMatchingPair(quizSetId)
+
+            matchingScheduler.generateSecretRound()
+
+            matchCandidateRepository.findByOwnerMemberIdAndQuizSetId(a, quizSetId) shouldHaveSize 0
+        }
+
         "아직 마감되지 않은 퀴즈셋은 건너뛴다" {
             val quizSetId = saveOneToOneQuizSet(endDate = LocalDateTime.now().plusDays(1))
             val (a, _) = setupMatchingPair(quizSetId)

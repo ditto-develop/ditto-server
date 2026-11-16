@@ -39,6 +39,7 @@
   | 토 20:00 ~ 일 23:59:59 | 제출·조회 4007, 그 답은 저장 안 함 | 제출 4004, 조회 4001 |
 
   - 로컬 재현: `ADMIN_QA_TOOLS_ENABLED=true ./gradlew :api:bootRun --args='--ditto.quiz.available-days=MONDAY,TUESDAY,WEDNESDAY'`로 띄우고 `/admin/feature-flags`에서 켠 뒤 어드민 시각 오버라이드로 경계(수 23:59:59, 목 00:00, 금 00:00, 토 19:59, 토 20:00)를 옮긴다. 요일 설정을 빼고 띄우면 로컬은 요일 검사를 하지 않아 그룹 셋이 4004 대신 4001 이 된다.
+  - 늦게 완주한 회원은 완주 시각이 라운드 시각 전이면 그 시크릿 매칭 라운드 풀에 든다(`docs/domains/match.md`). 2차 라운드 시각이 곧 늦은 응시 마감이다(`SecretMatchingSchedule`).
   - 목~일에는 `quiz-sets/current-week`가 빈 목록, `quiz-progress/current`가 시작 전이다. 늦은 구간의 셋 ID 는 홈 상태 API(IMP-2 후속)로 준다. 그 전까지는 셋 ID 를 직접 넣어야 한다.
 - `GET /api/v1/quiz-progress/current`는 활성 퀴즈셋이 없어도 오류를 내지 않고 `NOT_STARTED`·`participantCount=0`을 준다. 응답 기간이 월~수로 고정되면서 목~일은 항상 이 상태이고, 이번 주 퀴즈셋을 아직 만들지 않은 월~수도 같다 — 정상 운영을 5xx(ERROR 로그)로 다루지 않는다. FE 홈은 `period=QUIZ`일 때만 이 API를 부르며, 실패든 빈 응답이든 같은 화면(미완료·참여자 0)을 그린다.
 - TODO: 퀴즈셋 구성·중복 응답 방지·진행 완료 조건을 코드 확인 후 기술.

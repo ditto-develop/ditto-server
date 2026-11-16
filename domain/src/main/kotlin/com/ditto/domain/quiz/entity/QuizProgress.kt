@@ -83,6 +83,13 @@ class QuizProgress private constructor(
         return completedAt <= deadline
     }
 
+    // 라운드 시각 정각에 완주한 사람은 다음 라운드 몫이라 미만으로 본다. 늦은 응시 마감(2차 라운드 시각)과 같은 기준이다.
+    fun isCompletedBefore(roundStartsAt: LocalDateTime): Boolean {
+        if (status != QuizProgressStatus.COMPLETED) return false
+        val completedAt = completedAt ?: return true
+        return completedAt < roundStartsAt
+    }
+
     /** 이 퀴즈에서의 매칭 성별 선호를 설정한다. (연애 퀴즈 참여 시 선택) */
     fun selectPreferredGender(preferredGender: GenderPreference) {
         this.preferredGender = preferredGender

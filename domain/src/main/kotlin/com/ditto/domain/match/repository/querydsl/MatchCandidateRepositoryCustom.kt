@@ -6,12 +6,12 @@ import java.time.LocalDate
 interface MatchCandidateRepositoryCustom {
 
     /**
-     * 해당 퀴즈셋에서 후보를 **받은** 회원 ID 목록(중복 제거).
+     * 해당 퀴즈셋에서 정규 매칭 후보를 **받은** 회원 ID 목록(중복 제거).
      *
      * 후보 행은 (owner → other) 두 방향으로 저장되므로 owner 쪽만 모으면 "이번 주 볼 후보가 생긴 사람"이
-     * 된다. 알림 적재가 이 목록을 쓴다 — 참여자 전원이 아니라 후보가 실제로 생긴 사람에게만 알린다.
+     * 된다. 정규 매칭 결과 알림이 이 목록을 쓴다. 시크릿 매칭 후보만 받은 회원은 빠진다.
      */
-    fun findOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long>
+    fun findRegularOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long>
 
     /**
      * 해당 퀴즈셋에서 두 회원이 **서로의 후보로 노출됐는지** 여부.

@@ -135,6 +135,24 @@ class QuizProgressTest(
         }
     }
 
+    "시각 전에 완주했는지" - {
+        val roundStartsAt = LocalDateTime.of(2026, 11, 20, 20, 0)
+
+        fun progressAnsweredAt(answeredAt: LocalDateTime?, totalCount: Int = 1): QuizProgress =
+            QuizProgressFixture.create(memberId = 1L, quizSetId = 1L, totalCount = totalCount)
+                .apply { recordAnswer(answeredAt) }
+
+        "그 시각 전에 완주했으면 참이고, 그 시각 정각이나 뒤면 거짓이다" {
+            progressAnsweredAt(roundStartsAt.minusSeconds(1)).isCompletedBefore(roundStartsAt) shouldBe true
+            progressAnsweredAt(roundStartsAt).isCompletedBefore(roundStartsAt) shouldBe false
+        }
+
+        "완주 시각이 없으면 참이고, 완주하지 않았으면 거짓이다" {
+            progressAnsweredAt(null).isCompletedBefore(roundStartsAt) shouldBe true
+            progressAnsweredAt(roundStartsAt.minusDays(1), totalCount = 2).isCompletedBefore(roundStartsAt) shouldBe false
+        }
+    }
+
     "매칭 성별 선호" - {
         "기본값은 OPPOSITE(이성)이다" {
             val quizSet = quizSetRepository.save(QuizSetFixture.create())

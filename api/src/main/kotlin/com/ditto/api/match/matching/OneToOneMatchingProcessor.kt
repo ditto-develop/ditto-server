@@ -41,11 +41,12 @@ class OneToOneMatchingProcessor : MatchingProcessor {
                 }
         }
 
-    // 세 조건 모두 대칭이라 A가 B의 자격 상대면 B도 A의 자격 상대다.
+    // 모든 조건이 대칭이라 A가 B의 자격 상대면 B도 A의 자격 상대다.
     private fun isValidPair(a: MatchParticipant, b: MatchParticipant): Boolean =
         a.isMutuallyCompatibleWith(b) &&
             isWithinAgeGap(a, b) &&
-            !a.isBlockedWith(b)
+            !a.isBlockedWith(b) &&
+            !a.isExcludedPartnerOf(b)
 
     /** 나이 미상이면 나이차를 판단할 수 없으므로 자격 미달로 본다. */
     private fun isWithinAgeGap(a: MatchParticipant, b: MatchParticipant): Boolean {

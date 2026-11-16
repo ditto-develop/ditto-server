@@ -1,6 +1,7 @@
 package com.ditto.domain.match.repository
 
 import com.ditto.domain.match.MatchCandidateFixture
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.shouldBe
 import javax.sql.DataSource
@@ -13,7 +14,7 @@ class MatchCandidateOwnerQueryTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    "findOwnerMemberIdsByQuizSetId — 후보를 받은 회원(알림 대상)" - {
+    "findRegularOwnerMemberIdsByQuizSetId — 후보를 받은 회원(알림 대상)" - {
         "given: 한 회원이 후보를 여러 명 받았을 때" - {
             "when: 조회하면" - {
                 "then: 회원이 한 번만 나온다" {
@@ -24,7 +25,27 @@ class MatchCandidateOwnerQueryTest(
                         MatchCandidateFixture.create(ownerMemberId = 1L, otherMemberId = 3L, quizSetId = QUIZ_SET),
                     )
 
-                    matchCandidateRepository.findOwnerMemberIdsByQuizSetId(QUIZ_SET) shouldBe listOf(1L)
+                    matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(QUIZ_SET) shouldBe listOf(1L)
+                }
+            }
+        }
+
+        "given: 시크릿 매칭 후보만 받은 회원이 있을 때" - {
+            "when: 조회하면" - {
+                "then: 정규 매칭 후보를 받은 회원만 나온다" {
+                    matchCandidateRepository.save(
+                        MatchCandidateFixture.create(ownerMemberId = 1L, otherMemberId = 2L, quizSetId = QUIZ_SET),
+                    )
+                    matchCandidateRepository.save(
+                        MatchCandidateFixture.create(
+                            ownerMemberId = 7L,
+                            otherMemberId = 8L,
+                            quizSetId = QUIZ_SET,
+                            candidateOrigin = CandidateOrigin.SECRET_FIRST,
+                        ),
+                    )
+
+                    matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(QUIZ_SET) shouldBe listOf(1L)
                 }
             }
         }
@@ -39,13 +60,13 @@ class MatchCandidateOwnerQueryTest(
                         MatchCandidateFixture.create(ownerMemberId = 9L, quizSetId = OTHER_QUIZ_SET),
                     )
 
-                    matchCandidateRepository.findOwnerMemberIdsByQuizSetId(QUIZ_SET) shouldBe listOf(1L)
+                    matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(QUIZ_SET) shouldBe listOf(1L)
                 }
             }
         }
 
         "후보가 없으면 빈 목록이다 — 인원이 모자라 후보가 안 만들어진 주에는 알리지 않는다" {
-            matchCandidateRepository.findOwnerMemberIdsByQuizSetId(QUIZ_SET).size shouldBe 0
+            matchCandidateRepository.findRegularOwnerMemberIdsByQuizSetId(QUIZ_SET).size shouldBe 0
         }
     }
 })

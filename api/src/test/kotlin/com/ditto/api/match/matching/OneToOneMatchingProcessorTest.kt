@@ -144,5 +144,17 @@ class OneToOneMatchingProcessorTest : FreeSpec(
                     .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 2L)
             }
         }
+
+        "다시 짝짓지 않을 상대 제외" - {
+            "한쪽에만 다시 짝짓지 않을 상대로 적혀 있어도 페어에서 제외된다" {
+                val a = participant(1L, Gender.MALE, GenderPreference.ANY).copy(excludedPartnerIds = setOf(2L))
+                val b = participant(2L, Gender.FEMALE, GenderPreference.ANY)
+                val c = participant(3L, Gender.FEMALE, GenderPreference.ANY)
+
+                processor.match(listOf(a, b, c))
+                    .map { asPair(it) } shouldContainExactlyInAnyOrder listOf(1L to 3L, 2L to 3L)
+                processor.findMemberIdsWithEligiblePair(listOf(a, b)).shouldBeEmpty()
+            }
+        }
     },
 )

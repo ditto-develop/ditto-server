@@ -1,5 +1,6 @@
 package com.ditto.domain.match.repository.querydsl
 
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.PersonalMatchStatus
 import com.ditto.domain.match.entity.QMatchCandidate.matchCandidate
 import com.ditto.domain.match.entity.QPersonalMatch.personalMatch
@@ -17,12 +18,15 @@ class MatchCandidateRepositoryImpl(
     private val queryFactory: JPAQueryFactory,
 ) : MatchCandidateRepositoryCustom {
 
-    override fun findOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long> =
+    override fun findRegularOwnerMemberIdsByQuizSetId(quizSetId: Long): List<Long> =
         queryFactory
             .select(matchCandidate.ownerMemberId)
             .distinct()
             .from(matchCandidate)
-            .where(matchCandidate.quizSetId.eq(quizSetId))
+            .where(
+                matchCandidate.quizSetId.eq(quizSetId),
+                matchCandidate.candidateOrigin.eq(CandidateOrigin.REGULAR),
+            )
             .fetch()
 
     override fun existsPairByQuizSetId(oneMemberId: Long, otherMemberId: Long, quizSetId: Long): Boolean =

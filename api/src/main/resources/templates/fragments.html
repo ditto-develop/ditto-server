@@ -77,6 +77,7 @@
 
 <div th:fragment="alerts">
     <div class="alert success" th:if="${message}" th:text="${message}"></div>
+    <div class="alert info" th:if="${notice}" th:text="${notice}"></div>
     <div class="alert error" th:if="${error}" th:text="${error}"></div>
 </div>
 

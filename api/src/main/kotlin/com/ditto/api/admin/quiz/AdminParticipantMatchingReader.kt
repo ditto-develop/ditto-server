@@ -5,6 +5,7 @@ import com.ditto.api.admin.quiz.dto.MatchMissReason
 import com.ditto.api.admin.quiz.dto.OneToOneRecords
 import com.ditto.api.admin.quiz.dto.ParticipantMatching
 import com.ditto.api.admin.quiz.dto.QuizSetMatching
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.MatchCandidate
@@ -18,7 +19,6 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizProgress
 import org.springframework.stereotype.Component
-import java.time.LocalDateTime
 
 /**
  * 참여 현황 화면용으로 퀴즈셋의 저장된 매칭 후보와 1:1 신청을 참여자별로 모은다.
@@ -40,7 +40,10 @@ class AdminParticipantMatchingReader(
 
     private fun readOneToOne(source: MatchingReadSource): QuizSetMatching {
         val candidatesByOwnerId = findCandidates(source).groupBy { it.ownerMemberId }
-        val generatedAt = candidatesByOwnerId.values.flatten().minOfOrNull { it.createdAt }
+        // 시크릿 매칭 후보는 정규 매칭 뒤에 더해지므로 매칭 시각은 정규 후보로 정한다.
+        val generatedAt = candidatesByOwnerId.values.flatten()
+            .filter { it.candidateOrigin == CandidateOrigin.REGULAR }
+            .minOfOrNull { it.createdAt }
         val personalMatches = personalMatchRepository.findByQuizSetIdIn(listOf(source.quizSet.id))
         val nicknames = loadNicknames(
             source,
@@ -67,6 +70,7 @@ class AdminParticipantMatchingReader(
     private fun readGroup(source: MatchingReadSource): QuizSetMatching {
         val groupMatches = groupMatchRepository.findByQuizSetId(source.quizSet.id)
         val generatedAt = groupMatches.minOfOrNull { it.createdAt }
+        val timeline = MatchingTimeline(source.quizSet.endDate, generatedAt)
         val invitationsByGroupMatchId = findInvitations(groupMatches).groupBy { it.roomId }
         val rooms = groupMatches.map { GroupRoom(it, invitationsByGroupMatchId[it.id].orEmpty()) }
         val invitedMemberIds = rooms.flatMap { room -> room.invitations.map { it.memberId } }
@@ -74,7 +78,7 @@ class AdminParticipantMatchingReader(
 
         val byMemberId = source.progresses.associate { progress ->
             val myRooms = rooms.filter { room -> room.invitations.any { it.memberId == progress.memberId } }
-            progress.memberId to groupMatchingOf(progress, myRooms, GroupReadContext(source, nicknames, generatedAt))
+            progress.memberId to groupMatchingOf(progress, myRooms, GroupReadContext(source, nicknames, timeline))
         }
         return QuizSetMatching(generatedAt, byMemberId)
     }
@@ -92,10 +96,10 @@ class AdminParticipantMatchingReader(
             return ParticipantMatching(groupCandidates = groupCandidates)
         }
         val member = context.source.membersById[progress.memberId]
-        val prePoolMissReason = PrePoolMiss.of(progress, member, context.generatedAt)
+        val prePoolMissReason = PrePoolMiss.of(progress, member, context.timeline)
         if (prePoolMissReason != null) return ParticipantMatching(missReason = prePoolMissReason)
 
-        if (context.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)
+        if (context.timeline.generatedAt == null) return ParticipantMatching(missReason = MatchMissReason.NOT_GENERATED)
         return ParticipantMatching(missReason = MatchMissReason.NOT_ASSIGNED_TO_GROUP)
     }
 
@@ -127,6 +131,6 @@ class AdminParticipantMatchingReader(
     private class GroupReadContext(
         val source: MatchingReadSource,
         val nicknames: Map<Long, String>,
-        val generatedAt: LocalDateTime?,
+        val timeline: MatchingTimeline,
     )
 }

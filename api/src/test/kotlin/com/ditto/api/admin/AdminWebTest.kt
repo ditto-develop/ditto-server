@@ -702,6 +702,14 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("시크릿 매칭 지금 돌리기는 플래그가 꺼져 있으면 돌리지 않았다고 안내한다")
+    fun runSecretRoundWithFlagOff() {
+        mockMvc.perform(post("/admin/matching/run-secret-round").with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/matching"))
+            .andExpect(flash().attribute("notice", "시크릿 매칭 기능 플래그가 꺼져 있어 돌리지 않았습니다."))
+    }
+
+    @Test
     @DisplayName("더미 관리 페이지 렌더 + 만들기/삭제")
     fun dummyPage() {
         mockMvc.perform(get("/admin/dummy").with(authentication(admin()))).andExpect(status().isOk)

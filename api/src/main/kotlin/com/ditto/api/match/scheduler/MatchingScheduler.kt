@@ -34,4 +34,16 @@ class MatchingScheduler(
         val quizSetIds = matchingBatchFacade.runScheduledMatching(LocalDateTime.now())
         matchResultNotifier.notifyFor(quizSetIds)
     }
+
+    // SecretMatchingSchedule 의 라운드 시각(금·토 20:00)에 맞춘다. 바꿀 때 함께 고친다. 재시도 이유는 ADR 0054.
+    @Scheduled(cron = "\${matching.secret-round.cron:0 1 20-22 * * FRI,SAT}")
+    @SchedulerLock(
+        name = "secret-matching",
+        lockAtMostFor = SchedulerLockDurations.WEEKLY_AT_MOST,
+        lockAtLeastFor = SchedulerLockDurations.AT_LEAST,
+    )
+    fun generateSecretRound() {
+        val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
+        matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+    }
 }
