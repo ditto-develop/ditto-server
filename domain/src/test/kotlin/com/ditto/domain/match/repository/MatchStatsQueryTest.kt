@@ -94,25 +94,41 @@ class MatchStatsQueryTest(
         groupMatchMemberRepository.save(invitation)
     }
 
-    "시크릿 매칭 라운드 후보와 그 쌍의 신청은 정규 매칭 지표에서 뺀다" {
-        val quizSet = saveQuizSet()
-        val (regularA, regularB, secretA, secretB) = List(4) { saveMember() }
-        saveCandidatePair(quizSet, regularA, regularB, score = 70.0)
-        saveCandidatePair(quizSet, secretA, secretB, score = 90.0, candidateOrigin = CandidateOrigin.SECRET_FIRST)
-        personalMatchRepository.save(PersonalMatchFixture.create(regularA, regularB, quizSet.id, PersonalMatchStatus.ACCEPTED))
-        personalMatchRepository.save(PersonalMatchFixture.create(secretA, secretB, quizSet.id, PersonalMatchStatus.ACCEPTED))
+    "시크릿 매칭 라운드 쌍" - {
+        // 정규 쌍(70점)과 시크릿 1차 쌍(90점)이 하나씩 있고 둘 다 성사됐다.
+        fun saveRegularAndSecretAcceptedPairs() {
+            val quizSet = saveQuizSet()
+            val (regularA, regularB, secretA, secretB) = List(4) { saveMember() }
+            saveCandidatePair(quizSet, regularA, regularB, score = 70.0)
+            saveCandidatePair(quizSet, secretA, secretB, score = 90.0, candidateOrigin = CandidateOrigin.SECRET_FIRST)
+            listOf(regularA to regularB, secretA to secretB).forEach { (one, other) ->
+                personalMatchRepository.save(
+                    PersonalMatchFixture.create(one, other, quizSet.id, PersonalMatchStatus.ACCEPTED),
+                )
+            }
+        }
 
-        matchCandidateRepository.countCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
-            listOf(MatchCandidateCount(Gender.MALE, 2L))
-        matchCandidateRepository.countCandidatesPerOwnerInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder listOf(1L, 1L)
-        matchCandidateRepository.findPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
-        matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
-        personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 2L
-        personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
-        personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
-        matchCandidateRepository.countSecretCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
-            listOf(SecretCandidateOwnerCount(CandidateOrigin.SECRET_FIRST, 2L))
-        personalMatchRepository.countSecretRoundAcceptedPairsInWeek(WEEK) shouldBe 1L
+        "정규 매칭 지표는 시크릿 쌍과 그 쌍의 신청을 뺀다" {
+            saveRegularAndSecretAcceptedPairs()
+
+            matchCandidateRepository.countCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
+                listOf(MatchCandidateCount(Gender.MALE, 2L))
+            matchCandidateRepository.countCandidatesPerOwnerInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
+                listOf(1L, 1L)
+            matchCandidateRepository.findPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
+            matchCandidateRepository.findAcceptedPairScoresInWeek(WEEK) shouldContainExactlyInAnyOrder listOf(70.0)
+            personalMatchRepository.countAcceptedMembersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 2L
+            personalMatchRepository.countRequestersInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
+            personalMatchRepository.countRequestsPerStatusInWeek(WEEK, MemberFilter.NONE).sumOf { it.count } shouldBe 1L
+        }
+
+        "시크릿 매칭 카드는 시크릿 쌍만 센다" {
+            saveRegularAndSecretAcceptedPairs()
+
+            matchCandidateRepository.countSecretCandidateOwnersInWeek(WEEK, MemberFilter.NONE) shouldContainExactlyInAnyOrder
+                listOf(SecretCandidateOwnerCount(CandidateOrigin.SECRET_FIRST, 2L))
+            personalMatchRepository.countSecretRoundAcceptedPairsInWeek(WEEK) shouldBe 1L
+        }
     }
 
     "countCandidateOwnersInWeek" - {

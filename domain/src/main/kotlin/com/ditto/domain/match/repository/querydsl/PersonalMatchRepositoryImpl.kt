@@ -103,7 +103,7 @@ class PersonalMatchRepositoryImpl(
             .where(
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                personalMatchFromSecretRound().not(),
+                isSecretRoundPersonalMatch().not(),
                 member.matchesFilter(filter),
             )
             .groupBy(member.gender)
@@ -141,7 +141,7 @@ class PersonalMatchRepositoryImpl(
             .join(member).on(member.id.eq(personalMatch.requesterId))
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                personalMatchFromSecretRound().not(),
+                isSecretRoundPersonalMatch().not(),
                 member.matchesFilter(filter),
             )
             .groupBy(member.gender, personalMatch.status)
@@ -163,7 +163,7 @@ class PersonalMatchRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
-                personalMatchFromSecretRound(),
+                isSecretRoundPersonalMatch(),
             )
             .fetchOne() ?: 0L
 
@@ -186,7 +186,7 @@ class PersonalMatchRepositoryImpl(
             .join(member).on(memberJoinCondition)
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
-                personalMatchFromSecretRound().not(),
+                isSecretRoundPersonalMatch().not(),
                 member.matchesFilter(filter),
                 statusCondition,
             )

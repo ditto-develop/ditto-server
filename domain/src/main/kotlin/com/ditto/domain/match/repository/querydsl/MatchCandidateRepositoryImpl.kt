@@ -130,7 +130,7 @@ class MatchCandidateRepositoryImpl(
             .where(
                 quizSet.weekStartedOn.eq(weekStartedOn),
                 personalMatch.status.eq(PersonalMatchStatus.ACCEPTED),
-                personalMatchFromSecretRound().not(),
+                isSecretRoundPersonalMatch().not(),
             )
             .fetch()
 

@@ -64,7 +64,7 @@ interface QuizProgressRepositoryCustom {
         filter: MemberFilter,
     ): Long
 
-    /** 그 주 활성 셋을 응답 마감 뒤에 완주한(시크릿 매칭 늦은 응시) 회원 수. 다른 진행 지표는 이 회원들을 빼고 센다. */
+    /** 그 주 활성 1:1 셋을 응답 마감 뒤에 완주한(늦은 완주) 회원 수. 다른 진행 지표는 이 회원들을 빼고 센다. */
     fun countLateCompletersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): Long
 
     /** 그 주 활성 셋을 완주한 관리자 계정 수. 지표에서 빠진 인원을 보여 주는 데 쓰고 회원 조건은 걸지 않는다. */

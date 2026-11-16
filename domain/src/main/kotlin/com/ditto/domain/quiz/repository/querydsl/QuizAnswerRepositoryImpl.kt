@@ -118,8 +118,7 @@ class QuizAnswerRepositoryImpl(
                 quizProgress.memberId.eq(quizAnswer.memberId),
                 quizProgress.quizSetId.eq(quizSet.id),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
-                // 회차 참여자와 같은 정규 완주만. 응답 마감 뒤 완주는 시크릿 매칭이다.
-                quizProgress.completedAt.isNull.or(quizProgress.completedAt.loe(quizSet.endDate)),
+                quizProgress.isCompletedOnTime(quizSet),
             )
             .join(member).on(member.id.eq(quizAnswer.memberId))
             .where(

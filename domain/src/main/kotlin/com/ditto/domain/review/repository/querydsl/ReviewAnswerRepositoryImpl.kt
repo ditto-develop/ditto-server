@@ -11,6 +11,7 @@ import com.ditto.domain.member.repository.querydsl.matchesFilter
 import com.ditto.domain.quiz.entity.QQuizProgress.quizProgress
 import com.ditto.domain.quiz.entity.QQuizSet.quizSet
 import com.ditto.domain.quiz.entity.QuizProgressStatus
+import com.ditto.domain.quiz.repository.querydsl.isCompletedOnTime
 import com.ditto.domain.review.entity.MeetingStatus
 import com.ditto.domain.review.entity.QMemberReview
 import com.ditto.domain.review.entity.QMemberReview.memberReview
@@ -204,6 +205,7 @@ class ReviewAnswerRepositoryImpl(
             .where(
                 quizProgress.memberId.eq(memberReview.authorMemberId),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                quizProgress.isCompletedOnTime(quizSet),
                 quizSet.weekStartedOn.eq(weekStartedOn),
             )
             .exists()

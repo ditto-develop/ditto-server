@@ -196,7 +196,7 @@ class MemberReviewStatsQueryTest(
     }
 
     "준 별점 평균" - {
-        "회원마다 준 별점을 평균 내고 다음 회차에 완주한 회원만 따로 준다" {
+        "회원마다 준 별점을 평균 내고 다음 회차에 응답 마감까지 완주한 회원만 따로 준다" {
             val againWeek = WEEK.plusWeeks(1)
             val againSet = quizSetRepository.save(
                 QuizSetFixture.create(
@@ -211,6 +211,10 @@ class MemberReviewStatsQueryTest(
             quizProgressRepository.save(
                 QuizProgressFixture.create(memberId = unsatisfied, quizSetId = againSet.id, totalCount = 1)
                     .apply { recordAnswer() },
+            )
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = satisfied, quizSetId = againSet.id, totalCount = 1)
+                    .apply { recordAnswer(answeredAt = againSet.endDate.plusHours(12)) },
             )
 
             reviewAnswerRepository.findAverageGivenRatingsInWeek(
