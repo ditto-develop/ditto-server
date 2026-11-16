@@ -1,6 +1,7 @@
 package com.ditto.api.notification
 
 import com.ditto.api.chat.dto.ChatMessageResponse
+import com.ditto.api.match.UpcomingSecretRoundFinder
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
@@ -13,6 +14,7 @@ import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatRoomMemberFixture
 import com.ditto.domain.chat.entity.ChatMessageType
@@ -32,10 +34,10 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.dao.DataAccessResourceFailureException
+import java.time.LocalDateTime
 
 /**
  * 알림을 남기려다 실패해도 부르는 쪽 흐름이 끊기지 않는지 본다.
@@ -78,6 +80,9 @@ class NotifierFailureTest {
         matchmakingService,
         notificationRepository,
         notificationAppender,
+        quizSetRepository,
+        mockk<UpcomingSecretRoundFinder>(),
+        mockk<ServerTimeProvider>(relaxed = true),
     )
     private val chatEndingSoonNotifier = ChatEndingSoonNotifier(
         chatRoomRepository,

@@ -5,6 +5,8 @@ import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.sanction.entity.SanctionLevel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * 알림 문구를 한곳에 모은다. 정본은 기획의 "알림 문구" 표고, 문구를 바꿀 때 여기만 고친다.
@@ -35,12 +37,21 @@ object NotificationMessages {
         body = "누구인지 확인해보세요.",
     )
 
-    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. */
-    fun noMatch(): NotificationContent = NotificationContent(
-        type = NotificationType.NO_MATCH,
-        title = "이번 주는 답이 닿지 않았어요",
-        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
-    )
+    /** 퀴즈를 끝냈지만 이번 주 후보가 없다. [secretRoundAt]이 있으면 그 라운드에 자동으로 들어간다고 안내한다. */
+    fun noMatch(secretRoundAt: LocalDateTime?): NotificationContent {
+        if (secretRoundAt == null) {
+            return NotificationContent(
+                type = NotificationType.NO_MATCH,
+                title = "이번 주는 답이 닿지 않았어요",
+                body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+            )
+        }
+        return NotificationContent(
+            type = NotificationType.NO_MATCH,
+            title = "이번엔 인연이 닿지 않았어요",
+            body = "${dayNameOf(secretRoundAt)} 저녁 8시에 한 번 더 찾아볼게요.",
+        )
+    }
 
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
     fun groupFormed(memberCount: Int): NotificationContent = NotificationContent(
@@ -49,11 +60,16 @@ object NotificationMessages {
         body = "답이 비슷한 ${memberCount}명이 모였어요. 멤버를 확인해보세요.",
     )
 
-    /** 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다. */
-    fun groupNotFormed(): NotificationContent = NotificationContent(
+    /**
+     * 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다.
+     * [secretRoundAt]이 있으면 1:1 퀴즈를 풀어 그 라운드에 들어갈 수 있다고 안내한다.
+     */
+    fun groupNotFormed(secretRoundAt: LocalDateTime?): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_NOT_FORMED,
         title = "이번 주는 인원 미달로 취소됐어요",
-        body = "다음 주에 새로운 질문으로 다시 찾아볼게요.",
+        body = secretRoundAt
+            ?.let { "1:1 퀴즈를 풀면 ${dayNameOf(it)} 저녁 8시 시크릿 매칭에 참여할 수 있어요." }
+            ?: "다음 주에 새로운 질문으로 다시 찾아볼게요.",
     )
 
     /** [requesterNickname] 이 나와 1:1 재매칭을 원한다고 냈다. */
@@ -224,6 +240,8 @@ object NotificationMessages {
                 body = "더 이상 서비스를 이용할 수 없어요.",
             )
         }
+
+    private fun dayNameOf(at: LocalDateTime): String = at.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.KOREAN)
 
     private val DATE = DateTimeFormatter.ofPattern("M월 d일")
     private val DATE_TIME = DateTimeFormatter.ofPattern("M월 d일 HH:mm")

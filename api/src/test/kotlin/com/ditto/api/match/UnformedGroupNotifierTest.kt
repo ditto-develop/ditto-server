@@ -2,6 +2,8 @@ package com.ditto.api.match
 
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.support.IntegrationTest
+import com.ditto.api.system.featureflag.FeatureFlagAdminService
+import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.entity.GroupMatch
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -10,7 +12,9 @@ import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -27,21 +31,28 @@ class UnformedGroupNotifierTest(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val quizSetRepository: QuizSetRepository,
     private val notificationRepository: NotificationRepository,
+    private val featureFlags: FeatureFlags,
+    private val featureFlagAdminService: FeatureFlagAdminService,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
     {
+        beforeTest { featureFlags.evict() }
+        afterTest { featureFlags.evict() }
+
         // 2026-06-01(월) 시작 주. 마감은 2026-06-05(금) 00:00.
         val monday = LocalDate.of(2026, 6, 1)
         val afterDeadline = LocalDateTime.of(2026, 6, 5, 0, 30)
         val beforeDeadline = LocalDateTime.of(2026, 6, 4, 23, 30)
 
-        fun quizSetId(weekStartedOn: LocalDate = monday): Long = quizSetRepository.save(
-            QuizSetFixture.create(
-                startDate = weekStartedOn.atStartOfDay(),
-                endDate = weekStartedOn.plusDays(2).atTime(23, 59, 59),
-            ),
-        ).id
+        fun quizSetId(weekStartedOn: LocalDate = monday, matchingType: MatchingType = MatchingType.GROUP): Long =
+            quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = weekStartedOn.atStartOfDay(),
+                    endDate = weekStartedOn.plusDays(2).atTime(23, 59, 59),
+                    matchingType = matchingType,
+                ),
+            ).id
 
         /** 수락자 [acceptedMemberIds] 를 가진 미성사 그룹. 임계값(3) 미만이라 활성화되지 않는다. */
         fun unformedGroup(acceptedMemberIds: List<Long>, weekStartedOn: LocalDate = monday): GroupMatch {
@@ -124,6 +135,36 @@ class UnformedGroupNotifierTest(
                 }
 
                 unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 0
+            }
+        }
+
+        "시크릿 매칭 안내" - {
+            "기능이 켜져 있고 그 주 1:1 셋이 있으면 1:1 퀴즈를 풀어 금요일 라운드에 참여하라고 안내한다" {
+                featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+                quizSetId(matchingType = MatchingType.ONE_TO_ONE)
+                unformedGroup(listOf(1L))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 1
+
+                notifications(1L).single().body shouldBe "1:1 퀴즈를 풀면 금요일 저녁 8시 시크릿 매칭에 참여할 수 있어요."
+            }
+
+            "그 주 1:1 셋이 없으면 기존 문구다" {
+                featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+                unformedGroup(listOf(1L))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 1
+
+                notifications(1L).single().body shouldBe "다음 주에 새로운 질문으로 다시 찾아볼게요."
+            }
+
+            "기능이 꺼져 있으면 기존 문구다" {
+                quizSetId(matchingType = MatchingType.ONE_TO_ONE)
+                unformedGroup(listOf(1L))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 1
+
+                notifications(1L).single().body shouldBe "다음 주에 새로운 질문으로 다시 찾아볼게요."
             }
         }
     },

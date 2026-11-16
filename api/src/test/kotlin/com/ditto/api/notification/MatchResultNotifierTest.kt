@@ -2,6 +2,8 @@ package com.ditto.api.notification
 
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.support.IntegrationTest
+import com.ditto.api.system.featureflag.FeatureFlagAdminService
+import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.match.MatchCandidateFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.match.repository.MatchCandidateRepository
@@ -14,7 +16,12 @@ import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizProgressRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.entity.FeatureFlagKey
+import com.ditto.domain.system.entity.ServerTimeOverride
+import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.matchers.shouldBe
+import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private const val QUIZ_SET = 1L
@@ -29,8 +36,14 @@ class MatchResultNotifierTest(
     private val quizProgressRepository: QuizProgressRepository,
     private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
+    private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
+    private val featureFlags: FeatureFlags,
+    private val featureFlagAdminService: FeatureFlagAdminService,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
+
+    beforeTest { featureFlags.evict() }
+    afterTest { featureFlags.evict() }
 
     fun saveCandidatePair(quizSetId: Long = QUIZ_SET) {
         // 후보는 (A→B), (B→A) 두 방향 행으로 저장된다.
@@ -145,6 +158,57 @@ class MatchResultNotifierTest(
             matchResultNotifier.notifyFor(listOf(quizSet.id)) shouldBe 0
 
             notificationRepository.findAll().map { it.type }.toSet() shouldBe setOf(NotificationType.MATCH_RESULT)
+        }
+    }
+
+    "시크릿 매칭이 켜져 있으면 1:1 노매칭에 라운드를 안내한다" - {
+        // 2026-11-16(월) 시작 주의 목요일 정규 배치 직후
+        val monday = LocalDate.of(2026, 11, 16)
+        val thursday = LocalDateTime.of(2026, 11, 19, 0, 1)
+
+        fun weekQuizSet(matchingType: MatchingType) = quizSetRepository.save(
+            QuizSetFixture.create(
+                startDate = monday.atStartOfDay(),
+                endDate = monday.plusDays(2).atTime(23, 59, 59),
+                matchingType = matchingType,
+            ),
+        )
+
+        fun noMatchBodyAfterNotifying(quizSetId: Long): String {
+            val member = saveActiveMember("c")
+            saveCompletedProgress(member.id, quizSetId)
+            matchResultNotifier.notifyFor(listOf(quizSetId))
+            return notificationRepository.findAll().single { it.type == NotificationType.NO_MATCH }.body.orEmpty()
+        }
+
+        beforeEach {
+            featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
+            serverTimeOverrideRepository.save(ServerTimeOverride.disabled().apply { override(thursday, "관리자", "admin@ditto.pics") })
+        }
+
+        "그 주 1:1 셋의 노매칭은 금요일 라운드를 안내한다" {
+            val noMatch = weekQuizSet(MatchingType.ONE_TO_ONE)
+
+            noMatchBodyAfterNotifying(noMatch.id) shouldBe "금요일 저녁 8시에 한 번 더 찾아볼게요."
+            notificationRepository.findAll().single().title shouldBe "이번엔 인연이 닿지 않았어요"
+        }
+
+        "그룹 셋의 노매칭은 기존 문구다" {
+            weekQuizSet(MatchingType.ONE_TO_ONE)
+            val group = weekQuizSet(MatchingType.GROUP)
+
+            noMatchBodyAfterNotifying(group.id) shouldBe "다음 주에 새로운 질문으로 다시 찾아볼게요."
+        }
+
+        "지난 주 셋의 노매칭이 늦게 나가면 기존 문구다" {
+            val lastWeek = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = monday.minusWeeks(1).atStartOfDay(),
+                    endDate = monday.minusWeeks(1).plusDays(2).atTime(23, 59, 59),
+                ),
+            )
+
+            noMatchBodyAfterNotifying(lastWeek.id) shouldBe "다음 주에 새로운 질문으로 다시 찾아볼게요."
         }
     }
 })

@@ -1,16 +1,21 @@
 package com.ditto.api.notification.notifier
 
+import com.ditto.api.match.UpcomingSecretRoundFinder
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.api.system.ServerTimeProvider
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.quiz.entity.MatchingType
+import com.ditto.domain.quiz.repository.QuizSetRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
+import java.time.LocalDateTime
 
 /**
  * 주간 매칭 결과를 참여자에게 알린다.
@@ -23,6 +28,9 @@ import org.springframework.stereotype.Component
  * 정지·성사로 풀에서 빠진 회원에게도 "답이 닿지 않았어요"가 간다.
  *
  * 알림은 퀴즈셋당 한 번이다. 어드민이 후보를 재생성해도 다시 알리지 않는다.
+ *
+ * 1:1 셋의 노매칭은 시크릿 매칭 라운드가 남아 있으면 그 라운드를 안내한다. 그룹 미매칭자는 1:1 퀴즈를
+ * 직접 풀어야 라운드에 들어가서 "한 번 더 찾아볼게요"가 맞지 않아 기존 문구를 쓴다.
  */
 @Component
 class MatchResultNotifier(
@@ -32,6 +40,9 @@ class MatchResultNotifier(
     private val matchmakingService: MatchmakingService,
     private val notificationRepository: NotificationRepository,
     private val notificationAppender: NotificationAppender,
+    private val quizSetRepository: QuizSetRepository,
+    private val upcomingSecretRoundFinder: UpcomingSecretRoundFinder,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
     /**
      * 후보가 생성된 퀴즈셋들에 대해 알린다. 조회 실패는 여기서 삼킨다. 어드민 재생성 경로에서 예외가
@@ -48,6 +59,7 @@ class MatchResultNotifier(
             return 0
         }
 
+        val now = serverTimeProvider.now()
         var matchedCount = 0
         var unmatchedCount = 0
         quizSetIds.forEach { quizSetId ->
@@ -59,7 +71,7 @@ class MatchResultNotifier(
             )
             unmatchedCount += notificationAppender.appendAll(
                 memberIds = unmatchedMemberIds(quizSetId, matchedMemberIds),
-                content = NotificationMessages.noMatch(),
+                content = NotificationMessages.noMatch(secretRoundAtForOneToOne(quizSetId, now)),
                 targetId = quizSetId,
             )
         }
@@ -68,6 +80,12 @@ class MatchResultNotifier(
             logger.info { "매칭 결과 알림: 후보 있음 ${matchedCount}건, 노매칭 ${unmatchedCount}건 (퀴즈셋 ${quizSetIds.size}개)" }
         }
         return matchedCount + unmatchedCount
+    }
+
+    private fun secretRoundAtForOneToOne(quizSetId: Long, now: LocalDateTime): LocalDateTime? {
+        val quizSet = quizSetRepository.findById(quizSetId).orElse(null) ?: return null
+        if (quizSet.matchingType != MatchingType.ONE_TO_ONE) return null
+        return upcomingSecretRoundFinder.findFor(quizSet.operationWeek, now)
     }
 
     /**
