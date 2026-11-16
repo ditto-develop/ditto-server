@@ -16,7 +16,6 @@ import com.ditto.api.quiz.stat.QuizStatSnapshot
 import com.ditto.api.quiz.stat.QuizStatSnapshotService
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.quiz.entity.QuizProgress
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.entity.QuizSet
 import com.ditto.domain.quiz.repository.QuizMemberStatRepository
@@ -30,8 +29,7 @@ import java.time.LocalDateTime
  * 퀴즈 기록 탭(IMP-1 BE-2). "참여" = 그 셋을 끝까지 제출(COMPLETED)한 것이다 — 중간에 멈춘 셋은 기록에 없다.
  *
  * 마감 여부는 서버 시각으로 판단하고([QuizResultSchedule]), 마감된 셋의 숫자는 스냅샷에서 읽는다(없으면 지연 생성).
- * 응답 마감 뒤에 완주한 회원은 스냅샷에 자기 행이 없다. 소수 의견 수는 자기 답을 스냅샷에 대조해 그때 세고,
- * 겹친 사람 수는 다른 참여자 전원과 비교해야 해서 세지 않는다(0).
+ * 응답 마감 뒤에 완주한 회원은 스냅샷에 자기 행이 없어 자기 답을 스냅샷에 대조해 센다.
  * 트랜잭션을 열지 않는다 — 지연 생성이 자기 트랜잭션에서 커밋돼야 같은 요청이 그 결과를 읽는다.
  */
 @Service
@@ -54,7 +52,7 @@ class QuizHistoryService(
         val progressBySetId = progresses.associateBy { it.quizSetId }
 
         val weeks = quizSets.map { set ->
-            val lateCompletion = progressBySetId[set.id]?.isCompletedLate(set) ?: false
+            val lateCompletion = progressBySetId[set.id]?.isCompletedLate(set.endDate) ?: false
             QuizHistoryWeek(
                 quizSetId = set.id,
                 weekStartedOn = set.weekStartedOn,
@@ -63,7 +61,7 @@ class QuizHistoryService(
                 lateCompletion = lateCompletion,
                 minorityCount = when {
                     set.id !in closedIds -> null
-                    lateCompletion -> lateMinorityCount(memberId, set, now)
+                    lateCompletion -> minorityCountOfLateCompleter(memberId, set, now)
                     else -> minorityBySetId[set.id] ?: 0
                 },
             )
@@ -95,70 +93,46 @@ class QuizHistoryService(
         }
         val quizSet = quizSetRepository.findById(quizSetId).orElseThrow { WarnException(ErrorCode.QUIZ_HISTORY_NOT_FOUND) }
         val sheet = quizAnswerSheetLoader.load(quizSetId, listOf(memberId))
-
-        val lateCompletion = progress.isCompletedLate(quizSet)
+        val lateCompletion = progress.isCompletedLate(quizSet.endDate)
         val snapshot = quizStatSnapshotService.findIfClosed(quizSet, now)
-        return if (snapshot != null) {
-            closedDetail(MemberSheet(memberId, sheet, lateCompletion), quizSet, snapshot)
-        } else {
-            inProgressDetail(MemberSheet(memberId, sheet, lateCompletion), quizSet, liveParticipantCount(quizSet, now))
-        }
+
+        return QuizHistoryDetailResponse(
+            quizSetId = quizSet.id,
+            title = quizSet.title,
+            matchingType = quizSet.matchingType,
+            weekStartedOn = quizSet.weekStartedOn,
+            phase = if (snapshot != null) QuizHistoryPhase.CLOSED else QuizHistoryPhase.IN_PROGRESS,
+            resultOpensAt = QuizResultSchedule.opensAt(quizSet),
+            participantCount = snapshot?.participantCount?.toLong() ?: liveParticipantCount(quizSet, now),
+            lateCompletion = lateCompletion,
+            answers = answersOf(memberId, sheet, snapshot),
+            result = snapshot?.let {
+                if (lateCompletion) lateCompleterResult(memberId, sheet, it) else onTimeResult(memberId, quizSetId, it)
+            },
+        )
     }
 
-    private fun inProgressDetail(
-        memberSheet: MemberSheet,
-        quizSet: QuizSet,
-        participantCount: Long,
-    ): QuizHistoryDetailResponse {
-        val answers = answersOf(memberSheet.memberId, memberSheet.sheet, snapshot = null)
-        return detail(quizSet, QuizHistoryPhase.IN_PROGRESS, participantCount, memberSheet.lateCompletion, answers, result = null)
+    // 스냅샷에 자기 행이 없다. 겹친 사람 수는 다른 참여자 전원과 비교해야 해서 세지 않는다.
+    private fun lateCompleterResult(memberId: Long, sheet: QuizAnswerSheet, snapshot: QuizStatSnapshot) =
+        QuizHistoryResult(
+            overlapThreshold = snapshot.overlapThreshold,
+            overlapCount = 0,
+            minorityCount = sheet.minorityCountOf(memberId, snapshot),
+        )
+
+    private fun onTimeResult(memberId: Long, quizSetId: Long, snapshot: QuizStatSnapshot): QuizHistoryResult {
+        val memberStat = quizMemberStatRepository.findByQuizSetIdAndMemberId(quizSetId, memberId)
+        return QuizHistoryResult(
+            overlapThreshold = snapshot.overlapThreshold,
+            overlapCount = memberStat?.overlapCount ?: 0,
+            minorityCount = memberStat?.minorityCount ?: 0,
+        )
     }
 
-    private fun closedDetail(
-        memberSheet: MemberSheet,
-        quizSet: QuizSet,
-        snapshot: QuizStatSnapshot,
-    ): QuizHistoryDetailResponse {
-        val (memberId, sheet, lateCompletion) = memberSheet
-        val answers = answersOf(memberId, sheet, snapshot)
-        val result = if (lateCompletion) {
-            QuizHistoryResult(snapshot.overlapThreshold, overlapCount = 0, minorityCount = minorityCountOf(memberId, sheet, snapshot))
-        } else {
-            val memberStat = quizMemberStatRepository.findByQuizSetIdAndMemberId(quizSet.id, memberId)
-            QuizHistoryResult(snapshot.overlapThreshold, memberStat?.overlapCount ?: 0, memberStat?.minorityCount ?: 0)
-        }
-        return detail(quizSet, QuizHistoryPhase.CLOSED, snapshot.participantCount.toLong(), lateCompletion, answers, result)
-    }
-
-    private fun detail(
-        quizSet: QuizSet,
-        phase: QuizHistoryPhase,
-        participantCount: Long,
-        lateCompletion: Boolean,
-        answers: List<QuizHistoryAnswer>,
-        result: QuizHistoryResult?,
-    ): QuizHistoryDetailResponse = QuizHistoryDetailResponse(
-        quizSetId = quizSet.id,
-        title = quizSet.title,
-        matchingType = quizSet.matchingType,
-        weekStartedOn = quizSet.weekStartedOn,
-        phase = phase,
-        resultOpensAt = QuizResultSchedule.opensAt(quizSet),
-        participantCount = participantCount,
-        lateCompletion = lateCompletion,
-        answers = answers,
-        result = result,
-    )
-
-    private fun lateMinorityCount(memberId: Long, quizSet: QuizSet, now: LocalDateTime): Int {
+    private fun minorityCountOfLateCompleter(memberId: Long, quizSet: QuizSet, now: LocalDateTime): Int {
         val snapshot = quizStatSnapshotService.findIfClosed(quizSet, now) ?: return 0
-        return minorityCountOf(memberId, quizAnswerSheetLoader.load(quizSet.id, listOf(memberId)), snapshot)
+        return quizAnswerSheetLoader.load(quizSet.id, listOf(memberId)).minorityCountOf(memberId, snapshot)
     }
-
-    private fun minorityCountOf(memberId: Long, sheet: QuizAnswerSheet, snapshot: QuizStatSnapshot): Int =
-        sheet.quizzes.count { quiz -> sheet.choiceOf(memberId, quiz.id)?.let(snapshot::isMinority) ?: false }
-
-    private fun QuizProgress.isCompletedLate(quizSet: QuizSet): Boolean = !isCompletedOnTime(quizSet.endDate)
 
     private fun answersOf(memberId: Long, sheet: QuizAnswerSheet, snapshot: QuizStatSnapshot?): List<QuizHistoryAnswer> =
         sheet.quizzes.map { quiz ->
@@ -187,10 +161,4 @@ class QuizHistoryService(
         val ids = if (quizSet.id in currentIds) currentIds else listOf(quizSet.id)
         return quizProgressRepository.countByQuizSetIdInAndStatus(ids, QuizProgressStatus.COMPLETED)
     }
-
-    private data class MemberSheet(
-        val memberId: Long,
-        val sheet: QuizAnswerSheet,
-        val lateCompletion: Boolean,
-    )
 }

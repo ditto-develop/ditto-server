@@ -20,7 +20,7 @@ data class QuizHistoryDetailResponse(
     val resultOpensAt: LocalDateTime,
     /** 진행 중: 홈과 같은 지금까지 완주자 수. 결과 공개 후: 스냅샷의 최종 참여자 수. */
     val participantCount: Long,
-    /** 응답 마감 뒤에 완주했는가. 통계에 들지 않아 결과의 겹친 사람 수는 0 이고 FE 가 숨긴다. */
+    /** 응답 마감 뒤에 완주했는가 */
     val lateCompletion: Boolean,
     val answers: List<QuizHistoryAnswer>,
     @field:JsonInclude(JsonInclude.Include.NON_NULL)

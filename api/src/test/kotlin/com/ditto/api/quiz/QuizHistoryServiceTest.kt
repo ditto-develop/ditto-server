@@ -4,6 +4,7 @@ import com.ditto.api.quiz.dto.QuizHistoryPhase
 import com.ditto.api.quiz.service.QuizHistoryService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.api.support.QuizSeeder
+import com.ditto.api.support.SeededQuizSet
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.common.serialization.ObjectMapperFactory
@@ -43,6 +44,15 @@ class QuizHistoryServiceTest(
 
     fun member() = memberRepository.save(MemberFixture.create(nickname = "회원${seq++}", status = MemberStatus.ACTIVE)).id
 
+    // 마감 전 완주자 20명 중 1명만 문항 1에서 2번을 골라 2번이 소수 의견이다. [lateCompleter]는 마감 뒤에 같은 답을 낸다.
+    fun seedLateCompleterWithOneMinorityAnswer(lateCompleter: Long): SeededQuizSet {
+        val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK)
+        seeder.answer(member(), closed, listOf(2, 1, 1))
+        repeat(19) { seeder.answer(member(), closed, listOf(1, 1, 1)) }
+        seeder.answer(lateCompleter, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+        return closed
+    }
+
     "기록 탭" - {
         "완주한 주만 최신순으로 주고, 결과가 공개된 주만 소수 의견을 합산한다" {
             val me = member()
@@ -71,11 +81,7 @@ class QuizHistoryServiceTest(
 
         "응답 마감 뒤에 완주한 주는 lateCompletion 이고 소수 의견을 내 답과 스냅샷으로 센다" {
             val me = member()
-            val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK)
-            // 마감 전 완주자 20명 중 1명만 문항 1에서 2번 → 2번이 소수 의견. 나는 마감 뒤에 같은 답을 냈다.
-            seeder.answer(member(), closed, listOf(2, 1, 1))
-            repeat(19) { seeder.answer(member(), closed, listOf(1, 1, 1)) }
-            seeder.answer(me, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+            seedLateCompleterWithOneMinorityAnswer(me)
 
             val week = quizHistoryService.getHistory(me, WEDNESDAY_EVENING).weeks.single()
 
@@ -142,10 +148,7 @@ class QuizHistoryServiceTest(
 
         "응답 마감 뒤에 완주했으면 소수 의견은 내 답으로 세고 겹친 사람 수는 0 이다" {
             val me = member()
-            val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK, questions = 3)
-            seeder.answer(member(), closed, listOf(2, 1, 1))
-            repeat(19) { seeder.answer(member(), closed, listOf(1, 1, 1)) }
-            seeder.answer(me, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+            val closed = seedLateCompleterWithOneMinorityAnswer(me)
 
             val detail = quizHistoryService.getDetail(me, closed.quizSetId, WEDNESDAY_EVENING)
 
@@ -154,6 +157,19 @@ class QuizHistoryServiceTest(
             val result = detail.result.shouldNotBeNull()
             result.overlapCount shouldBe 0
             result.minorityCount shouldBe 1
+        }
+
+        "마감까지 완주한 사람이 없으면 늦은 완주자의 답은 소수 의견이 아니다" {
+            val me = member()
+            val closed = seeder.quizSet(weekStartedOn = QuizSeeder.CLOSED_WEEK)
+            seeder.answer(me, closed, listOf(2, 1, 1), answeredAt = closed.responseDeadline.plusDays(1))
+
+            val detail = quizHistoryService.getDetail(me, closed.quizSetId, WEDNESDAY_EVENING)
+
+            detail.participantCount shouldBe 0L
+            detail.result.shouldNotBeNull().minorityCount shouldBe 0
+            detail.answers.flatMap { it.choices }.none { it.minority == true } shouldBe true
+            quizHistoryService.getHistory(me, WEDNESDAY_EVENING).summary.minorityCount shouldBe 0
         }
 
         "끝까지 풀지 않은 셋은 기록이 없다" {

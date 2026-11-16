@@ -83,6 +83,9 @@ class QuizProgress private constructor(
         return completedAt <= deadline
     }
 
+    fun isCompletedLate(deadline: LocalDateTime): Boolean =
+        status == QuizProgressStatus.COMPLETED && !isCompletedOnTime(deadline)
+
     // 라운드 시각 정각에 완주한 사람은 다음 라운드 몫이라 미만으로 본다. 늦은 응시 마감(2차 라운드 시각)과 같은 기준이다.
     fun isCompletedBefore(roundStartsAt: LocalDateTime): Boolean {
         if (status != QuizProgressStatus.COMPLETED) return false

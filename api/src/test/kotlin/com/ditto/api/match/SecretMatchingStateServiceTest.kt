@@ -131,14 +131,19 @@ class SecretMatchingStateServiceTest(
             }
         }
 
-        "시크릿 후보가 있으면 SECRET_RESULT, 정규 후보만 있으면 AUTO_ENTERED 다" {
+        "정규 후보만 있으면 AUTO_ENTERED 다" {
             enableSecretMatching()
             val quizSetId = saveWeekQuizSet()
             complete(quizSetId)
             matchCandidateRepository.save(MatchCandidateFixture.create(ownerMemberId = memberId, otherMemberId = 2L, quizSetId = quizSetId))
 
             stateAt(friday).state shouldBe SecretMatchingState.AUTO_ENTERED
+        }
 
+        "시크릿 후보가 있으면 SECRET_RESULT 다" {
+            enableSecretMatching()
+            val quizSetId = saveWeekQuizSet()
+            complete(quizSetId)
             matchCandidateRepository.save(
                 MatchCandidateFixture.create(
                     ownerMemberId = memberId,
@@ -151,7 +156,6 @@ class SecretMatchingStateServiceTest(
             stateAt(firstRound.plusMinutes(1)).state shouldBe SecretMatchingState.SECRET_RESULT
         }
 
-        // 제출 검사(QuizProgressServiceTest "시크릿 매칭 그룹 완주자 1:1 예외")와 같은 세 경우다.
         "1:1 을 안 푼 그룹 완주자" - {
             "그룹 응답 마감 전에는 NONE 이다" {
                 enableSecretMatching()

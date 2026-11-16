@@ -37,7 +37,7 @@ object SecretMatchingSchedule {
         return week to dueRound
     }
 
-    /** [week]에서 [time] 뒤에 오는 첫 라운드 시각. 남은 라운드가 없으면 null 이다. 정각에 완주한 사람은 다음 라운드 몫이라 초과로 본다. */
+    /** [week]에서 [time]보다 늦은 첫 라운드 시각. [time]과 같은 시각의 라운드는 넣지 않는다. 남은 라운드가 없으면 null 이다. */
     fun nextRoundAfter(week: OperationWeek, time: LocalDateTime): LocalDateTime? =
         ROUND_DAYS.keys
             .map { roundStartsAt(it, week) }

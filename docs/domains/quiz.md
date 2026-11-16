@@ -38,7 +38,7 @@
   | 목 00:00 ~ 토 19:59:59 | 받음 | 제출 4004, 조회 4001 |
   | 토 20:00 ~ 일 23:59:59 | 제출·조회 4007, 그 답은 저장 안 함 | 제출 4004, 조회 4001 |
 
-  - 로컬 재현: `ADMIN_QA_TOOLS_ENABLED=true ./gradlew :api:bootRun --args='--ditto.quiz.available-days=MONDAY,TUESDAY,WEDNESDAY'`로 띄우고 `/admin/feature-flags`에서 켠 뒤 어드민 시각 오버라이드로 경계(수 23:59:59, 목 00:00, 금 00:00, 토 19:59, 토 20:00)를 옮긴다. 요일 설정을 빼고 띄우면 로컬은 요일 검사를 하지 않아 그룹 셋이 4004 대신 4001 이 된다.
+  - 로컬 재현: `ADMIN_QA_TOOLS_ENABLED=true ./gradlew :api:bootRun --args='--ditto.quiz.available-days=MONDAY,TUESDAY,WEDNESDAY'`로 띄우고 `/admin/feature-flags`에서 켠 뒤 어드민 시각 오버라이드로 경계(수 23:59:59, 목 00:00, 금 00:00, 금 19:59, 금 20:00, 토 19:59, 토 20:00)를 옮긴다. 요일 설정을 빼고 띄우면 로컬은 요일 검사를 하지 않아 그룹 셋이 4004 대신 4001 이 된다.
   - 늦게 완주한 회원은 완주 시각이 라운드 시각 전이면 그 시크릿 매칭 라운드 풀에 든다(`docs/domains/match.md`). 2차 라운드 시각이 곧 늦은 응시 마감이다(`SecretMatchingSchedule`).
   - 목~일에는 `quiz-sets/current-week`가 빈 목록, `quiz-progress/current`가 시작 전이다. 늦은 구간의 셋 ID 는 시크릿 매칭 홈 상태 API(`GET /api/v1/matching/secret-state`의 `quizSetId`)로 준다.
 - `GET /api/v1/quiz-progress/current`는 활성 퀴즈셋이 없어도 오류를 내지 않고 `NOT_STARTED`·`participantCount=0`을 준다. 응답 기간이 월~수로 고정되면서 목~일은 항상 이 상태이고, 이번 주 퀴즈셋을 아직 만들지 않은 월~수도 같다 — 정상 운영을 5xx(ERROR 로그)로 다루지 않는다. FE 홈은 `period=QUIZ`일 때만 이 API를 부르며, 실패든 빈 응답이든 같은 화면(미완료·참여자 0)을 그린다.
@@ -65,7 +65,7 @@
 - 답을 낼 때마다 `answeredCount`가 늘고, 문항 수에 닿으면 `COMPLETED`, 그 전에는 `IN_PROGRESS`다(`QuizProgress.recordAnswer`).
 - **완주 시각** `completed_at`은 `COMPLETED`로 넘어가는 답의 서버 시각(오버라이드 포함)이다. `BaseEntity.updatedAt`은 실제 시계라 오버라이드 QA 에 못 써서 따로 둔다. 컬럼 추가 전에 완주한 행과 어드민 더미는 null 이고, null 은 마감 전에 완주한 것으로 읽는다(백필하지 않음, #377).
 - "마감까지 완주했나"는 `isCompletedOnTime(endDate)` 하나로 판단한다. 정규 매칭 풀과 마감 통계 스냅샷이 이 기준을 쓴다.
-- 마감 뒤에 완주한 회원은 **시크릿 매칭**(IMP-2, 금·토 20:00 에 도는 1:1 추가 라운드)이 맡는다. 라운드는 아직 없고 IMP-2 후속 작업에서 붙는다.
+- 마감 뒤에 완주한 회원은 **시크릿 매칭**(IMP-2, 금·토 20:00 에 도는 1:1 추가 라운드)이 맡는다. 판단은 `isCompletedLate(endDate)`다.
 
 ## 핵심 파일
 - 엔티티: `domain/src/main/kotlin/com/ditto/domain/quiz/entity/`
