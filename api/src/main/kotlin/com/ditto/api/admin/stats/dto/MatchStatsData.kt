@@ -28,9 +28,9 @@ data class MatchStatsData(
     val secretMatching: SecretMatchingStats,
 )
 
-/** 시크릿 매칭(IMP-2). 위 지표는 정규 매칭만 세서 이 숫자는 따로 본다. */
+/** 시크릿 매칭. 위 지표는 정규 매칭만 세서 이 숫자는 따로 본다. */
 data class SecretMatchingStats(
-    val lateCompletedMemberCount: Long,
+    val lateCompleterCount: Long,
     val candidateOwnerCounts: List<SecretCandidateOwnerCount>,
     val acceptedPairCount: Long,
 )

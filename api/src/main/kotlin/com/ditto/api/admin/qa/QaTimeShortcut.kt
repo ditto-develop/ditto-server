@@ -2,14 +2,15 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.match.SecretMatchingSchedule
-import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.chat.entity.ChatPeriod
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.quiz.entity.QuizResponsePeriod
 import com.ditto.domain.system.OperationWeek
 import java.time.LocalDateTime
 
 private const val JUST_AFTER_MINUTES = 1L
 private const val JUST_BEFORE_MINUTES = 10L
+private const val SECRET_ROUND_NOTE = "라운드는 [시크릿 매칭 지금 돌리기]로"
 
 /**
  * QA 콘솔의 시각 바로가기. 기준 시각은 앱의 기간 정의와 알림 설정에서 가져온다.
@@ -44,15 +45,15 @@ enum class QaTimeShortcut(
         weekendOf(week).opensAt.plusHours(leadHours.firstMessageHours).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
-    SECRET_FIRST_ROUND_STARTED("시크릿 1차 직후", "라운드는 [시크릿 매칭 지금 돌리기]로", { week, _ ->
+    SECRET_FIRST_ROUND_STARTED("시크릿 1차 직후", SECRET_ROUND_NOTE, { week, _ ->
         SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_FIRST, week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
-    LATE_SUBMISSION_CLOSING("늦은 응시 마감 직전", null, { week, _ ->
+    LATE_SUBMISSION_CLOSING("늦은 응시 마감 직전", "마감 뒤 앱 제출은 4007, 이때 만든 더미는 2차 대상", { week, _ ->
         SecretMatchingSchedule.lateSubmissionClosesAt(week).minusMinutes(JUST_BEFORE_MINUTES)
     }),
 
-    SECRET_SECOND_ROUND_STARTED("시크릿 2차 직후", "라운드는 [시크릿 매칭 지금 돌리기]로", { week, _ ->
+    SECRET_SECOND_ROUND_STARTED("시크릿 2차 직후", SECRET_ROUND_NOTE, { week, _ ->
         SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_SECOND, week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 

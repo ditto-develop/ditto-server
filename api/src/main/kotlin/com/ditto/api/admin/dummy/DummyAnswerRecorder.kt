@@ -3,6 +3,7 @@ package com.ditto.api.admin.dummy
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizAnswer
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgress
@@ -43,24 +44,31 @@ class DummyAnswerRecorder(
         return QuizQuestions(quizSet, quizzes, choicesByQuizId)
     }
 
+    // 늦은 완주는 1:1 셋만 받는다. 그룹 셋에 만들면 앱에서 생길 수 없는 회원이 된다.
+    fun validateCompletedNow(questions: QuizQuestions, completedNow: Boolean) {
+        if (!completedNow || questions.quizSet.matchingType == MatchingType.ONE_TO_ONE) return
+        throw WarnException(ErrorCode.BAD_REQUEST, "지금 완주는 1:1 퀴즈셋에만 쓸 수 있습니다.")
+    }
+
     /**
      * [pickedChoices]는 문항 순서대로 앞에서부터의 답이다. 비어 있으면 퀴즈를 시작하지 않은 회원으로 둔다.
-     * [completedAtServerTime]이면 완주 시각을 지금 서버 시각으로 남긴다. 응답 마감 뒤라면 시크릿 매칭 늦은 완주자가 된다.
+     * 기본은 완주 시각을 비워 마감이 지난 셋에 만들어도 정규 매칭 대상이 된다.
+     * [completedNow]면 완주 시각을 지금 서버 시각으로 남긴다. 응답 마감 뒤라면 시크릿 매칭 대상이 된다.
      */
     fun recordAnswers(
         memberId: Long,
         questions: QuizQuestions,
         pickedChoices: List<QuizChoice>,
-        completedAtServerTime: Boolean,
+        completedNow: Boolean,
     ) {
         if (pickedChoices.isEmpty()) return
         quizAnswerRepository.saveAll(pickedChoices.map { QuizAnswer.create(memberId, it.quizId, it.id) })
-        val completedAt = if (completedAtServerTime) serverTimeProvider.now() else null
+        val completedAt = if (completedNow) serverTimeProvider.now() else null
         quizProgressRepository.save(progressOf(memberId, questions, pickedChoices.size, completedAt))
     }
 
     // status·answeredCount 는 protected set 이라 recordAnswer 를 푼 문항 수만큼 호출해 상태를 맞춘다.
-    // 기본은 완주 시각을 비워 둔다. 마감이 지난 셋에 만들어도 정규 매칭 풀에 든다.
+    // 마지막 답의 시각이 완주 시각이 된다.
     private fun progressOf(
         memberId: Long,
         questions: QuizQuestions,

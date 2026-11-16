@@ -14,6 +14,7 @@ import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.quiz.QuizChoiceFixture
 import com.ditto.domain.quiz.QuizFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizChoice
 import com.ditto.domain.quiz.entity.QuizProgressStatus
 import com.ditto.domain.quiz.repository.QuizAnswerRepository
@@ -27,6 +28,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.Period
 import javax.sql.DataSource
 
@@ -44,8 +46,12 @@ class SingleDummyCreatorTest(
     class QuizSetSetup(val quizSetId: Long, val choicesByOrder: List<List<QuizChoice>>)
 
     // 문항마다 선택지 2개(A, B)를 가진 퀴즈셋. choicesByOrder[i] 는 i+1 번째 문항의 선택지다.
-    fun setupQuizSet(quizCount: Int = 3): QuizSetSetup {
-        val quizSet = quizSetRepository.save(QuizSetFixture.create())
+    fun setupQuizSet(
+        quizCount: Int = 3,
+        matchingType: MatchingType = MatchingType.ONE_TO_ONE,
+        endDate: LocalDateTime = LocalDateTime.of(2026, 4, 12, 23, 59, 59),
+    ): QuizSetSetup {
+        val quizSet = quizSetRepository.save(QuizSetFixture.create(endDate = endDate, matchingType = matchingType))
         val choicesByOrder = (1..quizCount).map { order ->
             val quiz = quizRepository.save(
                 QuizFixture.create(quizSetId = quizSet.id, question = "질문$order", displayOrder = order),
@@ -140,12 +146,12 @@ class SingleDummyCreatorTest(
             created.toDisplayText() shouldBe "${dummy.nickname} (#${dummy.id} · 남성 · 2/3 풀이)"
         }
 
-        "완주 시각은 기본으로 비우고, 지금 서버 시각을 고르면 응답 마감 뒤 늦은 완주로 남긴다" {
-            val setup = setupQuizSet()
+        "완주 시각은 기본으로 비우고, 지금 완주를 고르면 응답 마감 뒤 늦은 완주로 남긴다" {
+            val setup = setupQuizSet(endDate = LocalDateTime.now().minusDays(1))
             val quizSet = quizSetRepository.findById(setup.quizSetId).orElseThrow()
 
             val onTime = singleDummyCreator.create(form(setup.quizSetId)).member
-            val late = singleDummyCreator.create(form(setup.quizSetId).apply { completedAtServerTime = true }).member
+            val late = singleDummyCreator.create(form(setup.quizSetId).apply { completedNow = true }).member
 
             quizProgressRepository.findByMemberIdAndQuizSetId(onTime.id, setup.quizSetId).shouldNotBeNull()
                 .completedAt shouldBe null
@@ -208,6 +214,14 @@ class SingleDummyCreatorTest(
             val exception = shouldReject(
                 form(setup.quizSetId).apply { choiceIdByQuizId = mutableMapOf(firstQuizId to otherQuizChoice.id) },
             )
+
+            exception.errorCode shouldBe ErrorCode.BAD_REQUEST
+        }
+
+        "그룹 퀴즈셋에 지금 완주를 고르면 거부한다" {
+            val setup = setupQuizSet(matchingType = MatchingType.GROUP)
+
+            val exception = shouldReject(form(setup.quizSetId).apply { completedNow = true })
 
             exception.errorCode shouldBe ErrorCode.BAD_REQUEST
         }

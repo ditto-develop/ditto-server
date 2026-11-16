@@ -60,7 +60,7 @@ class MatchStatsService(
                 memberFilter,
             ),
             secretMatching = SecretMatchingStats(
-                lateCompletedMemberCount = quizProgressRepository.countLateCompletersInWeek(week.startedOn, memberFilter),
+                lateCompleterCount = quizProgressRepository.countLateCompletersInWeek(week.startedOn, memberFilter),
                 candidateOwnerCounts =
                     matchCandidateRepository.countSecretCandidateOwnersInWeek(week.startedOn, memberFilter),
                 acceptedPairCount = personalMatchRepository.countSecretRoundAcceptedPairsInWeek(week.startedOn),

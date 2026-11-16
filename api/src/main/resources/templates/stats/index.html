@@ -275,7 +275,7 @@
             <section class="stats-section" id="quiz-participation">
                 <div class="stats-section-head">
                     <h2 class="stats-section-title">퀴즈 참여</h2>
-                    <th:block th:replace="~{fragments :: info('info-stats-quiz', '퀴즈 참여', '참여는 퀴즈를 끝까지 푼 회원, 시작은 한 문항이라도 답한 회원입니다. 활성 퀴즈셋만 셉니다.')}"></th:block>
+                    <th:block th:replace="~{fragments :: info('info-stats-quiz', '퀴즈 참여', '참여는 응답 마감 전에 퀴즈를 다 푼 회원, 시작은 한 문항이라도 답한 회원입니다. 활성 퀴즈셋만 셉니다. 마감 뒤에 푼 회원은 매칭 장 시크릿 매칭 카드에 있습니다.')}"></th:block>
                 </div>
                 <p class="stats-basis" th:if="${isRoundWeek}"><span th:replace="~{fragments :: scope('round')}"></span> <span th:text="${roundLabel}">2회차 · 10/19 주</span> 기준 · 활성 회원: <span class="scope-badge range" id="quizActiveRoundScope">최근 4회차</span>(<span id="quizActiveRounds">-</span>)에 한 번이라도 끝까지 푼 회원</p>
                 <p class="alert info" id="quizEmptyNotice" hidden
@@ -284,7 +284,7 @@
                     <div class="grid stats-totals">
                         <div class="card stat">
                             <span class="label with-info">회차 참여자
-                                <th:block th:replace="~{fragments :: info('info-stats-quiz-participant', '회차 참여자', '그 회차 퀴즈를 끝까지 푼 회원입니다. 아래 시작은 한 문항이라도 답한 회원입니다.')}"></th:block></span>
+                                <th:block th:replace="~{fragments :: info('info-stats-quiz-participant', '회차 참여자', '그 회차 퀴즈를 응답 마감 전에 다 푼 회원입니다. 아래 시작은 한 문항이라도 답한 회원입니다.')}"></th:block></span>
                             <span class="value" id="quizParticipantCount">-</span>
                             <span class="basis" id="quizParticipantCountBasis"></span>
                         </div>
@@ -415,9 +415,11 @@
                         </div>
                         <div class="card" id="matchSecretMatchingCard">
                             <h3 class="with-info">시크릿 매칭
-                                <th:block th:replace="~{fragments :: info('info-stats-secret-matching', '시크릿 매칭', '응답 마감 뒤 목~토에 1:1 퀴즈를 늦게 푼 회원과 금·토 20:00 라운드의 후보·성사입니다. 이 장의 다른 지표와 퀴즈 참여 장은 정규 매칭(응답 마감까지 완주, 목요일 후보)만 셉니다.')}"></th:block>
+                                <th:block th:replace="~{fragments :: info('info-stats-secret-matching', '시크릿 매칭', '늦은 완주는 응답 마감 뒤 1:1 퀴즈를 끝까지 푼 회원입니다. 후보 받음에는 정시 완주자도 들어가 늦은 완주보다 많을 수 있습니다. 성사는 쌍 단위라 회원 조건을 걸지 않습니다. 이 장의 다른 지표는 정규 매칭만 셉니다.')}"></th:block>
                             </h3>
                             <p class="muted" id="matchSecretMatchingSummary"></p>
+                            <p class="muted" id="matchSecretMatchingEmpty" hidden
+                               th:text="${hasConditions ? '조건에 맞는 시크릿 매칭 기록이 없습니다.' : '이 회차 시크릿 매칭 기록이 없습니다.'}">이 회차 시크릿 매칭 기록이 없습니다.</p>
                         </div>
                     </div>
 

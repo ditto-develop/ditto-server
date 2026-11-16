@@ -25,12 +25,13 @@ class SingleDummyCreator(
     @Transactional
     fun create(form: SingleDummyForm): CreatedDummy {
         val questions = dummyAnswerRecorder.findQuestionsOf(form.quizSetId)
+        dummyAnswerRecorder.validateCompletedNow(questions, form.completedNow)
         val profile = profileOf(form)
         val pickedChoices = questions.pickChoices(answeredCountOf(form, questions)) { quiz ->
             chosenOrRandom(form, quiz, questions.choicesOf(quiz))
         }
         val member = save(profile)
-        dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices, form.completedAtServerTime)
+        dummyAnswerRecorder.recordAnswers(member.id, questions, pickedChoices, completedNow = form.completedNow)
         return CreatedDummy(member, answeredCount = pickedChoices.size, quizCount = questions.quizzes.size)
     }
 

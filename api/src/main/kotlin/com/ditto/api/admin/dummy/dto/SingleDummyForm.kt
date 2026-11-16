@@ -24,8 +24,7 @@ class SingleDummyForm(
     var choiceIdByQuizId: MutableMap<Long, Long?> = mutableMapOf(),
     /** 문항 순서대로 앞에서 몇 개를 풀지. 비우면 전부 푼다. */
     var answeredCount: Int? = null,
-    /** 완주 시각을 지금 서버 시각으로 남긴다. 응답 마감 뒤면 시크릿 매칭 늦은 완주자다. */
-    var completedAtServerTime: Boolean = false,
+    var completedNow: Boolean = false,
 ) : Serializable {
 
     /**
@@ -37,7 +36,7 @@ class SingleDummyForm(
         it.age = age
         it.choiceIdByQuizId = choiceIdByQuizId.toMutableMap()
         it.answeredCount = answeredCount
-        it.completedAtServerTime = completedAtServerTime
+        it.completedNow = completedNow
     }
 
     companion object {

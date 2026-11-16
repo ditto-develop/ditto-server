@@ -236,7 +236,7 @@ class AdminStatsWebTest(
                                 """"groupScores":[{"isActive":false,"score":80.0}],""" +
                                 """"activeGroupMemberCounts":[],""" +
                                 """"unmatchedRoundWeeks":[],"membersUnmatchedInEveryRound":[],""" +
-                                """"secretMatching":{"lateCompletedMemberCount":0,"candidateOwnerCounts":[],"acceptedPairCount":0}}""",
+                                """"secretMatching":{"lateCompleterCount":0,"candidateOwnerCounts":[],"acceptedPairCount":0}}""",
                         ),
                     ),
                 )
