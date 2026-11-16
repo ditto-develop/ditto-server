@@ -80,18 +80,18 @@ object NotificationMessages {
         body = "${counterpartNickname}님과 대화방이 다시 열렸어요.",
     )
 
-    /** [requesterNickname] 이 나에게 대화를 신청했다. */
-    fun matchRequested(requesterNickname: String): NotificationContent = NotificationContent(
+    /** [requesterNickname] 이 나에게 대화를 신청했다. 주말(채팅 기간)에는 수락하는 즉시 방이 열린다. */
+    fun matchRequested(requesterNickname: String, isChatOpen: Boolean): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_REQUESTED,
         title = "${requesterNickname}님이 대화를 신청했어요",
-        body = "수락하면 금요일에 대화방이 열려요.",
+        body = if (isChatOpen) "수락하면 바로 대화방이 열려요." else "수락하면 금요일에 대화방이 열려요.",
     )
 
-    /** 내가 보낸 대화 신청을 [accepterNickname] 이 수락했다. */
-    fun matchAccepted(accepterNickname: String): NotificationContent = NotificationContent(
+    /** 내가 보낸 대화 신청을 [accepterNickname] 이 수락했다. 주말(채팅 기간)이면 방이 이미 열렸다. */
+    fun matchAccepted(accepterNickname: String, isChatOpen: Boolean): NotificationContent = NotificationContent(
         type = NotificationType.MATCH_ACCEPTED,
         title = "${accepterNickname}님이 대화 신청을 수락했어요",
-        body = "금요일에 설레는 만남이 시작돼요!",
+        body = if (isChatOpen) "대화방이 열렸어요. 먼저 인사를 건네보세요!" else "금요일에 설레는 만남이 시작돼요!",
     )
 
     /**

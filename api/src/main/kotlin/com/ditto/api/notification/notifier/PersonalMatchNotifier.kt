@@ -4,6 +4,8 @@ import com.ditto.api.notification.message.NotificationContent
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.api.system.ServerTimeProvider
+import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.member.repository.MemberRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
@@ -18,17 +20,21 @@ import org.springframework.stereotype.Component
  * 일어나지만 중복 정책은 유형에 둔다.
  *
  * 닉네임 조회 실패는 여기서 삼킨다. 요청 경로라 예외가 올라가면 이미 커밋된 처리가 실패로 보인다.
+ *
+ * 방이 열렸는지는 채팅방을 만드는 쪽(ChatService)과 같은 서버 시각으로 판단한다.
  */
 @Component
 class PersonalMatchNotifier(
     private val memberRepository: MemberRepository,
     private val notificationAppender: NotificationAppender,
+    private val serverTimeProvider: ServerTimeProvider,
 ) {
 
     /** 수신자에게 신청 사실을 알린다. 실제로 남겼으면 true. */
     fun notifyRequested(matchId: Long, receiverId: Long, requestedBy: Long): Boolean =
         runCatchingExceptions {
-            appendToCounterpart(matchId, receiverId, nicknameOf(requestedBy)?.let(NotificationMessages::matchRequested))
+            val content = nicknameOf(requestedBy)?.let { NotificationMessages.matchRequested(it, isChatOpenNow()) }
+            appendToCounterpart(matchId, receiverId, content)
         }
             .onFailure { logger.warn(it) { "대화 신청 알림 실패 — 무시한다: matchId=$matchId" } }
             .getOrDefault(false)
@@ -36,7 +42,8 @@ class PersonalMatchNotifier(
     /** 신청자에게 수락 사실을 알린다. 실제로 남겼으면 true. */
     fun notifyAccepted(matchId: Long, requesterId: Long, acceptedBy: Long): Boolean =
         runCatchingExceptions {
-            appendToCounterpart(matchId, requesterId, nicknameOf(acceptedBy)?.let(NotificationMessages::matchAccepted))
+            val content = nicknameOf(acceptedBy)?.let { NotificationMessages.matchAccepted(it, isChatOpenNow()) }
+            appendToCounterpart(matchId, requesterId, content)
         }
             .onFailure { logger.warn(it) { "대화 신청 수락 알림 실패 — 무시한다: matchId=$matchId" } }
             .getOrDefault(false)
@@ -55,6 +62,11 @@ class PersonalMatchNotifier(
             return false
         }
         return notificationAppender.append(memberId = counterpartId, content = content, targetId = matchId)
+    }
+
+    private fun isChatOpenNow(): Boolean {
+        val now = serverTimeProvider.now()
+        return ChatPeriod.weekendOf(now).isOpenedAt(now)
     }
 
     private fun nicknameOf(memberId: Long): String? = memberRepository.findById(memberId).orElse(null)?.nickname

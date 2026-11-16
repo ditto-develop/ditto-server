@@ -6,18 +6,32 @@ import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
+import com.ditto.domain.system.entity.ServerTimeOverride
+import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import java.time.LocalDateTime
 import javax.sql.DataSource
 
 private const val MATCH_ID = 77L
+
+// 2026-11-16(월) 시작 주. 채팅은 금 00:00 에 열린다.
+private val THURSDAY = LocalDateTime.of(2026, 11, 19, 12, 0)
+private val SATURDAY = LocalDateTime.of(2026, 11, 21, 12, 0)
 
 class PersonalMatchNotifierTest(
     private val personalMatchNotifier: PersonalMatchNotifier,
     private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
+    private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
+
+    fun serverTimeIs(at: LocalDateTime) {
+        serverTimeOverrideRepository.save(ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") })
+    }
+
+    beforeEach { serverTimeIs(THURSDAY) }
 
     "대화 신청이 들어오면 수신자에게 알린다" - {
         "신청한 사람의 닉네임이 문구에 들어간다" {
@@ -38,6 +52,17 @@ class PersonalMatchNotifierTest(
                 it.body shouldBe "수락하면 금요일에 대화방이 열려요."
                 it.targetId shouldBe MATCH_ID
             }
+        }
+
+        "대화방이 이미 열린 주말에는 수락하면 바로 열린다고 알린다" {
+            serverTimeOverrideRepository.deleteAll()
+            serverTimeIs(SATURDAY)
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+            val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
+
+            personalMatchNotifier.notifyRequested(MATCH_ID, receiver.id, requester.id) shouldBe true
+
+            notificationRepository.findAll().single().body shouldBe "수락하면 바로 대화방이 열려요."
         }
 
         "같은 매칭 건은 한 번만 알린다" {
@@ -81,6 +106,17 @@ class PersonalMatchNotifierTest(
                 it.body shouldBe "금요일에 설레는 만남이 시작돼요!"
                 it.targetId shouldBe MATCH_ID
             }
+        }
+
+        "대화방이 이미 열린 주말이면 방이 열렸다고 알린다" {
+            serverTimeOverrideRepository.deleteAll()
+            serverTimeIs(SATURDAY)
+            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
+            val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
+
+            personalMatchNotifier.notifyAccepted(MATCH_ID, requester.id, accepter.id) shouldBe true
+
+            notificationRepository.findAll().single().body shouldBe "대화방이 열렸어요. 먼저 인사를 건네보세요!"
         }
 
         "수락한 사람이 없으면(탈퇴 등) 알리지 않는다" {
