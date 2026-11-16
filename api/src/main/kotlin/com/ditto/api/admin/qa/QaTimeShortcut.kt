@@ -1,6 +1,8 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.match.GroupResponseDeadline
+import com.ditto.api.match.SecretMatchingSchedule
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.quiz.entity.QuizResponsePeriod
 import com.ditto.domain.system.OperationWeek
@@ -40,6 +42,18 @@ enum class QaTimeShortcut(
 
     CHAT_FIRST_MESSAGE_NOTIFIED("첫 인사 알림 직후", "대화 없는 방만, 방마다 한 번", { week, leadHours ->
         weekendOf(week).opensAt.plusHours(leadHours.firstMessageHours).plusMinutes(JUST_AFTER_MINUTES)
+    }),
+
+    SECRET_FIRST_ROUND_STARTED("시크릿 1차 직후", "라운드는 [시크릿 매칭 지금 돌리기]로", { week, _ ->
+        SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_FIRST, week).plusMinutes(JUST_AFTER_MINUTES)
+    }),
+
+    LATE_SUBMISSION_CLOSING("늦은 응시 마감 직전", null, { week, _ ->
+        SecretMatchingSchedule.lateSubmissionClosesAt(week).minusMinutes(JUST_BEFORE_MINUTES)
+    }),
+
+    SECRET_SECOND_ROUND_STARTED("시크릿 2차 직후", "라운드는 [시크릿 매칭 지금 돌리기]로", { week, _ ->
+        SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_SECOND, week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
     CHAT_ENDING_SOON_NOTIFIED("마감 임박 알림 직후", "방마다 한 번", { week, leadHours ->
