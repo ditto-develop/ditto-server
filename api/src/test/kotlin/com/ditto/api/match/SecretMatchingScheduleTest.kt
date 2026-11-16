@@ -28,6 +28,12 @@ class SecretMatchingScheduleTest : FreeSpec({
         SecretMatchingSchedule.dueRoundAt(LocalDateTime.of(2026, 11, 23, 20, 1)) shouldBe null
     }
 
+    "다음 라운드는 주어진 시각 뒤의 첫 라운드이고 정각은 다음 라운드로 넘긴다" {
+        SecretMatchingSchedule.nextRoundAfter(week, LocalDateTime.of(2026, 11, 19, 0, 0)) shouldBe LocalDateTime.of(2026, 11, 20, 20, 0)
+        SecretMatchingSchedule.nextRoundAfter(week, LocalDateTime.of(2026, 11, 20, 20, 0)) shouldBe LocalDateTime.of(2026, 11, 21, 20, 0)
+        SecretMatchingSchedule.nextRoundAfter(week, LocalDateTime.of(2026, 11, 21, 20, 0)) shouldBe null
+    }
+
     "정규 매칭은 라운드 시각이 없다" {
         shouldThrow<IllegalArgumentException> { SecretMatchingSchedule.roundStartsAt(CandidateOrigin.REGULAR, week) }
     }

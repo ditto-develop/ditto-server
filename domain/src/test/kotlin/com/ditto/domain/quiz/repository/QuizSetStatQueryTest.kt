@@ -2,6 +2,7 @@ package com.ditto.domain.quiz.repository
 
 import com.ditto.domain.quiz.QuizProgressFixture
 import com.ditto.domain.quiz.QuizSetFixture
+import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.QuizSetStat
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -59,6 +60,31 @@ class QuizSetStatQueryTest(
 
         "완주한 셋이 없으면 빈 목록이다" {
             quizSetRepository.findCompletedQuizSetsOf(1L).shouldBeEmpty()
+        }
+    }
+
+    "countCompletedWeeksOf — 참여 주 수" - {
+        "같은 주에 두 셋을 완주해도 한 주로 세고 끝까지 풀지 않은 셋은 세지 않는다" {
+            fun saveSet(weekStartedOn: LocalDate, matchingType: MatchingType) = quizSetRepository.save(
+                QuizSetFixture.create(
+                    startDate = weekStartedOn.atStartOfDay(),
+                    endDate = weekStartedOn.plusDays(2).atTime(23, 59, 59),
+                    matchingType = matchingType,
+                ),
+            )
+            val thisWeek = LocalDate.of(2026, 11, 16)
+            listOf(
+                saveSet(thisWeek, MatchingType.GROUP),
+                saveSet(thisWeek, MatchingType.ONE_TO_ONE),
+                saveSet(thisWeek.minusWeeks(1), MatchingType.ONE_TO_ONE),
+            ).forEach { set ->
+                quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = set.id, totalCount = 1).apply { recordAnswer() })
+            }
+            val stopped = saveSet(thisWeek.minusWeeks(2), MatchingType.ONE_TO_ONE)
+            quizProgressRepository.save(QuizProgressFixture.create(memberId = 1L, quizSetId = stopped.id, totalCount = 2).apply { recordAnswer() })
+
+            quizSetRepository.countCompletedWeeksOf(1L) shouldBe 2L
+            quizSetRepository.countCompletedWeeksOf(2L) shouldBe 0L
         }
     }
 })

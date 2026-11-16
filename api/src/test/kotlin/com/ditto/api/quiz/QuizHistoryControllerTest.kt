@@ -53,8 +53,8 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                 resultOpensAt = LocalDateTime.of(2026, 11, 5, 0, 0),
             ),
             weeks = listOf(
-                QuizHistoryWeek(42L, LocalDate.of(2026, 11, 2), MatchingType.GROUP, "시간이 멈춘다면", minorityCount = 1),
-                QuizHistoryWeek(41L, LocalDate.of(2026, 10, 26), MatchingType.ONE_TO_ONE, "커튼을 열면", minorityCount = 2),
+                QuizHistoryWeek(42L, LocalDate.of(2026, 11, 2), MatchingType.GROUP, "시간이 멈춘다면", lateCompletion = false, minorityCount = 1),
+                QuizHistoryWeek(41L, LocalDate.of(2026, 10, 26), MatchingType.ONE_TO_ONE, "커튼을 열면", lateCompletion = true, minorityCount = 2),
             ),
         )
 
@@ -76,7 +76,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                             )
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
-                                fieldWithPath("data.summary.participatedWeeks").description("끝까지 푼 주의 수"),
+                                fieldWithPath("data.summary.participatedWeeks").description("끝까지 푼 주의 수 (같은 주에 그룹·1:1 을 둘 다 완주해도 한 주)"),
                                 fieldWithPath("data.summary.answeredQuestions").description("끝까지 푼 주들의 답 수 합"),
                                 fieldWithPath("data.summary.minorityCount").description("결과가 공개된 주에서 내 답이 소수 의견이었던 문항 수 합"),
                                 fieldWithPath("data.currentWeek").description("이번 운영 주 퀴즈를 완주했을 때만. 아니면 null").optional(),
@@ -87,6 +87,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.weeks[].weekStartedOn").description("운영 주 시작일 (월요일)"),
                                 fieldWithPath("data.weeks[].matchingType").description("매칭 유형 (ONE_TO_ONE, GROUP)"),
                                 fieldWithPath("data.weeks[].title").description("퀴즈셋 제목"),
+                                fieldWithPath("data.weeks[].lateCompletion").description("응답 마감 뒤(시크릿 매칭 늦은 응시)에 완주했는지"),
                                 fieldWithPath("data.weeks[].minorityCount").description("이 주 소수 의견 문항 수. 결과 공개 전이면 null").optional(),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)"),
                             )
@@ -107,6 +108,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
             phase = QuizHistoryPhase.CLOSED,
             resultOpensAt = LocalDateTime.of(2026, 10, 29, 0, 0),
             participantCount = 312L,
+            lateCompletion = false,
             answers = listOf(
                 QuizHistoryAnswer(
                     quizId = 301L,
@@ -150,6 +152,10 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
                                 fieldWithPath("data.phase").description("IN_PROGRESS(결과 공개 전) | CLOSED(결과 공개 후)"),
                                 fieldWithPath("data.resultOpensAt").description("결과 공개 시각. IN_PROGRESS 카운트다운에 쓰고 0이 되면 재조회"),
                                 fieldWithPath("data.participantCount").description("IN_PROGRESS: 홈과 같은 지금까지 완주자 수 / CLOSED: 최종 참여자 수"),
+                                fieldWithPath("data.lateCompletion").description(
+                                    "응답 마감 뒤(시크릿 매칭 늦은 응시)에 완주했는지. true 면 통계에 들지 않아 result.overlapCount 는 0 이고 숨긴다. " +
+                                        "result.minorityCount 는 내 답을 마감 통계에 대조한 값",
+                                ),
                                 fieldWithPath("data.answers[].quizId").description("문항 ID"),
                                 fieldWithPath("data.answers[].order").description("문항 순서"),
                                 fieldWithPath("data.answers[].question").description("질문 (최신 문구)"),
@@ -181,6 +187,7 @@ class QuizHistoryControllerTest : ControllerUnitTest() {
             phase = QuizHistoryPhase.IN_PROGRESS,
             resultOpensAt = LocalDateTime.of(2026, 11, 5, 0, 0),
             participantCount = 52L,
+            lateCompletion = false,
             answers = listOf(
                 QuizHistoryAnswer(
                     quizId = 401L,

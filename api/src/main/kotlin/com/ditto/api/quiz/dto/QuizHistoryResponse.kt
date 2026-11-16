@@ -32,6 +32,8 @@ data class QuizHistoryWeek(
     val weekStartedOn: LocalDate,
     val matchingType: MatchingType,
     val title: String,
+    /** 응답 마감 뒤에 완주했는가 */
+    val lateCompletion: Boolean,
     /** 결과 공개 전이면 null. */
     val minorityCount: Int?,
 )

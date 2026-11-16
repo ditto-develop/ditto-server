@@ -135,6 +135,27 @@ class QuizProgressTest(
         }
     }
 
+    "마감 뒤에 완주했는지" - {
+        val deadline = LocalDateTime.of(2026, 11, 18, 23, 59, 59)
+
+        fun progressAnsweredAt(answeredAt: LocalDateTime?, totalCount: Int = 1): QuizProgress =
+            QuizProgressFixture.create(memberId = 1L, quizSetId = 1L, totalCount = totalCount)
+                .apply { recordAnswer(answeredAt) }
+
+        "마감 뒤에 완주했으면 참이다" {
+            progressAnsweredAt(deadline.plusSeconds(1)).isCompletedLate(deadline) shouldBe true
+        }
+
+        "마감까지 완주했거나 완주 시각이 없으면 거짓이다" {
+            progressAnsweredAt(deadline).isCompletedLate(deadline) shouldBe false
+            progressAnsweredAt(null).isCompletedLate(deadline) shouldBe false
+        }
+
+        "완주하지 않았으면 거짓이다" {
+            progressAnsweredAt(deadline.plusSeconds(1), totalCount = 2).isCompletedLate(deadline) shouldBe false
+        }
+    }
+
     "시각 전에 완주했는지" - {
         val roundStartsAt = LocalDateTime.of(2026, 11, 20, 20, 0)
 

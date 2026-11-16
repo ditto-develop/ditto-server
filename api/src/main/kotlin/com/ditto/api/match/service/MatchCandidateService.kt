@@ -28,8 +28,8 @@ class MatchCandidateService(
 
     /**
      * 회원의 1:1 추천 후보 목록 조회.
-     * 후보는 마감된 퀴즈셋에만 생성되므로, 회원이 **이번 운영 주에** 완주(COMPLETED)한 1:1 퀴즈셋을
-     * 기준으로 조회한다. 이번 주에 1:1 퀴즈를 풀지 않았으면 NOT_FOUND —
+     * 회원이 **이번 운영 주에** 완주(COMPLETED)한 1:1 퀴즈셋을 기준으로 조회한다. 정규 후보와
+     * 시크릿 매칭 라운드가 더한 후보가 한 목록으로 나온다. 이번 주에 1:1 퀴즈를 풀지 않았으면 NOT_FOUND —
      * 지난 주 후보를 내려주면 FE 가 그것을 이번 주 결과로 그린다([MatchWeekPolicy]).
      */
     fun getMatchCandidates(memberId: Long): MatchCandidateResponse {
@@ -82,6 +82,7 @@ class MatchCandidateService(
             matchedQuestionCount = matchCandidate.matchedQuestionCount,
             totalQuestionCount = matchCandidate.totalQuestionCount,
         ),
+        candidateOrigin = matchCandidate.candidateOrigin,
     )
 
     companion object {

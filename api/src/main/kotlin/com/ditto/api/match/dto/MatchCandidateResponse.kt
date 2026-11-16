@@ -3,9 +3,11 @@ package com.ditto.api.match.dto
 import com.ditto.api.match.matching.MatchScore
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.member.entity.Member
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.system.OperationWeek
+import com.fasterxml.jackson.annotation.JsonInclude
 import java.time.LocalDate
 
 /**
@@ -59,6 +61,9 @@ data class Candidate(
     /** 매칭 점수 (0~100) */
     val matchRate: Double,
     val scoreBreakdown: ScoreSummary,
+    /** 1:1 후보를 어느 매칭이 만들었는지. 그룹 구성원 카드에는 없다 */
+    @field:JsonInclude(JsonInclude.Include.NON_NULL)
+    val candidateOrigin: CandidateOrigin? = null,
 ) {
     companion object {
         /**
@@ -67,7 +72,12 @@ data class Candidate(
          * location·caricature 는 가입 완료 시 필수값이라 후보(ACTIVE 회원)에는 항상 존재해야 한다.
          * 없으면 데이터 정합성 오류이므로 명시적으로 예외를 던진다.
          */
-        fun of(member: Member, introduction: String?, matchScore: MatchScore): Candidate {
+        fun of(
+            member: Member,
+            introduction: String?,
+            matchScore: MatchScore,
+            candidateOrigin: CandidateOrigin? = null,
+        ): Candidate {
             val location = member.location
                 ?: throw ErrorException(ErrorCode.INTERNAL_ERROR, "후보 회원의 사는곳이 비어 있습니다: memberId=${member.id}")
             val profileImage = member.caricature
@@ -83,6 +93,7 @@ data class Candidate(
                 profileImageUrl = profileImage,
                 matchRate = matchScore.score,
                 scoreBreakdown = ScoreSummary.of(matchScore),
+                candidateOrigin = candidateOrigin,
             )
         }
     }

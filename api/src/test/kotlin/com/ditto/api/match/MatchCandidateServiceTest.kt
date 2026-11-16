@@ -9,6 +9,7 @@ import com.ditto.domain.intronote.entity.IntroNote
 import com.ditto.domain.intronote.entity.IntroQuestion
 import com.ditto.domain.intronote.repository.IntroNoteRepository
 import com.ditto.domain.match.MatchCandidateFixture
+import com.ditto.domain.match.entity.CandidateOrigin
 import com.ditto.domain.match.repository.MatchCandidateRepository
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.entity.Gender
@@ -62,7 +63,15 @@ class MatchCandidateServiceTest(
         return quizSet
     }
 
-    fun saveCandidate(quizSetId: Long, ownerId: Long, otherId: Long, score: Double, matched: Int = 7, total: Int = 8) {
+    fun saveCandidate(
+        quizSetId: Long,
+        ownerId: Long,
+        otherId: Long,
+        score: Double,
+        matched: Int = 7,
+        total: Int = 8,
+        candidateOrigin: CandidateOrigin = CandidateOrigin.REGULAR,
+    ) {
         matchCandidateRepository.save(
             MatchCandidateFixture.create(
                 ownerMemberId = ownerId,
@@ -71,6 +80,7 @@ class MatchCandidateServiceTest(
                 score = score,
                 matchedQuestionCount = matched,
                 totalQuestionCount = total,
+                candidateOrigin = candidateOrigin,
             ),
         )
     }
@@ -101,6 +111,22 @@ class MatchCandidateServiceTest(
         result.algorithmVersion shouldBe "1.0"
         result.candidates.map { it.userId } shouldBe listOf(a.id, b.id, c.id)
         result.candidates.first().matchRate shouldBe 90.0
+    }
+
+    "정규 후보와 시크릿 매칭 후보를 한 목록에 점수순으로 담고 출처를 붙인다" {
+        val owner = saveMember("주인")
+        val quizSet = completeOneToOneQuizSet(owner.id)
+        val regular = saveMember("정규")
+        val secret = saveMember("시크릿")
+        saveCandidate(quizSet.id, owner.id, regular.id, score = 70.0)
+        saveCandidate(quizSet.id, owner.id, secret.id, score = 90.0, candidateOrigin = CandidateOrigin.SECRET_FIRST)
+
+        val candidates = matchCandidateService.getMatchCandidates(owner.id).candidates
+
+        candidates.map { it.userId to it.candidateOrigin } shouldBe listOf(
+            secret.id to CandidateOrigin.SECRET_FIRST,
+            regular.id to CandidateOrigin.REGULAR,
+        )
     }
 
     "멤버 프로필과 소개노트(ONE_WORD)를 후보 응답에 매핑한다" {

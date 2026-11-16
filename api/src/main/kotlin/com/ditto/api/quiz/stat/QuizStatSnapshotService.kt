@@ -96,6 +96,7 @@ class QuizStatSnapshot(
 
     fun percentOf(choiceId: Long): Int = choicesById[choiceId]?.percent ?: 0
 
+    // 마감까지 완주한 사람이 없으면 늦은 완주자의 답이 모두 소수 의견이 되므로 소수 의견을 두지 않는다.
     fun isMinority(choiceId: Long): Boolean =
-        QuizStatCalculator.isMinority(choicesById[choiceId]?.selectCount ?: 0, participantCount)
+        participantCount > 0 && QuizStatCalculator.isMinority(choicesById[choiceId]?.selectCount ?: 0, participantCount)
 }

@@ -23,6 +23,9 @@ class QuizAnswerSheet(
 
     fun quiz(quizId: Long): Quiz? = quizzes.find { it.id == quizId }
 
+    fun minorityCountOf(memberId: Long, snapshot: QuizStatSnapshot): Int =
+        quizzes.count { quiz -> choiceOf(memberId, quiz.id)?.let(snapshot::isMinority) ?: false }
+
     /** [memberIds] 중 이 문항에 답한 사람들의 선택지별 인원. 아무도 고르지 않은 선택지는 0. */
     fun countsAmong(quizId: Long, memberIds: Collection<Long>): Map<Long, Int> {
         val picked = memberIds.mapNotNull { choiceOf(it, quizId) }.groupingBy { it }.eachCount()
