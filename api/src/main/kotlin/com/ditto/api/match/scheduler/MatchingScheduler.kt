@@ -3,6 +3,7 @@ package com.ditto.api.match.scheduler
 import com.ditto.api.config.SchedulerLockDurations
 import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.notification.notifier.MatchResultNotifier
+import com.ditto.api.notification.notifier.SecretMatchResultNotifier
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -22,6 +23,7 @@ import java.time.LocalDateTime
 class MatchingScheduler(
     private val matchingBatchFacade: MatchingBatchFacade,
     private val matchResultNotifier: MatchResultNotifier,
+    private val secretMatchResultNotifier: SecretMatchResultNotifier,
 ) {
 
     @Scheduled(cron = "\${matching.scheduler.cron:0 1 0 * * THU}")
@@ -45,5 +47,6 @@ class MatchingScheduler(
     fun generateSecretRound() {
         val result = matchingBatchFacade.runSecretRound(LocalDateTime.now())
         matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+        secretMatchResultNotifier.notifyFor(result.roundResults)
     }
 }

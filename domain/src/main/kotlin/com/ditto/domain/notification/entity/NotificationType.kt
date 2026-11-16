@@ -54,6 +54,17 @@ enum class NotificationType(
         DeepLinkTarget.MATCHING_RESULT,
     ),
 
+    /**
+     * 시크릿 매칭 라운드(금·토 20:00)에서 1:1 후보가 새로 생겼다. 대상은 1:1 퀴즈셋이다.
+     * 금 알림을 읽지 않았으면 토 알림이 그 줄을 대신한다.
+     */
+    SECRET_MATCH_RESULT(
+        NotificationCategory.MATCHING,
+        NotificationTarget.QUIZ_SET,
+        DuplicatePolicy.COLLAPSE_UNREAD,
+        DeepLinkTarget.ONE_TO_ONE_MATCHING,
+    ),
+
     /** 그룹 매칭이 인원을 채워 활성화됐다. */
     GROUP_FORMED(
         NotificationCategory.MATCHING,

@@ -5,6 +5,7 @@ import com.ditto.api.match.service.MatchingBatchFacade
 import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.match.service.SecretRoundBatchResult
 import com.ditto.api.notification.notifier.MatchResultNotifier
+import com.ditto.api.notification.notifier.SecretMatchResultNotifier
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -29,6 +30,7 @@ class AdminMatchController(
     private val serverTimeProvider: ServerTimeProvider,
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
+    private val secretMatchResultNotifier: SecretMatchResultNotifier,
     private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @GetMapping("/admin/matching")
@@ -53,6 +55,7 @@ class AdminMatchController(
         val now = serverTimeProvider.now()
         val result = matchingBatchFacade.runSecretRound(now)
         matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
+        secretMatchResultNotifier.notifyFor(result.roundResults)
         addSecretRoundFlash(redirectAttributes, now, result)
         return "redirect:/admin/matching"
     }

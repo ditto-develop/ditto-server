@@ -53,6 +53,13 @@ object NotificationMessages {
         )
     }
 
+    /** 시크릿 매칭 라운드에서 1:1 후보가 새로 생겼다. 신청·수락은 일요일 밤까지다. */
+    fun secretMatchResult(): NotificationContent = NotificationContent(
+        type = NotificationType.SECRET_MATCH_RESULT,
+        title = "시크릿 매칭에서 인연을 찾았어요",
+        body = "같은 답을 한 사람이 더 있어요. 일요일 밤까지 대화를 신청해보세요.",
+    )
+
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
     fun groupFormed(memberCount: Int): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_FORMED,
