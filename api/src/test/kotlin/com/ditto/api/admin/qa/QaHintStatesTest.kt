@@ -1,36 +1,26 @@
 package com.ditto.api.admin.qa
 
 import com.ditto.api.support.IntegrationTest
-import com.ditto.api.system.featureflag.FeatureFlagAdminService
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatQuizHint
 import com.ditto.domain.chat.repository.ChatQuizHintRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
-import com.ditto.domain.system.entity.FeatureFlagKey
 import io.kotest.matchers.string.shouldStartWith
 import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class QaHintStatesTest(
     private val qaHintStates: QaHintStates,
-    private val featureFlags: FeatureFlags,
-    private val featureFlagAdminService: FeatureFlagAdminService,
     private val chatRoomRepository: ChatRoomRepository,
     private val chatQuizHintRepository: ChatQuizHintRepository,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    beforeTest { featureFlags.evict() }
-    afterTest { featureFlags.evict() }
-
     "힌트 상태와 이유를 보여 준다" {
+        // 빈 표시가 남은 방 중 원본 매칭이 없는 방은 그 이유로 보인다.
         val open = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 1L))
-        qaHintStates.of(open) shouldStartWith "없음 — QUIZ_CHAT"
-
-        featureFlagAdminService.set(FeatureFlagKey.QUIZ_CHAT, enabled = true, adminMemberId = 1L)
-        // 켤 때 이미 열린 방은 빈 표시가 남고, 원본 매칭이 없어 그 이유로 보인다.
+        chatQuizHintRepository.save(ChatQuizHint.of(open.id, messageId = null))
         qaHintStates.of(open) shouldStartWith "빈 표시 — 원본 매칭이 없어"
 
         val thursday = LocalDateTime.of(2026, 3, 12, 12, 0)

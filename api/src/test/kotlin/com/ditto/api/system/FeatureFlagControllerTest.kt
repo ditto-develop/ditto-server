@@ -39,23 +39,23 @@ class FeatureFlagControllerTest : RestDocsTest() {
     fun evictAfter() = featureFlags.evict()
 
     @Test
-    @DisplayName("JWT 없이 API Key 만으로 요청한 플래그의 켜짐 여부를 조회한다 — 행이 없는 플래그와 모르는 키는 false")
+    @DisplayName("JWT 없이 API Key 만으로 요청한 플래그의 켜짐 여부를 조회한다 — 모르는 키는 false, 공개를 마쳐 지운 키는 true")
     fun getFeatureFlags() {
         featureFlagRepository.save(
-            FeatureFlag.of(FeatureFlagKey.RECORDS).apply { enable(LocalDateTime.of(2026, 11, 5, 18, 0), 1L) },
+            FeatureFlag.of(FeatureFlagKey.SECRET_MATCHING).apply { enable(LocalDateTime.of(2026, 11, 5, 18, 0), 1L) },
         )
 
         mockMvc.perform(
             get("/api/v1/feature-flags")
+                .param("keys", "SECRET_MATCHING")
                 .param("keys", "RECORDS")
-                .param("keys", "QUIZ_CHAT")
                 .param("keys", "NOT_YET_DEFINED")
                 .withApiKey(),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.flags.SECRET_MATCHING").value(true))
             .andExpect(jsonPath("$.data.flags.RECORDS").value(true))
-            .andExpect(jsonPath("$.data.flags.QUIZ_CHAT").value(false))
             .andExpect(jsonPath("$.data.flags.NOT_YET_DEFINED").value(false))
             .andExpect(jsonPath("$.data.flags.length()").value(3))
             .andDo(
@@ -71,6 +71,7 @@ class FeatureFlagControllerTest : RestDocsTest() {
                                 "어드민(시스템 → 기능 플래그)에서 켜고 끄는 서버 기능 플래그 중 요청한 키의 켜짐 여부를 조회합니다. " +
                                     "X-API-Key 만 필요하고 JWT 는 필요 없습니다(로그인 전에도 호출). " +
                                     "응답에는 요청한 키만 들어 있습니다. 서버에 정의되지 않은 키와 한 번도 켠 적 없는 키는 false 입니다(오류 아님). " +
+                                    "공개를 마쳐 지운 키(RECORDS, QUIZ_CHAT)는 늘 true 입니다 — 옛 빌드의 화면이 기능을 잃지 않게 합니다. " +
                                     "keys 가 없거나 비었거나, 20개를 넘거나, 50자를 넘거나 [A-Z0-9_] 밖의 글자가 있으면 400(0001) 입니다. " +
                                     "서버는 인스턴스마다 1분 캐시해 읽으므로 어드민에서 바꾼 값이 최대 1분 늦게 보일 수 있습니다.",
                             )
@@ -80,8 +81,8 @@ class FeatureFlagControllerTest : RestDocsTest() {
                             .responseFields(
                                 fieldWithPath("success").description("성공 여부"),
                                 fieldWithPath("data.flags").description("요청한 플래그 키 → 켜짐 여부"),
-                                fieldWithPath("data.flags.RECORDS").description("예: 기록 탭·대화방 '우리의 답변' 화면 (FE)"),
-                                fieldWithPath("data.flags.QUIZ_CHAT").description("예: 대화방 첫 대화 힌트 메시지와 질문 카드 전송 (IMP-1)"),
+                                fieldWithPath("data.flags.SECRET_MATCHING").description("예: 시크릿 매칭: 마감 뒤 1:1 응시와 그룹 완주자 1:1 (IMP-2)"),
+                                fieldWithPath("data.flags.RECORDS").description("예: 공개를 마쳐 지운 키 — 늘 true"),
                                 fieldWithPath("data.flags.NOT_YET_DEFINED").description("예: 서버에 없는 키 — false"),
                                 fieldWithPath("error").description("에러 정보 (성공 시 null)").optional(),
                             )
@@ -96,14 +97,14 @@ class FeatureFlagControllerTest : RestDocsTest() {
     fun commaSeparatedKeysWithJwt() {
         mockMvc.perform(
             get("/api/v1/feature-flags")
-                .param("keys", " QUIZ_CHAT ,RECORDS,QUIZ_CHAT")
+                .param("keys", " SECRET_MATCHING ,NOT_YET_DEFINED,SECRET_MATCHING")
                 .withApiKey()
                 .withBearerToken(),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.flags.length()").value(2))
-            .andExpect(jsonPath("$.data.flags.QUIZ_CHAT").value(false))
-            .andExpect(jsonPath("$.data.flags.RECORDS").value(false))
+            .andExpect(jsonPath("$.data.flags.SECRET_MATCHING").value(false))
+            .andExpect(jsonPath("$.data.flags.NOT_YET_DEFINED").value(false))
     }
 
     @Test
@@ -132,7 +133,7 @@ class FeatureFlagControllerTest : RestDocsTest() {
     @Test
     @DisplayName("API Key 가 없으면 401 이다")
     fun getFeatureFlagsWithoutApiKey() {
-        mockMvc.perform(get("/api/v1/feature-flags").param("keys", "RECORDS"))
+        mockMvc.perform(get("/api/v1/feature-flags").param("keys", "SECRET_MATCHING"))
             .andExpect(status().isUnauthorized)
     }
 }

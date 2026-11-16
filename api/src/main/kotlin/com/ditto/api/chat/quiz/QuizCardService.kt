@@ -4,7 +4,6 @@ import com.ditto.api.chat.dto.ChatMessageResponse
 import com.ditto.api.chat.service.ChatRoomAccessChecker
 import com.ditto.api.quiz.stat.QuizAnswerSheet
 import com.ditto.api.quiz.stat.QuizAnswerSheetLoader
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatMessage
@@ -17,7 +16,6 @@ import com.ditto.domain.chat.repository.ChatQuizCardRepository
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.quiz.entity.Quiz
-import com.ditto.domain.system.entity.FeatureFlagKey
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
@@ -40,7 +38,6 @@ class QuizCardService(
     private val chatRoomAccessChecker: ChatRoomAccessChecker,
     private val chatRoomQuizSetResolver: ChatRoomQuizSetResolver,
     private val quizAnswerSheetLoader: QuizAnswerSheetLoader,
-    private val featureFlags: FeatureFlags,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -54,9 +51,6 @@ class QuizCardService(
     fun send(senderId: Long, roomId: Long, quizId: Long, comment: String): QuizCardSendResult {
         val room = chatRoomRepository.findWithLockById(roomId) ?: throw chatRoomAccessChecker.notFoundOrForbidden(roomId)
         chatRoomAccessChecker.validateActiveMember(roomId, senderId)
-        if (!featureFlags.isEnabled(FeatureFlagKey.QUIZ_CHAT)) {
-            throw WarnException(ErrorCode.FEATURE_DISABLED)
-        }
         val trimmedComment = comment.trim()
         if (trimmedComment.length > ChatMessage.MAX_CONTENT_LENGTH) {
             throw WarnException(ErrorCode.BAD_REQUEST)

@@ -17,26 +17,26 @@ class FeatureFlagTest(
     val firstOn = LocalDateTime.of(2026, 11, 6, 10, 0)
 
     "새 플래그는 꺼져 있고 켠 시각이 없다" {
-        val flag = featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT))
+        val flag = featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.SECRET_MATCHING))
 
         flag.enabled shouldBe false
         flag.enabledAt.shouldBeNull()
     }
 
     "켜면 켠 시각과 바꾼 어드민을 남긴다" {
-        val flag = featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT))
+        val flag = featureFlagRepository.save(FeatureFlag.of(FeatureFlagKey.SECRET_MATCHING))
 
         flag.enable(firstOn, adminMemberId = 7L)
         featureFlagRepository.saveAndFlush(flag)
 
-        val saved = featureFlagRepository.findByKey(FeatureFlagKey.QUIZ_CHAT)!!
+        val saved = featureFlagRepository.findByKey(FeatureFlagKey.SECRET_MATCHING)!!
         saved.enabled shouldBe true
         saved.enabledAt shouldBe firstOn
         saved.updatedByMemberId shouldBe 7L
     }
 
     "이미 켜진 플래그를 다시 켜도 처음 켠 시각을 유지한다 — 그 사이 열린 방이 대상에서 빠지면 안 된다" {
-        val flag = FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT)
+        val flag = FeatureFlag.of(FeatureFlagKey.SECRET_MATCHING)
         flag.enable(firstOn, adminMemberId = 7L)
 
         flag.enable(firstOn.plusHours(3), adminMemberId = 8L)
@@ -46,7 +46,7 @@ class FeatureFlagTest(
     }
 
     "끄면 켠 시각을 지운다 — 다시 켜면 그때부터 새로 센다" {
-        val flag = FeatureFlag.of(FeatureFlagKey.QUIZ_CHAT)
+        val flag = FeatureFlag.of(FeatureFlagKey.SECRET_MATCHING)
         flag.enable(firstOn, adminMemberId = 7L)
 
         flag.disable(adminMemberId = 9L)

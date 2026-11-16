@@ -41,25 +41,25 @@ class AdminFeatureFlagWebTest(
     "기능 플래그 화면에 정의된 플래그와 꺼짐 상태가 보인다" {
         mockMvc.perform(get("/admin/feature-flags").with(authentication(admin)))
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("QUIZ_CHAT")))
+            .andExpect(content().string(containsString("SECRET_MATCHING")))
             .andExpect(content().string(containsString("꺼짐")))
     }
 
     "켜기를 누르면 켜지고 바꾼 어드민이 남으며, 다른 서버 반영 시간을 안내한다" {
         mockMvc.perform(
-            post("/admin/feature-flags/QUIZ_CHAT").param("enabled", "true").with(authentication(admin)).with(csrf()),
+            post("/admin/feature-flags/SECRET_MATCHING").param("enabled", "true").with(authentication(admin)).with(csrf()),
         )
             .andExpect(redirectedUrl("/admin/feature-flags"))
             .andExpect(flash().attribute("message", containsString("최대 1분 뒤 모든 서버에 적용")))
 
-        val row = featureFlagRepository.findByKey(FeatureFlagKey.QUIZ_CHAT)!!
+        val row = featureFlagRepository.findByKey(FeatureFlagKey.SECRET_MATCHING)!!
         row.enabled shouldBe true
         row.updatedByMemberId shouldBe 5L
-        featureFlags.isEnabled(FeatureFlagKey.QUIZ_CHAT) shouldBe true
+        featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING) shouldBe true
     }
 
     "켠 뒤에는 켜짐 배지와 바꾼 어드민(이름이 없으면 회원 번호)이 보인다" {
-        mockMvc.perform(post("/admin/feature-flags/QUIZ_CHAT").param("enabled", "true").with(authentication(admin)).with(csrf()))
+        mockMvc.perform(post("/admin/feature-flags/SECRET_MATCHING").param("enabled", "true").with(authentication(admin)).with(csrf()))
 
         mockMvc.perform(get("/admin/feature-flags").with(authentication(admin)))
             .andExpect(content().string(containsString("badge ok")))

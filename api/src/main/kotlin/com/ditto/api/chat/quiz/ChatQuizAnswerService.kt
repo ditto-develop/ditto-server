@@ -10,7 +10,6 @@ import com.ditto.api.chat.service.ChatRoomAccessChecker
 import com.ditto.api.quiz.stat.QuizAnswerSheetLoader
 import com.ditto.api.quiz.stat.QuizStatSnapshotService
 import com.ditto.api.system.ServerTimeProvider
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.entity.ChatRoom
@@ -21,7 +20,6 @@ import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.member.repository.MemberBlockRepository
 import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.system.entity.FeatureFlagKey
 import org.springframework.stereotype.Service
 
 /**
@@ -46,7 +44,6 @@ class ChatQuizAnswerService(
     private val memberBlockRepository: MemberBlockRepository,
     private val quizAnswerSheetLoader: QuizAnswerSheetLoader,
     private val quizStatSnapshotService: QuizStatSnapshotService,
-    private val featureFlags: FeatureFlags,
     private val serverTimeProvider: ServerTimeProvider,
 ) {
 
@@ -140,7 +137,7 @@ class ChatQuizAnswerService(
 
     /** 질문 카드를 보낼 수 있는 방인지. 화면의 버튼 상태와 실제 전송 검사가 같은 조건을 봐야 한다. */
     fun canSendCard(room: ChatRoom): Boolean =
-        room.status == ChatRoomStatus.ACTIVE && featureFlags.isEnabled(FeatureFlagKey.QUIZ_CHAT)
+        room.status == ChatRoomStatus.ACTIVE
 
     /** 두 사람 방(1:1·재매칭)이고 끝나지 않은 방. */
     private fun openPairRoomOf(memberId: Long, roomId: Long): ChatRoom {

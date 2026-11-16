@@ -25,7 +25,7 @@ class FeatureFlagAdminService(
 ) {
     /** 정의된 플래그 전부. 행이 없는 플래그는 꺼진 것으로 보여 준다. */
     fun list(): List<FeatureFlagView> {
-        val rowsByKey = featureFlagRepository.findAll().associateBy { it.key }
+        val rowsByKey = featureFlagRepository.findAllByKeyIn(FeatureFlagKey.entries).associateBy { it.key }
         val updatersById = memberRepository.findAllById(rowsByKey.values.mapNotNull { it.updatedByMemberId }.toSet())
             .associateBy { it.id }
         return FeatureFlagKey.entries.map { key ->

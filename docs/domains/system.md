@@ -19,12 +19,14 @@
 - 켜기 전부터 진행 중이던 대상은 시각으로 거르지 않고, 꺼짐 → 켜짐 순간 `FeatureFlagEnableListener`가 같은 트랜잭션에서 빼 둔다. 전환은 플래그 행을 잠그고 한다.
 - 어드민 화면 `/admin/feature-flags`는 QA 도구 스위치와 무관하게 열린다.
 - FE 조회: `GET /api/v1/feature-flags?keys=...`(API Key만, JWT 불필요). 요청한 키만 답하고, enum에 없는 키는 false. FE도 1분 캐시 → 반영까지 최대 약 2분.
-- FE 화면 전용 플래그(서버 동작 없음): `RECORDS`(기록 탭·대화방 '우리의 답변'). 배포 순서는 BE → 어드민 켜기 → FE.
+- FE 화면 전용 플래그(서버 동작 없음)는 배포 순서가 BE → 어드민 켜기 → FE.
+- 폐기(공개 완료) 키: `QUIZ_CHAT`·`RECORDS`(2026-11). 조회 API 는 이 키에 계속 true(`FeatureFlags.RETIRED_ALWAYS_ON`) — 옛 빌드 탭이 기능을 잃지 않게. 폐기 순서는 FE 키·분기 → 서버 enum·분기 → 행 삭제.
+- 읽기는 지금 enum 에 있는 키의 행만 읽는다(`findAllByKeyIn`). 지운 키의 행이 남아 있어도 조회가 실패하지 않는다.
 - `SECRET_MATCHING`(IMP-2 시크릿 매칭): 마감 뒤 1:1 응시와 그룹 완주자 1:1 예외를 연다([ADR 0053](../adr/0053-late-one-to-one-submission-for-secret-matching.md)).
   - 시크릿 라운드·어드민 분류·홈 상태 API·FE 가 배포되기 전에는 켜지 않는다(ADR 0053 Consequences).
   - 켜기는 대상 주 목 00:00 전, 끄기는 월 00:00 뒤. 캐시로 서버마다 최대 1분 어긋나니 금 00:00·토 20:00 근처에는 바꾸지 않는다.
   - 중간에 끄면 늦게 완주한 회원은 라운드 없이 남고, 풀던 회원은 이어 풀기가 4001 로 막힌다. 그룹·1:1 을 둘 다 완주한 회원도 그대로 남는다.
-  - 새 키라서 이 행이 생긴 뒤 키를 모르는 이전 버전으로 롤백하면 플래그 조회가 실패할 수 있다. 롤백 전에 `feature_flag`의 이 행을 지운다.
+  - 새 키라서 이 행이 생긴 뒤 키를 모르는 이전 버전으로 롤백하면 플래그 조회가 실패할 수 있다(`findAllByKeyIn` 이전 버전). 그 버전으로 롤백하기 전에는 `feature_flag`의 이 행을 지운다.
 
 ## 상태 전이
 - `override(dateTime, authorName, authorEmail)` → `enabled = true`.
