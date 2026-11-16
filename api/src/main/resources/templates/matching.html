@@ -63,8 +63,20 @@
                 <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로 돌 차례인
                     라운드를 이번 주 1:1 퀴즈셋에 돌려, 아직 성사되지 않은 회원에게 후보를 더합니다. 이미 돈 라운드는 다시 돌지 않습니다.</p>
                 <form th:action="@{/admin/matching/run-secret-round}" method="post" class="inline-form"
-                      onsubmit="return confirm('현재 서버 시각에 돌 차례인 시크릿 매칭 라운드를 지금 돌립니다.\n정기 매칭이 안 된 퀴즈셋이 있으면 정기 매칭부터 만들고, 그 회원들에게는 매칭 결과 알림이 갑니다. 계속할까요?');">
+                      onsubmit="return confirm('현재 서버 시각에 돌 차례인 시크릿 매칭 라운드를 지금 돌립니다.\n새 후보를 받은 회원에게 시크릿 매칭 결과 알림이 갑니다. 정기 매칭이 안 된 퀴즈셋이 있으면 정기 매칭부터 만들고, 그 회원들에게는 매칭 결과 알림이 갑니다. 계속할까요?');">
                     <button class="btn secondary" type="submit">시크릿 매칭 지금 돌리기</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="with-info">시크릿 매칭 안내 알림 보내기
+                    <th:block th:replace="~{fragments :: info('info-secret-invite', '시크릿 매칭 안내 알림', '기능 플래그가 켜져 있으면 목 12:00에 자동으로 나갑니다. 이번 주 퀴즈를 하나도 끝내지 않은 활성 회원이 대상이고, 경고 제재 중인 회원은 뺍니다. 주마다 한 번만 받습니다.')}"></th:block>
+                </h2>
+                <p class="muted">현재 서버 시각(<span th:text="${#temporals.format(currentTime, 'yyyy-MM-dd HH:mm')}">-</span>) 기준으로
+                    1:1 퀴즈를 풀면 시크릿 매칭에 참여할 수 있다고 알립니다.</p>
+                <form th:action="@{/admin/matching/send-secret-invite}" method="post" class="inline-form"
+                      onsubmit="return confirm('이번 주 퀴즈를 하나도 끝내지 않은 활성 회원 전원에게 시크릿 매칭 안내 알림(푸시 포함)을 보냅니다. 계속할까요?');">
+                    <button class="btn secondary" type="submit">시크릿 매칭 안내 알림 보내기</button>
                 </form>
             </div>
 

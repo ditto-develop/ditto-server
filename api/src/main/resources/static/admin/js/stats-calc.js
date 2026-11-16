@@ -32,6 +32,7 @@ const StatsCalc = (() => {
         MATCH_RESULT: '매칭 결과',
         NO_MATCH: '매칭 없음',
         SECRET_MATCH_RESULT: '시크릿 매칭 결과',
+        SECRET_MATCHING_INVITED: '시크릿 매칭 안내',
         GROUP_FORMED: '그룹 결성',
         GROUP_NOT_FORMED: '그룹 취소(인원 미달)',
         REMATCH_REQUESTED: '재매칭 신청',

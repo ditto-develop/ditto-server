@@ -710,6 +710,19 @@ class AdminWebTest {
     }
 
     @Test
+    @DisplayName("시크릿 매칭 안내 알림 보내기는 보낼 대상이 없으면 이유를 안내한다")
+    fun sendSecretInviteWithNoRecipient() {
+        mockMvc.perform(post("/admin/matching/send-secret-invite").with(authentication(admin())).with(csrf()))
+            .andExpect(redirectedUrl("/admin/matching"))
+            .andExpect(
+                flash().attribute(
+                    "notice",
+                    "보낼 대상이 없습니다. 기능 플래그 꺼짐, 이번 주 1:1 퀴즈셋 없음, 남은 라운드 없음, 이미 보냄 중 하나입니다.",
+                ),
+            )
+    }
+
+    @Test
     @DisplayName("더미 관리 페이지 렌더 + 만들기/삭제")
     fun dummyPage() {
         mockMvc.perform(get("/admin/dummy").with(authentication(admin()))).andExpect(status().isOk)

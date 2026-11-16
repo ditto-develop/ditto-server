@@ -6,6 +6,7 @@ import com.ditto.api.match.service.MatchmakingService
 import com.ditto.api.match.service.SecretRoundBatchResult
 import com.ditto.api.notification.notifier.MatchResultNotifier
 import com.ditto.api.notification.notifier.SecretMatchResultNotifier
+import com.ditto.api.notification.notifier.SecretMatchingInviteNotifier
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
@@ -31,6 +32,7 @@ class AdminMatchController(
     private val quizSetRepository: QuizSetRepository,
     private val matchResultNotifier: MatchResultNotifier,
     private val secretMatchResultNotifier: SecretMatchResultNotifier,
+    private val secretMatchingInviteNotifier: SecretMatchingInviteNotifier,
     private val adminQaToolsProperties: AdminQaToolsProperties,
 ) {
     @GetMapping("/admin/matching")
@@ -57,6 +59,21 @@ class AdminMatchController(
         matchResultNotifier.notifyFor(result.backfilledRegularQuizSetIds)
         secretMatchResultNotifier.notifyFor(result.roundResults)
         addSecretRoundFlash(redirectAttributes, now, result)
+        return "redirect:/admin/matching"
+    }
+
+    /** 목 12:00 안내 알림을 지금 서버 시각으로 보낸다. 이미 받은 회원에게는 다시 가지 않는다. */
+    @PostMapping("/admin/matching/send-secret-invite")
+    fun sendSecretInvite(redirectAttributes: RedirectAttributes): String {
+        val sentCount = secretMatchingInviteNotifier.notifyNotParticipated(serverTimeProvider.now())
+        if (sentCount > 0) {
+            redirectAttributes.addFlashAttribute("message", "시크릿 매칭 안내 알림을 ${sentCount}명에게 보냈습니다.")
+        } else {
+            redirectAttributes.addFlashAttribute(
+                "notice",
+                "보낼 대상이 없습니다. 기능 플래그 꺼짐, 이번 주 1:1 퀴즈셋 없음, 남은 라운드 없음, 이미 보냄 중 하나입니다.",
+            )
+        }
         return "redirect:/admin/matching"
     }
 

@@ -60,6 +60,13 @@ object NotificationMessages {
         body = "같은 답을 한 사람이 더 있어요. 일요일 밤까지 대화를 신청해보세요.",
     )
 
+    /** 이번 주 퀴즈를 하나도 끝내지 않았다. 1:1 퀴즈를 풀면 [roundAt] 라운드에 들어간다. */
+    fun secretMatchingInvited(roundAt: LocalDateTime): NotificationContent = NotificationContent(
+        type = NotificationType.SECRET_MATCHING_INVITED,
+        title = "시크릿 매칭 기회가 있어요",
+        body = "지금 1:1 퀴즈를 풀면 ${dayNameOf(roundAt)} 저녁 8시에 같은 답을 한 사람을 찾아드려요.",
+    )
+
     /** 그룹이 인원을 채웠다. [memberCount]는 방에 모인 사람 수(나 포함)다. */
     fun groupFormed(memberCount: Int): NotificationContent = NotificationContent(
         type = NotificationType.GROUP_FORMED,

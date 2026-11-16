@@ -2,6 +2,7 @@ package com.ditto.api.notification
 
 import com.ditto.api.notification.notifier.QuizNotifier
 import com.ditto.api.notification.notifier.ReviewReminderNotifier
+import com.ditto.api.notification.notifier.SecretMatchingInviteNotifier
 import com.ditto.api.notification.scheduler.WeeklyNotificationScheduler
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -13,7 +14,8 @@ import java.time.LocalDateTime
 class WeeklyNotificationSchedulerTest : FreeSpec({
     val quizNotifier = mockk<QuizNotifier>(relaxed = true)
     val reviewReminderNotifier = mockk<ReviewReminderNotifier>(relaxed = true)
-    val scheduler = WeeklyNotificationScheduler(quizNotifier, reviewReminderNotifier)
+    val secretMatchingInviteNotifier = mockk<SecretMatchingInviteNotifier>(relaxed = true)
+    val scheduler = WeeklyNotificationScheduler(quizNotifier, reviewReminderNotifier, secretMatchingInviteNotifier)
 
     "퀴즈 오픈 알림은 실제 시각으로 부른다" {
         val at = slot<LocalDateTime>()
@@ -39,6 +41,15 @@ class WeeklyNotificationSchedulerTest : FreeSpec({
         scheduler.notifyQuizClosingSoon()
 
         verify { quizNotifier.notifyClosingSoon(capture(at)) }
+        (at.captured > LocalDateTime.of(2026, 1, 1, 0, 0)) shouldBe true
+    }
+
+    "시크릿 매칭 안내 알림은 실제 시각으로 부른다" {
+        val at = slot<LocalDateTime>()
+
+        scheduler.notifySecretMatchingInvite()
+
+        verify { secretMatchingInviteNotifier.notifyNotParticipated(capture(at)) }
         (at.captured > LocalDateTime.of(2026, 1, 1, 0, 0)) shouldBe true
     }
 })
