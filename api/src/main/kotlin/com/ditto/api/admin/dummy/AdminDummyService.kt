@@ -33,6 +33,7 @@ class AdminDummyService(
     fun generate(form: DummyGenerateForm): Int {
         validate(form)
         val questions = dummyAnswerRecorder.findQuestionsOf(form.quizSetId)
+        dummyAnswerRecorder.validateCompletedNow(questions, form.completedNow)
         val genderCounts = listOf(Gender.MALE to form.maleCount, Gender.FEMALE to form.femaleCount)
 
         return genderCounts.sumOf { (gender, count) ->
@@ -84,6 +85,11 @@ class AdminDummyService(
             caricature = DummyMemberFactory.randomCaricatureOf(gender),
         )
         val member = memberRepository.save(DummyMemberFactory.create(profile))
-        dummyAnswerRecorder.recordAnswers(member.id, questions, questions.pickAllRandomly())
+        dummyAnswerRecorder.recordAnswers(
+            member.id,
+            questions,
+            questions.pickAllRandomly(),
+            completedNow = form.completedNow,
+        )
     }
 }

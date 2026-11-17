@@ -41,4 +41,7 @@ interface PersonalMatchRepositoryCustom {
     fun countReceiversWhoAcceptedInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchMemberCount>
 
     fun countRequestsPerStatusInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<PersonalMatchStatusCount>
+
+    /** 그 주 시크릿 매칭 후보 쌍에서 성사(ACCEPTED)된 쌍 수. 쌍 단위라 회원 조건은 걸지 않는다. */
+    fun countSecretRoundAcceptedPairsInWeek(weekStartedOn: LocalDate): Long
 }

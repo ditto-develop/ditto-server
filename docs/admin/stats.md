@@ -10,6 +10,7 @@
 - **연령대**: `birth_date`로 기준일의 만 나이를 구한다. `age` 컬럼은 가입 화면의 나이대 시작값(20·25·30 …)이라 쓰지 않는다. 20~23 / 24~26 / 27~29 / 30대.
 - **가입 주차**: 고른 날이 속한 주(월~일)에 `joined_at`이 있는 회원.
 - **더미**: dev 의 더미 회원(닉네임 `dummy-`)도 일반 회원처럼 센다. 단 가입 이탈 장과 알림 장의 푸시 기기 없는 회원에서는 뺀다. 더미는 가입 화면을 거치지 않아 소셜 계정·소개노트·푸시 기기가 없어서 이 숫자들만 흔든다. 운영은 QA 도구가 꺼져 있어 더미가 없다. 더미는 만들 때 고른 나이가 그날(실제 날짜) 만 나이가 되는 생년월일을 무작위로 받는다. 시간 조정을 몇 주 앞으로 걸면 기준일이 달라 연령대가 고른 나이와 한 칸 어긋날 수 있다.
+- **정규 매칭 기준**: 시크릿 매칭(`SECRET_MATCHING` 플래그)이 켜지면 응답 마감 뒤 완주(늦은 완주)와 금·토 라운드 후보가 생긴다. 퀴즈 참여·매칭·리텐션·알림 보조 줄은 정규 매칭만 센다. 완주는 응답 마감까지 한 것, 1:1 후보는 정규 후보이고, 1:1 신청·성사는 시크릿 후보 쌍에서 나온 것을 뺀다. SQL 조건은 [손으로 대조하기](#손으로-대조하기) 맨 위에 있다. 예외가 둘 있다. 회원 장 계정 상태의 활성은 늦은 완주도 센다. 연속 미매칭과 리텐션의 매칭 결과별 재참여는 그 주 활성 셋의 성사를 봐서 시크릿 매칭 성사도 성사로 친다. 늦게 시작해 완주하지 않은 진행은 "시작"에 남는다. 시크릿 매칭 숫자는 매칭 장의 시크릿 매칭 카드에서 본다.
 - **탈퇴·삭제**: 그때의 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 탈퇴 30일 뒤 완전 삭제된 회원은 행이 없어 빠진다(지금은 삭제가 dry-run).
 - **기간 배지**: 기준 줄 앞에 그 숫자가 세는 기간을 붙인다. `이 회차`(고른 회차), `이 주 월~일`(고른 주의 실제 월~일, 회차가 아닌 주도 값이 있다), `최근 N회차`·`고른 주까지 N주`·`지난 회차 → 이 회차`(고른 회차가 끝점인 범위), `회차 무관 · 오늘 기준`(회차를 바꿔도 그대로). 필터가 걸리지 않는 장에는 "매칭 유형 미적용"·"회원 조건 미적용" 칩을 띄운다. 용어 설명은 장 제목과 카드 옆 (i)에 둔다.
 - **장 순서**: 가입 이탈 → 회원 → 퀴즈 참여 → 매칭 → 채팅 → 평가 → 리텐션 → 문항 분포 → 신고·사용자 차단 → 알림. 문항 분포는 길어서 흐름 뒤에 둔다.
@@ -64,14 +65,14 @@
 
 | 블록 | 세는 것 |
 |---|---|
-| 회차 참여자 | 그 회차 활성 셋을 완주(`quiz_progress.status = COMPLETED`)한 회원 |
+| 회차 참여자 | 그 회차 활성 셋을 응답 마감까지 완주(`quiz_progress.status = COMPLETED`, 정규 매칭 기준)한 회원 |
 | 시작 | 그 회차 활성 셋에 진행 행이 있는 회원. 행은 첫 답을 낼 때 생기고, 진행을 초기화하면 지워져 빠진다 |
 | 참여율 | 참여자 ÷ 활성 회원. 활성 회원은 고른 회차까지 최근 4회차 안에 한 번이라도 완주한 회원(겹치면 한 명) |
 | 완료율 | 참여자 ÷ 시작 |
 | 매칭 유형별 참여자·성비 | 참여자를 1:1·그룹으로 나눈 것 |
-| 요일별 완주 | 참여자가 마지막으로 답한 요일. `quiz_progress`에 완주 시각이 없어 그 셋에 낸 답의 `created_at` 최댓값으로 본다. 응답 기간인 월~수는 늘 보이고 다른 요일은 완주가 있을 때만 붙는다. 요일 합은 회차 참여자와 같다 |
+| 요일별 완주 | 참여자가 마지막으로 답한 요일. `quiz_progress.completed_at`은 예전 행과 더미에서 비어 있어 그 셋에 낸 답의 `created_at` 최댓값으로 본다. 응답 기간인 월~수는 늘 보이고 다른 요일은 완주가 있을 때만 붙는다. 요일 합은 회차 참여자와 같다 |
 
-- 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다(한 주에 하나만 풀 수 있다). 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다. 한 회원이 같은 주에 두 셋을 푸는 것은 앱이 조회 때 오류로 다루는 불변식 위반이라 지표는 이 전제를 따른다.
+- 매칭 유형은 그 회차에 푼 퀴즈셋의 `matching_type`이다. 기획서의 "트랙"이다. 조건은 참여자와 활성 회원 양쪽에 같이 걸린다. 그룹 미성사자는 금요일부터 같은 주 1:1 을 풀 수 있지만 그건 응답 마감 뒤 완주라 정규 기준에서 빠져서, 한 회원이 한 회차에 두 번 세지지 않는다.
 - 그때 참여한 사실을 세므로 나중에 탈퇴한 회원도 들어간다. 분자와 분모가 같은 기준이라 참여율이 100%를 넘지 않는다.
 - 답 시각은 JPA auditing 이 찍는 실제 시각이라 QA 시간 조정을 따르지 않는다. 답을 바꾸면 `updated_at`만 바뀌어 완주 요일은 그대로다.
 
@@ -90,14 +91,15 @@
 | 블록 | 세는 것 |
 |---|---|
 | 완주 | 퀴즈 참여 장의 회차 참여자와 같다 |
-| 후보 | 1:1 은 `match_candidate`에 후보가 생긴 회원(`owner_member_id`). 그룹은 후보 그룹(`group_match_member`)에 들어간 회원이고 거절·미성사도 센다 |
-| 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원. 1:1 도 사람마다 관리자 제외와 회원 조건을 걸어서, 관리자가 낀 쌍이나 성별 등을 고르면 한 사람만 세져 홀수가 될 수 있다 |
+| 후보 | 1:1 은 `match_candidate`에 정규 후보(`candidate_origin = 'REGULAR'`)가 생긴 회원(`owner_member_id`). 그룹은 후보 그룹(`group_match_member`)에 들어간 회원이고 거절·미성사도 센다 |
+| 성사 | 1:1 은 `personal_match.status = ACCEPTED`의 두 사람. 시크릿 후보 쌍(같은 셋에 그 쌍의 `candidate_origin <> 'REGULAR'` 후보 행이 있음)에서 나온 성사는 뺀다. 1:1 신청 단계·결과도 같다. 그룹은 성사된 그룹(`group_match.is_active`)을 수락(`ACCEPTED`)한 회원. 1:1 도 사람마다 관리자 제외와 회원 조건을 걸어서, 관리자가 낀 쌍이나 성별 등을 고르면 한 사람만 세져 홀수가 될 수 있다 |
 | 매칭률 | 성사 ÷ 완주 |
 | 1:1 후보 → 신청 → 성사 | 1:1 후보 받음(위 후보), 신청 보냄(그 회차에 한 번이라도 신청한 회원, `requester_id`), 신청 받음(한 번이라도 받은 회원), 받은 신청 수락(받은 신청 중 하나를 `ACCEPTED`로 만든 회원), 성사(위 성사)를 성별로 센다. 신청 보냄·받음은 상태와 상관없이 센다. 비율은 후보 받음 대비이고, 받은 신청 수락만 신청 받음 대비다. 보냄과 받음은 같은 신청의 양쪽이라 이어지는 단계가 아니다. 회원 조건은 세는 회원에게 건다. 후보를 다시 만들면 성사된 회원이 후보에서 빠져 비율이 100% 를 넘을 수 있다 |
 | 1:1 신청 결과 | 그 회차 1:1 신청 건수를 지금 상태별로 센 것. 수락(`ACCEPTED`)·거절(`REJECTED`)·응답 대기(`PENDING`)·자동 취소(`CANCELLED`, 두 사람 중 한쪽이 다른 신청으로 성사돼 정리됨). 요약에 자동 취소를 뺀 건수 중 수락 비율을 같이 낸다. 쓰지 않는 `EXPIRED`는 건수에서도 뺀다. 회원 조건은 보낸 회원에게 건다. 1:1 은 응답 마감이 없어 진행 중인 회차의 응답 대기에는 아직 기다리는 신청도 들어간다 |
 | 1:1 후보 노출 쏠림 | 1:1 후보를 받은 회원마다 받은 후보 수(`match_candidate`의 `owner_member_id`별 행 수)를 1~5명·6~10명·11명 이상으로 묶고, 6명 이상 받은 회원 수와 비율. 회원마다 5명을 고르고 한쪽만 골라도 남기는 규칙(ADR 0040)이라 6명 이상은 여러 사람이 고른 회원이다. 회원 조건은 받은 회원에게 걸고, 받은 후보에는 관리자도 들어간다 |
-| 연속 미매칭 회원 | 고른 주까지 최근 2회차를 모두 완주했는데 어느 회차에서도 성사되지 못한 회원(정지·탈퇴 제외, `ACTIVE`)의 닉네임·id. 성사는 위 성사와 같다. 앞 회차가 없으면 비운다. 매칭 배치(목요일 00:01) 전에는 이번 회차 성사가 없어 지난 회차 미매칭 완주자가 모두 잡히므로 목록 대신 안내만 보인다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다. 매칭 유형을 고르면 그 유형 셋의 완주만 본다. 회차는 유형과 상관없이 활성 셋이 있는 주라, 그 유형 셋이 없는 회차가 끼면 목록이 빈다 |
-| 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
+| 연속 미매칭 회원 | 고른 주까지 최근 2회차를 모두 완주했는데 어느 회차에서도 성사되지 못한 회원(정지·탈퇴 제외, `ACTIVE`)의 닉네임·id. 성사는 그 회차(주) 활성 셋의 성사다. 시크릿 매칭 성사도 성사로 보고, 그룹은 미성사였어도 같은 주 1:1 로 성사됐으면 빠진다. 앞 회차가 없으면 비운다. 매칭 배치(목요일 00:01) 전에는 이번 회차 성사가 없어 지난 회차 미매칭 완주자가 모두 잡히므로 목록 대신 안내만 보인다. 그룹은 금요일 00:00 마감까지 성사가 늘 수 있다. 매칭 유형을 고르면 그 유형 셋의 완주만 본다. 회차는 유형과 상관없이 활성 셋이 있는 주라, 그 유형 셋이 없는 회차가 끼면 목록이 빈다 |
+| 시크릿 매칭 | 그 회차 응답 마감 뒤에 1:1 을 완주한 회원 수, 1차(금)·2차(토) 라운드마다 후보를 받은 회원 수, 시크릿 후보 쌍에서 성사된 쌍 수. 늦은 완주는 1:1 셋만 센다. 후보 받음에는 라운드에서 늦은 완주자와 짝지어진 정시 완주자도 들어가 늦은 완주보다 많을 수 있다. 회원 수에는 회원 조건을 걸고 성사 쌍은 쌍 단위라 걸지 않는다. 그룹만 고르면 숨긴다. 위 지표에는 들어가지 않는다 |
+| 미매칭 | 완주 − 성사. 그룹을 수락했지만 3명이 안 모인 회원도 미매칭이다. 정시 완주자가 시크릿 매칭으로 성사돼도 여기서는 미매칭이다. 성별 구성도 같은 뺄셈을 성별마다 한다 |
 | 1:1 후보 점수 | 그 회차 후보 쌍의 `match_candidate.score`(0~100). 쌍은 두 방향 행으로 저장되어 `owner_member_id < other_member_id` 쪽만 센다. 평균·중앙값과 10점 구간, 옆에 성사(ACCEPTED) 쌍의 평균. 후보를 다시 만들면 이미 성사된 회원은 새 후보에서 빠져 그 쌍의 후보 행이 없어서, "점수 없는 성사 N쌍"으로 따로 보인다 |
 | 그룹 후보 점수 | 그 회차 후보 그룹의 `group_match.score`. 평균·중앙값과 10점 구간, 옆에 성사(`is_active`) 그룹의 평균 |
 | 성사 그룹 크기·성비 | 성사 그룹마다 수락(ACCEPTED)한 인원을 세서 인원수별 그룹 수와 성별 구성 |
@@ -154,7 +156,7 @@
 - 매칭 유형은 지난 회차에 푼 유형이다. 고른 회차에는 어느 유형이든 완주하면 다시 참여한 것으로 센다(1:1 → 그룹으로 옮긴 회원도 포함).
 - 유형 전환(기획서의 "트랙 전환")은 다시 참여한 회원을 (지난 회차 유형 → 고른 회차 유형) 네 줄로 나눈다. 매칭 유형 조건은 지난 회차 쪽에만 걸려서, 하나를 고르면 그 유형에서 출발한 두 줄만 나온다.
 - 회원 조건은 지난 회차 참여자에게 건다.
-- 매칭 결과별 재참여: 지난 회차 완주자를 그 셋에서 성사됐는지로 나눈 재참여율. 성사는 매칭 장과 같다(1:1 ACCEPTED 쌍, 성사 그룹 수락자). 성사 안 됨은 전체에서 성사를 뺀 값이다.
+- 매칭 결과별 재참여: 지난 회차 완주자를 그 주 활성 셋에서 성사됐는지로 나눈 재참여율. 성사는 1:1 ACCEPTED 쌍과 성사 그룹 수락자다. 매칭 장과 달리 시크릿 매칭 성사와 그룹 미성사 뒤 같은 주 1:1 성사도 성사로 친다. 성사 안 됨은 전체에서 성사를 뺀 값이다.
 - 평가 결과별 재참여: 지난 회차 평가에서 답을 하나 이상 확정한 회원을, 자기가 준 별점의 평균이 4점 이상(긍정)인지로 나눈 재참여율. 받은 평가가 아니라 준 평가로 나눠 "만족한 사람이 다시 오는가"를 본다.
   - 서버는 회원 id 없이 회원별 평균만 내린다.
   - 매칭 유형 조건은 평가의 유형(`PERSONAL`·`GROUP`)에 건다. 다시 참여는 유형과 상관없이 고른 회차 완주다.
@@ -206,7 +208,21 @@
 
 ## 손으로 대조하기
 
-필터 없이 본 화면과 맞춰 보는 SQL 이다. 성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다. 관리자 계정을 지표에 포함했으면 `role = 'USER'` 조건을 지운다. 단 쌍·점수·그룹 단위 지표(후보·그룹 점수, 그룹 크기, 상호 긍정, 점수별 긍정 비율)는 회원 조건을 걸지 않으니 그대로 둔다. 화면 날짜는 `M/D`라 연도는 고른 주를 기준으로 읽는다.
+필터 없이 본 화면과 맞춰 보는 SQL 이다. 정규 매칭 기준(위 공통)은 아래 세 조건이고, 뒤의 SQL 에는 필요한 곳마다 이미 넣었다.
+
+```sql
+-- 정시 완주: 진행(qp)과 그 셋(qs)을 세는 곳
+AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
+
+-- 정규 후보: 1:1 후보 행(c)을 세는 곳
+AND c.candidate_origin = 'REGULAR'
+
+-- 정규 쌍: 1:1 신청·성사(pm)를 세는 곳. 후보 행은 두 방향으로 있어 한쪽만 본다
+AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
+```
+
+성별·연령대·가입 주차를 걸었으면 같은 조건을 `WHERE`에 더한다. 관리자 계정을 지표에 포함했으면 `role = 'USER'` 조건을 지운다. 단 쌍·점수·그룹 단위 지표(후보·그룹 점수, 그룹 크기, 상호 긍정, 점수별 긍정 비율)는 회원 조건을 걸지 않으니 그대로 둔다. 화면 날짜는 `M/D`라 연도는 고른 주를 기준으로 읽는다.
 
 ```sql
 -- 상단 안내의 관리자 수 (계정 수, 고른 회차 완주자, 회원 조건 전)
@@ -214,7 +230,7 @@ SELECT COUNT(*) FROM member WHERE role = 'ADMIN' AND status <> 'LEFT';
 SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
 JOIN member m ON m.id = qp.member_id AND m.role = 'ADMIN'
-WHERE qp.status = 'COMPLETED';
+WHERE qp.status = 'COMPLETED' AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date);
 
 -- 가입 이탈 (단계·수단·푸시 기기). 운영 DB 시간대가 UTC 라 한국 시각으로 저장된 created_at 과 맞추려고 NOW() 를 옮긴다
 SELECT m.id, m.created_at, sa.provider,
@@ -250,7 +266,7 @@ SELECT DISTINCT week_started_on FROM quiz_set
 WHERE is_active AND week_started_on <= :this_monday
 ORDER BY week_started_on DESC LIMIT 4;
 
--- 계정 상태의 활성 (:recent_rounds 는 위 회차들)
+-- 계정 상태의 활성 (:recent_rounds 는 위 회차들). 늦은 완주도 센다
 SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE' AND m.joined_at IS NOT NULL
@@ -280,7 +296,7 @@ GROUP BY age, gender;
 SELECT qs.matching_type, qp.status, COUNT(*) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
-WHERE qs.week_started_on = :monday
+WHERE qs.week_started_on = :monday AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
 GROUP BY qs.matching_type, qp.status;
 
 -- 요일별 완주 (1 = 일요일). 회원마다 그 셋에 낸 마지막 답 시각
@@ -289,6 +305,7 @@ SELECT DAYOFWEEK(completed_at) AS day_of_week, COUNT(*) FROM (
   JOIN quiz q ON q.id = qa.quiz_id
   JOIN quiz_set qs ON qs.id = q.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
   JOIN quiz_progress qp ON qp.member_id = qa.member_id AND qp.quiz_set_id = qs.id AND qp.status = 'COMPLETED'
+    AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
   JOIN member m ON m.id = qa.member_id AND m.role = 'USER'
   GROUP BY qa.member_id
 ) completed
@@ -308,13 +325,14 @@ ORDER BY qs.id, q.display_order, c.display_order;
 SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
-WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED';
+WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED'
+  AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date);
 
--- 1:1 후보
+-- 1:1 후보 (정규 후보만)
 SELECT m.gender, COUNT(DISTINCT c.owner_member_id) FROM match_candidate c
 JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
-WHERE qs.week_started_on = :monday
+WHERE qs.week_started_on = :monday AND c.candidate_origin = 'REGULAR'
 GROUP BY m.gender;
 
 -- 1:1 후보 노출 쏠림 (화면 구간마다 회원 수. 6명 이상 = 6~10명 + 11명 이상)
@@ -323,7 +341,7 @@ SELECT CASE WHEN t.candidate_count <= 5 THEN '1~5명' WHEN t.candidate_count <= 
 FROM (SELECT c.owner_member_id, COUNT(*) AS candidate_count FROM match_candidate c
       JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active
       JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
-      WHERE qs.week_started_on = :monday
+      WHERE qs.week_started_on = :monday AND c.candidate_origin = 'REGULAR'
       GROUP BY c.owner_member_id) t
 GROUP BY bin;
 
@@ -332,10 +350,14 @@ SELECT m.id, m.nickname FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER' AND m.status = 'ACTIVE'
 WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED'
-  AND NOT EXISTS (SELECT 1 FROM personal_match pm WHERE pm.quiz_set_id = qp.quiz_set_id
+  AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
+  -- 성사는 그 셋이 아니라 그 주 활성 셋의 성사다(그룹 미성사 뒤 같은 주 1:1 성사, 시크릿 매칭 성사 포함)
+  AND NOT EXISTS (SELECT 1 FROM personal_match pm JOIN quiz_set ws ON ws.id = pm.quiz_set_id AND ws.is_active
+                  WHERE ws.week_started_on = qs.week_started_on
                   AND pm.status = 'ACCEPTED' AND qp.member_id IN (pm.member_id_1, pm.member_id_2))
   AND NOT EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
-                  WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id
+                  JOIN quiz_set ws ON ws.id = gm.quiz_set_id AND ws.is_active
+                  WHERE ws.week_started_on = qs.week_started_on AND gmm.member_id = qp.member_id
                   AND gmm.status = 'ACCEPTED')
 GROUP BY m.id, m.nickname
 HAVING COUNT(DISTINCT qs.week_started_on) = 2;
@@ -345,6 +367,8 @@ SELECT m.gender, COUNT(*) FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id IN (pm.member_id_1, pm.member_id_2) AND m.role = 'USER'
 WHERE qs.week_started_on = :monday AND pm.status = 'ACCEPTED'
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
 GROUP BY m.gender;
 
 -- 1:1 신청 보냄 · 신청 받음 (회원마다 한 번)
@@ -352,11 +376,15 @@ SELECT m.gender, COUNT(DISTINCT m.id) FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = pm.requester_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
 GROUP BY m.gender;
 SELECT m.gender, COUNT(DISTINCT m.id) FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id IN (pm.member_id_1, pm.member_id_2) AND m.id <> pm.requester_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
 GROUP BY m.gender;
 
 -- 1:1 받은 신청 수락 (위 신청 받음 SQL 에 상태 조건만 더함)
@@ -364,6 +392,8 @@ SELECT m.gender, COUNT(DISTINCT m.id) FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id IN (pm.member_id_1, pm.member_id_2) AND m.id <> pm.requester_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday AND pm.status = 'ACCEPTED'
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
 GROUP BY m.gender;
 
 -- 1:1 신청 결과 (보낸 회원 기준)
@@ -371,7 +401,25 @@ SELECT pm.status, COUNT(*) FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = pm.requester_id AND m.role = 'USER'
 WHERE qs.week_started_on = :monday
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR')
 GROUP BY pm.status;
+
+-- 시크릿 매칭 카드: 늦은 완주(1:1 셋만) · 라운드별 후보를 받은 회원 · 시크릿 후보 쌍에서 성사된 쌍
+SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
+JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+    AND qs.matching_type = 'ONE_TO_ONE'
+JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
+WHERE qp.status = 'COMPLETED' AND qp.completed_at > qs.end_date;
+SELECT c.candidate_origin, COUNT(DISTINCT c.owner_member_id) FROM match_candidate c
+JOIN quiz_set qs ON qs.id = c.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+JOIN member m ON m.id = c.owner_member_id AND m.role = 'USER'
+WHERE c.candidate_origin <> 'REGULAR'
+GROUP BY c.candidate_origin;
+SELECT COUNT(*) FROM personal_match pm
+JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
+WHERE pm.status = 'ACCEPTED' AND EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR');
 
 -- 그룹 후보 = 전부, 성사 = is_active 이고 ACCEPTED
 SELECT gm.is_active, gmm.status, m.gender, COUNT(*) FROM group_match_member gmm
@@ -384,12 +432,14 @@ GROUP BY gm.is_active, gmm.status, m.gender;
 -- 1:1 후보 점수 (쌍마다 한 번) · 성사 쌍 점수
 SELECT mc.score FROM match_candidate mc
 JOIN quiz_set qs ON qs.id = mc.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
-WHERE mc.owner_member_id < mc.other_member_id;
+WHERE mc.owner_member_id < mc.other_member_id AND mc.candidate_origin = 'REGULAR';
 SELECT mc.score FROM personal_match pm
 JOIN quiz_set qs ON qs.id = pm.quiz_set_id AND qs.is_active AND qs.week_started_on = :monday
 JOIN match_candidate mc ON mc.quiz_set_id = pm.quiz_set_id
     AND mc.owner_member_id = pm.member_id_1 AND mc.other_member_id = pm.member_id_2
-WHERE pm.status = 'ACCEPTED';
+WHERE pm.status = 'ACCEPTED'
+  AND NOT EXISTS (SELECT 1 FROM match_candidate sc WHERE sc.quiz_set_id = pm.quiz_set_id
+    AND sc.owner_member_id = pm.member_id_1 AND sc.other_member_id = pm.member_id_2 AND sc.candidate_origin <> 'REGULAR');
 
 -- 그룹 후보 점수 · 성사 그룹 크기·성비
 SELECT gm.is_active, gm.score FROM group_match gm
@@ -483,18 +533,23 @@ JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 JOIN quiz_progress again ON again.member_id = qp.member_id AND again.status = 'COMPLETED'
 JOIN quiz_set again_set ON again_set.id = again.quiz_set_id AND again_set.is_active AND again_set.week_started_on = :monday
-WHERE qp.status = 'COMPLETED'
+    AND (again.completed_at IS NULL OR again.completed_at <= again_set.end_date)
+WHERE qp.status = 'COMPLETED' AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
 GROUP BY qs.matching_type, again_set.matching_type;
 
--- 매칭 결과별 재참여의 성사됨 (지난 회차 완주자 중 성사, 그중 고른 회차 완주는 위 SQL 에 같은 EXISTS 를 더한다)
+-- 매칭 결과별 재참여의 성사됨 (지난 회차 완주자 중 그 주 활성 셋에서 성사, 시크릿 매칭 성사 포함)
+-- 그중 고른 회차 완주는 위 재참여 SQL 에 같은 EXISTS 를 더한다
 SELECT qs.matching_type, COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active AND qs.week_started_on = :previous
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
-WHERE qp.status = 'COMPLETED' AND (
-    EXISTS (SELECT 1 FROM personal_match pm WHERE pm.quiz_set_id = qp.quiz_set_id AND pm.status = 'ACCEPTED'
-            AND (pm.member_id_1 = qp.member_id OR pm.member_id_2 = qp.member_id))
+WHERE qp.status = 'COMPLETED' AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date) AND (
+    EXISTS (SELECT 1 FROM personal_match pm JOIN quiz_set ws ON ws.id = pm.quiz_set_id AND ws.is_active
+            WHERE ws.week_started_on = qs.week_started_on AND pm.status = 'ACCEPTED'
+            AND qp.member_id IN (pm.member_id_1, pm.member_id_2))
     OR EXISTS (SELECT 1 FROM group_match_member gmm JOIN group_match gm ON gm.id = gmm.room_id AND gm.is_active
-               WHERE gm.quiz_set_id = qp.quiz_set_id AND gmm.member_id = qp.member_id AND gmm.status = 'ACCEPTED'))
+               JOIN quiz_set ws ON ws.id = gm.quiz_set_id AND ws.is_active
+               WHERE ws.week_started_on = qs.week_started_on AND gmm.member_id = qp.member_id
+               AND gmm.status = 'ACCEPTED'))
 GROUP BY qs.matching_type;
 
 -- 평가 결과별 재참여 (:previous 는 리텐션 장 기준 줄의 지난 회차 월요일. positive 1 = 평균 4점 이상 줄)
@@ -502,7 +557,8 @@ SELECT t.average_given >= 4 AS positive, COUNT(*) AS reviewer_count, SUM(t.compl
 FROM (SELECT r.author_member_id, AVG(a.rating) AS average_given,
           EXISTS (SELECT 1 FROM quiz_progress qp JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
                   WHERE qp.member_id = r.author_member_id AND qp.status = 'COMPLETED'
-                  AND qs.week_started_on = :monday) AS completed_again
+                  AND qs.week_started_on = :monday
+                  AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)) AS completed_again
       FROM review_answer a
       JOIN member_review r ON r.id = a.member_review_id
       JOIN member m ON m.id = r.author_member_id AND m.role = 'USER'
@@ -520,7 +576,7 @@ SELECT DATE_SUB(DATE(m.joined_at), INTERVAL WEEKDAY(m.joined_at) DAY) AS join_mo
 FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
-WHERE qp.status = 'COMPLETED'
+WHERE qp.status = 'COMPLETED' AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
   AND qs.week_started_on BETWEEN :first_monday AND :monday
   AND m.joined_at >= :first_monday AND m.joined_at < :monday + INTERVAL 7 DAY
   AND qs.week_started_on >= DATE_SUB(DATE(m.joined_at), INTERVAL WEEKDAY(m.joined_at) DAY)
@@ -569,6 +625,7 @@ SELECT COUNT(DISTINCT qp.member_id) FROM quiz_progress qp
 JOIN quiz_set qs ON qs.id = qp.quiz_set_id AND qs.is_active
 JOIN member m ON m.id = qp.member_id AND m.role = 'USER'
 WHERE qs.week_started_on IN (:rounds) AND qp.status = 'COMPLETED'
+  AND (qp.completed_at IS NULL OR qp.completed_at <= qs.end_date)
   AND EXISTS (SELECT 1 FROM member_device d WHERE d.member_id = qp.member_id);
 
 -- 미수신 문의: 한 회원의 최근 발송 이력. 행이 없으면 알림이 쌓이지 않았거나(중복 정책·탈퇴),
@@ -602,6 +659,7 @@ GROUP BY DATE(joined_at);
 | 퀴즈 참여 | 더미 관리(일괄은 늘 완주), 더미 직접 만들기의 "푼 문항 수" | 푼 문항 수 0 이면 진행 행이 없어 "시작"에도 안 잡힌다. 비활성 퀴즈셋에 만든 더미는 세지 않는다(더미 화면에 표시됨). 요일별 완주는 답 시각이 실제 시각이라 늘 실제 오늘 요일에만 쌓인다. 여러 요일은 실제 날짜가 다른 날에 만들어야 하고, 시간 조정으로 미래 회차를 풀면 회차 주보다 앞선 실제 요일이 찍힌다 |
 | 문항 분포 | 더미 직접 만들기의 문항별 선택지 지정 | 일부만 푼 더미는 앞 문항에만 답이 있다. 예: 남성 더미 둘은 첫 선택지, 여성 더미 둘은 둘째 선택지를 고르면 성별 차이 100%p, 쏠림 0 이다 |
 | 매칭 | 시간 조정을 그 회차 주(월~수)에 걸고 테스트 계정이 앱에서 퀴즈를 푼다 → 더미 관리에서 더미 만들기 → "퀴즈 마감 직후"로 옮겨 [정기 매칭 지금 돌리기](더미를 나중에 더했으면 퀴즈셋 매칭 다시 만들기) → QA 콘솔에서 1:1 신청·수락, 그룹 수락 | 1:1 은 상대가 실회원인 쌍만 콘솔이 다뤄서 테스트 계정이 같은 1:1 셋을 풀어 둬야 한다. 콘솔은 서버 시각 주의 퀴즈셋만 보여 준다. 그룹은 금요일 00:00 마감 전에 수락해야 하고 응답이 시작되면 다시 만들 수 없다. 목요일 매칭 전에는 후보·성사가 0 이다. 후보 점수는 같은 답을 고른 문항 수 ÷ 문항 수 × 100 이라, 더미 직접 만들기에서 문항별 선택지를 맞춰 원하는 점수대를 만든다(일괄 생성은 무작위). 회원마다 점수가 높은 5명을 고르고 상대가 고른 쌍도 남아(ADR 0040) 받은 후보는 5명을 넘을 수 있다. 인원이 많으면 낮은 점수 쌍은 생기지 않고, 점수를 바꾸면 퀴즈셋 매칭을 다시 만들어야 한다. 성사 그룹 크기는 QA 콘솔에서 한 그룹에 수락을 3명·4명…으로 넣어 만든다(3명째에 성사, 금요일 00:00 마감 전까지 더 붙는다). 성사 뒤 후보를 다시 만들면 그 쌍은 "점수 없는 성사"로 보인다. 후보 노출 쏠림의 6명 이상은 한 1:1 셋에 7명 이상을 넣어야 보인다. 연속 미매칭은 같은 회원이 연이은 두 회차를 풀어야 해서 테스트 계정으로 만든다(더미는 #333). 목요일 매칭 전에는 목록 대신 안내가 보인다. 1:1 신청 단계·결과는 테스트 계정(USER)이 낀 신청으로 만든다. QA 콘솔은 더미가 실회원에게 신청을 보내고, 실회원이 더미에게 보낸 신청을 수락·거절만 한다. 테스트 계정이 보내거나 더미가 보낸 신청에 답하는 건 앱에서 한다. 한 계정이 성사되면 그 계정이 낀 대기 신청이 모두 자동 취소로 바뀌어서, 네 상태를 한 회차에 다 보려면 테스트 계정이 둘 필요하다(하나는 거절 → 수락 순서로, 다른 하나는 응답 대기용). 자동 취소는 두 갈래로 생긴다. 테스트 계정이 앱에서 더미 A·B 에게 신청하고 콘솔에서 A 가 수락하면 B 쪽이, 더미 A·B 가 콘솔에서 테스트 계정에게 신청하고 테스트 계정이 앱에서 A 를 수락하면 B 쪽이 바뀐다. 신청 거부(5011)는 후보가 아닌 `receiverId`로 `POST /api/v1/matches/request`를 부르거나, 후보 화면을 열어 둔 채 퀴즈셋 매칭을 다시 만든 뒤 신청하면 난다 |
+| 시크릿 매칭 | 기능 플래그 `SECRET_MATCHING`을 켜고 테스트 계정이 1:1 셋을 응답 기간에 푼다 → "퀴즈 마감 직후"로 옮겨 [정기 매칭 지금 돌리기] → 그 시각(목 00:01, 1차 대상 구간)에 둔 채로 1:1 더미를 "지금 완주"로 만든다 → "시크릿 1차 직후"로 옮겨 매칭 화면 [시크릿 매칭 지금 돌리기]. 2차는 그 시각(2차 대상 구간, 토 20:00 전까지)에 둔 채로 더미를 더 만들고 "시크릿 2차 직후"에 돌린다 → 테스트 계정과 시크릿 후보가 된 더미로 QA 콘솔에서 1:1 신청·수락 | 늦은 완주 더미는 위 퀴즈 참여·매칭 숫자에서 빠지고 이 카드에만 나온다. 라운드는 셋마다 한 번만 돌고, 돈 뒤에 만든 더미는 다음 라운드에만 들어간다. 다시 하려면 퀴즈셋 관리 → 그 셋의 QA 도구에서 [매칭 기록 초기화]를 먼저 한다. 라운드는 이미 후보였던 쌍을 다시 뽑지 않고, 1:1 후보 규칙대로 이성이고 나이 차가 작아야 짝지어진다. 테스트 계정과 같은 나이의 이성 더미를 만든다. QA 콘솔은 실회원이 낀 쌍만 다뤄서 성사 쌍은 테스트 계정으로 만든다 |
 | 채팅 | 매칭 성사 → QA 콘솔 시간 조정 "채팅방 열린 직후" → 앱이나 QA 콘솔로 메시지 보내기 | 열리기 전(`SCHEDULED`) 방은 세지 않는다. 회차는 원본 매칭의 퀴즈셋이라 매칭 장과 같은 회차에 잡힌다. 재매칭 방은 성사 뒤 다음 금요일에 열린다. 재매칭 방 화면의 [옮기기]나 "채팅방 열린 직후"로 연 뒤 원래 그룹 회차를 연다. 방당 메시지 수는 방 화면 빠른 입력 "연속 35개"로 구간을 옮긴다(1번 10~49, 2번 50~99, 3번 100개 이상). 첫 발신자 성별은 원하는 성별의 더미로 먼저 보낸다. 첫 메시지까지·마지막 메시지 시점은 메시지 시각이 실제 시각이라, 실제 금~일에 그 주 활성 셋으로 성사된 방에서 시간 조정 없이 보낸 메시지로만 뜻이 있다. 시간 조정 버튼으로는 걸린 시간을 만들 수 없다 |
 | 평가 | [정기 매칭 지금 돌리기] → QA 콘솔 시간 조정 "채팅방 열린 직후" → QA 콘솔에서 1:1 은 "채팅 종료", 그룹은 더미를 "나가기" → 더미로 평가 제출 | 그룹방은 채팅 종료가 없다. 나간 더미의 평가지만 바로 열리고, 1명만 남으면 방이 해체되어 전원 평가지가 열린다. 그룹방에서 상대 일부만 평가하면 "진행 중"이 된다. QA 콘솔 일괄 제출은 늘 5점이라 4점 미만은 대상마다 따로 제출하며 별점을 고른다. 상호 긍정은 두 사람이 모두 확정해야 세서, 1:1 은 테스트 계정도 앱에서 평가해야 한다 |
 | 리텐션 | 테스트 계정으로 활성 퀴즈셋이 있는 연이은 두 회차에 시간 조정(각 월~수)을 걸고 앱에서 직접 풀기 | 사이에 다른 활성 셋 주가 끼면 그 주가 지난 회차가 된다. 미래 주를 쓰면 그 주 퀴즈셋을 먼저 만든다. 더미는 늘 새 회원이라 두 회차를 이어 풀 수 없다(#333). 유형 전환은 테스트 계정이 지난 회차와 고른 회차에 다른 유형을 풀어서 만든다. 두 회차 모두 두 유형의 활성 셋이 있어야 하고, 네 줄을 다 보려면 줄마다 계정이 하나씩 필요하다. 매칭 결과별 재참여는 테스트 계정이 지난 회차를 풀고 QA 콘솔에서 1:1 수락이나 그룹 수락으로 성사시킨 뒤 고른 회차를 다시 푼다. 가입 주차별 리텐션은 더미로도 만든다. 실제 이번 주에 만든 더미가 그 뒤 주의 활성 셋을 완주하면 "가입 뒤 N회차" 칸에 잡힌다. 가입한 주보다 앞선 셋으로 만든 더미의 완주는 어느 칸에도 들어가지 않는다. 평가 결과별 재참여의 다시 참여는 테스트 계정이 지난 회차 평가를 내고 고른 회차를 풀어야 생긴다. 4점 이상·미만 두 줄을 다 채우려면 계정이 둘 필요하다 |

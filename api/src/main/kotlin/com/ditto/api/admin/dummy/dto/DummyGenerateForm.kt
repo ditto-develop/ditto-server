@@ -7,4 +7,5 @@ class DummyGenerateForm(
     var femaleCount: Int = 0,
     var minAge: Int = 20,
     var maxAge: Int = 35,
+    var completedNow: Boolean = false,
 )

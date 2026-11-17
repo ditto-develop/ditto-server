@@ -175,5 +175,18 @@ class QuizAnswerStatsQueryTest(
             quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE) shouldBe listOf(lastAnsweredAt)
             quizAnswerRepository.findCompletedAtsInWeek(WEEK, MatchingType.GROUP, MemberFilter.NONE).shouldBeEmpty()
         }
+
+        "응답 마감 뒤에 완주한 회원(시크릿 매칭)은 뺀다" {
+            val quizSet = saveQuizSet()
+            val (choice, _) = saveQuestion(quizSet, displayOrder = 1)
+            val late = saveMember()
+            answer(late, choice)
+            quizProgressRepository.save(
+                QuizProgressFixture.create(memberId = late, quizSetId = quizSet.id, totalCount = 1)
+                    .apply { recordAnswer(quizSet.endDate.plusHours(12)) },
+            )
+
+            quizAnswerRepository.findCompletedAtsInWeek(WEEK, null, MemberFilter.NONE).shouldBeEmpty()
+        }
     }
 })

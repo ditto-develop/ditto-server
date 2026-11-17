@@ -24,10 +24,11 @@ class SingleDummyForm(
     var choiceIdByQuizId: MutableMap<Long, Long?> = mutableMapOf(),
     /** 문항 순서대로 앞에서 몇 개를 풀지. 비우면 전부 푼다. */
     var answeredCount: Int? = null,
+    var completedNow: Boolean = false,
 ) : Serializable {
 
     /**
-     * 연달아 만들 때 다음 폼 값. 성별·나이·문항별 답·푼 문항 수는 이어 쓰고,
+     * 연달아 만들 때 다음 폼 값. 성별·나이·문항별 답·푼 문항 수·완주 시각 방식은 이어 쓰고,
      * 닉네임은 비우고 사는 곳·직업·관심사·캐리커처는 다시 무작위로 채운다.
      */
     fun forNextDummy() = withRandomProfile(quizSetId).also {
@@ -35,6 +36,7 @@ class SingleDummyForm(
         it.age = age
         it.choiceIdByQuizId = choiceIdByQuizId.toMutableMap()
         it.answeredCount = answeredCount
+        it.completedNow = completedNow
     }
 
     companion object {

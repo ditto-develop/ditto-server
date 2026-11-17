@@ -118,6 +118,7 @@ class QuizAnswerRepositoryImpl(
                 quizProgress.memberId.eq(quizAnswer.memberId),
                 quizProgress.quizSetId.eq(quizSet.id),
                 quizProgress.status.eq(QuizProgressStatus.COMPLETED),
+                quizProgress.isCompletedOnTime(quizSet),
             )
             .join(member).on(member.id.eq(quizAnswer.memberId))
             .where(
