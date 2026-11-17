@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 
 private const val JUST_AFTER_MINUTES = 1L
 private const val JUST_BEFORE_MINUTES = 10L
-private const val SECRET_ROUND_NOTE = "라운드는 [시크릿 매칭 지금 돌리기]로"
+private const val MANUAL_ROUND_RUN_NOTE = "라운드는 [시크릿 매칭 지금 돌리기]로"
 
 /**
  * QA 콘솔의 시각 바로가기. 기준 시각은 앱의 기간 정의와 알림 설정에서 가져온다.
@@ -45,7 +45,7 @@ enum class QaTimeShortcut(
         weekendOf(week).opensAt.plusHours(leadHours.firstMessageHours).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
-    SECRET_FIRST_ROUND_STARTED("시크릿 1차 직후", SECRET_ROUND_NOTE, { week, _ ->
+    SECRET_FIRST_ROUND_STARTED("시크릿 1차 직후", MANUAL_ROUND_RUN_NOTE, { week, _ ->
         SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_FIRST, week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
@@ -53,7 +53,7 @@ enum class QaTimeShortcut(
         SecretMatchingSchedule.lateSubmissionClosesAt(week).minusMinutes(JUST_BEFORE_MINUTES)
     }),
 
-    SECRET_SECOND_ROUND_STARTED("시크릿 2차 직후", SECRET_ROUND_NOTE, { week, _ ->
+    SECRET_SECOND_ROUND_STARTED("시크릿 2차 직후", MANUAL_ROUND_RUN_NOTE, { week, _ ->
         SecretMatchingSchedule.roundStartsAt(CandidateOrigin.SECRET_SECOND, week).plusMinutes(JUST_AFTER_MINUTES)
     }),
 
