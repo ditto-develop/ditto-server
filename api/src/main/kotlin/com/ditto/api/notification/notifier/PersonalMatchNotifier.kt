@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component
  * 닉네임 조회 실패는 여기서 삼킨다. 요청 경로라 예외가 올라가면 이미 커밋된 처리가 실패로 보인다.
  *
  * 방이 열렸는지는 채팅방을 만드는 쪽(ChatService)과 같은 서버 시각으로 판단한다.
- * 시크릿 매칭 플래그가 꺼져 있으면 주말이어도 예전 문구("금요일에 열려요")를 쓴다. 출시 전 변화를 없애려고 감수한다.
+ * 시크릿 매칭 플래그가 꺼져 있으면 주말에도 금요일 문구를 쓴다(#391).
  */
 @Component
 class PersonalMatchNotifier(
@@ -38,7 +38,7 @@ class PersonalMatchNotifier(
     fun notifyRequested(matchId: Long, receiverId: Long, requestedBy: Long): Boolean =
         runCatchingExceptions {
             val content = nicknameOf(requestedBy)?.let {
-                NotificationMessages.matchRequested(it, isChatOpen = announcesChatOpenNow())
+                NotificationMessages.matchRequested(it, isChatOpen = shouldSayChatOpen())
             }
             appendToCounterpart(matchId, receiverId, content)
         }
@@ -49,7 +49,7 @@ class PersonalMatchNotifier(
     fun notifyAccepted(matchId: Long, requesterId: Long, acceptedBy: Long): Boolean =
         runCatchingExceptions {
             val content = nicknameOf(acceptedBy)?.let {
-                NotificationMessages.matchAccepted(it, isChatOpen = announcesChatOpenNow())
+                NotificationMessages.matchAccepted(it, isChatOpen = shouldSayChatOpen())
             }
             appendToCounterpart(matchId, requesterId, content)
         }
@@ -72,7 +72,7 @@ class PersonalMatchNotifier(
         return notificationAppender.append(memberId = counterpartId, content = content, targetId = matchId)
     }
 
-    private fun announcesChatOpenNow(): Boolean {
+    private fun shouldSayChatOpen(): Boolean {
         if (!featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)) return false
         val now = serverTimeProvider.now()
         return ChatPeriod.weekendOf(now).isOpenedAt(now)

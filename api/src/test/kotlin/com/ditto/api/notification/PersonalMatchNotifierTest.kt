@@ -66,7 +66,7 @@ class PersonalMatchNotifierTest(
             }
         }
 
-        "시크릿 매칭이 켜져 있으면 대화방이 이미 열린 주말에는 수락하면 바로 열린다고 알린다" {
+        "시크릿 매칭이 켜진 주말에는 수락하면 바로 열린다고 알린다" {
             turnOnSecretMatching()
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
@@ -77,7 +77,7 @@ class PersonalMatchNotifierTest(
             notificationRepository.findAll().single().body shouldBe "수락하면 바로 대화방이 열려요."
         }
 
-        "시크릿 매칭이 꺼져 있으면 주말에도 예전 문구를 쓴다" {
+        "시크릿 매칭이 꺼져 있으면 주말에도 금요일에 열린다고 알린다" {
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
@@ -130,7 +130,7 @@ class PersonalMatchNotifierTest(
             }
         }
 
-        "시크릿 매칭이 켜져 있으면 대화방이 이미 열린 주말에는 방이 열렸다고 알린다" {
+        "시크릿 매칭이 켜진 주말에는 방이 열렸다고 알린다" {
             turnOnSecretMatching()
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
@@ -141,7 +141,7 @@ class PersonalMatchNotifierTest(
             notificationRepository.findAll().single().body shouldBe "대화방이 열렸어요. 먼저 인사를 건네보세요!"
         }
 
-        "시크릿 매칭이 꺼져 있으면 주말에도 예전 문구를 쓴다" {
+        "시크릿 매칭이 꺼져 있으면 주말에도 금요일에 만남이 시작된다고 알린다" {
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
