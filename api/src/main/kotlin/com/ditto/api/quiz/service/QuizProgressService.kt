@@ -1,7 +1,8 @@
 package com.ditto.api.quiz.service
 
 import com.ditto.api.config.quiz.QuizProperties
-import com.ditto.api.match.GroupResponseDeadline
+import com.ditto.api.match.GroupMatchingStatus
+import com.ditto.api.match.service.GroupMatchingStatusReader
 import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
 import com.ditto.api.quiz.dto.QuizWithAnswerResponse
@@ -10,7 +11,6 @@ import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.ErrorException
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.entity.Quiz
 import com.ditto.domain.quiz.entity.QuizAnswer
@@ -41,7 +41,7 @@ class QuizProgressService(
     private val quizSetRepository: QuizSetRepository,
     private val quizProperties: QuizProperties,
     private val sanctionRepository: SanctionRepository,
-    private val groupMatchMemberRepository: GroupMatchMemberRepository,
+    private val groupMatchingStatusReader: GroupMatchingStatusReader,
     private val featureFlags: FeatureFlags,
 ) {
     @Transactional
@@ -56,8 +56,9 @@ class QuizProgressService(
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
         val otherTypeProgresses = findOtherTypeProgressesOfWeek(memberId, quizSet)
-        if (otherTypeProgresses.any { it.status == QuizProgressStatus.COMPLETED }) {
-            validateGroupFinisherCanTakeOneToOne(submission, quizSet)
+        val completedOtherTypeProgress = otherTypeProgresses.firstOrNull { it.status == QuizProgressStatus.COMPLETED }
+        if (completedOtherTypeProgress != null) {
+            validateGroupFinisherCanTakeOneToOne(submission, quizSet, completedOtherTypeProgress.quizSetId)
         }
         discardUnfinishedProgresses(memberId, otherTypeProgresses)
 
@@ -275,17 +276,36 @@ class QuizProgressService(
         return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
     }
 
-    // 그룹을 완주했어도 성사된 그룹에 수락하지 않았으면 그룹 응답 마감 뒤에는 1:1 을 풀 수 있다.
-    private fun validateGroupFinisherCanTakeOneToOne(submission: AnswerSubmission, quizSet: QuizSet) {
+    // 4005 하나로 이유가 갈리지 않아서 허용·거절 모두 판단에 쓴 값을 남긴다.
+    private fun validateGroupFinisherCanTakeOneToOne(
+        submission: AnswerSubmission,
+        quizSet: QuizSet,
+        completedOtherTypeQuizSetId: Long,
+    ) {
         val (memberId, now) = submission
-        val canTakeOneToOne = submission.secretMatchingEnabled &&
-            quizSet.matchingType == MatchingType.ONE_TO_ONE &&
-            GroupResponseDeadline.hasPassed(quizSet.operationWeek, now) &&
-            !groupMatchMemberRepository.existsAcceptedInFormedGroupOfWeek(memberId, quizSet.weekStartedOn)
+        val groupStatus = findGroupStatusForLateOneToOne(submission, quizSet, completedOtherTypeQuizSetId)
+        val canTakeOneToOne = groupStatus?.canTakeOneToOne(quizSet.operationWeek, now) ?: false
+        log.info {
+            "다른 유형 완주자 제출 ${if (canTakeOneToOne) "허용" else "거절"}: memberId=$memberId " +
+                "quizSetId=${quizSet.id} type=${quizSet.matchingType} week=${quizSet.weekStartedOn} " +
+                "secretMatching=${submission.secretMatchingEnabled} groupStatus=$groupStatus"
+        }
         if (!canTakeOneToOne) {
             throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
         }
-        log.info { "그룹 완주자 1:1 응시 허용: memberId=$memberId quizSetId=${quizSet.id} week=${quizSet.weekStartedOn}" }
+    }
+
+    // 응답 기간에는 그룹 상태와 상관없이 한 주 한 유형 그대로라, 마감 뒤 1:1 제출일 때만 그룹 상태를 본다.
+    private fun findGroupStatusForLateOneToOne(
+        submission: AnswerSubmission,
+        quizSet: QuizSet,
+        groupQuizSetId: Long,
+    ): GroupMatchingStatus? {
+        val isLateOneToOne = submission.secretMatchingEnabled &&
+            quizSet.matchingType == MatchingType.ONE_TO_ONE &&
+            submission.now > quizSet.endDate
+        if (!isLateOneToOne) return null
+        return groupMatchingStatusReader.read(submission.memberId, groupQuizSetId)
     }
 
     // 한 주에는 한 유형만 푼다. 다른 유형을 풀다 말았으면 그 답을 지우고 이 유형으로 갈아탄다.

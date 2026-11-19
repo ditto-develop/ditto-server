@@ -34,6 +34,6 @@ interface QuizSetRepositoryCustom {
     /** 회원이 완주(COMPLETED)한 퀴즈셋 전부, 최신 운영 주부터. 퀴즈 기록 탭의 목록이다. 활성 여부는 보지 않는다. */
     fun findCompletedQuizSetsOf(memberId: Long): List<QuizSet>
 
-    /** 회원이 퀴즈를 완주한 운영 주 수. 그룹 미성사자는 같은 주에 1:1 도 완주할 수 있어 셋이 아니라 주로 센다. */
+    /** 회원이 퀴즈를 완주한 운영 주 수. 그룹 완주자도 같은 주에 1:1 을 완주할 수 있어 셋이 아니라 주로 센다. */
     fun countCompletedWeeksOf(memberId: Long): Long
 }

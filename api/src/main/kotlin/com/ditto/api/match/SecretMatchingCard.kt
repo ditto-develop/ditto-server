@@ -35,7 +35,8 @@ data class SecretMatchingFacts(
     val oneToOneProgress: QuizProgress?,
     val hasAcceptedOneToOneMatch: Boolean,
     val isAcceptedInFormedGroup: Boolean,
-    val hasCompletedGroupQuiz: Boolean,
+    /** 그룹 퀴즈를 완주하지 않았으면 null */
+    val groupMatchingStatus: GroupMatchingStatus?,
     val isUnderWarningSanction: Boolean,
     val hasSecretCandidates: Boolean,
 )
@@ -66,9 +67,8 @@ data class SecretMatchingCard(
             return ended()
         }
 
-        // 그룹 완주자는 그룹 응답 마감 뒤에만 1:1 을 풀 수 있다. 제출 검사(QuizProgressService)와 같은 조건이다.
         private fun unfinishedCard(facts: SecretMatchingFacts): SecretMatchingCard {
-            if (facts.hasCompletedGroupQuiz && !GroupResponseDeadline.hasPassed(facts.week, facts.now)) return none()
+            if (!facts.canTakeOneToOne()) return none()
             if (facts.isBeforeLastRound()) return facts.cardWithNextRound(SecretMatchingState.ELIGIBLE)
             return ended()
         }
@@ -81,6 +81,10 @@ data class SecretMatchingCard(
             val completedAt = progress.completedAt ?: return null
             return SecretMatchingSchedule.nextRoundAfter(week, completedAt)?.takeIf { now < it }
         }
+
+        // 그룹을 완주하지 않았으면 그룹 상태와 상관없다.
+        private fun SecretMatchingFacts.canTakeOneToOne(): Boolean =
+            groupMatchingStatus?.canTakeOneToOne(week, now) ?: true
 
         private fun SecretMatchingFacts.isBeforeLastRound(): Boolean =
             now < SecretMatchingSchedule.lateSubmissionClosesAt(week)

@@ -33,6 +33,7 @@ class SecretMatchingStateService(
     private val groupMatchMemberRepository: GroupMatchMemberRepository,
     private val matchCandidateRepository: MatchCandidateRepository,
     private val sanctionRepository: SanctionRepository,
+    private val groupMatchingStatusReader: GroupMatchingStatusReader,
 ) {
 
     fun getSecretMatchingState(memberId: Long, now: LocalDateTime): SecretMatchingStateResponse {
@@ -66,11 +67,9 @@ class SecretMatchingStateService(
                 memberId,
                 week.startedOn,
             ),
-            hasCompletedGroupQuiz = quizSetRepository.findCompletedQuizSetInWeek(
-                memberId,
-                MatchingType.GROUP,
-                week.startedOn,
-            ) != null,
+            groupMatchingStatus = quizSetRepository
+                .findCompletedQuizSetInWeek(memberId, MatchingType.GROUP, week.startedOn)
+                ?.let { groupMatchingStatusReader.read(memberId, it.id) },
             isUnderWarningSanction = sanctionRepository.existsActiveWarningAt(memberId, now),
             hasSecretCandidates = matchCandidateRepository.existsByOwnerMemberIdAndQuizSetIdAndCandidateOriginNot(
                 memberId,
@@ -87,7 +86,7 @@ class SecretMatchingStateService(
                 "state=${card.state} nextRoundAt=${card.nextRoundAt} " +
                 "progress=${progress?.status} completedAt=${progress?.completedAt} " +
                 "accepted1on1=${facts.hasAcceptedOneToOneMatch} formedGroup=${facts.isAcceptedInFormedGroup} " +
-                "groupDone=${facts.hasCompletedGroupQuiz} warned=${facts.isUnderWarningSanction} " +
+                "groupStatus=${facts.groupMatchingStatus} warned=${facts.isUnderWarningSanction} " +
                 "secretCandidates=${facts.hasSecretCandidates}"
         }
     }
