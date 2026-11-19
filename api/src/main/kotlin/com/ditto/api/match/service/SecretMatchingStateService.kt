@@ -67,7 +67,8 @@ class SecretMatchingStateService(
                 memberId,
                 week.startedOn,
             ),
-            groupMatchingStatus = quizSetRepository.findCompletedQuizSetInWeek(memberId, MatchingType.GROUP, week.startedOn)
+            groupMatchingStatus = quizSetRepository
+                .findCompletedQuizSetInWeek(memberId, MatchingType.GROUP, week.startedOn)
                 ?.let { groupMatchingStatusReader.read(memberId, it.id) },
             isUnderWarningSanction = sanctionRepository.existsActiveWarningAt(memberId, now),
             hasSecretCandidates = matchCandidateRepository.existsByOwnerMemberIdAndQuizSetIdAndCandidateOriginNot(

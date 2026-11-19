@@ -68,7 +68,7 @@ data class SecretMatchingCard(
         }
 
         private fun unfinishedCard(facts: SecretMatchingFacts): SecretMatchingCard {
-            if (facts.groupMatchingStatus?.canTakeOneToOne(facts.week, facts.now) == false) return none()
+            if (!facts.canTakeOneToOne()) return none()
             if (facts.isBeforeLastRound()) return facts.cardWithNextRound(SecretMatchingState.ELIGIBLE)
             return ended()
         }
@@ -81,6 +81,10 @@ data class SecretMatchingCard(
             val completedAt = progress.completedAt ?: return null
             return SecretMatchingSchedule.nextRoundAfter(week, completedAt)?.takeIf { now < it }
         }
+
+        // 그룹을 완주하지 않았으면 그룹 상태와 상관없다.
+        private fun SecretMatchingFacts.canTakeOneToOne(): Boolean =
+            groupMatchingStatus?.canTakeOneToOne(week, now) ?: true
 
         private fun SecretMatchingFacts.isBeforeLastRound(): Boolean =
             now < SecretMatchingSchedule.lateSubmissionClosesAt(week)

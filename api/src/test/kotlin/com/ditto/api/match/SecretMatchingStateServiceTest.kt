@@ -52,6 +52,7 @@ class SecretMatchingStateServiceTest(
         val friday = monday.plusDays(4).atTime(10, 0)
         val firstRound = monday.plusDays(4).atTime(20, 0)
         val memberId = 1L
+        val otherMemberId = 2L
 
         fun enableSecretMatching() =
             featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
@@ -171,9 +172,20 @@ class SecretMatchingStateServiceTest(
                 val groupQuizSetId = saveWeekQuizSet(MatchingType.GROUP)
                 complete(groupQuizSetId)
                 val otherGroup = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId))
-                groupMatchMemberRepository.save(GroupMatchMember.candidate(otherGroup.id, memberId + 1))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(otherGroup.id, otherMemberId))
 
                 stateAt(thursday).state shouldBe SecretMatchingState.ELIGIBLE
+            }
+
+            "그룹 초대에 아직 답하지 않았으면 목요일에는 NONE 이다" {
+                enableSecretMatching()
+                saveWeekQuizSet()
+                val groupQuizSetId = saveWeekQuizSet(MatchingType.GROUP)
+                complete(groupQuizSetId)
+                val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, memberId))
+
+                stateAt(thursday).state shouldBe SecretMatchingState.NONE
             }
 
             "그룹 초대를 거절했으면 목요일부터 ELIGIBLE 이다" {
@@ -187,7 +199,7 @@ class SecretMatchingStateServiceTest(
                 stateAt(thursday).state shouldBe SecretMatchingState.ELIGIBLE
             }
 
-            "그룹 응답 마감부터 ELIGIBLE 이다" {
+            "셋에 후보 그룹이 없어도 그룹 응답 마감부터 ELIGIBLE 이다" {
                 enableSecretMatching()
                 saveWeekQuizSet()
                 complete(saveWeekQuizSet(MatchingType.GROUP))
