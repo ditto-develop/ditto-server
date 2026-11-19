@@ -678,6 +678,18 @@ class QuizProgressServiceTest(
             return groupQuizSetId
         }
 
+        fun inviteToGroup(groupQuizSetId: Long, memberId: Long, acceptedCount: Int = 0): GroupMatchMember {
+            val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId, acceptedCount = acceptedCount))
+            return GroupMatchMember.candidate(group.id, memberId)
+        }
+
+        fun otherMembersGroupExists(groupQuizSetId: Long) {
+            groupMatchMemberRepository.save(inviteToGroup(groupQuizSetId, setupMember(nickname = "다른그룹유저")))
+        }
+
+        fun oneToOneProgressStatus(memberId: Long, oneToOneQuizSetId: Long) =
+            quizProgressRepository.findByMemberIdAndQuizSetId(memberId, oneToOneQuizSetId)?.status
+
         "그룹을 완주했지만 성사된 그룹에 수락하지 않았으면 금요일부터 1:1 을 풀 수 있고 그룹 답은 남는다" {
             enableSecretMatching()
             val memberId = setupMember()
@@ -692,7 +704,7 @@ class QuizProgressServiceTest(
                 QuizProgressStatus.COMPLETED
         }
 
-        "그룹 완주자는 금요일 전에는 1:1 을 풀 수 없다" {
+        "셋에 후보 그룹이 아직 없으면 금요일 전에는 1:1 을 풀 수 없다" {
             enableSecretMatching()
             val memberId = setupMember()
             completeGroupQuiz(memberId)
@@ -703,12 +715,61 @@ class QuizProgressServiceTest(
             exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
         }
 
+        "배치 뒤 후보 그룹을 받지 못했으면 목요일에 바로 1:1 을 풀 수 있다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            otherMembersGroupExists(groupQuizSetId)
+            val (oneToOneQuizSetId, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            submitAt(memberId, oneToOneQuizzes[0], thursday)
+
+            oneToOneProgressStatus(memberId, oneToOneQuizSetId) shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "그룹 초대를 거절했으면 목요일에 바로 1:1 을 풀 수 있다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            groupMatchMemberRepository.save(inviteToGroup(groupQuizSetId, memberId).apply { decline() })
+            val (oneToOneQuizSetId, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            submitAt(memberId, oneToOneQuizzes[0], thursday)
+
+            oneToOneProgressStatus(memberId, oneToOneQuizSetId) shouldBe QuizProgressStatus.COMPLETED
+        }
+
+        "그룹 초대에 아직 답하지 않았으면 금요일 전에는 1:1 을 풀 수 없다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            groupMatchMemberRepository.save(inviteToGroup(groupQuizSetId, memberId))
+            val (_, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], thursday) }
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+        }
+
+        "수락하고 그룹 성사를 기다리면 목요일에는 못 풀고 금요일부터 풀 수 있다" {
+            enableSecretMatching()
+            val memberId = setupMember()
+            val groupQuizSetId = completeGroupQuiz(memberId)
+            groupMatchMemberRepository.save(inviteToGroup(groupQuizSetId, memberId, acceptedCount = 1).apply { accept() })
+            val (oneToOneQuizSetId, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
+
+            val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], thursday) }
+            submitAt(memberId, oneToOneQuizzes[0], friday)
+
+            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+            oneToOneProgressStatus(memberId, oneToOneQuizSetId) shouldBe QuizProgressStatus.COMPLETED
+        }
+
         "성사된 그룹에 수락했으면 금요일에도 1:1 을 풀 수 없다" {
             enableSecretMatching()
             val memberId = setupMember()
             val groupQuizSetId = completeGroupQuiz(memberId)
-            val formedGroup = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId, acceptedCount = 3))
-            groupMatchMemberRepository.save(GroupMatchMember.candidate(formedGroup.id, memberId).apply { accept() })
+            groupMatchMemberRepository.save(inviteToGroup(groupQuizSetId, memberId, acceptedCount = 3).apply { accept() })
             val (_, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
 
             val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], friday) }
