@@ -1,6 +1,7 @@
 package com.ditto.api.quiz.service
 
 import com.ditto.api.config.quiz.QuizProperties
+import com.ditto.api.match.GroupMatchingStatus
 import com.ditto.api.match.service.GroupMatchingStatusReader
 import com.ditto.api.quiz.dto.QuizProgressResponse
 import com.ditto.api.quiz.dto.QuizSetWithProgressResponse
@@ -55,8 +56,9 @@ class QuizProgressService(
         validateChoice(request.quizId, request.choiceId)
         validateNotCompleted(memberId, quiz.quizSetId)
         val otherTypeProgresses = findOtherTypeProgressesOfWeek(memberId, quizSet)
-        otherTypeProgresses.firstOrNull { it.status == QuizProgressStatus.COMPLETED }?.let {
-            validateGroupFinisherCanTakeOneToOne(submission, quizSet, completedGroupQuizSetId = it.quizSetId)
+        val completedOtherTypeProgress = otherTypeProgresses.firstOrNull { it.status == QuizProgressStatus.COMPLETED }
+        if (completedOtherTypeProgress != null) {
+            validateGroupFinisherCanTakeOneToOne(submission, quizSet, completedOtherTypeProgress.quizSetId)
         }
         discardUnfinishedProgresses(memberId, otherTypeProgresses)
 
@@ -274,24 +276,36 @@ class QuizProgressService(
         return quizProgressRepository.findByMemberIdAndQuizSetIdIn(memberId, otherQuizSetIds)
     }
 
-    // 그룹을 완주했어도 그룹 응답을 기다리지 않으면 1:1 을 풀 수 있다. 판단은 GroupMatchingStatus 에 있다.
+    // 4005 하나로 이유가 갈리지 않아서 허용·거절 모두 판단에 쓴 값을 남긴다.
     private fun validateGroupFinisherCanTakeOneToOne(
         submission: AnswerSubmission,
         quizSet: QuizSet,
-        completedGroupQuizSetId: Long,
+        completedOtherTypeQuizSetId: Long,
     ) {
         val (memberId, now) = submission
-        if (!submission.secretMatchingEnabled || quizSet.matchingType != MatchingType.ONE_TO_ONE) {
-            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
-        }
-        val groupStatus = groupMatchingStatusReader.read(memberId, completedGroupQuizSetId)
-        if (!groupStatus.canTakeOneToOne(quizSet.operationWeek, now)) {
-            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
-        }
+        val groupStatus = findGroupStatusForLateOneToOne(submission, quizSet, completedOtherTypeQuizSetId)
+        val canTakeOneToOne = groupStatus?.canTakeOneToOne(quizSet.operationWeek, now) ?: false
         log.info {
-            "그룹 완주자 1:1 응시 허용: memberId=$memberId quizSetId=${quizSet.id} " +
-                "week=${quizSet.weekStartedOn} groupStatus=$groupStatus"
+            "다른 유형 완주자 제출 ${if (canTakeOneToOne) "허용" else "거절"}: memberId=$memberId " +
+                "quizSetId=${quizSet.id} type=${quizSet.matchingType} week=${quizSet.weekStartedOn} " +
+                "secretMatching=${submission.secretMatchingEnabled} groupStatus=$groupStatus"
         }
+        if (!canTakeOneToOne) {
+            throw WarnException(ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED)
+        }
+    }
+
+    // 응답 기간에는 그룹 상태와 상관없이 한 주 한 유형 그대로라, 마감 뒤 1:1 제출일 때만 그룹 상태를 본다.
+    private fun findGroupStatusForLateOneToOne(
+        submission: AnswerSubmission,
+        quizSet: QuizSet,
+        groupQuizSetId: Long,
+    ): GroupMatchingStatus? {
+        val isLateOneToOne = submission.secretMatchingEnabled &&
+            quizSet.matchingType == MatchingType.ONE_TO_ONE &&
+            submission.now > quizSet.endDate
+        if (!isLateOneToOne) return null
+        return groupMatchingStatusReader.read(submission.memberId, groupQuizSetId)
     }
 
     // 한 주에는 한 유형만 푼다. 다른 유형을 풀다 말았으면 그 답을 지우고 이 유형으로 갈아탄다.
