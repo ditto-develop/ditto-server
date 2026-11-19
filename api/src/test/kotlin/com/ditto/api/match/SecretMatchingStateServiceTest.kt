@@ -157,12 +157,34 @@ class SecretMatchingStateServiceTest(
         }
 
         "1:1 을 안 푼 그룹 완주자" - {
-            "그룹 응답 마감 전에는 NONE 이다" {
+            "셋에 후보 그룹이 아직 없으면 그룹 응답 마감 전에는 NONE 이다" {
                 enableSecretMatching()
                 saveWeekQuizSet()
                 complete(saveWeekQuizSet(MatchingType.GROUP))
 
                 stateAt(thursday).state shouldBe SecretMatchingState.NONE
+            }
+
+            "배치 뒤 후보 그룹을 받지 못했으면 목요일부터 ELIGIBLE 이다" {
+                enableSecretMatching()
+                saveWeekQuizSet()
+                val groupQuizSetId = saveWeekQuizSet(MatchingType.GROUP)
+                complete(groupQuizSetId)
+                val otherGroup = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(otherGroup.id, memberId + 1))
+
+                stateAt(thursday).state shouldBe SecretMatchingState.ELIGIBLE
+            }
+
+            "그룹 초대를 거절했으면 목요일부터 ELIGIBLE 이다" {
+                enableSecretMatching()
+                saveWeekQuizSet()
+                val groupQuizSetId = saveWeekQuizSet(MatchingType.GROUP)
+                complete(groupQuizSetId)
+                val group = groupMatchRepository.save(GroupMatchFixture.create(quizSetId = groupQuizSetId))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(group.id, memberId).apply { decline() })
+
+                stateAt(thursday).state shouldBe SecretMatchingState.ELIGIBLE
             }
 
             "그룹 응답 마감부터 ELIGIBLE 이다" {

@@ -37,7 +37,7 @@ class SecretMatchingCardTest : FreeSpec({
         oneToOneProgress: QuizProgress? = null,
         hasAcceptedOneToOneMatch: Boolean = false,
         isAcceptedInFormedGroup: Boolean = false,
-        hasCompletedGroupQuiz: Boolean = false,
+        groupMatchingStatus: GroupMatchingStatus? = null,
         isUnderWarningSanction: Boolean = false,
         hasSecretCandidates: Boolean = false,
     ) = SecretMatchingFacts(
@@ -47,7 +47,7 @@ class SecretMatchingCardTest : FreeSpec({
         oneToOneProgress = oneToOneProgress,
         hasAcceptedOneToOneMatch = hasAcceptedOneToOneMatch,
         isAcceptedInFormedGroup = isAcceptedInFormedGroup,
-        hasCompletedGroupQuiz = hasCompletedGroupQuiz,
+        groupMatchingStatus = groupMatchingStatus,
         isUnderWarningSanction = isUnderWarningSanction,
         hasSecretCandidates = hasSecretCandidates,
     )
@@ -67,8 +67,12 @@ class SecretMatchingCardTest : FreeSpec({
             ).forEach { cardOf(it).state shouldBe SecretMatchingState.NONE }
         }
 
-        "1:1 을 안 푼 그룹 완주자는 그룹 응답 마감 전까지 NONE 이다" {
-            cardOf(facts(thursday, hasCompletedGroupQuiz = true)).state shouldBe SecretMatchingState.NONE
+        "1:1 을 안 푼 그룹 완주자는 그룹 응답을 기다리는 동안 NONE 이다" {
+            listOf(
+                GroupMatchingStatus.NO_CANDIDATE_GROUPS,
+                GroupMatchingStatus.NOT_RESPONDED,
+                GroupMatchingStatus.WAITING_FOR_GROUP,
+            ).forEach { cardOf(facts(thursday, groupMatchingStatus = it)).state shouldBe SecretMatchingState.NONE }
         }
     }
 
@@ -79,8 +83,15 @@ class SecretMatchingCardTest : FreeSpec({
                 SecretMatchingCard(SecretMatchingState.ELIGIBLE, secondRound)
         }
 
-        "그룹 완주자도 그룹 응답 마감부터 ELIGIBLE 이다" {
-            cardOf(facts(LocalDateTime.of(2026, 11, 20, 0, 0), hasCompletedGroupQuiz = true)).state shouldBe
+        "후보 그룹을 받지 못했거나 거절한 그룹 완주자는 목요일부터 ELIGIBLE 이다" {
+            listOf(GroupMatchingStatus.NOT_INVITED, GroupMatchingStatus.DECLINED).forEach {
+                cardOf(facts(thursday, groupMatchingStatus = it)).state shouldBe SecretMatchingState.ELIGIBLE
+            }
+        }
+
+        "그룹 성사를 기다리던 그룹 완주자도 그룹 응답 마감부터 ELIGIBLE 이다" {
+            val groupResponseDeadline = LocalDateTime.of(2026, 11, 20, 0, 0)
+            cardOf(facts(groupResponseDeadline, groupMatchingStatus = GroupMatchingStatus.WAITING_FOR_GROUP)).state shouldBe
                 SecretMatchingState.ELIGIBLE
         }
 
