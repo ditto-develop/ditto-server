@@ -125,7 +125,7 @@ class NotificationDeepLinksTest : FreeSpec({
             listOf(matchRequest, quizOpened, groupFormed),
         )
 
-        deepLinkById[matchRequest.id] shouldBe "/matching/"
+        deepLinkById[matchRequest.id] shouldBe "/matching/?tab=accept"
         deepLinkById[quizOpened.id] shouldBe "/quiz/current/"
         deepLinkById[groupFormed.id] shouldBe "/chat/group/3/"
         verify(exactly = 0) { chatRoomRepository.findAllById(any<Iterable<Long>>()) }

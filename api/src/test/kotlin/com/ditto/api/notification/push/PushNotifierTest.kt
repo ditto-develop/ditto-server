@@ -242,7 +242,8 @@ class PushNotifierTest : FreeSpec({
         }
 
         "deepLink — 유형이 종류를 내포하면 방을 조회하지 않는다" {
-            sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/"
+            sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/?tab=accept"
+            sentMessage(NotificationType.MATCH_REJECTED).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.MATCH_ACCEPTED).data["deepLink"] shouldBe "/matching/"
             sentMessage(NotificationType.GROUP_NOT_FORMED).data["deepLink"] shouldBe "/matching/group/"
             sentMessage(NotificationType.GROUP_FORMED).data["deepLink"] shouldBe "/chat/group/100/"
