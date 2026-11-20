@@ -124,7 +124,7 @@ enum class NotificationType(
         NotificationCategory.MATCHING,
         NotificationTarget.PERSONAL_MATCH,
         DuplicatePolicy.ONCE_PER_TARGET,
-        DeepLinkTarget.ONE_TO_ONE_MATCHING,
+        DeepLinkTarget.ONE_TO_ONE_MATCHING_ACCEPT_TAB,
     ),
 
     /** 내가 보낸 1:1 대화 신청을 상대가 수락했다. 대상이 매칭 건인 이유는 [MATCH_REJECTED]와 같다. */

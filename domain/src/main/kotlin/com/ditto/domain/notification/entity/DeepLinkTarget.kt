@@ -10,8 +10,11 @@ enum class DeepLinkTarget(val readsTargetRow: Boolean) {
     /** 그 주 매칭 결과. 1:1과 그룹 화면이 달라 퀴즈셋의 매칭 유형을 본다. */
     MATCHING_RESULT(readsTargetRow = true),
 
-    /** 1:1 매칭 화면. 신청·수락·거절이 쓴다. */
+    /** 1:1 매칭 화면. 신청 수락·거절 알림과 시크릿 결과 알림이 쓴다. */
     ONE_TO_ONE_MATCHING(readsTargetRow = false),
+
+    /** 1:1 매칭 화면의 수락하기 탭. 받은 신청이 거기 있다. */
+    ONE_TO_ONE_MATCHING_ACCEPT_TAB(readsTargetRow = false),
 
     /** 그룹 매칭 결과 화면. 미성사 그룹은 열 방이 없어 여기로 보낸다. */
     GROUP_MATCHING(readsTargetRow = false),

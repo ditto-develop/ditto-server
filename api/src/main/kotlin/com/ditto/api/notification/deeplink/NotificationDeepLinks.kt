@@ -36,6 +36,7 @@ class NotificationDeepLinks(
         return when (notification.type.deepLinkTarget) {
             DeepLinkTarget.MATCHING_RESULT -> targetId?.let(lookup.matchingTypeOf)?.let(::matchResultPath)
             DeepLinkTarget.ONE_TO_ONE_MATCHING -> ONE_TO_ONE_MATCHING_PATH
+            DeepLinkTarget.ONE_TO_ONE_MATCHING_ACCEPT_TAB -> ONE_TO_ONE_MATCHING_ACCEPT_TAB_PATH
             DeepLinkTarget.GROUP_MATCHING -> GROUP_MATCHING_PATH
             DeepLinkTarget.GROUP_CHAT_ROOM -> targetId?.let { chatRoomPath(ChatRoomType.GROUP, it) }
             DeepLinkTarget.REMATCH_CHAT_ROOM -> targetId?.let { chatRoomPath(ChatRoomType.REMATCH, it) }
@@ -104,6 +105,7 @@ class NotificationDeepLinks(
 
     companion object {
         private const val ONE_TO_ONE_MATCHING_PATH = "/matching/"
+        private const val ONE_TO_ONE_MATCHING_ACCEPT_TAB_PATH = "$ONE_TO_ONE_MATCHING_PATH?tab=accept"
         private const val GROUP_MATCHING_PATH = "/matching/group/"
         private const val CURRENT_QUIZ_PATH = "/quiz/current/"
         private const val SANCTION_PATH = "/sanction/"

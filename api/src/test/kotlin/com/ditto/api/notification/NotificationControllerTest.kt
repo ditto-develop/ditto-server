@@ -56,7 +56,7 @@ class NotificationControllerTest : RestDocsTest() {
             .andExpect(jsonPath("$.data.notifications[0].title").value("산책러버님의 새 메시지"))
             .andExpect(jsonPath("$.data.notifications[0].category").value("CHAT"))
             .andExpect(jsonPath("$.data.notifications[0].readAt").isEmpty)
-            .andExpect(jsonPath("$.data.notifications[1].deepLink").value("/matching/"))
+            .andExpect(jsonPath("$.data.notifications[1].deepLink").value("/matching/?tab=accept"))
             .andExpect(jsonPath("$.data.nextCursor").isEmpty)
             .andDo(
                 document(

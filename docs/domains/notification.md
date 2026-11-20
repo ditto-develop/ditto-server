@@ -61,7 +61,7 @@
 
 **신고 제재 알림은 검토 결과가 제재(경고·2주 정지·영구 차단)일 때만 간다**(#224). 기각은 알리지 않는다. 신고자에게는 처리됐다는 사실만 알리고 **제재 종류·피신고자를 밝히지 않는다** — 제재는 피신고자의 계정 정보다. 피신고자 문구는 제재 종류(`SanctionLevel`)마다 다르다(경고: 퀴즈 참여가 막히는 주의 월요일, 정지: 해제 시각, 차단: 기간 없음). 둘 다 SYSTEM 이라 수신 설정과 무관하게 푸시가 나가고, 제재가 refresh 토큰만 회수하고 기기 토큰은 남기므로 정지·차단 회원에게도 닿는다. 어드민 직접 제재(신고 없이 어드민이 거는 제재)는 아직 알리지 않는다.
 
-**신청 알림은 수신자에게만, 수락·거절 알림은 신청자에게만 간다.** 행위를 한 본인은 자기가 누른 것이라 알릴 것이 없다. 이동 경로는 둘 다 전용 화면이 없어 `MATCH_RESULT`와 같은 `/matching/`이다. 그룹 초대 거절은 알리지 않는다(`docs/domains/match.md` — 거절당한 그룹의 다른 구성원에게는 알리지 않는다); 1:1만 알린다.
+**신청 알림은 수신자에게만, 수락·거절 알림은 신청자에게만 간다.** 행위를 한 본인은 자기가 누른 것이라 알릴 것이 없다. 이동 경로는 둘 다 전용 화면이 없어 `MATCH_RESULT`와 같은 `/matching/`이고, 신청 알림은 받은 신청이 보이도록 수락하기 탭(`?tab=accept`)으로 연다(#395). 그룹 초대 거절은 알리지 않는다(`docs/domains/match.md` — 거절당한 그룹의 다른 구성원에게는 알리지 않는다); 1:1만 알린다.
 
 \* `VOTE_CREATED`·`VOTE_CLOSED`가 중복을 유형으로 막지 않는 이유: 실제 발행이 생성(방당 열린 투표 1개)·close 의 멱등(실제로 닫은 요청만)으로 이미 한 번이고, 같은 방의 다음 투표 시작·마감은 정당한 새 알림이다. 시작 문구의 "일요일 자정까지"는 방 종료 시각이다 — 투표에는 마감 시각이 없다(`vote.md`). 방 종료 동반 마감(`ROOM_ENDED`)은 알리지 않는다 — 방이 끝났다는 사실은 평가 요청 알림이 이미 말한다.
 
@@ -102,9 +102,9 @@
   리마인드·종료 임박·투표 생성/마감) 푸시를 보내지 않는다. 모두 `target_id = chat_room.id`라 같은 사건의 알림은 방 멤버를 한 번만 읽는다.
   토글과 같이 **센터 적재는 막지 않는다.** 평가 요청처럼 끝난 방을 가리키는 MATCHING 알림은 방을 꺼도 나간다.
 - **payload** — `notification`(title·body는 저장 문구 그대로) + `data`(전부 문자열: `notificationId`·`type`·`deepLink`).
-- **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`). 채팅 계열은 방 종류로 갈린다
+- **deepLink** — FE 라우트 경로, **끝 슬래시 필수**(`trailingSlash: true`, 쿼리는 슬래시 뒤). 채팅 계열은 방 종류로 갈린다
   (GROUP→`/chat/group/{id}/`, PERSONAL·REMATCH→`/chat/one-on-one/{id}/` — FE 방 목록과 같은 이분법).
-  `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`·`MATCH_ACCEPTED`·`MATCH_REJECTED`·`SECRET_MATCH_RESULT`→`/matching/`(1:1 전용이라 분기 없음), `SECRET_MATCH_REMINDER`→없음(목~일에는 이번 주 퀴즈 화면이 비어 있어 홈 카드에서 퀴즈로 들어간다), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
+  `MATCH_RESULT`·`NO_MATCH`→그 주 퀴즈셋의 매칭 유형으로 갈린다(1:1→`/matching/`, 그룹→`/matching/group/` — 채팅과 같은 이분법. 퀴즈셋이 없으면 유형을 몰라 deepLink 없이), `MATCH_REQUESTED`→`/matching/?tab=accept`, `MATCH_ACCEPTED`·`MATCH_REJECTED`·`SECRET_MATCH_RESULT`→`/matching/`(1:1 전용이라 분기 없음), `SECRET_MATCH_REMINDER`→없음(목~일에는 이번 주 퀴즈 화면이 비어 있어 홈 카드에서 퀴즈로 들어간다), `GROUP_NOT_FORMED`→`/matching/group/`, `QUIZ_OPENED`·`QUIZ_CLOSING_SOON`→`/quiz/current/`, `REVIEW_REQUEST`·`REVIEW_REMINDER`→방 경로+`rate/`, `REMATCH_REQUESTED`·`REMATCH_REJECTED`→쌍이 나온 그룹 방 경로+`rate/`(의사를 제출하는 화면), `SYSTEM_NOTICE`·`REPORT_ACTIONED`→없음(탭하면 앱만 열림 — `target_id`는 추적용), `SANCTION_IMPOSED`→`/sanction/`(제재 회원이 열 수 있는 유일한 안내 화면).
   방이 지워졌으면 deepLink 없이 보낸다.
   알림 목록 응답(`NotificationResponse.deepLink`)도 같은 값을 준다. 알림 센터가 `type`·`targetId`로 행선지를 따로 정하면
   푸시와 어긋나고, 방 목록에 없는 방(나간 방)은 찾지 못하기 때문이다. 유형마다 갈 화면의 종류는

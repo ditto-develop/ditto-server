@@ -241,9 +241,13 @@ class PushNotifierTest : FreeSpec({
             sentMessage(NotificationType.MATCH_RESULT, quizSet = null).data["deepLink"] shouldBe null
         }
 
-        "deepLink — 유형이 종류를 내포하면 방을 조회하지 않는다" {
-            sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/"
+        "deepLink — 대화 신청은 수락하기 탭으로, 수락·거절은 1:1 매칭 화면으로 간다" {
+            sentMessage(NotificationType.MATCH_REQUESTED).data["deepLink"] shouldBe "/matching/?tab=accept"
             sentMessage(NotificationType.MATCH_ACCEPTED).data["deepLink"] shouldBe "/matching/"
+            sentMessage(NotificationType.MATCH_REJECTED).data["deepLink"] shouldBe "/matching/"
+        }
+
+        "deepLink — 유형이 종류를 내포하면 방을 조회하지 않는다" {
             sentMessage(NotificationType.GROUP_NOT_FORMED).data["deepLink"] shouldBe "/matching/group/"
             sentMessage(NotificationType.GROUP_FORMED).data["deepLink"] shouldBe "/chat/group/100/"
             sentMessage(NotificationType.VOTE_CREATED).data["deepLink"] shouldBe "/chat/group/100/"
