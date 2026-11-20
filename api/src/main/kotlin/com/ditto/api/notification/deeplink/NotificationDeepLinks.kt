@@ -105,7 +105,7 @@ class NotificationDeepLinks(
 
     companion object {
         private const val ONE_TO_ONE_MATCHING_PATH = "/matching/"
-        private const val ONE_TO_ONE_MATCHING_ACCEPT_TAB_PATH = "/matching/?tab=accept"
+        private const val ONE_TO_ONE_MATCHING_ACCEPT_TAB_PATH = "$ONE_TO_ONE_MATCHING_PATH?tab=accept"
         private const val GROUP_MATCHING_PATH = "/matching/group/"
         private const val CURRENT_QUIZ_PATH = "/quiz/current/"
         private const val SANCTION_PATH = "/sanction/"
