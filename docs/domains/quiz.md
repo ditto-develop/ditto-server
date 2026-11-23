@@ -29,7 +29,7 @@
   - **예외(시크릿 매칭, `SECRET_MATCHING` 플래그)**: 그룹을 완주했어도 응답 마감 뒤에는 그 주 그룹 상태에 따라 1:1 을 풀 수 있고 그룹 답은 남는다. 그래서 목요일부터는 한 회원이 같은 주에 두 유형을 완주할 수 있다([ADR 0053](../adr/0053-late-one-to-one-submission-for-secret-matching.md), [ADR 0055](../adr/0055-group-finisher-one-to-one-by-group-response.md)). 판단은 `GroupMatchingStatus.canTakeOneToOne` 한 곳이다.
     - 셋에 후보 그룹은 있는데 내 그룹이 없거나(`NOT_INVITED`), 초대를 모두 거절했으면(`DECLINED`) 바로 풀 수 있다.
     - 셋에 후보 그룹이 하나도 없거나(`NO_CANDIDATE_GROUPS`, 배치 전 또는 셋 전체 0그룹), 수락하고 성사를 기다리면(`WAITING_FOR_GROUP`) 그룹 응답 마감(금 00:00)부터 풀 수 있다.
-    - 아직 응답 전이면(`NOT_RESPONDED`) 마감 뒤에도 풀 수 없다. 금 00:00 뒤 1분 안에 참여로 바뀌어 그룹이 성사되면 `JOINED_GROUP`, 인원이 모자라면 `WAITING_FOR_GROUP`이 된다([ADR 0056](../adr/0056-group-invitation-default-join.md)).
+    - 아직 응답 전이면(`NOT_RESPONDED`) 마감 뒤에도 풀 수 없다. 금 00:00 뒤 1분 안에 참여로 바뀌어 그룹이 성사되면 `JOINED_GROUP`, 인원이 모자라면 `WAITING_FOR_GROUP`이 된다. 그룹 방이 이미 끝났으면 거절(`DECLINED`)로 바뀌어 바로 풀 수 있다([ADR 0056](../adr/0056-group-invitation-default-join.md)).
     - 수락한 그룹이 성사됐으면(`JOINED_GROUP`) 채팅방을 나갔어도 풀 수 없다.
     - 응답 기간(월~수)에는 그룹 상태와 상관없이 막는다. 응답 기간에 그룹 셋을 다시 만들면 위 상태가 미리 생길 수 있어서다.
     - 막은 이유는 4005 하나로 묶여 있어, 허용·거절 모두 `다른 유형 완주자 제출 허용/거절:` 로그 한 줄에 그룹 상태를 남긴다.

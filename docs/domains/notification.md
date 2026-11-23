@@ -41,7 +41,7 @@
 | `MATCH_REJECTED` | MATCHING | `personal_match.id` | 대상당 1회 | `PersonalMatchController.rejectMatch` → `PersonalMatchNotifier` |
 | `REVIEW_REQUEST` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `ChatRoomLifecycleScheduler`·`ChatController.end`·`ChatController.leave`(1:1 종료·그룹 해체, 열린 그룹 방에서 나간 사람에게는 그 순간 `notifyLeaver`) → `ReviewRequestNotifier`. 나간 사람도 받는다 |
 | `REVIEW_REMINDER` | MATCHING | `chat_room.id`(끝난 방) | 대상당 1회 | `WeeklyNotificationScheduler`(월 09:00, 프로퍼티) → `ReviewReminderNotifier` — 최근 7일 안에 열린 활성 회원의 미완료 평가 |
-| `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` — 재매칭 방은 상대 닉네임이 들어간 문구(유형은 같다). 마감 자동 참여로 사람이 들어간 이미 열린 그룹 방은 개방 대상이 아니라 스케줄러가 따로 넘긴다 |
+| `CHAT_ROOM_OPENED` | CHAT | `chat_room.id`(열린 방) | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatRoomOpenedNotifier` — 재매칭 방은 상대 닉네임이 들어간 문구(유형은 같다). 이미 열린 그룹 방에 마감 자동 참여로 사람이 들어가면 개방 대상이 아니라서 스케줄러가 따로 넘긴다 |
 | `CHAT_MESSAGE` | CHAT | `chat_room.id` | 안읽은 것 접기 | `ChatStompController` → `ChatMessageNotifier` |
 | `CHAT_NO_MESSAGE` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatNoMessageNotifier`(개방 12시간 후, 프로퍼티) |
 | `CHAT_ENDING_SOON` | CHAT | `chat_room.id` | 대상당 1회 | `ChatRoomLifecycleScheduler` → `ChatEndingSoonNotifier` |

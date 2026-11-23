@@ -17,7 +17,7 @@
 |---|---|
 | `NOT_INVITED` 셋에 후보 그룹은 있는데 내 그룹이 없음, `DECLINED` 초대를 모두 거절 | 바로 |
 | `NO_CANDIDATE_GROUPS` 셋에 후보 그룹이 하나도 없음, `WAITING_FOR_GROUP` 수락하고 성사 대기 | 그룹 응답 마감(금 00:00)부터 |
-| `NOT_RESPONDED` 아직 응답 전 | 마감에 참여로 바뀐 뒤 위 상태를 따른다([ADR 0056](0056-group-invitation-default-join.md)) |
+| `NOT_RESPONDED` 아직 응답 전 | 마감 뒤에도 막는다. 참여로 바뀌면 `WAITING_FOR_GROUP`이나 `JOINED_GROUP`을 따른다([ADR 0056](0056-group-invitation-default-join.md)) |
 | `JOINED_GROUP` 수락한 그룹이 성사됨(채팅방을 나갔어도) | 대상 아님 |
 
 - 그룹 배치가 끝났다는 기록이 따로 없어서, 그 셋에 후보 그룹이 하나라도 있으면 끝난 것으로 본다. 목 00:01이 지났는지로 판단하면, 배치가 도는 사이나 실패 뒤 재시도 중에 1:1 을 낸 사람이 그룹 초대까지 받을 수 있다.
