@@ -136,7 +136,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
 
     "그룹 미응답 자동 참여" - {
 
-        "개방보다 먼저 해서 이미 예약된 방에 들어간 사람도 같은 주기에 오픈 알림을 받는다" {
+        "개방보다 먼저 돈다" {
             scheduler.sweep()
 
             verifyOrder {
@@ -145,15 +145,15 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             }
         }
 
-        "자동 참여로 새로 성사된 방도 오픈 알림으로 넘긴다" {
+        "자동 참여로 사람이 들어간 열린 방도 오픈 알림으로 넘긴다" {
             val opened = listOf(ChatRoomFixture.personal(id = 11L))
-            val formedByDefault = listOf(ChatRoomFixture.group(id = 12L))
+            val autoJoinedOpenRooms = listOf(ChatRoomFixture.group(id = 12L))
             every { chatRoomEndService.openDue(any()) } returns opened
-            every { unansweredGroupInvitationJoiner.joinUnanswered(any()) } returns formedByDefault
+            every { unansweredGroupInvitationJoiner.joinUnanswered(any()) } returns autoJoinedOpenRooms
 
             scheduler.sweep()
 
-            verify { chatRoomOpenedNotifier.notifyOpened(opened + formedByDefault) }
+            verify { chatRoomOpenedNotifier.notifyOpened(opened + autoJoinedOpenRooms) }
         }
 
         "자동 참여가 실패해도 같은 주기의 개방과 마감은 돈다" {

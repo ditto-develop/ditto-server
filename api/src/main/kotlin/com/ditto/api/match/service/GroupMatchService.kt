@@ -7,10 +7,15 @@ import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomStatus
+import com.ditto.domain.chat.entity.ChatRoomType
+import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.member.repository.MemberRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -28,6 +33,8 @@ class GroupMatchService(
     private val chatService: ChatService,
     private val notificationAppender: NotificationAppender,
     private val matchWeekPolicy: MatchWeekPolicy,
+    private val memberRepository: MemberRepository,
+    private val chatRoomRepository: ChatRoomRepository,
 ) {
 
     /**
@@ -82,9 +89,9 @@ class GroupMatchService(
      * 응답 마감까지 수락도 거절도 하지 않은 초대를 참여로 바꾼다. 그룹 초대의 기본값이 참여다.
      * 마감이 지났는지는 호출자가 본다.
      *
+     * 활동 중이 아닌 회원(탈퇴·정지·차단)의 초대와, 성사됐다가 이미 끝난 방의 초대는 거절로 바꾼다.
      * 성사 알림은 보내지 않는다. 마감이 채팅 개방과 같은 순간이라 채팅방 오픈 알림과 겹친다.
-     *
-     * @return 이번에 성사돼 새로 만든 채팅방 ID. 인원이 모자라거나 이미 성사돼 있었으면 null.
+     * 새로 들어간 사람이 있고 방이 이미 열려 있으면 오픈 알림을 보낼 그 방 ID 를, 아니면 null 을 돌려준다.
      */
     @Transactional
     fun joinUnansweredInvitations(groupMatchId: Long): Long? {
@@ -93,19 +100,29 @@ class GroupMatchService(
         val unanswered = invitations.filter { it.isPending() }
         if (unanswered.isEmpty()) return null
 
-        val wasFormed = room.isActive
-        unanswered.forEach {
+        val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)
+        if (chatRoom?.status == ChatRoomStatus.ENDED) {
+            unanswered.forEach { it.decline() }
+            return null
+        }
+
+        val (joining, inactive) = partitionByActiveMember(unanswered)
+        inactive.forEach { it.decline() }
+        val wasAlreadyFormed = room.isActive
+        joining.forEach {
             it.accept()
             room.recordAcceptance()
         }
-        if (wasFormed) {
-            unanswered.forEach { chatService.addGroupRoomMember(groupMatchId, it.memberId) }
-            return null
-        }
-        if (!room.isActive) return null
 
-        val acceptedMemberIds = invitations.filter { it.status == InvitationStatus.ACCEPTED }.map { it.memberId }
-        return chatService.createGroupRoom(groupMatchId, acceptedMemberIds)
+        return when {
+            joining.isEmpty() -> null
+            wasAlreadyFormed -> addToFormedGroupChat(groupMatchId, joining, chatRoom)
+            room.isActive -> chatService.createGroupRoom(
+                groupMatchId,
+                invitations.filter { it.status == InvitationStatus.ACCEPTED }.map { it.memberId },
+            )
+            else -> null
+        }
     }
 
     /**
@@ -127,6 +144,22 @@ class GroupMatchService(
             .toSet()
 
         otherPending.filter { it.roomId in sameQuizSetRoomIds }.forEach { it.decline() }
+    }
+
+    private fun partitionByActiveMember(
+        invitations: List<GroupMatchMember>,
+    ): Pair<List<GroupMatchMember>, List<GroupMatchMember>> {
+        val activeMemberIds = memberRepository.findAllById(invitations.map { it.memberId })
+            .filter { it.isActive() }
+            .map { it.id }
+            .toSet()
+        return invitations.partition { it.memberId in activeMemberIds }
+    }
+
+    // 열리기 전인 방이면 개방할 때 오픈 알림이 가므로 돌려주지 않는다.
+    private fun addToFormedGroupChat(groupMatchId: Long, joining: List<GroupMatchMember>, chatRoom: ChatRoom?): Long? {
+        joining.forEach { chatService.addGroupRoomMember(groupMatchId, it.memberId) }
+        return chatRoom?.takeIf { it.status == ChatRoomStatus.ACTIVE }?.id
     }
 
     private fun pendingInvitationIn(myInvitations: List<GroupMatchMember>, groupMatchId: Long): GroupMatchMember {

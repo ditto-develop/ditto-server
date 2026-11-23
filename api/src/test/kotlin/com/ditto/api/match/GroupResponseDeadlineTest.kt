@@ -43,4 +43,21 @@ class GroupResponseDeadlineTest : FreeSpec({
             GroupResponseDeadline.latestClosedWeek(LocalDateTime.of(2026, 6, 8, 0, 0)) shouldBe thisWeek
         }
     }
+
+    "isAutoJoinPeriod" - {
+        val chatEnd = LocalDateTime.of(2026, 6, 8, 0, 0)
+
+        "마감 전에는 아니다" {
+            GroupResponseDeadline.isAutoJoinPeriod(thisWeek, deadline.minusMinutes(1)) shouldBe false
+        }
+
+        "마감 정각부터 채팅이 끝나기 직전까지다" {
+            GroupResponseDeadline.isAutoJoinPeriod(thisWeek, deadline) shouldBe true
+            GroupResponseDeadline.isAutoJoinPeriod(thisWeek, chatEnd.minusMinutes(1)) shouldBe true
+        }
+
+        "그 주 채팅이 끝나는 월 00:00부터는 아니다" {
+            GroupResponseDeadline.isAutoJoinPeriod(thisWeek, chatEnd) shouldBe false
+        }
+    }
 })

@@ -4,6 +4,7 @@ import com.ditto.api.match.service.GroupMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
@@ -13,6 +14,9 @@ import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.member.MemberFixture
+import com.ditto.domain.member.entity.MemberStatus
+import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizSetFixture
@@ -23,6 +27,7 @@ import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -37,6 +42,7 @@ class GroupMatchServiceTest(
     private val quizSetRepository: QuizSetRepository,
     private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
     private val notificationRepository: NotificationRepository,
+    private val memberRepository: MemberRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -289,77 +295,144 @@ class GroupMatchServiceTest(
 
         "미응답 자동 참여" - {
             val deadline = thisMonday.plusDays(4).atStartOfDay()
+            var memberSequence = 0
 
-            fun chatMemberIdsOf(roomId: Long): List<Long> {
-                val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId)!!
-                return chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom.id)).map { it.memberId }
+            fun saveMember(status: MemberStatus = MemberStatus.ACTIVE): Long {
+                memberSequence++
+                return memberRepository.save(
+                    MemberFixture.create(
+                        nickname = "회원$memberSequence",
+                        email = "member$memberSequence@example.com",
+                        status = status,
+                    ),
+                ).id
+            }
+
+            fun saveActiveMembers(count: Int): List<Long> = List(count) { saveMember() }
+
+            fun groupChatRoomOf(groupMatchId: Long): ChatRoom =
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId).shouldNotBeNull()
+
+            fun chatMemberIdsOfGroup(groupMatchId: Long): List<Long> =
+                chatRoomMemberRepository.findByRoomIdIn(listOf(groupChatRoomOf(groupMatchId).id)).map { it.memberId }
+
+            // 서버 시각이 수요일이라 성사된 방은 금요일 개방을 기다린다.
+            fun formGroupBeforeDeadline(memberIds: List<Long>): Long {
+                val groupMatchId = saveCandidateGroup(memberIds)
+                memberIds.take(3).forEach { groupMatchService.acceptGroupMatch(it, groupMatchId) }
+                return groupMatchId
             }
 
             "거절하지 않은 사람이 3명 이상이면 미응답자를 참여로 바꿔 성사시키고 바로 열린 채팅방을 만든다" {
-                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
-                groupMatchService.acceptGroupMatch(1L, roomId)
-                groupMatchService.declineGroupMatch(4L, roomId)
+                val (accepted, first, second, declined) = saveActiveMembers(4)
+                val groupMatchId = saveCandidateGroup(listOf(accepted, first, second, declined))
+                groupMatchService.acceptGroupMatch(accepted, groupMatchId)
+                groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
 
-                statusOf(roomId, 2L) shouldBe InvitationStatus.ACCEPTED
-                statusOf(roomId, 3L) shouldBe InvitationStatus.ACCEPTED
-                statusOf(roomId, 4L) shouldBe InvitationStatus.DECLINED
-                val group = groupMatchRepository.findById(roomId).get()
+                statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, second) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, declined) shouldBe InvitationStatus.DECLINED
+                val group = groupMatchRepository.findById(groupMatchId).get()
                 group.isActive shouldBe true
                 group.acceptedCount shouldBe 3
-                val chatRoom = chatRoomRepository.findById(chatRoomId!!).get()
+                val chatRoom = groupChatRoomOf(groupMatchId)
+                chatRoomId shouldBe chatRoom.id
                 chatRoom.status shouldBe ChatRoomStatus.ACTIVE
-                chatMemberIdsOf(roomId) shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L)
+                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder listOf(accepted, first, second)
             }
 
             "거절하지 않은 사람이 3명 미만이면 참여로만 바꾸고 성사시키지 않는다" {
-                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
-                groupMatchService.declineGroupMatch(3L, roomId)
+                val (first, second, declined) = saveActiveMembers(3)
+                val groupMatchId = saveCandidateGroup(listOf(first, second, declined))
+                groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
 
                 chatRoomId shouldBe null
-                statusOf(roomId, 1L) shouldBe InvitationStatus.ACCEPTED
-                statusOf(roomId, 2L) shouldBe InvitationStatus.ACCEPTED
-                groupMatchRepository.findById(roomId).get().isActive shouldBe false
-                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId) shouldBe null
+                statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, second) shouldBe InvitationStatus.ACCEPTED
+                groupMatchRepository.findById(groupMatchId).get().isActive shouldBe false
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId) shouldBe null
             }
 
-            "이미 성사된 그룹이면 미응답자를 있던 채팅방에 넣는다" {
-                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
-                listOf(1L, 2L, 3L).forEach { groupMatchService.acceptGroupMatch(it, roomId) }
+            "활동 중이 아닌 회원의 초대는 거절로 바꾸고 인원에 넣지 않는다" {
+                val (first, second) = saveActiveMembers(2)
+                val left = saveMember(MemberStatus.LEFT)
+                val suspended = saveMember(MemberStatus.SUSPENDED)
+                val groupMatchId = saveCandidateGroup(listOf(first, second, left, suspended))
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+                groupMatchService.joinUnansweredInvitations(groupMatchId) shouldBe null
+
+                statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, left) shouldBe InvitationStatus.DECLINED
+                statusOf(groupMatchId, suspended) shouldBe InvitationStatus.DECLINED
+                val group = groupMatchRepository.findById(groupMatchId).get()
+                group.acceptedCount shouldBe 2
+                group.isActive shouldBe false
+            }
+
+            "성사돼 개방을 기다리는 방이면 미응답자를 그 방에 넣고 방은 돌려주지 않는다" {
+                val memberIds = saveActiveMembers(4)
+                val groupMatchId = formGroupBeforeDeadline(memberIds)
+                overrideServerTime(deadline)
+
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
 
                 chatRoomId shouldBe null
-                statusOf(roomId, 4L) shouldBe InvitationStatus.ACCEPTED
-                groupMatchRepository.findById(roomId).get().acceptedCount shouldBe 4
-                chatMemberIdsOf(roomId) shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L, 4L)
+                statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.ACCEPTED
+                groupMatchRepository.findById(groupMatchId).get().acceptedCount shouldBe 4
+                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds
+            }
+
+            "이미 열린 방이면 미응답자를 넣고 오픈 알림을 받도록 그 방을 돌려준다" {
+                val memberIds = saveActiveMembers(4)
+                val groupMatchId = formGroupBeforeDeadline(memberIds)
+                chatRoomRepository.save(groupChatRoomOf(groupMatchId).apply { open(deadline) })
+                overrideServerTime(deadline)
+
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
+
+                chatRoomId shouldBe groupChatRoomOf(groupMatchId).id
+                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds
+            }
+
+            "성사됐다가 이미 끝난 방이면 미응답자를 거절로 바꾸고 방에 넣지 않는다" {
+                val memberIds = saveActiveMembers(4)
+                val groupMatchId = formGroupBeforeDeadline(memberIds)
+                chatRoomRepository.save(groupChatRoomOf(groupMatchId).apply { endByInsufficientMembers(deadline) })
+                overrideServerTime(deadline)
+
+                groupMatchService.joinUnansweredInvitations(groupMatchId) shouldBe null
+
+                statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.DECLINED
+                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds.take(3)
             }
 
             "자동 참여로 성사돼도 성사 알림은 보내지 않는다" {
-                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                val memberIds = saveActiveMembers(3)
+                val groupMatchId = saveCandidateGroup(memberIds)
                 overrideServerTime(deadline)
 
-                groupMatchService.joinUnansweredInvitations(roomId)
+                groupMatchService.joinUnansweredInvitations(groupMatchId)
 
-                notificationRepository.findByMemberIdIn(listOf(1L, 2L, 3L))
+                notificationRepository.findByMemberIdIn(memberIds)
                     .filter { it.type == NotificationType.GROUP_FORMED } shouldBe emptyList()
             }
 
             "다시 불러도 결과가 같다" {
-                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                val groupMatchId = saveCandidateGroup(saveActiveMembers(3))
                 overrideServerTime(deadline)
-                groupMatchService.joinUnansweredInvitations(roomId)
+                groupMatchService.joinUnansweredInvitations(groupMatchId)
 
-                val chatRoomIdOnSecondRun = groupMatchService.joinUnansweredInvitations(roomId)
+                val chatRoomIdOnSecondRun = groupMatchService.joinUnansweredInvitations(groupMatchId)
 
                 chatRoomIdOnSecondRun shouldBe null
-                groupMatchRepository.findById(roomId).get().acceptedCount shouldBe 3
+                groupMatchRepository.findById(groupMatchId).get().acceptedCount shouldBe 3
             }
         }
     },

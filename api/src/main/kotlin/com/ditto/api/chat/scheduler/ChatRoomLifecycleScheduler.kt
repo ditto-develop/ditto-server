@@ -84,14 +84,14 @@ class ChatRoomLifecycleScheduler(
     )
     fun sweep() {
         val serverNow = serverTimeProvider.now()
-        // 예약 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
+        // 예약 → 그룹 자동 참여 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
         // 있다 — 오버라이드가 예약된 금요일 이후를 가리키면 openDue 가 곧바로 집어간다.
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
-        // 자동 참여를 개방 앞에 둔다. 이미 성사돼 예약된 방에 들어간 사람도 같은 주기의 오픈 알림을 받는다.
-        // 자동 참여로 새로 성사된 방은 처음부터 열린 채로 만들어져 개방 대상이 아니라서 따로 넘긴다.
-        val formedByDefault = joinUnansweredGroupInvitations(serverNow)
+        // 자동 참여를 개방 앞에 둔다. 개방을 기다리던 방에 들어간 사람도 같은 주기에 오픈 알림을 받는다.
+        // 이미 열린 방에 들어간 사람은 개방 대상이 아니라 따로 넘긴다.
+        val autoJoinedOpenRooms = joinUnansweredGroupInvitations(serverNow)
         val opened = chatRoomEndService.openDue(serverNow)
-        chatRoomOpenedNotifier.notifyOpened(opened + formedByDefault)
+        chatRoomOpenedNotifier.notifyOpened(opened + autoJoinedOpenRooms)
         createHints(serverNow)
 
         val ended = chatRoomEndService.endExpired(serverNow)
@@ -110,7 +110,7 @@ class ChatRoomLifecycleScheduler(
         unformedGroupNotifier.notifyUnformed(serverNow)
     }
 
-    /** 개방 앞에 있어서 여기서 실패해도 같은 주기의 개방·마감은 돌게 한다. 남은 초대는 다음 주기가 다시 집는다. */
+    /** 개방 앞에 있어서 여기서 실패해도 같은 주기의 개방·마감은 돌게 한다. */
     private fun joinUnansweredGroupInvitations(serverNow: LocalDateTime): List<ChatRoom> =
         runCatchingExceptions { unansweredGroupInvitationJoiner.joinUnanswered(serverNow) }
             .onFailure { logger.warn(it) { "그룹 미응답 자동 참여 단계 실패, 다음 주기에 다시 한다" } }

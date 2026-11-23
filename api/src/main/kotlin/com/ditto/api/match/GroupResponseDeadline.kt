@@ -23,6 +23,10 @@ object GroupResponseDeadline {
         return OperationWeek(thisWeek.startedOn.minusWeeks(1))
     }
 
+    /** 미응답 초대를 참여로 바꾸는 동안인지. 마감부터 그 주 채팅이 끝나는 월 00:00 전까지다. */
+    fun isAutoJoinPeriod(week: OperationWeek, now: LocalDateTime): Boolean =
+        hasPassed(week, now) && now < ChatPeriod.weekendOf(week.startedOn.atStartOfDay()).expiresAt
+
     fun deadlineOf(week: OperationWeek): LocalDateTime =
         ChatPeriod.weekendOf(week.startedOn.atStartOfDay()).opensAt
 }

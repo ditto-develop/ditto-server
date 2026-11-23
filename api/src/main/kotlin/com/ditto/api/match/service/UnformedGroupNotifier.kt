@@ -29,6 +29,9 @@ private val log = KotlinLogging.logger {}
  * 다시 통과한다. 그래서 스캔을 최근 [NOTIFIABLE_WINDOW_DAYS]일로 자른다. 마감 직후 안내라
  * 지난 주차를 다시 집을 이유도 없다.
  *
+ * 미응답 초대가 남은 그룹은 자동 참여가 처리할 때까지 건너뛴다. 자동 참여가 실패한 주기에 안내가 먼저 나가면
+ * "인원 미달" 알림 뒤에 그룹이 성사될 수 있다.
+ *
  * 그 주 시크릿 매칭 라운드가 남아 있으면 1:1 퀴즈를 풀어 참여할 수 있다고 안내한다.
  */
 @Service
@@ -53,14 +56,20 @@ class UnformedGroupNotifier(
 
         var notified = 0
         unformed.forEach { group ->
-            val acceptedMemberIds = groupMatchMemberRepository.findByRoomId(group.id)
+            val week = weekByQuizSetId[group.quizSetId]
+            val invitations = groupMatchMemberRepository.findByRoomId(group.id)
+            val waitingForAutoJoin = week != null &&
+                invitations.any { it.isPending() } &&
+                GroupResponseDeadline.isAutoJoinPeriod(week, now)
+            if (waitingForAutoJoin) return@forEach
+
+            val acceptedMemberIds = invitations
                 .filter { it.status == InvitationStatus.ACCEPTED }
                 .map { it.memberId }
             // 아무도 수락하지 않은 후보 그룹이 대부분이다 — 알릴 사람이 없으면 조용히 넘긴다.
             if (acceptedMemberIds.isEmpty()) return@forEach
 
-            val secretRoundAt = weekByQuizSetId[group.quizSetId]
-                ?.let { upcomingSecretRoundFinder.nextRoundToAnnounce(it, now) }
+            val secretRoundAt = week?.let { upcomingSecretRoundFinder.nextRoundToAnnounce(it, now) }
             notified += notificationAppender.appendAll(
                 memberIds = acceptedMemberIds,
                 content = NotificationMessages.groupNotFormed(secretRoundAt),
