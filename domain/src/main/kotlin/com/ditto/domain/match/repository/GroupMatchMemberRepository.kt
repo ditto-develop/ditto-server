@@ -33,6 +33,14 @@ interface GroupMatchMemberRepository : JpaRepository<GroupMatchMember, Long>, Gr
     @Transactional(propagation = Propagation.MANDATORY)
     fun findWithLockByMemberId(memberId: Long): List<GroupMatchMember>
 
+    /**
+     * 미응답 자동 참여 전용 잠금 조회. 방 잠금 뒤에 부른다(방 → 초대 순서, ADR 0011 규칙 3).
+     * 마감 직전에 들어온 거절이 먼저 행을 바꿨다면 그 결과를 읽고 덮어쓰지 않으려고 잠근다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun findWithLockByRoomId(roomId: Long): List<GroupMatchMember>
+
     fun findByRoomId(roomId: Long): List<GroupMatchMember>
 
     fun findByRoomIdIn(roomIds: List<Long>): List<GroupMatchMember>

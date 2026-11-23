@@ -4,6 +4,7 @@ import com.ditto.api.match.service.GroupMatchService
 import com.ditto.api.support.IntegrationTest
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
+import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomMemberRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -12,6 +13,8 @@ import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.notification.entity.NotificationType
+import com.ditto.domain.notification.repository.NotificationRepository
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.entity.MatchingType
 import com.ditto.domain.quiz.repository.QuizSetRepository
@@ -33,6 +36,7 @@ class GroupMatchServiceTest(
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
     private val quizSetRepository: QuizSetRepository,
     private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
+    private val notificationRepository: NotificationRepository,
     dataSource: DataSource,
 ) : IntegrationTest(
     dataSource,
@@ -280,6 +284,82 @@ class GroupMatchServiceTest(
                 val exception = shouldThrow<WarnException> { groupMatchService.declineGroupMatch(1L, roomId) }
 
                 exception.errorCode shouldBe ErrorCode.NOT_MATCHING_PERIOD
+            }
+        }
+
+        "미응답 자동 참여" - {
+            val deadline = thisMonday.plusDays(4).atStartOfDay()
+
+            fun chatMemberIdsOf(roomId: Long): List<Long> {
+                val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId)!!
+                return chatRoomMemberRepository.findByRoomIdIn(listOf(chatRoom.id)).map { it.memberId }
+            }
+
+            "거절하지 않은 사람이 3명 이상이면 미응답자를 참여로 바꿔 성사시키고 바로 열린 채팅방을 만든다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
+                groupMatchService.acceptGroupMatch(1L, roomId)
+                groupMatchService.declineGroupMatch(4L, roomId)
+                overrideServerTime(deadline)
+
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+
+                statusOf(roomId, 2L) shouldBe InvitationStatus.ACCEPTED
+                statusOf(roomId, 3L) shouldBe InvitationStatus.ACCEPTED
+                statusOf(roomId, 4L) shouldBe InvitationStatus.DECLINED
+                val group = groupMatchRepository.findById(roomId).get()
+                group.isActive shouldBe true
+                group.acceptedCount shouldBe 3
+                val chatRoom = chatRoomRepository.findById(chatRoomId!!).get()
+                chatRoom.status shouldBe ChatRoomStatus.ACTIVE
+                chatMemberIdsOf(roomId) shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L)
+            }
+
+            "거절하지 않은 사람이 3명 미만이면 참여로만 바꾸고 성사시키지 않는다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                groupMatchService.declineGroupMatch(3L, roomId)
+                overrideServerTime(deadline)
+
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+
+                chatRoomId shouldBe null
+                statusOf(roomId, 1L) shouldBe InvitationStatus.ACCEPTED
+                statusOf(roomId, 2L) shouldBe InvitationStatus.ACCEPTED
+                groupMatchRepository.findById(roomId).get().isActive shouldBe false
+                chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, roomId) shouldBe null
+            }
+
+            "이미 성사된 그룹이면 미응답자를 있던 채팅방에 넣는다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L, 4L))
+                listOf(1L, 2L, 3L).forEach { groupMatchService.acceptGroupMatch(it, roomId) }
+                overrideServerTime(deadline)
+
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(roomId)
+
+                chatRoomId shouldBe null
+                statusOf(roomId, 4L) shouldBe InvitationStatus.ACCEPTED
+                groupMatchRepository.findById(roomId).get().acceptedCount shouldBe 4
+                chatMemberIdsOf(roomId) shouldContainExactlyInAnyOrder listOf(1L, 2L, 3L, 4L)
+            }
+
+            "자동 참여로 성사돼도 성사 알림은 보내지 않는다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                overrideServerTime(deadline)
+
+                groupMatchService.joinUnansweredInvitations(roomId)
+
+                notificationRepository.findByMemberIdIn(listOf(1L, 2L, 3L))
+                    .filter { it.type == NotificationType.GROUP_FORMED } shouldBe emptyList()
+            }
+
+            "다시 불러도 결과가 같다" {
+                val roomId = saveCandidateGroup(listOf(1L, 2L, 3L))
+                overrideServerTime(deadline)
+                groupMatchService.joinUnansweredInvitations(roomId)
+
+                val chatRoomIdOnSecondRun = groupMatchService.joinUnansweredInvitations(roomId)
+
+                chatRoomIdOnSecondRun shouldBe null
+                groupMatchRepository.findById(roomId).get().acceptedCount shouldBe 3
             }
         }
     },

@@ -79,6 +79,36 @@ class GroupMatchService(
     }
 
     /**
+     * 응답 마감까지 수락도 거절도 하지 않은 초대를 참여로 바꾼다. 그룹 초대의 기본값이 참여다.
+     * 마감이 지났는지는 호출자가 본다.
+     *
+     * 성사 알림은 보내지 않는다. 마감이 채팅 개방과 같은 순간이라 채팅방 오픈 알림과 겹친다.
+     *
+     * @return 이번에 성사돼 새로 만든 채팅방 ID. 인원이 모자라거나 이미 성사돼 있었으면 null.
+     */
+    @Transactional
+    fun joinUnansweredInvitations(groupMatchId: Long): Long? {
+        val room = groupMatchRepository.findWithLockById(groupMatchId) ?: return null
+        val invitations = groupMatchMemberRepository.findWithLockByRoomId(groupMatchId)
+        val unanswered = invitations.filter { it.isPending() }
+        if (unanswered.isEmpty()) return null
+
+        val wasFormed = room.isActive
+        unanswered.forEach {
+            it.accept()
+            room.recordAcceptance()
+        }
+        if (wasFormed) {
+            unanswered.forEach { chatService.addGroupRoomMember(groupMatchId, it.memberId) }
+            return null
+        }
+        if (!room.isActive) return null
+
+        val acceptedMemberIds = invitations.filter { it.status == InvitationStatus.ACCEPTED }.map { it.memberId }
+        return chatService.createGroupRoom(groupMatchId, acceptedMemberIds)
+    }
+
+    /**
      * 한 주에 열리는 채팅방은 하나뿐이라, 한 그룹을 수락하면 같은 퀴즈셋의 남은 초대는 자동 거절한다.
      * 거절당한 그룹의 다른 구성원에게는 알리지 않는다 — 그들에게는 성사 가능성이 낮아졌을 뿐이다.
      */
