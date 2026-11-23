@@ -15,7 +15,9 @@ import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
+import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import java.time.LocalDateTime
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -94,7 +96,7 @@ class GroupMatchService(
      * 새로 들어간 사람이 있고 방이 이미 열려 있으면 오픈 알림을 보낼 그 방 ID 를, 아니면 null 을 돌려준다.
      */
     @Transactional
-    fun joinUnansweredInvitations(groupMatchId: Long): Long? {
+    fun joinUnansweredInvitations(groupMatchId: Long, now: LocalDateTime): Long? {
         val room = groupMatchRepository.findWithLockById(groupMatchId) ?: return null
         val invitations = groupMatchMemberRepository.findWithLockByRoomId(groupMatchId)
         val unanswered = invitations.filter { it.isPending() }
@@ -106,7 +108,7 @@ class GroupMatchService(
             return null
         }
 
-        val (joining, inactive) = partitionByActiveMember(unanswered)
+        val (joining, inactive) = partitionByActiveMember(unanswered, now)
         inactive.forEach { it.decline() }
         val wasAlreadyFormed = room.isActive
         joining.forEach {
@@ -146,11 +148,13 @@ class GroupMatchService(
         otherPending.filter { it.roomId in sameQuizSetRoomIds }.forEach { it.decline() }
     }
 
+    // 정지가 끝났는데 상태가 아직 돌아오지 않은 회원도 활동 중으로 본다. 상태는 만료 배치나 로그인 때 돌아온다.
     private fun partitionByActiveMember(
         invitations: List<GroupMatchMember>,
+        now: LocalDateTime,
     ): Pair<List<GroupMatchMember>, List<GroupMatchMember>> {
         val activeMemberIds = memberRepository.findAllById(invitations.map { it.memberId })
-            .filter { it.isActive() }
+            .filter { it.isActive() || (it.status == MemberStatus.SUSPENDED && !it.isSuspendedAt(now)) }
             .map { it.id }
             .toSet()
         return invitations.partition { it.memberId in activeMemberIds }

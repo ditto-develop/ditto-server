@@ -297,13 +297,14 @@ class GroupMatchServiceTest(
             val deadline = thisMonday.plusDays(4).atStartOfDay()
             var memberSequence = 0
 
-            fun saveMember(status: MemberStatus = MemberStatus.ACTIVE): Long {
+            fun saveMember(status: MemberStatus = MemberStatus.ACTIVE, suspendedUntil: LocalDateTime? = null): Long {
                 memberSequence++
                 return memberRepository.save(
                     MemberFixture.create(
                         nickname = "회원$memberSequence",
                         email = "member$memberSequence@example.com",
                         status = status,
+                        suspendedUntil = suspendedUntil,
                     ),
                 ).id
             }
@@ -330,7 +331,7 @@ class GroupMatchServiceTest(
                 groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
                 statusOf(groupMatchId, second) shouldBe InvitationStatus.ACCEPTED
@@ -350,7 +351,7 @@ class GroupMatchServiceTest(
                 groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomId shouldBe null
                 statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
@@ -362,11 +363,11 @@ class GroupMatchServiceTest(
             "활동 중이 아닌 회원의 초대는 거절로 바꾸고 인원에 넣지 않는다" {
                 val (first, second) = saveActiveMembers(2)
                 val left = saveMember(MemberStatus.LEFT)
-                val suspended = saveMember(MemberStatus.SUSPENDED)
+                val suspended = saveMember(MemberStatus.SUSPENDED, suspendedUntil = deadline.plusDays(1))
                 val groupMatchId = saveCandidateGroup(listOf(first, second, left, suspended))
                 overrideServerTime(deadline)
 
-                groupMatchService.joinUnansweredInvitations(groupMatchId) shouldBe null
+                groupMatchService.joinUnansweredInvitations(groupMatchId, deadline) shouldBe null
 
                 statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
                 statusOf(groupMatchId, left) shouldBe InvitationStatus.DECLINED
@@ -376,12 +377,24 @@ class GroupMatchServiceTest(
                 group.isActive shouldBe false
             }
 
+            "정지 기간이 끝났는데 상태가 아직 정지인 회원은 참여로 바꾼다" {
+                val (first, second) = saveActiveMembers(2)
+                val suspensionOver = saveMember(MemberStatus.SUSPENDED, suspendedUntil = deadline.minusHours(1))
+                val groupMatchId = saveCandidateGroup(listOf(first, second, suspensionOver))
+                overrideServerTime(deadline)
+
+                groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
+
+                statusOf(groupMatchId, suspensionOver) shouldBe InvitationStatus.ACCEPTED
+                groupMatchRepository.findById(groupMatchId).get().isActive shouldBe true
+            }
+
             "성사돼 개방을 기다리는 방이면 미응답자를 그 방에 넣고 방은 돌려주지 않는다" {
                 val memberIds = saveActiveMembers(4)
                 val groupMatchId = formGroupBeforeDeadline(memberIds)
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomId shouldBe null
                 statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.ACCEPTED
@@ -395,7 +408,7 @@ class GroupMatchServiceTest(
                 chatRoomRepository.save(groupChatRoomOf(groupMatchId).apply { open(deadline) })
                 overrideServerTime(deadline)
 
-                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId)
+                val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomId shouldBe groupChatRoomOf(groupMatchId).id
                 chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds
@@ -407,7 +420,7 @@ class GroupMatchServiceTest(
                 chatRoomRepository.save(groupChatRoomOf(groupMatchId).apply { endByInsufficientMembers(deadline) })
                 overrideServerTime(deadline)
 
-                groupMatchService.joinUnansweredInvitations(groupMatchId) shouldBe null
+                groupMatchService.joinUnansweredInvitations(groupMatchId, deadline) shouldBe null
 
                 statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.DECLINED
                 chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds.take(3)
@@ -418,7 +431,7 @@ class GroupMatchServiceTest(
                 val groupMatchId = saveCandidateGroup(memberIds)
                 overrideServerTime(deadline)
 
-                groupMatchService.joinUnansweredInvitations(groupMatchId)
+                groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 notificationRepository.findByMemberIdIn(memberIds)
                     .filter { it.type == NotificationType.GROUP_FORMED } shouldBe emptyList()
@@ -427,9 +440,9 @@ class GroupMatchServiceTest(
             "다시 불러도 결과가 같다" {
                 val groupMatchId = saveCandidateGroup(saveActiveMembers(3))
                 overrideServerTime(deadline)
-                groupMatchService.joinUnansweredInvitations(groupMatchId)
+                groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
-                val chatRoomIdOnSecondRun = groupMatchService.joinUnansweredInvitations(groupMatchId)
+                val chatRoomIdOnSecondRun = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomIdOnSecondRun shouldBe null
                 groupMatchRepository.findById(groupMatchId).get().acceptedCount shouldBe 3
