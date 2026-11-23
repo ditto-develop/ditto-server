@@ -22,7 +22,6 @@ interface GroupMatchMemberRepositoryCustom {
      */
     fun existsSharedCandidateGroup(memberId: Long, otherMemberId: Long, quizSetId: Long): Boolean
 
-
     /** 그 주 그룹 초대를 그룹 성사 여부·초대 상태·성별로 묶은 수. */
     fun countInvitedMembersInWeek(weekStartedOn: LocalDate, filter: MemberFilter): List<GroupMatchMemberCount>
 

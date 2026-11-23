@@ -7,11 +7,13 @@ import java.time.LocalDateTime
 /** 서버 시각을 옮기기 전에 확인받을 일. 마감을 넘기는 이동은 스케줄러가 1분 안에 처리해 되돌릴 수 없다. */
 enum class QaTimeMoveWarning(val message: String, val isIrreversible: Boolean) {
     BACK_TO_PAST(
-        "지난 시점으로 돌아갑니다. 이미 열리거나 끝난 방, 거절된 그룹 초대, 보낸 알림은 그대로입니다.",
+        "지난 시점으로 돌아갑니다. 이미 열리거나 끝난 방, 참여·거절로 바뀐 그룹 초대와 성사된 그룹, 보낸 알림은 그대로입니다.",
         isIrreversible = false,
     ),
     PAST_GROUP_DEADLINE(
-        "그룹 응답 마감을 넘깁니다. 응답하지 않은 초대가 1분 안에 거절되고 인원이 모자란 그룹에 미성사 알림이 갑니다.",
+        "그룹 응답 마감을 넘깁니다. 응답하지 않은 초대가 1분 안에 참여로 바뀌어, 거절하지 않은 사람이 3명 이상인 그룹은 " +
+            "바로 성사되고 채팅방이 열립니다. 인원이 모자란 그룹에는 미성사 알림이 갑니다. " +
+            "채팅 마감까지 한 번에 넘기면 참여로 바뀌지 않고 대기로 남습니다.",
         isIrreversible = true,
     ),
     PAST_CHAT_END(

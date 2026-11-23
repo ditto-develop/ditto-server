@@ -75,7 +75,7 @@ object NotificationMessages {
     )
 
     /**
-     * 그룹이 인원을 채우지 못해 취소됐다. 수락까지 한 사람에게만 간다.
+     * 그룹이 인원을 채우지 못해 취소됐다. 수락한 사람(마감에 자동 참여한 사람 포함)에게만 간다.
      * [secretRoundAt]이 있으면 1:1 퀴즈를 풀어 그 라운드에 들어갈 수 있다고 안내한다.
      */
     fun groupNotFormed(secretRoundAt: LocalDateTime?): NotificationContent = NotificationContent(
