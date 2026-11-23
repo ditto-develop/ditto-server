@@ -4,7 +4,7 @@ import com.ditto.api.chat.quiz.QuizHintService
 import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.chat.websocket.ChatStompDestinations
 import com.ditto.api.config.SchedulerLockDurations
-import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
+import com.ditto.api.match.service.UnansweredGroupInvitationJoiner
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
@@ -15,6 +15,7 @@ import com.ditto.api.rematch.service.RematchChatRoomOpener
 import com.ditto.api.review.service.EndedChatReviewOpener
 import com.ditto.api.system.ServerTimeProvider
 import com.ditto.api.support.runCatchingExceptions
+import com.ditto.domain.chat.entity.ChatRoom
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.messaging.simp.SimpMessagingTemplate
@@ -47,7 +48,7 @@ import org.springframework.stereotype.Component
  * 마감한 방의 평가는 곧바로 열고, 그와 별개로 놓친 방을 매 주기 복구한다 — 채팅 종료와 평가 생성을
  * 한 트랜잭션으로 묶지 않기 때문에(계획서 ⑤-1) 종료만 되고 평가가 안 열린 방이 남을 수 있다.
  *
- * 그룹 인원 미달 안내와 미응답 자동 거절도 여기서 한다. 응답 마감(금요일 00:00)이 채팅 개방과 같은 순간이라
+ * 그룹 미응답 자동 참여와 인원 미달 안내도 여기서 한다. 응답 마감(금요일 00:00)이 채팅 개방과 같은 순간이라
  * 개방을 보는 이 스케줄러가 마감도 함께 본다. 인원 미달 안내는 그룹 상태를 바꾸지 않고 알림만 남기며,
  * 재발송은 알림 유형의 중복 정책이 막는다.
  *
@@ -69,7 +70,7 @@ class ChatRoomLifecycleScheduler(
     private val chatRoomOpenedNotifier: ChatRoomOpenedNotifier,
     private val chatNoMessageNotifier: ChatNoMessageNotifier,
     private val unformedGroupNotifier: UnformedGroupNotifier,
-    private val unansweredGroupInvitationDecliner: UnansweredGroupInvitationDecliner,
+    private val unansweredGroupInvitationJoiner: UnansweredGroupInvitationJoiner,
     private val serverTimeProvider: ServerTimeProvider,
     private val quizHintService: QuizHintService,
     private val messagingTemplate: SimpMessagingTemplate,
@@ -86,8 +87,11 @@ class ChatRoomLifecycleScheduler(
         // 예약 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
         // 있다 — 오버라이드가 예약된 금요일 이후를 가리키면 openDue 가 곧바로 집어간다.
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
+        // 자동 참여를 개방 앞에 둔다. 이미 성사돼 예약된 방에 들어간 사람도 같은 주기의 오픈 알림을 받는다.
+        // 자동 참여로 새로 성사된 방은 처음부터 열린 채로 만들어져 개방 대상이 아니라서 따로 넘긴다.
+        val formedByDefault = joinUnansweredGroupInvitations(serverNow)
         val opened = chatRoomEndService.openDue(serverNow)
-        chatRoomOpenedNotifier.notifyOpened(opened)
+        chatRoomOpenedNotifier.notifyOpened(opened + formedByDefault)
         createHints(serverNow)
 
         val ended = chatRoomEndService.endExpired(serverNow)
@@ -102,12 +106,15 @@ class ChatRoomLifecycleScheduler(
         chatEndingSoonNotifier.notifyEndingSoon(serverNow)
         chatNoMessageNotifier.notifyNoMessage(serverNow)
 
-        // 개방 뒤에 둔다 — 같은 주기에 성사돼 방이 열린 그룹을 미성사로 잡으면 안 된다.
+        // 자동 참여 뒤에 둔다. 인원이 모자란 그룹의 자동 참여자도 안내를 받는다.
         unformedGroupNotifier.notifyUnformed(serverNow)
-
-        // 미응답 초대만 바꾸고 위 안내는 수락자만 보므로 둘의 순서는 상관없다.
-        unansweredGroupInvitationDecliner.declineUnanswered(serverNow)
     }
+
+    /** 개방 앞에 있어서 여기서 실패해도 같은 주기의 개방·마감은 돌게 한다. 남은 초대는 다음 주기가 다시 집는다. */
+    private fun joinUnansweredGroupInvitations(serverNow: LocalDateTime): List<ChatRoom> =
+        runCatchingExceptions { unansweredGroupInvitationJoiner.joinUnanswered(serverNow) }
+            .onFailure { logger.warn(it) { "그룹 미응답 자동 참여 단계 실패, 다음 주기에 다시 한다" } }
+            .getOrDefault(emptyList())
 
     /**
      * 힌트는 부가 기능이라 여기서 실패해도 같은 주기의 마감·평가 개방·알림을 막지 않는다. 남은 방은 다음 주기가 다시 집는다.
