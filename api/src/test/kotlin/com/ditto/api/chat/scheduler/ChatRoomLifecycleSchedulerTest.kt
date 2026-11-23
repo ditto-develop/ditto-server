@@ -6,7 +6,7 @@ import com.ditto.api.chat.service.ChatRoomEndService
 import com.ditto.api.notification.notifier.ChatEndingSoonNotifier
 import com.ditto.api.notification.notifier.ChatNoMessageNotifier
 import com.ditto.api.notification.notifier.ChatRoomOpenedNotifier
-import com.ditto.api.match.service.UnansweredGroupInvitationDecliner
+import com.ditto.api.match.service.UnansweredGroupInvitationJoiner
 import com.ditto.api.match.service.UnformedGroupNotifier
 import com.ditto.api.notification.notifier.RematchNotifier
 import com.ditto.api.notification.notifier.ReviewRequestNotifier
@@ -43,7 +43,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
     val chatRoomOpenedNotifier = mockk<ChatRoomOpenedNotifier>(relaxed = true)
     val chatNoMessageNotifier = mockk<ChatNoMessageNotifier>(relaxed = true)
     val unformedGroupNotifier = mockk<UnformedGroupNotifier>(relaxed = true)
-    val unansweredGroupInvitationDecliner = mockk<UnansweredGroupInvitationDecliner>(relaxed = true)
+    val unansweredGroupInvitationJoiner = mockk<UnansweredGroupInvitationJoiner>(relaxed = true)
     val serverTimeProvider = mockk<ServerTimeProvider>()
     val quizHintService = mockk<QuizHintService>(relaxed = true)
     val messagingTemplate = mockk<SimpMessagingTemplate>(relaxed = true)
@@ -58,7 +58,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         chatRoomOpenedNotifier,
         chatNoMessageNotifier,
         unformedGroupNotifier,
-        unansweredGroupInvitationDecliner,
+        unansweredGroupInvitationJoiner,
         serverTimeProvider,
         quizHintService,
         messagingTemplate,
@@ -76,7 +76,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
             chatRoomOpenedNotifier,
             chatNoMessageNotifier,
             unformedGroupNotifier,
-            unansweredGroupInvitationDecliner,
+            unansweredGroupInvitationJoiner,
             serverTimeProvider,
             quizHintService,
             messagingTemplate,
@@ -93,7 +93,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { chatEndingSoonNotifier.notifyEndingSoon(OVERRIDDEN_NOW) }
         verify { chatNoMessageNotifier.notifyNoMessage(OVERRIDDEN_NOW) }
         verify { unformedGroupNotifier.notifyUnformed(OVERRIDDEN_NOW) }
-        verify { unansweredGroupInvitationDecliner.declineUnanswered(OVERRIDDEN_NOW) }
+        verify { unansweredGroupInvitationJoiner.joinUnanswered(OVERRIDDEN_NOW) }
     }
 
     "재매칭 예약은 실제 시각을 쓴다 — opens_at 에 가짜 시각이 저장되면 오버라이드를 꺼도 방이 미래에 갇힌다" {
@@ -134,6 +134,38 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { chatRoomOpenedNotifier.notifyOpened(opened) }
     }
 
+    "그룹 미응답 자동 참여" - {
+
+        "개방보다 먼저 돈다" {
+            scheduler.sweep()
+
+            verifyOrder {
+                unansweredGroupInvitationJoiner.joinUnanswered(OVERRIDDEN_NOW)
+                chatRoomEndService.openDue(OVERRIDDEN_NOW)
+            }
+        }
+
+        "자동 참여로 사람이 들어간 열린 방도 오픈 알림으로 넘긴다" {
+            val opened = listOf(ChatRoomFixture.personal(id = 11L))
+            val autoJoinedOpenRooms = listOf(ChatRoomFixture.group(id = 12L))
+            every { chatRoomEndService.openDue(any()) } returns opened
+            every { unansweredGroupInvitationJoiner.joinUnanswered(any()) } returns autoJoinedOpenRooms
+
+            scheduler.sweep()
+
+            verify { chatRoomOpenedNotifier.notifyOpened(opened + autoJoinedOpenRooms) }
+        }
+
+        "자동 참여가 실패해도 같은 주기의 개방과 마감은 돈다" {
+            every { unansweredGroupInvitationJoiner.joinUnanswered(any()) } throws IllegalStateException("db down")
+
+            scheduler.sweep()
+
+            verify { chatRoomEndService.openDue(OVERRIDDEN_NOW) }
+            verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
+        }
+    }
+
     "개방 뒤 서버 시각으로 첫 대화 힌트를 만들고, 만든 힌트를 그 방 토픽으로 보낸다" {
         val hint = ChatMessageResponse(
             id = 31L,
@@ -164,7 +196,7 @@ class ChatRoomLifecycleSchedulerTest : FreeSpec({
         verify { chatRoomEndService.endExpired(OVERRIDDEN_NOW) }
         verify { endedChatReviewOpener.openMissing() }
         verify { chatEndingSoonNotifier.notifyEndingSoon(OVERRIDDEN_NOW) }
-        verify { unansweredGroupInvitationDecliner.declineUnanswered(OVERRIDDEN_NOW) }
+        verify { unformedGroupNotifier.notifyUnformed(OVERRIDDEN_NOW) }
     }
 
     "힌트 하나의 브로드캐스트가 실패해도 다음 힌트는 보낸다" {

@@ -4,10 +4,12 @@ import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.match.UpcomingSecretRoundFinder
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDateTime
 import org.springframework.stereotype.Service
@@ -28,6 +30,9 @@ private val log = KotlinLogging.logger {}
  * 그 멱등은 알림 행이 살아 있는 동안만이다 — 보관 기간(30일)이 지나 purge 되면 존재 검사가
  * 다시 통과한다. 그래서 스캔을 최근 [NOTIFIABLE_WINDOW_DAYS]일로 자른다. 마감 직후 안내라
  * 지난 주차를 다시 집을 이유도 없다.
+ *
+ * 미응답 초대가 남은 그룹은 자동 참여가 처리할 때까지 건너뛴다. 자동 참여가 실패한 주기에 안내가 먼저 나가면
+ * "인원 미달" 알림 뒤에 그룹이 성사될 수 있다.
  *
  * 그 주 시크릿 매칭 라운드가 남아 있으면 1:1 퀴즈를 풀어 참여할 수 있다고 안내한다.
  */
@@ -53,14 +58,17 @@ class UnformedGroupNotifier(
 
         var notified = 0
         unformed.forEach { group ->
-            val acceptedMemberIds = groupMatchMemberRepository.findByRoomId(group.id)
+            val week = weekByQuizSetId[group.quizSetId]
+            val invitations = groupMatchMemberRepository.findByRoomId(group.id)
+            if (isWaitingForAutoJoin(week, invitations, now)) return@forEach
+
+            val acceptedMemberIds = invitations
                 .filter { it.status == InvitationStatus.ACCEPTED }
                 .map { it.memberId }
             // 아무도 수락하지 않은 후보 그룹이 대부분이다 — 알릴 사람이 없으면 조용히 넘긴다.
             if (acceptedMemberIds.isEmpty()) return@forEach
 
-            val secretRoundAt = weekByQuizSetId[group.quizSetId]
-                ?.let { upcomingSecretRoundFinder.nextRoundToAnnounce(it, now) }
+            val secretRoundAt = week?.let { upcomingSecretRoundFinder.nextRoundToAnnounce(it, now) }
             notified += notificationAppender.appendAll(
                 memberIds = acceptedMemberIds,
                 content = NotificationMessages.groupNotFormed(secretRoundAt),
@@ -73,6 +81,12 @@ class UnformedGroupNotifier(
         }
         return notified
     }
+
+    private fun isWaitingForAutoJoin(
+        week: OperationWeek?,
+        invitations: List<GroupMatchMember>,
+        now: LocalDateTime,
+    ): Boolean = week != null && invitations.any { it.isPending() } && GroupResponseDeadline.isAutoJoinPeriod(week, now)
 
     companion object {
         /**

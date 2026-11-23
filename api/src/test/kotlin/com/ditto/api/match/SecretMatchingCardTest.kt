@@ -79,6 +79,11 @@ class SecretMatchingCardTest : FreeSpec({
             cardOf(facts(friday, groupMatchingStatus = GroupMatchingStatus.JOINED_GROUP)).state shouldBe
                 SecretMatchingState.NONE
         }
+
+        "자동 참여 전인 미응답 그룹 완주자는 그룹 응답 마감 뒤에도 NONE 이다" {
+            cardOf(facts(friday, groupMatchingStatus = GroupMatchingStatus.NOT_RESPONDED)).state shouldBe
+                SecretMatchingState.NONE
+        }
     }
 
     "1:1 을 완주하지 않은 회원" - {
@@ -98,7 +103,6 @@ class SecretMatchingCardTest : FreeSpec({
             val groupResponseDeadline = LocalDateTime.of(2026, 11, 20, 0, 0)
             listOf(
                 GroupMatchingStatus.NO_CANDIDATE_GROUPS,
-                GroupMatchingStatus.NOT_RESPONDED,
                 GroupMatchingStatus.WAITING_FOR_GROUP,
             ).forEach {
                 cardOf(facts(groupResponseDeadline, groupMatchingStatus = it)).state shouldBe

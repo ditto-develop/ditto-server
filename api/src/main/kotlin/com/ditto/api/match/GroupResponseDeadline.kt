@@ -7,7 +7,7 @@ import java.time.LocalDateTime
 /**
  * 그룹 초대 응답 마감. 그 주 채팅이 열리는 금요일 00:00이다.
  *
- * 응답 차단, 미응답 자동 거절, 미성사 알림이 모두 이 마감을 쓴다. 따로 계산하면
+ * 응답 차단, 미응답 자동 참여, 미성사 알림이 모두 이 마감을 쓴다. 따로 계산하면
  * 인원 미달 알림을 받은 그룹이 나중에 수락으로 성사될 수 있다.
  */
 object GroupResponseDeadline {
@@ -22,6 +22,10 @@ object GroupResponseDeadline {
         }
         return OperationWeek(thisWeek.startedOn.minusWeeks(1))
     }
+
+    /** 미응답 초대를 참여로 바꾸는 동안인지. 마감부터 그 주 채팅이 끝나는 월 00:00 전까지다. */
+    fun isAutoJoinPeriod(week: OperationWeek, now: LocalDateTime): Boolean =
+        hasPassed(week, now) && now < ChatPeriod.weekendOf(week.startedOn.atStartOfDay()).expiresAt
 
     fun deadlineOf(week: OperationWeek): LocalDateTime =
         ChatPeriod.weekendOf(week.startedOn.atStartOfDay()).opensAt

@@ -337,7 +337,7 @@
                     <div class="grid stats-totals">
                         <div class="card stat">
                             <span class="label with-info">성사
-                                <th:block th:replace="~{fragments :: info('info-stats-match-matched', '성사', '1:1은 신청이 수락된 두 사람, 그룹은 3명 이상 모여 성사된 그룹을 수락한 사람입니다. 1:1도 두 사람을 따로 세서, 관리자 계정이 낀 쌍이나 성별 같은 회원 조건을 걸면 한 사람만 세져 홀수가 될 수 있습니다. 아래 후보는 목요일 00:01 매칭에서 상대를 받은 회원입니다.')}"></th:block></span>
+                                <th:block th:replace="~{fragments :: info('info-stats-match-matched', '성사', '1:1은 신청이 수락된 두 사람, 그룹은 3명 이상 모여 성사된 그룹을 수락한 사람입니다(마감에 자동 참여한 사람 포함). 1:1도 두 사람을 따로 세서, 관리자 계정이 낀 쌍이나 성별 같은 회원 조건을 걸면 한 사람만 세져 홀수가 될 수 있습니다. 아래 후보는 목요일 00:01 매칭에서 상대를 받은 회원입니다.')}"></th:block></span>
                             <span class="value" id="matchMatchedCount">-</span>
                             <span class="basis" id="matchMatchedCountBasis"></span>
                         </div>
@@ -349,7 +349,7 @@
                         </div>
                         <div class="card stat">
                             <span class="label with-info">미매칭
-                                <th:block th:replace="~{fragments :: info('info-stats-match-unmatched', '미매칭', '퀴즈를 끝까지 풀었지만 성사되지 않은 회원입니다. 그룹을 수락했는데 3명이 안 모인 회원도 들어갑니다.')}"></th:block></span>
+                                <th:block th:replace="~{fragments :: info('info-stats-match-unmatched', '미매칭', '퀴즈를 끝까지 풀었지만 성사되지 않은 회원입니다. 그룹을 수락했거나 마감에 자동 참여했는데 3명이 안 모인 회원도 들어갑니다.')}"></th:block></span>
                             <span class="value" id="matchUnmatchedCount">-</span>
                         </div>
                     </div>

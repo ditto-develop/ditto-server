@@ -2,14 +2,12 @@ package com.ditto.domain.match.repository
 
 import com.ditto.domain.match.GroupMatchFixture
 import com.ditto.domain.match.entity.GroupMatchMember
-import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.quiz.QuizSetFixture
 import com.ditto.domain.quiz.repository.QuizSetRepository
 import com.ditto.domain.support.IntegrationTest
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
-import java.time.LocalDateTime
 import javax.sql.DataSource
 
 class GroupMatchResponseDeadlineQueryTest(
@@ -38,9 +36,6 @@ class GroupMatchResponseDeadlineQueryTest(
         if (accepted) invitation.accept()
         groupMatchMemberRepository.save(invitation)
     }
-
-    fun statusOf(groupMatchId: Long, memberId: Long): InvitationStatus? =
-        groupMatchMemberRepository.findByRoomIdAndMemberId(groupMatchId, memberId)?.status
 
     "findGroupMatchIdsByWeekStartedOn" - {
 
@@ -103,40 +98,4 @@ class GroupMatchResponseDeadlineQueryTest(
         }
     }
 
-    "declinePendingInvitations" - {
-
-        "주어진 그룹의 대기 초대만 거절로 바꾸고 바꾼 수를 돌려준다" {
-            val targetGroupId = saveGroup()
-            val otherGroupId = saveGroup()
-            saveInvitation(targetGroupId, 1L)
-            saveInvitation(targetGroupId, 2L, accepted = true)
-            saveInvitation(otherGroupId, 3L)
-
-            val declinedCount = groupMatchMemberRepository.declinePendingInvitations(
-                groupMatchIds = listOf(targetGroupId),
-                updatedAt = LocalDateTime.now(),
-            )
-
-            declinedCount shouldBe 1L
-            statusOf(targetGroupId, 1L) shouldBe InvitationStatus.DECLINED
-            statusOf(targetGroupId, 2L) shouldBe InvitationStatus.ACCEPTED
-            statusOf(otherGroupId, 3L) shouldBe InvitationStatus.PENDING
-        }
-
-        "대기 초대가 없으면 아무것도 바꾸지 않는다" {
-            val groupMatchId = saveGroup()
-            saveInvitation(groupMatchId, 1L, accepted = true)
-
-            groupMatchMemberRepository.declinePendingInvitations(listOf(groupMatchId), LocalDateTime.now()) shouldBe 0L
-            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.ACCEPTED
-        }
-
-        "그룹 목록이 비어 있으면 아무것도 바꾸지 않는다" {
-            val groupMatchId = saveGroup()
-            saveInvitation(groupMatchId, 1L)
-
-            groupMatchMemberRepository.declinePendingInvitations(emptyList(), LocalDateTime.now()) shouldBe 0L
-            statusOf(groupMatchId, 1L) shouldBe InvitationStatus.PENDING
-        }
-    }
 })

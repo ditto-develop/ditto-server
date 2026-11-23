@@ -17,7 +17,7 @@ class GroupMatchingStatusTest : FreeSpec({
             GroupMatchingStatus.NOT_INVITED to (true to true),
             GroupMatchingStatus.DECLINED to (true to true),
             GroupMatchingStatus.NO_CANDIDATE_GROUPS to (false to true),
-            GroupMatchingStatus.NOT_RESPONDED to (false to true),
+            GroupMatchingStatus.NOT_RESPONDED to (false to false),
             GroupMatchingStatus.WAITING_FOR_GROUP to (false to true),
             GroupMatchingStatus.JOINED_GROUP to (false to false),
         )

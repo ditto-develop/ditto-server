@@ -44,6 +44,7 @@ class UnformedGroupNotifierTest(
         val monday = LocalDate.of(2026, 6, 1)
         val afterDeadline = LocalDateTime.of(2026, 6, 5, 0, 30)
         val beforeDeadline = LocalDateTime.of(2026, 6, 4, 23, 30)
+        val chatEnd = LocalDateTime.of(2026, 6, 8, 0, 0)
 
         fun quizSetId(weekStartedOn: LocalDate = monday, matchingType: MatchingType = MatchingType.GROUP): Long =
             quizSetRepository.save(
@@ -87,6 +88,22 @@ class UnformedGroupNotifierTest(
                 unformedGroupNotifier.notifyUnformed(beforeDeadline) shouldBe 0
 
                 notifications(1L).size shouldBe 0
+            }
+
+            "미응답 초대가 남아 있으면 자동 참여가 처리할 때까지 알리지 않는다" {
+                val group = unformedGroup(listOf(1L))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = group.id, memberId = 2L))
+
+                unformedGroupNotifier.notifyUnformed(afterDeadline) shouldBe 0
+
+                notifications(1L).size shouldBe 0
+            }
+
+            "그 주 채팅이 끝난 뒤에는 미응답 초대가 남아 있어도 알린다" {
+                val group = unformedGroup(listOf(1L))
+                groupMatchMemberRepository.save(GroupMatchMember.candidate(roomId = group.id, memberId = 2L))
+
+                unformedGroupNotifier.notifyUnformed(chatEnd) shouldBe 1
             }
 
             // 수락한 적 없는 사람에게 "취소됐다"고 알리면 맥락 없는 알림이 된다.
