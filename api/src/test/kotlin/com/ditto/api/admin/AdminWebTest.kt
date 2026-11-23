@@ -1072,7 +1072,7 @@ class AdminWebTest {
         mockMvc.perform(post("/admin/matching/quiz-sets/{id}/regenerate", quizSet.id).with(authentication(admin())).with(csrf()))
             .andExpect(status().is3xxRedirection)
             .andExpect(redirectedUrl("/admin/matching"))
-            .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 거절 포함)한 회원이 있어")))
+            .andExpect(flash().attribute("error", containsString("그룹 초대에 수락·거절(자동 참여 포함)한 회원이 있어")))
             .andExpect(flash().attribute("error", containsString("퀴즈셋 상세의 QA 도구에서 [매칭 기록 초기화]를 한 뒤 다시 만드세요.")))
             .andExpect(flash().attribute("message", null))
     }
