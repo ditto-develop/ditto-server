@@ -7,8 +7,6 @@ import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
-import com.ditto.domain.chat.entity.ChatRoom
-import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatRoomType
 import com.ditto.domain.chat.repository.ChatRoomRepository
 import com.ditto.domain.match.entity.GroupMatchMember
@@ -17,6 +15,7 @@ import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.member.entity.MemberStatus
 import com.ditto.domain.member.repository.MemberRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDateTime
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -97,32 +96,40 @@ class GroupMatchService(
      */
     @Transactional
     fun joinUnansweredInvitations(groupMatchId: Long, now: LocalDateTime): Long? {
-        val room = groupMatchRepository.findWithLockById(groupMatchId) ?: return null
+        val groupMatch = groupMatchRepository.findWithLockById(groupMatchId) ?: return null
         val invitations = groupMatchMemberRepository.findWithLockByRoomId(groupMatchId)
         val unanswered = invitations.filter { it.isPending() }
         if (unanswered.isEmpty()) return null
 
         val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId)
-        if (chatRoom?.status == ChatRoomStatus.ENDED) {
+        if (chatRoom?.isEnded == true) {
             unanswered.forEach { it.decline() }
+            log.info {
+                "그룹 미응답 자동 참여: 끝난 방이라 거절 groupMatchId=$groupMatchId memberIds=${unanswered.map { it.memberId }}"
+            }
             return null
         }
 
         val (joining, inactive) = partitionByActiveMember(unanswered, now)
         inactive.forEach { it.decline() }
-        val wasAlreadyFormed = room.isActive
+        if (inactive.isNotEmpty()) {
+            log.info {
+                "그룹 미응답 자동 참여: 활동 중이 아닌 회원 거절 groupMatchId=$groupMatchId memberIds=${inactive.map { it.memberId }}"
+            }
+        }
+        if (joining.isEmpty()) return null
+
+        val wasAlreadyFormed = groupMatch.isActive
         joining.forEach {
             it.accept()
-            room.recordAcceptance()
+            groupMatch.recordAcceptance()
         }
-
         return when {
-            joining.isEmpty() -> null
-            wasAlreadyFormed -> addToFormedGroupChat(groupMatchId, joining, chatRoom)
-            room.isActive -> chatService.createGroupRoom(
-                groupMatchId,
-                invitations.filter { it.status == InvitationStatus.ACCEPTED }.map { it.memberId },
-            )
+            wasAlreadyFormed -> {
+                addToFormedGroupChat(groupMatchId, joining)
+                chatRoom?.takeUnless { it.isBeforeOpen }?.id
+            }
+            groupMatch.isActive -> createGroupChatOfAccepted(groupMatchId, invitations)
             else -> null
         }
     }
@@ -160,11 +167,15 @@ class GroupMatchService(
         return invitations.partition { it.memberId in activeMemberIds }
     }
 
-    // 열리기 전인 방이면 개방할 때 오픈 알림이 가므로 돌려주지 않는다.
-    private fun addToFormedGroupChat(groupMatchId: Long, joining: List<GroupMatchMember>, chatRoom: ChatRoom?): Long? {
+    private fun addToFormedGroupChat(groupMatchId: Long, joining: List<GroupMatchMember>) {
         joining.forEach { chatService.addGroupRoomMember(groupMatchId, it.memberId) }
-        return chatRoom?.takeIf { it.status == ChatRoomStatus.ACTIVE }?.id
     }
+
+    private fun createGroupChatOfAccepted(groupMatchId: Long, invitations: List<GroupMatchMember>): Long =
+        chatService.createGroupRoom(
+            groupMatchId,
+            invitations.filter { it.status == InvitationStatus.ACCEPTED }.map { it.memberId },
+        )
 
     private fun pendingInvitationIn(myInvitations: List<GroupMatchMember>, groupMatchId: Long): GroupMatchMember {
         val invitation = myInvitations.firstOrNull { it.roomId == groupMatchId }
@@ -209,5 +220,9 @@ class GroupMatchService(
             content = NotificationMessages.groupFormed(memberIds.size),
             targetId = chatRoomId,
         )
+    }
+
+    companion object {
+        private val log = KotlinLogging.logger {}
     }
 }

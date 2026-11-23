@@ -34,11 +34,12 @@ class UnansweredGroupInvitationJoiner(
         val groupMatchIds = findGroupMatchIdsWithUnansweredInvitations(closedWeek)
         if (groupMatchIds.isEmpty()) return emptyList()
 
-        val openedChatRoomIds = groupMatchIds.mapNotNull { joinUnansweredInGroup(it, now) }
+        val autoJoinedOpenChatRoomIds = groupMatchIds.mapNotNull { joinUnansweredInGroup(it, now) }
         log.info {
-            "그룹 미응답 자동 참여: 주 ${closedWeek.startedOn}, groupMatchIds=$groupMatchIds, 열린 방 chatRoomIds=$openedChatRoomIds"
+            "그룹 미응답 자동 참여: 주 ${closedWeek.startedOn}, groupMatchIds=$groupMatchIds, " +
+                "열린 방 chatRoomIds=$autoJoinedOpenChatRoomIds"
         }
-        return chatRoomRepository.findAllById(openedChatRoomIds)
+        return chatRoomRepository.findAllById(autoJoinedOpenChatRoomIds)
     }
 
     private fun findGroupMatchIdsWithUnansweredInvitations(week: OperationWeek): List<Long> {

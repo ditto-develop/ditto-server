@@ -4,10 +4,12 @@ import com.ditto.api.match.GroupResponseDeadline
 import com.ditto.api.match.UpcomingSecretRoundFinder
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
+import com.ditto.domain.match.entity.GroupMatchMember
 import com.ditto.domain.match.entity.InvitationStatus
 import com.ditto.domain.match.repository.GroupMatchMemberRepository
 import com.ditto.domain.match.repository.GroupMatchRepository
 import com.ditto.domain.quiz.repository.QuizSetRepository
+import com.ditto.domain.system.OperationWeek
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDateTime
 import org.springframework.stereotype.Service
@@ -58,10 +60,7 @@ class UnformedGroupNotifier(
         unformed.forEach { group ->
             val week = weekByQuizSetId[group.quizSetId]
             val invitations = groupMatchMemberRepository.findByRoomId(group.id)
-            val waitingForAutoJoin = week != null &&
-                invitations.any { it.isPending() } &&
-                GroupResponseDeadline.isAutoJoinPeriod(week, now)
-            if (waitingForAutoJoin) return@forEach
+            if (isWaitingForAutoJoin(week, invitations, now)) return@forEach
 
             val acceptedMemberIds = invitations
                 .filter { it.status == InvitationStatus.ACCEPTED }
@@ -82,6 +81,12 @@ class UnformedGroupNotifier(
         }
         return notified
     }
+
+    private fun isWaitingForAutoJoin(
+        week: OperationWeek?,
+        invitations: List<GroupMatchMember>,
+        now: LocalDateTime,
+    ): Boolean = week != null && invitations.any { it.isPending() } && GroupResponseDeadline.isAutoJoinPeriod(week, now)
 
     companion object {
         /**

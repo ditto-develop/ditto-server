@@ -317,7 +317,7 @@ class GroupMatchServiceTest(
             fun chatMemberIdsOfGroup(groupMatchId: Long): List<Long> =
                 chatRoomMemberRepository.findByRoomIdIn(listOf(groupChatRoomOf(groupMatchId).id)).map { it.memberId }
 
-            // 서버 시각이 수요일이라 성사된 방은 금요일 개방을 기다린다.
+            // 앞 3명만 수락하고 나머지는 미응답으로 둔다. 서버 시각이 수요일이라 성사된 방은 금요일 개방을 기다린다.
             fun formGroupBeforeDeadline(memberIds: List<Long>): Long {
                 val groupMatchId = saveCandidateGroup(memberIds)
                 memberIds.take(3).forEach { groupMatchService.acceptGroupMatch(it, groupMatchId) }
@@ -325,16 +325,16 @@ class GroupMatchServiceTest(
             }
 
             "거절하지 않은 사람이 3명 이상이면 미응답자를 참여로 바꿔 성사시키고 바로 열린 채팅방을 만든다" {
-                val (accepted, first, second, declined) = saveActiveMembers(4)
-                val groupMatchId = saveCandidateGroup(listOf(accepted, first, second, declined))
+                val (accepted, unansweredFirst, unansweredSecond, declined) = saveActiveMembers(4)
+                val groupMatchId = saveCandidateGroup(listOf(accepted, unansweredFirst, unansweredSecond, declined))
                 groupMatchService.acceptGroupMatch(accepted, groupMatchId)
                 groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
                 val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
-                statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
-                statusOf(groupMatchId, second) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, unansweredFirst) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, unansweredSecond) shouldBe InvitationStatus.ACCEPTED
                 statusOf(groupMatchId, declined) shouldBe InvitationStatus.DECLINED
                 val group = groupMatchRepository.findById(groupMatchId).get()
                 group.isActive shouldBe true
@@ -342,20 +342,20 @@ class GroupMatchServiceTest(
                 val chatRoom = groupChatRoomOf(groupMatchId)
                 chatRoomId shouldBe chatRoom.id
                 chatRoom.status shouldBe ChatRoomStatus.ACTIVE
-                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder listOf(accepted, first, second)
+                chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder listOf(accepted, unansweredFirst, unansweredSecond)
             }
 
             "거절하지 않은 사람이 3명 미만이면 참여로만 바꾸고 성사시키지 않는다" {
-                val (first, second, declined) = saveActiveMembers(3)
-                val groupMatchId = saveCandidateGroup(listOf(first, second, declined))
+                val (unansweredFirst, unansweredSecond, declined) = saveActiveMembers(3)
+                val groupMatchId = saveCandidateGroup(listOf(unansweredFirst, unansweredSecond, declined))
                 groupMatchService.declineGroupMatch(declined, groupMatchId)
                 overrideServerTime(deadline)
 
                 val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomId shouldBe null
-                statusOf(groupMatchId, first) shouldBe InvitationStatus.ACCEPTED
-                statusOf(groupMatchId, second) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, unansweredFirst) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, unansweredSecond) shouldBe InvitationStatus.ACCEPTED
                 groupMatchRepository.findById(groupMatchId).get().isActive shouldBe false
                 chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId) shouldBe null
             }
@@ -397,7 +397,7 @@ class GroupMatchServiceTest(
                 val chatRoomId = groupMatchService.joinUnansweredInvitations(groupMatchId, deadline)
 
                 chatRoomId shouldBe null
-                statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.ACCEPTED
+                statusOf(groupMatchId, memberIds.last()) shouldBe InvitationStatus.ACCEPTED
                 groupMatchRepository.findById(groupMatchId).get().acceptedCount shouldBe 4
                 chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds
             }
@@ -422,7 +422,7 @@ class GroupMatchServiceTest(
 
                 groupMatchService.joinUnansweredInvitations(groupMatchId, deadline) shouldBe null
 
-                statusOf(groupMatchId, memberIds[3]) shouldBe InvitationStatus.DECLINED
+                statusOf(groupMatchId, memberIds.last()) shouldBe InvitationStatus.DECLINED
                 chatMemberIdsOfGroup(groupMatchId) shouldContainExactlyInAnyOrder memberIds.take(3)
             }
 

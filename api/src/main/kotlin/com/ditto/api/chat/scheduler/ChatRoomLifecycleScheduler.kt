@@ -84,7 +84,7 @@ class ChatRoomLifecycleScheduler(
     )
     fun sweep() {
         val serverNow = serverTimeProvider.now()
-        // 예약 → 그룹 자동 참여 → 개방 → 마감 순으로 둔다. 방 생명주기 순서라 읽기 쉽다. 예약된 방이 같은 주기에 열릴 수는
+        // 예약 → 그룹 자동 참여 → 개방 → 마감 순으로 둔다. 예약된 방이 같은 주기에 열릴 수는
         // 있다 — 오버라이드가 예약된 금요일 이후를 가리키면 openDue 가 곧바로 집어간다.
         rematchChatRoomOpener.openMissing(LocalDateTime.now())
         // 자동 참여를 개방 앞에 둔다. 개방을 기다리던 방에 들어간 사람도 같은 주기에 오픈 알림을 받는다.

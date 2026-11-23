@@ -63,7 +63,7 @@ class UnansweredGroupInvitationJoinerTest(
             ).id
         }
 
-        /** 그 주 그룹 하나를 저장하고 구성원마다 [statuses] 순서대로 응답 상태를 깐다. 구성원 ID 를 같은 순서로 돌려준다. */
+        // 그 주 그룹 하나를 저장한다. 그룹 ID 와, statuses 순서대로 만든 구성원 ID 를 돌려준다.
         fun saveGroupWith(
             statuses: List<InvitationStatus>,
             weekStartedOn: LocalDate = thisWeekStartedOn,
@@ -109,13 +109,13 @@ class UnansweredGroupInvitationJoinerTest(
             )
             val (unansweredFirst, _, declined, unansweredSecond) = memberIds
 
-            val openedRooms = joinUnansweredAt(deadline)
+            val autoJoinedOpenRooms = joinUnansweredAt(deadline)
 
             statusOf(groupMatchId, unansweredFirst) shouldBe InvitationStatus.ACCEPTED
             statusOf(groupMatchId, declined) shouldBe InvitationStatus.DECLINED
             statusOf(groupMatchId, unansweredSecond) shouldBe InvitationStatus.ACCEPTED
             val chatRoom = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.GROUP, groupMatchId).shouldNotBeNull()
-            openedRooms.map { it.id } shouldBe listOf(chatRoom.id)
+            autoJoinedOpenRooms.map { it.id } shouldBe listOf(chatRoom.id)
         }
 
         "인원이 모자란 그룹은 참여로만 바꾸고 돌려주지 않는다" {
