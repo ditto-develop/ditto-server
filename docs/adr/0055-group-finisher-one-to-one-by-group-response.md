@@ -1,6 +1,6 @@
 # ADR 0055 — 그룹 완주자의 1:1 응시 시점은 그 주 그룹 상태로 정한다
 
-- 상태: Accepted (2026-11-19)
+- 상태: Accepted (2026-11-19). 마감 뒤 `NOT_RESPONDED`는 [0056](0056-group-invitation-default-join.md)으로 바뀜
 - 근거: 기획 IMP-2 시크릿 매칭 v0.2 변경 이력(D-2), 이슈 #393
 
 ## Context
@@ -16,11 +16,12 @@
 | 상태 | 1:1 응시 |
 |---|---|
 | `NOT_INVITED` 셋에 후보 그룹은 있는데 내 그룹이 없음, `DECLINED` 초대를 모두 거절 | 바로 |
-| `NO_CANDIDATE_GROUPS` 셋에 후보 그룹이 하나도 없음, `NOT_RESPONDED` 아직 응답 전, `WAITING_FOR_GROUP` 수락하고 성사 대기 | 그룹 응답 마감(금 00:00)부터 |
+| `NO_CANDIDATE_GROUPS` 셋에 후보 그룹이 하나도 없음, `WAITING_FOR_GROUP` 수락하고 성사 대기 | 그룹 응답 마감(금 00:00)부터 |
+| `NOT_RESPONDED` 아직 응답 전 | 마감에 참여로 바뀐 뒤 위 상태를 따른다([ADR 0056](0056-group-invitation-default-join.md)) |
 | `JOINED_GROUP` 수락한 그룹이 성사됨(채팅방을 나갔어도) | 대상 아님 |
 
 - 그룹 배치가 끝났다는 기록이 따로 없어서, 그 셋에 후보 그룹이 하나라도 있으면 끝난 것으로 본다. 목 00:01이 지났는지로 판단하면, 배치가 도는 사이나 실패 뒤 재시도 중에 1:1 을 낸 사람이 그룹 초대까지 받을 수 있다.
-- 아직 응답하지 않은 사람은 기다린다. 화면에 후보 그룹이 떠 있어 빈 상태가 아니고, 1:1 을 원하면 거절하면 된다. 금 00:00에는 어차피 자동 거절된다.
+- 아직 응답하지 않은 사람은 기다린다. 화면에 후보 그룹이 떠 있어 빈 상태가 아니고, 1:1 을 원하면 거절하면 된다. 금 00:00에는 참여로 바뀌어 그룹이 성사되면 1:1 대상에서 빠진다([ADR 0056](0056-group-invitation-default-join.md)).
 - 응답 기간(월~수)에는 그룹 상태와 상관없이 지금처럼 한 주 한 유형만 받는다. 응답 기간에 그룹 셋을 다시 만들면 후보 그룹이 생겨 `NOT_INVITED`·`DECLINED`가 나올 수 있어서다.
 - 제출 검사(`QuizProgressService`), 홈 카드(`SecretMatchingCard`), 매칭 현황 API 의 그룹 플래그(`MatchingStatusService`)가 같은 상태를 쓴다. 카드나 그룹 화면은 1:1 을 풀라는데 제출이 거절되는 일이 없게 하려고다.
 - `SECRET_MATCHING` 플래그가 꺼져 있으면 지금처럼 `QUIZ_OTHER_TYPE_ALREADY_COMPLETED`(4005)로 막는다.

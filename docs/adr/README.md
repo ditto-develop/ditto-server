@@ -51,6 +51,7 @@
 - [0053 — 시크릿 매칭을 위해 마감 뒤 1:1 응시를 토 20:00까지 받는다](0053-late-one-to-one-submission-for-secret-matching.md)
 - [0054 — 시크릿 매칭 라운드는 같은 퀴즈셋에 후보를 더하고, 실제 시각 cron 과 셋 잠금으로 돈다](0054-secret-matching-round.md)
 - [0055 — 그룹 완주자의 1:1 응시 시점은 그 주 그룹 상태로 정한다](0055-group-finisher-one-to-one-by-group-response.md)
+- [0056 — 그룹 초대에 응답하지 않으면 마감에 참여로 본다](0056-group-invitation-default-join.md)
 
 ## 언제 ADR을 쓰는가
 
