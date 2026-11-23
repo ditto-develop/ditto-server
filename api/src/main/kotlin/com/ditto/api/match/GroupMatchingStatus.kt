@@ -23,9 +23,10 @@ enum class GroupMatchingStatus {
     ;
 
     // 그룹 응답을 기다리는 동안은 그룹이 성사될 수 있어서 그룹 응답 마감까지 1:1 을 막는다.
+    // 미응답은 마감에 참여로 바뀌어 성사(JOINED_GROUP)나 인원 미달(WAITING_FOR_GROUP)이 될 때까지 막는다.
     fun canTakeOneToOne(week: OperationWeek, now: LocalDateTime): Boolean = when (this) {
-        JOINED_GROUP -> false
+        JOINED_GROUP, NOT_RESPONDED -> false
         NOT_INVITED, DECLINED -> true
-        NO_CANDIDATE_GROUPS, NOT_RESPONDED, WAITING_FOR_GROUP -> GroupResponseDeadline.hasPassed(week, now)
+        NO_CANDIDATE_GROUPS, WAITING_FOR_GROUP -> GroupResponseDeadline.hasPassed(week, now)
     }
 }

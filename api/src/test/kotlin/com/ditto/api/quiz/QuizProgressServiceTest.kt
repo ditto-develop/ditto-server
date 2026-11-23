@@ -759,16 +759,18 @@ class QuizProgressServiceTest(
             exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
         }
 
-        "그룹 초대에 아직 답하지 않았으면 금요일 전에는 1:1 을 풀 수 없다" {
+        "그룹 초대에 아직 답하지 않았으면 자동 참여되기 전까지 금요일에도 1:1 을 풀 수 없다" {
             enableSecretMatching()
             val memberId = setupMember()
             val groupQuizSetId = completeGroupQuiz(memberId)
             saveInvitationToNewGroup(groupQuizSetId, memberId)
             val (_, oneToOneQuizzes) = setupWeekQuizSet(MatchingType.ONE_TO_ONE)
 
-            val exception = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], thursday) }
+            val thursdayException = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], thursday) }
+            val fridayException = shouldThrow<WarnException> { submitAt(memberId, oneToOneQuizzes[0], friday) }
 
-            exception.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+            thursdayException.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
+            fridayException.errorCode shouldBe ErrorCode.QUIZ_OTHER_TYPE_ALREADY_COMPLETED
         }
 
         "수락하고 그룹 성사를 기다리면 목요일에는 못 풀고 금요일부터 풀 수 있다" {
