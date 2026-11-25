@@ -95,6 +95,24 @@ class ChatPeriodTest : FreeSpec({
         }
     }
 
+    "openedBy" - {
+        "개방 전이면 개방 시각만 그 시각으로 당기고 닫는 시각은 둔다" {
+            val thursday = LocalDateTime.of(2026, 3, 12, 9, 0)
+
+            val period = ChatPeriod.weekendOf(thursday).openedBy(thursday)
+
+            period.opensAt shouldBe thursday
+            period.expiresAt shouldBe LocalDateTime.of(2026, 3, 16, 0, 0)
+        }
+
+        "이미 열렸으면 그대로 둔다" {
+            val saturday = LocalDateTime.of(2026, 3, 14, 9, 0)
+            val weekend = ChatPeriod.weekendOf(saturday)
+
+            weekend.openedBy(saturday) shouldBe weekend
+        }
+    }
+
     "of" - {
         "금요일이 아닌 날짜는 거부한다" {
             shouldThrow<IllegalArgumentException> {

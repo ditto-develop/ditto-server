@@ -21,6 +21,14 @@ data class ChatPeriod(
 
     fun isOpenedAt(at: LocalDateTime): Boolean = at >= opensAt
 
+    /**
+     * [at]에 곧바로 열리도록 당긴 구간. 이미 열렸으면 그대로 둔다. 닫는 시각은 바꾸지 않는다.
+     *
+     * 1:1 방이 쓴다 — 목요일에 서로 수락하면 금요일을 기다리지 않고 그 자리에서 대화한다(#399).
+     */
+    fun openedBy(at: LocalDateTime): ChatPeriod =
+        if (isOpenedAt(at)) this else copy(opensAt = at)
+
     companion object {
         /**
          * [at] 이후 처음 열리는 주말 — "다가오는 금요일 00:00". 개방 시각이 [at]보다 앞서지 않으므로

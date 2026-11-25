@@ -4,11 +4,7 @@ import com.ditto.api.notification.message.NotificationContent
 import com.ditto.api.notification.message.NotificationMessages
 import com.ditto.api.notification.service.NotificationAppender
 import com.ditto.api.support.runCatchingExceptions
-import com.ditto.api.system.ServerTimeProvider
-import com.ditto.api.system.featureflag.FeatureFlags
-import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.member.repository.MemberRepository
-import com.ditto.domain.system.entity.FeatureFlagKey
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
@@ -23,22 +19,19 @@ import org.springframework.stereotype.Component
  *
  * 닉네임 조회 실패는 여기서 삼킨다. 요청 경로라 예외가 올라가면 이미 커밋된 처리가 실패로 보인다.
  *
- * 방이 열렸는지는 채팅방을 만드는 쪽(ChatService)과 같은 서버 시각으로 판단한다.
- * 시크릿 매칭 플래그가 꺼져 있으면 주말에도 금요일 문구를 쓴다(#391).
+ * 1:1 방은 수락하는 즉시 열리므로(#399) 신청·수락 문구는 요일과 관계없이 "바로 열린다"다.
  */
 @Component
 class PersonalMatchNotifier(
     private val memberRepository: MemberRepository,
     private val notificationAppender: NotificationAppender,
-    private val serverTimeProvider: ServerTimeProvider,
-    private val featureFlags: FeatureFlags,
 ) {
 
     /** 수신자에게 신청 사실을 알린다. 실제로 남겼으면 true. */
     fun notifyRequested(matchId: Long, receiverId: Long, requestedBy: Long): Boolean =
         runCatchingExceptions {
             val content = nicknameOf(requestedBy)?.let {
-                NotificationMessages.matchRequested(it, isChatOpen = shouldSayChatOpen())
+                NotificationMessages.matchRequested(it)
             }
             appendToCounterpart(matchId, receiverId, content)
         }
@@ -49,7 +42,7 @@ class PersonalMatchNotifier(
     fun notifyAccepted(matchId: Long, requesterId: Long, acceptedBy: Long): Boolean =
         runCatchingExceptions {
             val content = nicknameOf(acceptedBy)?.let {
-                NotificationMessages.matchAccepted(it, isChatOpen = shouldSayChatOpen())
+                NotificationMessages.matchAccepted(it)
             }
             appendToCounterpart(matchId, requesterId, content)
         }
@@ -70,12 +63,6 @@ class PersonalMatchNotifier(
             return false
         }
         return notificationAppender.append(memberId = counterpartId, content = content, targetId = matchId)
-    }
-
-    private fun shouldSayChatOpen(): Boolean {
-        if (!featureFlags.isEnabled(FeatureFlagKey.SECRET_MATCHING)) return false
-        val now = serverTimeProvider.now()
-        return ChatPeriod.weekendOf(now).isOpenedAt(now)
     }
 
     private fun nicknameOf(memberId: Long): String? = memberRepository.findById(memberId).orElse(null)?.nickname

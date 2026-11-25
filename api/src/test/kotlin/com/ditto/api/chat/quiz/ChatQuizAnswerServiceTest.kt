@@ -5,7 +5,6 @@ import com.ditto.api.support.QuizSeeder
 import com.ditto.common.exception.ErrorCode
 import com.ditto.common.exception.WarnException
 import com.ditto.domain.chat.ChatRoomFixture
-import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatQuizCard
 import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
@@ -111,7 +110,7 @@ class ChatQuizAnswerServiceTest(
             val set = seeder.quizSet(questions = 1)
             val match = personalMatchRepository.save(PersonalMatchFixture.create(me, peer, set.quizSetId))
             val thursday = LocalDateTime.of(2026, 10, 29, 9, 0)
-            val room = roomWith(ChatRoomFixture.personal(sourceId = match.id, now = thursday, period = ChatPeriod.weekendOf(thursday)), me, peer)
+            val room = roomWith(ChatRoomFixture.scheduledPersonal(sourceId = match.id, now = thursday), me, peer)
 
             val result = chatQuizAnswerService.compare(me, room.id)
 

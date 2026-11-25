@@ -60,11 +60,23 @@ class ChatRoomTest(
             }
         }
 
-        "when: 개방 전(주중)에 만들면" - {
+        "when: 1:1 방을 개방 전(주중)에 만들면" - {
+            "then: 금요일을 기다리지 않고 만든 시각에 열린다(#399)" {
+                val thursday = LocalDateTime.of(2026, 3, 12, 9, 0)
+
+                val room = chatRoomRepository.save(ChatRoomFixture.personal(now = thursday))
+
+                room.status shouldBe ChatRoomStatus.ACTIVE
+                room.opensAt shouldBe thursday
+                room.expiresAt shouldBe LocalDateTime.of(2026, 3, 16, 0, 0)
+            }
+        }
+
+        "when: 그룹 방을 개방 전(주중)에 만들면" - {
             "then: SCHEDULED 로 예약되고 그 주 금요일을 가리킨다" {
                 val wednesday = LocalDateTime.of(2026, 3, 11, 9, 0)
 
-                val room = chatRoomRepository.save(ChatRoomFixture.personal(now = wednesday))
+                val room = chatRoomRepository.save(ChatRoomFixture.group(now = wednesday))
 
                 room.status shouldBe ChatRoomStatus.SCHEDULED
                 room.opensAt shouldBe LocalDateTime.of(2026, 3, 13, 0, 0)
@@ -150,11 +162,11 @@ class ChatRoomTest(
     }
 
     "예약 방 개방" - {
-        "given: 개방 전 예약된 방일 때" - {
+        "given: 개방 전 예약된 그룹 방일 때" - {
             "when: 개방 시각이 지나 열면" - {
                 "then: ACTIVE 로 바뀐다" {
                     val room = chatRoomRepository.save(
-                        ChatRoomFixture.personal(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
+                        ChatRoomFixture.group(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
                     )
 
                     room.open(LocalDateTime.of(2026, 3, 13, 0, 0))
@@ -166,7 +178,7 @@ class ChatRoomTest(
             "when: 아직 개방 시각 전이면" - {
                 "then: 예외로 막는다" {
                     val room = chatRoomRepository.save(
-                        ChatRoomFixture.personal(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
+                        ChatRoomFixture.group(now = LocalDateTime.of(2026, 3, 11, 9, 0)),
                     )
 
                     shouldThrow<IllegalStateException> {
@@ -174,6 +186,23 @@ class ChatRoomTest(
                     }
 
                     room.status shouldBe ChatRoomStatus.SCHEDULED
+                }
+            }
+        }
+
+        "given: #399 이전에 금요일 개방으로 예약된 1:1 방일 때" - {
+            "when: 개방 시각 전에 열면" - {
+                "then: 개방 시각을 연 시각으로 당기고 ACTIVE 로 바뀐다" {
+                    val room = chatRoomRepository.save(
+                        ChatRoomFixture.scheduledPersonal(now = LocalDateTime.of(2026, 3, 12, 9, 0)),
+                    )
+                    val openedAt = LocalDateTime.of(2026, 3, 12, 10, 0)
+
+                    room.open(openedAt)
+
+                    room.status shouldBe ChatRoomStatus.ACTIVE
+                    room.opensAt shouldBe openedAt
+                    room.expiresAt shouldBe LocalDateTime.of(2026, 3, 16, 0, 0)
                 }
             }
         }

@@ -122,7 +122,7 @@ class ChatRoomStatsQueryTest(
             val rematchRoomId = saveRematchRoom(groupSet)
             saveRematchRoom(saveQuizSet(weekStartedOn = WEEK.minusWeeks(1), matchingType = MatchingType.GROUP))
             savePersonalRoom(saveQuizSet(isActive = false))
-            savePersonalRoom(oneToOneSet) { ChatRoomFixture.personal(it, now = WEEK.atTime(10, 0)) }
+            savePersonalRoom(oneToOneSet) { ChatRoomFixture.scheduledPersonal(it, now = WEEK.atTime(10, 0)) }
 
             val counts = chatRoomRepository.countMembersPerOpenedRoomInWeek(WEEK)
 

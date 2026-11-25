@@ -68,7 +68,7 @@ class ChatRoomSilentQueryTest(
         }
 
         "아직 열리지 않은 예약 방은 나오지 않는다" {
-            val scheduled = chatRoomRepository.save(ChatRoomFixture.personal(now = FRIDAY_NOON.minusDays(1)))
+            val scheduled = chatRoomRepository.save(ChatRoomFixture.scheduledPersonal(now = FRIDAY_NOON.minusDays(1)))
             scheduled.status shouldBe ChatRoomStatus.SCHEDULED
 
             chatRoomRepository.findAllIdsSilentOpenedBetween(OPENS_AT.minusHours(6), OPENS_AT).shouldBeEmpty()
