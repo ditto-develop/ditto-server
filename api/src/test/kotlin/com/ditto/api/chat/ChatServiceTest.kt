@@ -109,8 +109,8 @@ class ChatServiceTest(
         chatRoomRepository.findAll().count { it.sourceId == 200L } shouldBe 1
     }
 
-    "시각 오버라이드가 미래 주 목요일이면 수락한 1:1 방은 그 주 금요일에 열리도록 예약된다" {
-        // given
+    "목요일에 수락한 1:1 방은 금요일을 기다리지 않고 그 자리에서 열린다" {
+        // given — 시각 오버라이드로 미래 주 목요일을 재현한다
         serverTimeOverrideRepository.save(
             ServerTimeOverride.disabled().apply { override(FUTURE_THURSDAY, "관리자", "admin@ditto.pics") },
         )
@@ -118,10 +118,10 @@ class ChatServiceTest(
         // when
         chatService.createPersonalRoom(personalMatchId = 100L, memberAId = 1L, memberBId = 2L)
 
-        // then — 실제 주말로 잡히면 스케줄러가 곧바로 마감한다(#218)
+        // then — 닫는 시각은 그 주 월 00:00 그대로다. 실제 주말로 잡히면 스케줄러가 곧바로 마감한다(#218)
         val room = chatRoomRepository.findBySourceTypeAndSourceId(ChatRoomType.PERSONAL, 100L)!!
-        room.status shouldBe ChatRoomStatus.SCHEDULED
-        room.opensAt shouldBe LocalDateTime.of(2099, 1, 2, 0, 0)
+        room.status shouldBe ChatRoomStatus.ACTIVE
+        room.opensAt shouldBe FUTURE_THURSDAY
         room.expiresAt shouldBe LocalDateTime.of(2099, 1, 5, 0, 0)
     }
 

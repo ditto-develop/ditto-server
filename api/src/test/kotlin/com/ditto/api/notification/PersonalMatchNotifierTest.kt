@@ -2,13 +2,10 @@ package com.ditto.api.notification
 
 import com.ditto.api.notification.notifier.PersonalMatchNotifier
 import com.ditto.api.support.IntegrationTest
-import com.ditto.api.system.featureflag.FeatureFlagAdminService
-import com.ditto.api.system.featureflag.FeatureFlags
 import com.ditto.domain.member.MemberFixture
 import com.ditto.domain.member.repository.MemberRepository
 import com.ditto.domain.notification.entity.NotificationType
 import com.ditto.domain.notification.repository.NotificationRepository
-import com.ditto.domain.system.entity.FeatureFlagKey
 import com.ditto.domain.system.entity.ServerTimeOverride
 import com.ditto.domain.system.repository.ServerTimeOverrideRepository
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -18,7 +15,7 @@ import javax.sql.DataSource
 
 private const val MATCH_ID = 77L
 
-// 2026-11-16(월) 시작 주. 채팅은 금 00:00 에 열린다.
+// 2026-11-16(월) 시작 주. 1:1 방은 요일과 관계없이 수락 즉시 열린다(#399).
 private val THURSDAY = LocalDateTime.of(2026, 11, 19, 12, 0)
 private val SATURDAY = LocalDateTime.of(2026, 11, 21, 12, 0)
 
@@ -27,21 +24,13 @@ class PersonalMatchNotifierTest(
     private val memberRepository: MemberRepository,
     private val notificationRepository: NotificationRepository,
     private val serverTimeOverrideRepository: ServerTimeOverrideRepository,
-    private val featureFlags: FeatureFlags,
-    private val featureFlagAdminService: FeatureFlagAdminService,
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
-
-    beforeTest { featureFlags.evict() }
-    afterTest { featureFlags.evict() }
 
     fun serverTimeIs(at: LocalDateTime) {
         serverTimeOverrideRepository.deleteAll()
         serverTimeOverrideRepository.save(ServerTimeOverride.disabled().apply { override(at, "관리자", "admin@ditto.pics") })
     }
-
-    fun turnOnSecretMatching() =
-        featureFlagAdminService.set(FeatureFlagKey.SECRET_MATCHING, enabled = true, adminMemberId = 1L)
 
     beforeEach { serverTimeIs(THURSDAY) }
 
@@ -61,13 +50,13 @@ class PersonalMatchNotifierTest(
                 it.memberId shouldBe receiver.id
                 it.type shouldBe NotificationType.MATCH_REQUESTED
                 it.title shouldBe "신청자님이 대화를 신청했어요"
-                it.body shouldBe "수락하면 금요일에 대화방이 열려요."
+                it.body shouldBe "수락하면 바로 대화방이 열려요."
                 it.targetId shouldBe MATCH_ID
             }
         }
 
-        "시크릿 매칭이 켜진 주말에는 수락하면 바로 열린다고 알린다" {
-            turnOnSecretMatching()
+        // 1:1 방은 목요일에도 수락 즉시 열린다(#399). 주말도 같은 문구다.
+        "주말에도 수락하면 바로 열린다고 알린다" {
             serverTimeIs(SATURDAY)
             val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
             val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
@@ -75,16 +64,6 @@ class PersonalMatchNotifierTest(
             personalMatchNotifier.notifyRequested(MATCH_ID, receiver.id, requester.id) shouldBe true
 
             notificationRepository.findAll().single().body shouldBe "수락하면 바로 대화방이 열려요."
-        }
-
-        "시크릿 매칭이 꺼져 있으면 주말에도 금요일에 열린다고 알린다" {
-            serverTimeIs(SATURDAY)
-            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
-            val receiver = memberRepository.save(MemberFixture.create(nickname = "받는사람", email = "b@ditto.pics"))
-
-            personalMatchNotifier.notifyRequested(MATCH_ID, receiver.id, requester.id) shouldBe true
-
-            notificationRepository.findAll().single().body shouldBe "수락하면 금요일에 대화방이 열려요."
         }
 
         "같은 매칭 건은 한 번만 알린다" {
@@ -125,30 +104,9 @@ class PersonalMatchNotifierTest(
                 it.memberId shouldBe requester.id
                 it.type shouldBe NotificationType.MATCH_ACCEPTED
                 it.title shouldBe "수락한사람님이 대화 신청을 수락했어요"
-                it.body shouldBe "금요일에 설레는 만남이 시작돼요!"
+                it.body shouldBe "대화방이 열렸어요. 먼저 인사를 건네보세요!"
                 it.targetId shouldBe MATCH_ID
             }
-        }
-
-        "시크릿 매칭이 켜진 주말에는 방이 열렸다고 알린다" {
-            turnOnSecretMatching()
-            serverTimeIs(SATURDAY)
-            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
-            val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
-
-            personalMatchNotifier.notifyAccepted(MATCH_ID, requester.id, accepter.id) shouldBe true
-
-            notificationRepository.findAll().single().body shouldBe "대화방이 열렸어요. 먼저 인사를 건네보세요!"
-        }
-
-        "시크릿 매칭이 꺼져 있으면 주말에도 금요일에 만남이 시작된다고 알린다" {
-            serverTimeIs(SATURDAY)
-            val requester = memberRepository.save(MemberFixture.create(nickname = "신청자", email = "a@ditto.pics"))
-            val accepter = memberRepository.save(MemberFixture.create(nickname = "수락한사람", email = "b@ditto.pics"))
-
-            personalMatchNotifier.notifyAccepted(MATCH_ID, requester.id, accepter.id) shouldBe true
-
-            notificationRepository.findAll().single().body shouldBe "금요일에 설레는 만남이 시작돼요!"
         }
 
         "수락한 사람이 없으면(탈퇴 등) 알리지 않는다" {

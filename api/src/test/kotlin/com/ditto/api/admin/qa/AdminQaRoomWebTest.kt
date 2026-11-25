@@ -151,7 +151,7 @@ class AdminQaRoomWebTest(
             val nextMonday = OperationWeek.containing(LocalDate.now()).startedOn.plusWeeks(1)
             val nextWeekWednesday = nextMonday.plusDays(2).atTime(12, 0)
             val room = saveRoom(
-                ChatRoomFixture.personal(now = nextWeekWednesday),
+                ChatRoomFixture.scheduledPersonal(now = nextWeekWednesday),
                 listOf(saveMember("테스터"), saveMember("dummy-female-aaaa")),
             )
 
@@ -239,7 +239,7 @@ class AdminQaRoomWebTest(
         "열리기 전 방에서는 앱과 같은 거부를 보여준다" {
             val dummy = saveMember("dummy-female-aaaa")
             val wednesday = LocalDateTime.of(2026, 3, 11, 12, 0)
-            val room = saveRoom(ChatRoomFixture.personal(now = wednesday), listOf(saveMember("테스터"), dummy))
+            val room = saveRoom(ChatRoomFixture.scheduledPersonal(now = wednesday), listOf(saveMember("테스터"), dummy))
             mockMvc.perform(get("/admin/qa/rooms/{id}", room.id).with(authentication(admin)))
                 .andExpect(status().isOk)
                 .andExpect(content().string(containsString("name=\"returnTo\" value=\"/admin/qa/rooms/${room.id}\"")))

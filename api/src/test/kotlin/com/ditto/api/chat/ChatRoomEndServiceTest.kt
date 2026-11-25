@@ -11,6 +11,7 @@ import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.ChatVoteFixture
 import com.ditto.domain.chat.entity.ChatEndReason
 import com.ditto.domain.chat.entity.ChatMessageType
+import com.ditto.domain.chat.entity.ChatRoom
 import com.ditto.domain.chat.entity.ChatRoomMember
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.chat.entity.ChatVoteCloseReason
@@ -39,10 +40,17 @@ class ChatRoomEndServiceTest(
     dataSource: DataSource,
 ) : IntegrationTest(dataSource, {
 
-    fun saveRoomWithMembers(now: LocalDateTime = FRIDAY, vararg memberIds: Long) =
-        chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 100L, now = now)).also { room ->
-            chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = room.id, memberId = it) })
+    fun saveWithMembers(room: ChatRoom, vararg memberIds: Long) =
+        chatRoomRepository.save(room).also { saved ->
+            chatRoomMemberRepository.saveAll(memberIds.map { ChatRoomMember.of(roomId = saved.id, memberId = it) })
         }
+
+    fun saveRoomWithMembers(now: LocalDateTime = FRIDAY, vararg memberIds: Long) =
+        saveWithMembers(ChatRoomFixture.personal(sourceId = 100L, now = now), *memberIds)
+
+    /** 금요일 개방을 기다리는 방. 1:1 은 수락 즉시 열리므로(#399) 예약 방은 그룹으로 만든다. */
+    fun saveScheduledRoomWithMembers(now: LocalDateTime = WEDNESDAY, vararg memberIds: Long) =
+        saveWithMembers(ChatRoomFixture.group(sourceId = 100L, now = now), *memberIds)
 
     "만료 마감" - {
         "기한이 지난 방을 마감한다" {
@@ -80,7 +88,7 @@ class ChatRoomEndServiceTest(
         }
 
         "열리지 못한 채 기한이 지난 예약 방도 함께 마감한다" {
-            saveRoomWithMembers(WEDNESDAY, 1L, 2L)
+            saveScheduledRoomWithMembers(WEDNESDAY, 1L, 2L, 3L)
             chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.SCHEDULED
 
             chatRoomEndService.endExpired(AFTER_EXPIRY).size shouldBe 1
@@ -98,7 +106,7 @@ class ChatRoomEndServiceTest(
 
     "예약 방 개방" - {
         "개방 시각이 지나면 연다" {
-            saveRoomWithMembers(WEDNESDAY, 1L, 2L)
+            saveScheduledRoomWithMembers(WEDNESDAY, 1L, 2L, 3L)
 
             val opened = chatRoomEndService.openDue(FRIDAY)
 
@@ -107,10 +115,24 @@ class ChatRoomEndServiceTest(
         }
 
         "개방 시각 전이면 열지 않는다" {
-            saveRoomWithMembers(WEDNESDAY, 1L, 2L)
+            saveScheduledRoomWithMembers(WEDNESDAY, 1L, 2L, 3L)
 
             chatRoomEndService.openDue(LocalDateTime.of(2026, 3, 12, 23, 59)).size shouldBe 0
             chatRoomRepository.findAll().first().status shouldBe ChatRoomStatus.SCHEDULED
+        }
+
+        // 배포 전 목요일에 수락돼 금요일 개방으로 예약된 1:1 방. 다음 주기에 열고 개방 시각을 그 시각으로 당긴다.
+        "#399 이전에 예약된 1:1 방은 개방 시각 전이어도 연다" {
+            val thursday = LocalDateTime.of(2026, 3, 12, 9, 0)
+            saveWithMembers(ChatRoomFixture.scheduledPersonal(sourceId = 100L, now = thursday), 1L, 2L)
+
+            val opened = chatRoomEndService.openDue(thursday)
+
+            opened.size shouldBe 1
+            chatRoomRepository.findAll().first().let {
+                it.status shouldBe ChatRoomStatus.ACTIVE
+                it.opensAt shouldBe thursday
+            }
         }
 
         // 개방 후보 조회가 종료된 방을 걸러내는지 확인한다. 되살아나면 SCHEDULED→ACTIVE→ENDED 단방향
@@ -120,7 +142,7 @@ class ChatRoomEndServiceTest(
         // 사용자가 끝내는 경우)은 순차 실행으로 창을 만들 수 없어 여기서 재현되지 않는다 —
         // 그 구간은 findWithLockById 이후의 상태 재확인이 막는다.
         "종료된 방은 개방 후보에서 빠진다" {
-            val room = saveRoomWithMembers(WEDNESDAY, 1L, 2L)
+            val room = saveWithMembers(ChatRoomFixture.scheduledPersonal(sourceId = 100L, now = WEDNESDAY), 1L, 2L)
             chatRoomEndService.endByUser(room.id, memberId = 1L, now = WEDNESDAY)
 
             chatRoomEndService.openDue(FRIDAY).size shouldBe 0

@@ -49,6 +49,7 @@ class ChatService(
      * 매칭 수락 트랜잭션 안에서 호출된다.
      *
      * 기간은 서버 시각([ServerTimeProvider])의 주말로 잡는다 — [lifecycleNow] 참고.
+     * 주말 전(목요일)이어도 그 자리에서 열린다([ChatRoom.personal], #399).
      */
     @Transactional
     fun createPersonalRoom(personalMatchId: Long, memberAId: Long, memberBId: Long) {

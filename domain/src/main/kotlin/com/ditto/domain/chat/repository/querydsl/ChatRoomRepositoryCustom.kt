@@ -18,7 +18,7 @@ interface ChatRoomRepositoryCustom {
      */
     fun findAllIdsDueToEnd(at: LocalDateTime): List<Long>
 
-    /** [at] 시점에 개방 시각이 됐는데 아직 열리지 않은 방 — 개방 후보. */
+    /** [at] 시점에 개방 시각이 됐는데 아직 열리지 않은 방 — 개방 후보. 1:1 은 개방 시각과 관계없이 후보다(#399). */
     fun findAllIdsDueToOpen(at: LocalDateTime): List<Long>
 
     /**

@@ -2,7 +2,6 @@ package com.ditto.api.admin.qa
 
 import com.ditto.api.support.IntegrationTest
 import com.ditto.domain.chat.ChatRoomFixture
-import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatQuizHint
 import com.ditto.domain.chat.repository.ChatQuizHintRepository
 import com.ditto.domain.chat.repository.ChatRoomRepository
@@ -24,7 +23,7 @@ class QaHintStatesTest(
         qaHintStates.of(open) shouldStartWith "빈 표시 — 원본 매칭이 없어"
 
         val thursday = LocalDateTime.of(2026, 3, 12, 12, 0)
-        val scheduled = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 2L, now = thursday, period = ChatPeriod.weekendOf(thursday)))
+        val scheduled = chatRoomRepository.save(ChatRoomFixture.scheduledPersonal(sourceId = 2L, now = thursday))
         qaHintStates.of(scheduled) shouldStartWith "대기 — 방이 열리면"
 
         val active = chatRoomRepository.save(ChatRoomFixture.personal(sourceId = 3L))

@@ -42,7 +42,8 @@ class ChatRoomRepositoryImpl(
             .from(chatRoom)
             .where(
                 chatRoom.status.eq(ChatRoomStatus.SCHEDULED),
-                chatRoom.opensAt.loe(at),
+                // 1:1 은 개방 시각을 기다리지 않는다(ChatRoom.opensOnAcceptance, #399).
+                chatRoom.opensAt.loe(at).or(chatRoom.sourceType.eq(ChatRoomType.PERSONAL)),
             )
             .fetch()
 

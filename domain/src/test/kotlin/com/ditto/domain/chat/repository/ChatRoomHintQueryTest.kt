@@ -3,7 +3,6 @@ package com.ditto.domain.chat.repository
 import com.ditto.domain.chat.ChatMessageFixture
 import com.ditto.domain.chat.ChatRoomFixture
 import com.ditto.domain.chat.entity.ChatMessage
-import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatQuizHint
 import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.support.IntegrationTest
@@ -38,7 +37,7 @@ class ChatRoomHintQueryTest(
 
         "아직 열리지 않은 방은 나오지 않는다" {
             val thursday = LocalDateTime.of(2026, 3, 12, 12, 0)
-            val room = chatRoomRepository.save(ChatRoomFixture.personal(now = thursday, period = ChatPeriod.weekendOf(thursday)))
+            val room = chatRoomRepository.save(ChatRoomFixture.scheduledPersonal(now = thursday))
             room.status shouldBe ChatRoomStatus.SCHEDULED
 
             chatRoomRepository.findAllIdsActiveWithoutHint().shouldBeEmpty()

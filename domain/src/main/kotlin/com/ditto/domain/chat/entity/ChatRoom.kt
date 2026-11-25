@@ -45,13 +45,16 @@ class ChatRoom private constructor(
     @Column(name = "source_id", nullable = false)
     val sourceId: Long,
 
-    @Comment("채팅 개방 시각")
-    @Column(name = "opens_at", nullable = false)
-    val opensAt: LocalDateTime,
-
+    opensAt: LocalDateTime,
     expiresAt: LocalDateTime,
     status: ChatRoomStatus,
 ) : BaseEntity() {
+
+    /** 채팅 개방 시각. 금요일 전에 남아 있던 1:1 방을 앞당겨 열 때([open]) 바뀐다. */
+    @Comment("채팅 개방 시각")
+    @Column(name = "opens_at", nullable = false)
+    var opensAt: LocalDateTime = opensAt
+        protected set
 
     /** 자동 종료 예정 시각. 연장(#121)으로 뒤로 밀릴 수 있어 불변이 아니다. */
     @Comment("자동 종료 예정 시각 (연장 시 이동)")
@@ -127,20 +130,34 @@ class ChatRoom private constructor(
     }
 
     /**
+     * 1:1 방은 개방 시각을 기다리지 않는다 — 수락하면 그 자리에서 열린다(#399).
+     * 그룹·재매칭은 정해진 금요일에 연다.
+     */
+    private val opensOnAcceptance: Boolean
+        get() = sourceType == ChatRoomType.PERSONAL
+
+    /**
      * 예약된 방을 연다. 개방 대상인지는 호출 전에 가려야 한다 — 조건에 맞지 않으면 조용히 넘기지 않는다.
      * 이미 열렸거나 끝난 방을 다시 여는 것은 상태를 거꾸로 돌리는 일이라 버그로 드러내는 편이 낫다.
+     *
+     * [opensOnAcceptance] 방이 개방 시각 전에 남아 있으면(#399 이전에 목요일 수락으로 예약된 방) 개방 시각을
+     * [at]으로 당긴다. 그래야 응답의 `opensAt`이 실제로 열린 시각과 맞는다.
      */
     fun open(at: LocalDateTime) {
         check(status == ChatRoomStatus.SCHEDULED) { "예약 상태가 아닌 채팅방입니다: id=$id, status=$status" }
-        check(at >= opensAt) { "개방 시각 전입니다: id=$id, opensAt=$opensAt, at=$at" }
+        if (at < opensAt) {
+            check(opensOnAcceptance) { "개방 시각 전입니다: id=$id, opensAt=$opensAt, at=$at" }
+            opensAt = at
+        }
         status = ChatRoomStatus.ACTIVE
     }
 
     companion object {
         const val MIN_MEMBERS_TO_CONTINUE = 2
 
+        /** 수락한 1:1 방. 주말 전이라도 [now]에 바로 연다([ChatPeriod.openedBy], #399). */
         fun personal(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
-            of(ChatRoomType.PERSONAL, sourceId, period, now)
+            of(ChatRoomType.PERSONAL, sourceId, period.openedBy(now), now)
 
         fun group(sourceId: Long, period: ChatPeriod, now: LocalDateTime): ChatRoom =
             of(ChatRoomType.GROUP, sourceId, period, now)

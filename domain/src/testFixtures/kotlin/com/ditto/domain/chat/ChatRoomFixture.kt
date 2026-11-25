@@ -2,6 +2,7 @@ package com.ditto.domain.chat
 
 import com.ditto.domain.chat.entity.ChatPeriod
 import com.ditto.domain.chat.entity.ChatRoom
+import com.ditto.domain.chat.entity.ChatRoomStatus
 import com.ditto.domain.withId
 import java.time.LocalDateTime
 
@@ -16,6 +17,24 @@ object ChatRoomFixture {
         now: LocalDateTime = DEFAULT_NOW,
         period: ChatPeriod = ChatPeriod.weekendOf(now),
     ): ChatRoom = ChatRoom.personal(sourceId, period, now).withId(id)
+
+    /**
+     * #399 이전 규칙으로 예약된 1:1 방 — 목요일에 수락돼 금요일 개방을 기다리는 `SCHEDULED` 방.
+     * 지금은 1:1 방이 수락 즉시 열려 팩토리로 만들 수 없지만, 배포 전에 만들어진 행이 운영에 남는다.
+     */
+    fun scheduledPersonal(
+        sourceId: Long = 1L,
+        id: Long = 0L,
+        now: LocalDateTime = DEFAULT_NOW,
+        period: ChatPeriod = ChatPeriod.weekendOf(now),
+    ): ChatRoom = ChatRoom.personal(sourceId, period, period.opensAt).withId(id).apply {
+        setField("opensAt", period.opensAt)
+        setField("status", ChatRoomStatus.SCHEDULED)
+    }
+
+    private fun ChatRoom.setField(name: String, value: Any) {
+        ChatRoom::class.java.getDeclaredField(name).apply { isAccessible = true }.set(this, value)
+    }
 
     fun group(
         sourceId: Long = 1L,
