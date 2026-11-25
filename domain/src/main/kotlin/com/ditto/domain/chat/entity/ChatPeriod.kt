@@ -10,6 +10,8 @@ import java.time.temporal.TemporalAdjusters
  *
  * 일반 매칭 채팅과 재매칭 채팅이 같은 창을 쓰므로 계산을 여기 한 곳에 둔다 —
  * 두 곳에서 각자 계산하면 "그 주말이 언제인가"의 정의가 갈라진다.
+ *
+ * 1:1 방은 이 구간을 [openedBy]로 당겨 목요일에도 수락 즉시 연다(#399). 그래서 1:1 대화는 72시간보다 길 수 있다.
  */
 data class ChatPeriod(
     val opensAt: LocalDateTime,

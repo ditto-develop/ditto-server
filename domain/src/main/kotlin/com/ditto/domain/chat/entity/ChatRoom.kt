@@ -133,7 +133,7 @@ class ChatRoom private constructor(
      * 1:1 방은 개방 시각을 기다리지 않는다 — 수락하면 그 자리에서 열린다(#399).
      * 그룹·재매칭은 정해진 금요일에 연다.
      */
-    val opensOnAcceptance: Boolean
+    private val opensOnAcceptance: Boolean
         get() = sourceType == ChatRoomType.PERSONAL
 
     /**
